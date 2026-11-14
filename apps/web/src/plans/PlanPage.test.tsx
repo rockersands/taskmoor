@@ -46,6 +46,7 @@ describe('a Multi-track plan (PLN-001, PLN-012)', () => {
       'Calendar',
       'Capacity',
       'Releases',
+      'Program boards',
       'Settings',
     ]);
     const searched = (link: HTMLElement) =>

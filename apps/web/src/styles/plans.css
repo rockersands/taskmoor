@@ -368,7 +368,8 @@
   min-width: 0;
 }
 
-.plan-capacity-settings {
+.plan-capacity-settings,
+.plan-dependency-settings {
   display: grid;
   gap: var(--space-2);
   min-width: 0;
@@ -518,4 +519,220 @@
   .calendar-more {
     min-height: var(--hit-target-touch);
   }
+}
+
+/*
+ * Program boards (PLN-008; ADR-122 stage 5): a table of teams by periods, the team column held in
+ * place while the periods scroll sideways inside the card, never the page. Cards are wells; the
+ * cell a card would land in is outlined; late and same-sprint badges say so in words.
+ */
+.program-board-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+
+.program-board-head h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.program-board-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.program-board-row h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.program-board-state {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-normal);
+}
+
+.program-board-scroll {
+  max-width: 100%;
+  margin-top: var(--space-3);
+  overflow-x: auto;
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-2);
+}
+
+.program-board {
+  width: 100%;
+  min-width: 52rem;
+  border-collapse: collapse;
+  font-size: var(--font-size-200);
+}
+
+.program-board th,
+.program-board td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--glass-edge);
+  border-inline-end: 1px solid var(--glass-edge);
+  text-align: start;
+  vertical-align: top;
+}
+
+.program-board thead th {
+  background: var(--glass-surface-sunken);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-strong);
+  white-space: nowrap;
+}
+
+.program-board thead th.is-current {
+  color: var(--color-text);
+  box-shadow: inset 0 -2px 0 var(--color-accent);
+}
+
+.program-board tbody th {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 1;
+  min-width: 9rem;
+  max-width: 13rem;
+  background: var(--color-surface-raised);
+  overflow-wrap: anywhere;
+}
+
+.program-cell {
+  min-width: 12rem;
+}
+
+.program-cell.is-drop-target {
+  outline: 2px dashed var(--color-accent);
+  outline-offset: -3px;
+}
+
+.program-cell-cards {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.program-card {
+  padding: var(--space-2);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-2);
+  background: var(--glass-surface-sunken);
+  overflow-wrap: anywhere;
+}
+
+.program-card[draggable="true"] {
+  cursor: grab;
+}
+
+.program-card.is-outcome {
+  border-inline-start: 3px solid var(--color-accent);
+}
+
+.program-card.is-closed {
+  color: var(--color-text-muted);
+}
+
+.program-card.is-pending {
+  opacity: 0.7;
+}
+
+.program-card-title,
+.program-card-meta,
+.program-card-badge {
+  margin: 0;
+}
+
+.program-card-key {
+  font-weight: var(--font-weight-strong);
+}
+
+.program-card-meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
+.program-card-badge {
+  display: inline-block;
+  margin-top: var(--space-1);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-100);
+}
+
+.program-card-badge.is-late {
+  border-color: var(--color-danger);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.program-card-badge.is-same-sprint:not(.is-late) {
+  border-color: var(--color-warning);
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
+.program-card-move {
+  margin-top: var(--space-1);
+}
+
+.program-cell-more {
+  display: inline-block;
+  margin-top: var(--space-2);
+}
+
+.program-cell-count {
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-normal);
+}
+
+.program-phone-period {
+  margin-top: var(--space-3);
+}
+
+.program-phone-period h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-300);
+}
+
+.dependency-state.is-same-sprint {
+  color: var(--color-warning);
+}
+
+@media (pointer: coarse) {
+  .program-card-move,
+  .program-cell-more,
+  .program-board-phone select,
+  .program-board-row button,
+  .program-board-head a,
+  .program-board-head button,
+  .program-move-dialog select,
+  .program-move-dialog button,
+  .program-board-dialog input,
+  .program-board-dialog select,
+  .program-board-dialog button {
+    min-height: var(--hit-target-touch);
+  }
+
+  .program-cell-more {
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+/* A plan's dependency options (PLN-013): the link types as a plain list of boxes. */
+.plan-link-types {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }

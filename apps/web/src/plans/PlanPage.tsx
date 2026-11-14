@@ -31,11 +31,18 @@ import { PlanSettingsPage } from './PlanSettingsPage';
 import { PlanShareActions } from './PlanShareActions';
 import { PlanSummaryPage } from './PlanSummaryPage';
 import { PlanTimelinePage } from './PlanTimelinePage';
+import { ProgramBoardPage } from './ProgramBoardPage';
+import { ProgramBoardsPage } from './ProgramBoardsPage';
+import type { ProgramBoardClient } from './programBoardClient';
 
 export interface PlanPageProps {
   id: number;
   section: PlanSection;
+  /** One program board of the Program boards section (PLN-008). */
+  boardId?: number;
   client?: PlanClient;
+  /** The program boards' own client; the real one by default. */
+  boards?: ProgramBoardClient;
   search?: SearchClient;
   list?: ListClient;
   /** Today, for the Timeline and the Calendar. */
@@ -78,7 +85,9 @@ const STAGES = [
 export function PlanPage({
   id,
   section,
+  boardId,
   client = planClient,
+  boards,
   search = searchClient,
   list = listClient,
   now = () => new Date(),
@@ -155,7 +164,10 @@ export function PlanPage({
   const broken = plan.sources.filter((s) => s.kind === 'savedSearch' && s.state === 'broken');
   const archived = plan.sources.filter((s) => s.kind === 'track' && s.state === 'archived');
   const grouped = section === 'timeline' || section === 'list';
-  const wide = section === 'timeline' || section === 'capacity';
+  const wide =
+    section === 'timeline' ||
+    section === 'capacity' ||
+    (section === 'boards' && boardId !== undefined);
   const onPosition = (change: PlanPosition) =>
     redirectRoute(planHref(id, section, { ...view, position: { ...view.position, ...change } }));
   const viewProps = {
@@ -221,7 +233,7 @@ export function PlanPage({
           ))}
         </ul>
       )}
-      {section !== 'settings' && (
+      {section !== 'settings' && !(section === 'boards' && boardId === undefined) && (
         <PlanFilterBar view={view} choices={choices} grouped={grouped} onChange={go} />
       )}
       <div ref={body}>
@@ -241,6 +253,19 @@ export function PlanPage({
         {problem !== 'failed' && section === 'calendar' && <PlanCalendarPage {...viewProps} />}
         {problem !== 'failed' && section === 'capacity' && <PlanCapacityPage {...viewProps} />}
         {problem !== 'failed' && section === 'releases' && <PlanReleasesPage {...viewProps} />}
+        {problem !== 'failed' && section === 'boards' && boardId === undefined && (
+          <ProgramBoardsPage planId={id} now={now} {...(boards ? { client: boards } : {})} />
+        )}
+        {problem !== 'failed' && section === 'boards' && boardId !== undefined && (
+          <ProgramBoardPage
+            key={boardId}
+            planId={id}
+            boardId={boardId}
+            filters={view.filters}
+            now={now}
+            {...(boards ? { client: boards } : {})}
+          />
+        )}
         {problem !== 'failed' && section === 'settings' && plan.editable && (
           <PlanSettingsPage plan={plan} client={client} onSaved={() => setVersion((v) => v + 1)} />
         )}

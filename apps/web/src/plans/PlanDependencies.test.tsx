@@ -6,6 +6,7 @@ import { fakeListClient, fakeListSearch } from '../list/fixtures';
 import { setViewportWidth } from '../test/viewport';
 import { fakePlanClient } from './fixtures';
 import { PlanPage } from './PlanPage';
+import { PlanSettingsPage } from './PlanSettingsPage';
 
 /**
  * The dependencies on a plan's Timeline (T-089; PLN-006; ADR-122), with the fixture plan:
@@ -150,5 +151,32 @@ describe('the dependencies of a plan (PLN-006)', () => {
     renderTimeline();
     expect(await screen.findByRole('region', { name: 'Dependencies' })).toBeVisible();
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
+  });
+  describe('a plan’s dependency options (PLN-013)', () => {
+    it('[PLN-013] offers the site’s link types but blocking ones, and saves them with the sprint flag', async () => {
+      const user = userEvent.setup();
+      const client = fakePlanClient();
+      const plan = await client.get(12);
+      render(
+        <I18nProvider locale="en">
+          <PlanSettingsPage plan={plan} client={client} onSaved={() => {}} />
+        </I18nProvider>,
+      );
+      const group = await screen.findByRole('group', { name: 'Dependencies' });
+      const boxes = await within(group).findAllByRole('checkbox');
+      expect(boxes.map((b) => (b as HTMLInputElement).labels?.[0]?.textContent)).toEqual([
+        'Relates: A relates to B',
+        'Precedes: A precedes B',
+        'Flag dependencies within one sprint',
+      ]);
+      await user.click(within(group).getByRole('checkbox', { name: 'Precedes: A precedes B' }));
+      await user.click(
+        within(group).getByRole('checkbox', { name: 'Flag dependencies within one sprint' }),
+      );
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+      await waitFor(() =>
+        expect(client.saved.at(-1)?.dependencies).toEqual({ linkTypeIds: [3], sameSprint: true }),
+      );
+    });
   });
 });

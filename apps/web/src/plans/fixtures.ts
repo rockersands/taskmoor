@@ -172,6 +172,13 @@ export interface FakePlanOptions {
 const refusal = (r: string | Omit<Refusal, 'ok'>): Refusal =>
   typeof r === 'string' ? { ok: false, code: r } : { ok: false, ...r };
 
+/** The site's link types (PLN-013): blocking ones are always counted. */
+export const LINK_TYPES = [
+  { id: 1, name: 'Blocks', outward: 'blocks', inward: 'is blocked by' },
+  { id: 2, name: 'Relates', outward: 'relates to', inward: 'relates to' },
+  { id: 3, name: 'Precedes', outward: 'precedes', inward: 'is preceded by' },
+];
+
 export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
   items: () => PlanTimelineItem[];
   saved: PlanInput[];
@@ -204,6 +211,7 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
   let planReads = 0;
   let version = 1;
   let name = 'Spring launch';
+  let dependencies = { linkTypeIds: [] as number[], sameSprint: false };
   const plan = (filters: PlanFilters = {}): Plan => ({
     id: 12,
     name,
@@ -232,6 +240,10 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
     capacityUnit: unit,
     period,
     teams,
+    dependencies: {
+      linkTypes: LINK_TYPES.filter((l) => dependencies.linkTypeIds.includes(l.id)),
+      sameSprint: dependencies.sameSprint,
+    },
   });
   const shown = (filters: PlanFilters) =>
     nothing ? [] : items.filter((i) => passes(i, filters, me));
@@ -305,6 +317,7 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
       if (input.teams) teams = PLAN_TEAMS.filter((x) => input.teams?.includes(x.id));
       if (input.capacityUnit) unit = input.capacityUnit;
       if (input.period) period = input.period;
+      if (input.dependencies) dependencies = input.dependencies;
       return { ok: true, plan: plan() };
     },
     remove: async (id) => {
@@ -528,6 +541,7 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
       }
       return capacity.setCapacity(entries);
     },
+    linkTypeOptions: async () => LINK_TYPES,
     teamOptions: async () => [
       { id: 3, name: 'Web', memberCount: 2 },
       { id: 4, name: 'Ops', memberCount: 1 },

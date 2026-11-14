@@ -12,6 +12,8 @@ export interface DependencyListProps {
   dependencies: ReadonlyMap<number, Blocked>;
   /** The id of its heading, which takes focus when a control moves there. */
   headingId: string;
+  /** The link types a plan counts beside blocking ones (PLN-013), to say a link's phrase. */
+  linkTypes?: readonly { id: number; outward: string }[];
 }
 
 /** How many tickets the list shows at first, and adds at each "Show more". */
@@ -34,7 +36,7 @@ const ticketHref = (key: string) => routeHref(`#/tickets/${encodeURIComponent(ke
  * hidden from the viewer. "Only late ones" narrows it to the tickets with a late blocker; long
  * lists show 100 tickets at a time.
  */
-export function DependencyList({ dependencies, headingId }: DependencyListProps) {
+export function DependencyList({ dependencies, headingId, linkTypes = [] }: DependencyListProps) {
   const t = useT();
   const intl = useIntl();
   const [onlyLate, setOnlyLate] = useState(false);
@@ -49,6 +51,11 @@ export function DependencyList({ dependencies, headingId }: DependencyListProps)
     setShown(STEP);
   }
   const entries = onlyLate && withLate.length > 0 ? withLate : all;
+  // A chosen link type's phrase, so a "precedes" link never reads as "blocks".
+  const phrase = (linkTypeId: number | undefined) => {
+    const type = linkTypes.find((l) => l.id === linkTypeId);
+    return type && type.outward.trim().toLowerCase() !== 'blocks' ? type.outward : null;
+  };
 
   const dayText = (day: number) =>
     intl.formatDate(new Date(day * 86_400_000), {
@@ -111,16 +118,32 @@ export function DependencyList({ dependencies, headingId }: DependencyListProps)
                 </p>
                 <p className="dependency-by">{t('dependencies.blockedBy')}</p>
                 <ul className="dependency-blockers">
-                  {blockers.map(({ item: blocker, state }) => (
-                    <li key={blocker.id} data-state={state}>
-                      <a href={ticketHref(blocker.key)}>
-                        <span className="dependency-key">{blocker.key}</span>{' '}
-                        <span className="dependency-summary">{blocker.summary}</span>
-                      </a>{' '}
-                      <span className={`dependency-state is-${state}`}>{t(LABELS[state])}</span>{' '}
-                      {detail(blocker, item, state)}
-                    </li>
-                  ))}
+                  {blockers.map(({ item: blocker, state, linkTypeId, sameSprint }) => {
+                    const via = phrase(linkTypeId);
+                    return (
+                      <li key={blocker.id} data-state={state}>
+                        <a href={ticketHref(blocker.key)}>
+                          <span className="dependency-key">{blocker.key}</span>{' '}
+                          <span className="dependency-summary">{blocker.summary}</span>
+                        </a>{' '}
+                        {via && (
+                          <span className="dependency-via">
+                            {t('dependencies.via', { phrase: via })}{' '}
+                          </span>
+                        )}
+                        <span className={`dependency-state is-${state}`}>{t(LABELS[state])}</span>{' '}
+                        {detail(blocker, item, state)}
+                        {sameSprint && (
+                          <>
+                            {' '}
+                            <span className="dependency-state is-same-sprint">
+                              {t('dependencies.sameSprint')}
+                            </span>
+                          </>
+                        )}
+                      </li>
+                    );
+                  })}
                   {outside > 0 && (
                     <li data-state="outside">
                       {t('dependencies.outsideCount', { count: outside })}

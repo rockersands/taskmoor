@@ -757,3 +757,9 @@ button.timeline-bar:focus-visible {
     }
   }
 }
+
+/* A dependency within one sprint (PLN-013): dotted, and said in words in the badge and the list. */
+.timeline-link.is-same-sprint {
+  stroke-dasharray: 1 3;
+  stroke-linecap: round;
+}

@@ -60,6 +60,19 @@ export interface Plan {
   period: PlanPeriod;
   /** The site teams it plans with, in order (PLN-005). */
   teams: { id: number; name: string }[];
+  /**
+   * The link types it counts as dependencies beside blocking links, and whether it marks those
+   * within one sprint (PLN-013).
+   */
+  dependencies?: { linkTypes: LinkTypeOption[]; sameSprint: boolean };
+}
+
+/** A link type as a plan's dependency options name it (PLN-013): `A outward B`, B waits for A. */
+export interface LinkTypeOption {
+  id: number;
+  name: string;
+  outward: string;
+  inward: string;
 }
 
 /** Tickets of the plan as the viewer sees them: how many, their estimates summed, and unestimated. */
@@ -199,6 +212,10 @@ export interface PlanTimeline extends Omit<Timeline, 'track' | 'items'> {
    */
   blockersElsewhere: BlockersElsewhere[];
   tracks: PlanTrack[];
+  /** The link types of the dependencies drawn (PLN-013). */
+  linkTypes?: LinkTypeOption[];
+  /** Whether the plan marks dependencies within one sprint. */
+  sameSprint?: boolean;
 }
 
 export interface PlanCalendar {
@@ -256,6 +273,8 @@ export interface PlanInput {
   teams?: number[];
   capacityUnit?: CapacityUnit;
   period?: PlanPeriod;
+  /** Link types counted beside blocking links, and the same-sprint flag (PLN-013). */
+  dependencies?: { linkTypeIds: number[]; sameSprint: boolean };
 }
 
 export type PlanSaved =
@@ -320,6 +339,8 @@ export interface PlanClient {
   sourceOptions(): Promise<SourceOptions>;
   /** The site's teams, for a plan's settings. */
   teamOptions(): Promise<{ id: number; name: string; memberCount: number }[]>;
+  /** The site's link types, for a plan's dependency options (PLN-013). */
+  linkTypeOptions(): Promise<LinkTypeOption[]>;
 }
 
 /** The filters as query parameters, in a fixed order. */
@@ -412,6 +433,13 @@ export const planClient: PlanClient = {
     (await api<{ teams: { id: number; name: string; memberCount: number }[] }>('/teams')).teams.map(
       (t) => ({ id: t.id, name: t.name, memberCount: t.memberCount }),
     ),
+  linkTypeOptions: async () =>
+    (await api<{ linkTypes: LinkTypeOption[] }>('/link-types')).linkTypes.map((l) => ({
+      id: l.id,
+      name: l.name,
+      outward: l.outward,
+      inward: l.inward,
+    })),
   reschedule: timelineClient.reschedule,
   move: calendarClient.move,
   sourceOptions: async () => {

@@ -6995,6 +6995,110 @@ export const messagesEn = {
   'release.crossTrack.pick': 'Which one to join',
   'releases.crossTrackLabel': 'In {name}',
   'plans.section.releases': 'Releases',
+  // Program boards (T-089d; PLN-008; ADR-122 stage 5) and dependency options (PLN-013).
+  'plans.section.boards': 'Program boards',
+  'notFound.programBoard': 'Program board not found',
+  'programBoard.notFound':
+    'This program board does not exist in this plan, or you may not see the plan.',
+  'programBoard.failed': 'The program board could not be loaded. Try again in a moment.',
+  'programBoard.all': 'All program boards',
+  'programBoard.facts':
+    'Teams by {field}; {count, plural, one {# period} other {# periods}} from {from}.',
+  'programBoard.noField':
+    'Its Team field is gone, so every card is in one row and moves between periods only. An editor of the plan can choose another field.',
+  'programBoard.archivedNote':
+    'This program board is archived: its cards show, and none moves here.',
+  'programBoard.nothing': 'You see none of this plan’s work, so this board is empty for you.',
+  'programBoard.hint':
+    'Drag a card to another team or period, or use its Move button. Moving a card changes its Team value and its due day.',
+  'programBoard.hintPhone':
+    'Choose a team to see its work by period. Move a card with its Move button.',
+  'programBoard.team': 'Team',
+  'programBoard.periodLabel': 'Period',
+  'programBoard.unscheduled': 'Not scheduled',
+  'programBoard.period': '{start} – {end}',
+  'programBoard.now': 'Now',
+  'programBoard.otherTeam': 'Other or no team',
+  'programBoard.allTeams': 'All work',
+  'programBoard.count': '{count, plural, =0 {no cards} one {# card} other {# cards}}',
+  'programBoard.empty': 'Nothing here.',
+  'programBoard.more': '{count, plural, one {and # more} other {and # more}}',
+  'programBoard.closed': 'Closed',
+  'programBoard.cardTeam': 'Team: {name}',
+  'programBoard.cardMoving': 'Moving…',
+  'programBoard.move': 'Move…',
+  'programBoard.moveCard': 'Move {key}…',
+  'programBoard.moveTitle': 'Move {key}',
+  'programBoard.moveHint':
+    'A new team sets its Team value. A new period moves its start and due days by the same number of days, keeping the due day in that period; Not scheduled clears the due day.',
+  'programBoard.moveSave': 'Move',
+  'programBoard.cancel': 'Cancel',
+  'programBoard.place': '{team}, {period}',
+  'programBoard.moving': 'Moving {key}…',
+  'programBoard.moved': '{key} moved to {place}.',
+  'programBoard.conflict':
+    '{key} changed while you moved it, perhaps moved by someone else. It now shows where it is; move it again if you still want to.',
+  'programBoard.unreachable':
+    '{key} may not have moved: the server could not be reached. The board shows what it last read.',
+  'programBoard.refused.forbidden':
+    '{key} could not move: you may not change its team or its days in its track.',
+  'programBoard.refused.locked':
+    '{key} could not move: its status or one of its fields is locked for you.',
+  'programBoard.refused.archived': '{key} could not move: its track is archived.',
+  'programBoard.refused.gone': '{key} could not move: it was deleted, or you can no longer see it.',
+  'programBoard.refused.invalid':
+    '{key} could not move: its track does not use {field}, or the new days are not valid.',
+  'programBoard.refused.other': '{key} could not move. Try again in a moment.',
+  'programBoards.title': 'Program boards',
+  'programBoards.about':
+    'A program board lays this plan’s outcomes and work out by team and period. Everyone who sees the plan sees its boards, and moves cards as far as they may change those tickets.',
+  'programBoards.noField':
+    'A program board places cards by a Team field. Ask a site administrator to add one.',
+  'programBoards.none': 'No program boards yet.',
+  'programBoards.failed': 'The program boards could not be loaded. Try again in a moment.',
+  'programBoards.new': 'New program board',
+  'programBoards.edit': 'Edit',
+  'programBoards.editNamed': 'Edit {name}',
+  'programBoards.editTitle': 'Edit {name}',
+  'programBoards.archive': 'Archive',
+  'programBoards.archiveNamed': 'Archive {name}',
+  'programBoards.restore': 'Restore',
+  'programBoards.restoreNamed': 'Restore {name}',
+  'programBoards.isArchived': 'Archived',
+  'programBoards.archived': '{name} is archived.',
+  'programBoards.restored': '{name} is active again.',
+  'programBoards.delete': 'Delete',
+  'programBoards.deleteNamed': 'Delete {name}',
+  'programBoards.deleteOutcome':
+    'The board {name} goes for everyone. Its tickets stay as they are, with their teams and days.',
+  'programBoards.deleted': '{name} is deleted.',
+  'programBoards.saved': '{name} is saved.',
+  'programBoards.saveFailed': 'That could not be saved. Try again in a moment.',
+  'programBoards.conflict':
+    'Someone else changed this board meanwhile. The list shows it as it is now; try again.',
+  'programBoards.fieldGone': 'That Team field no longer exists. Choose another.',
+  'programBoards.name': 'Name',
+  'programBoards.field': 'Team field',
+  'programBoards.from': 'First period holds',
+  'programBoards.periods': 'Number of periods',
+  'programBoards.dialogHint':
+    'Columns are the plan’s own periods, set in its settings, starting with the one that holds this day.',
+  'programBoards.save': 'Save',
+  'programBoards.nameRequired': 'Give the board a name.',
+  'plans.settings.dependencies': 'Dependencies',
+  'plans.settings.dependenciesHint':
+    'Blocking links always count. Tick other link types to count them too: for “A precedes B”, B waits for A.',
+  'plans.settings.linkType': '{name}: A {phrase} B',
+  'plans.settings.noLinkTypes': 'The site has no link types besides blocking ones.',
+  'plans.settings.linkTypesFailed': 'The link types could not be loaded.',
+  'plans.settings.sameSprint': 'Flag dependencies within one sprint',
+  'plans.settings.linkTypeGone':
+    'A link type you chose no longer exists, or always counts. Reload the page and choose again.',
+  'dependencies.via': '({phrase})',
+  'dependencies.sameSprint': 'Same sprint',
+  'timeline.badge.sprint': 'same sprint',
+  'timeline.badge.withSprint':
+    'Blocked by {count, plural, one {# ticket} other {# tickets}}{late, plural, =0 {} other {, # late}}, {sprint, plural, one {# in the same sprint} other {# in the same sprint}}',
   'plans.releases.none': 'No releases in this plan.',
   'plans.releases.filtersNote':
     'Only the track filter applies here: a release has no assignee, type or stage.',

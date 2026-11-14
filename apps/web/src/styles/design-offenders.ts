@@ -58,6 +58,7 @@ export const ALLOWED = {
     '.capacity-row.is-team th': STICKY,
     '.capacity-table tbody td:last-child': STICKY,
     '.capacity-row.is-team td:last-child': STICKY,
+    '.program-board tbody th': STICKY,
     '.timeline-fade':
       'the rows fading out at the foot of the timeline, into the colour of its sticky cells; no text',
     '.skin-preview-bar': SKIN_PREVIEW,
