@@ -112,8 +112,11 @@ function ScenarioChanges({
   const heading = useRef<HTMLHeadingElement>(null);
   const words = useChangeWords(data);
   const scheduleWords = useScheduleWords(schedule?.unit ?? 'points', schedule?.names);
-  // The run's word on each ticket it listed, for the why of its proposals.
-  const ran = new Map((schedule?.run.result.tickets ?? []).map((x) => [x.id, x]));
+  // The run's word on each ticket it listed, for the why of its proposals; none on a ticket it
+  // left as it was because it changed meanwhile, whose drafts are not this run's.
+  const ran = new Map(
+    (schedule?.run.result.tickets ?? []).filter((x) => !x.changedMeanwhile).map((x) => [x.id, x]),
+  );
   const sid = scenario?.id;
   const editable = list?.editable ?? false;
 

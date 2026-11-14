@@ -7532,12 +7532,13 @@ export const messagesEs: Record<MessageId, string> = {
   'schedule.result.title': 'Programación automática',
   'schedule.result.counts':
     '{placed} colocados, {kept} conservados, {notPlaced} sin colocar, {withdrawn, plural, one {# propuesta anterior eliminada} other {# propuestas anteriores eliminadas}}.',
-  'schedule.result.yours':
-    '{count, plural, one {# de tus borradores se queda} other {# de tus borradores se quedan}}.',
+  'schedule.result.peopleDrafts':
+    '{count, plural, one {# borrador hecho por una persona se queda} other {# borradores hechos por personas se quedan}}.',
   'schedule.result.leftOut':
     '{count, plural, one {# ticket quedó fuera} other {# tickets quedaron fuera}}.',
   'schedule.result.changedMeanwhile':
-    '{count, plural, one {# ticket cambió} other {# tickets cambiaron}} mientras se ejecutaba; vuelve a ejecutarlo.',
+    '{count, plural, one {# ticket se dejó como estaba: él o un ticket que lo bloquea cambió mientras se ejecutaba. Vuelve a ejecutarlo.} other {# tickets se dejaron como estaban: ellos o tickets que los bloquean cambiaron mientras se ejecutaba. Vuelve a ejecutarlo.}}',
+  'schedule.result.meanwhileList': 'Tickets que se dejaron como estaban',
   'schedule.result.notShown':
     '{count, plural, one {# propuesta anterior se queda} other {# propuestas anteriores se quedan}} en tickets que este plan no te muestra.',
   'schedule.result.in': 'En {scenario}.',
@@ -7582,7 +7583,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Colocado desde el {start}: primero van los tickets de mayor rango de {subject}.',
   'schedule.reason.firstForBlocked': 'Colocado antes porque bloquea {ticket}.',
   'schedule.reason.already': 'Colocado donde ya está: no hay nada que cambiar.',
-  'schedule.reason.personDraft': 'Conservado: tu borrador en este escenario.',
+  'schedule.reason.personDraft': 'Conservado: una persona hizo un borrador de sus días en este escenario.',
   'schedule.reason.mayNotSchedule': 'Conservado: no puedes programar tickets en {track}.',
   'schedule.reason.keptByQuery': 'Conservado: coincide con los tickets que se conservan.',
   'schedule.reason.inProgress': 'Conservado: está en curso.',

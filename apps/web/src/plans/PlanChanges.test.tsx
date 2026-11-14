@@ -308,7 +308,7 @@ describe('the change list (PLN-002)', () => {
 
 describe('the auto-scheduler’s proposals on the change list (PLN-004)', () => {
   /** "Main plan" with SHOP-2's and SHOP-3's drafts the auto-scheduler's, OPS-4's a person's. */
-  async function withRun(onRunAgain = () => {}) {
+  async function withRun(onRunAgain = () => {}, meanwhile: string[] = []) {
     const plans = fakePlanClient();
     const base = fakeScenarioClient(plans, { scenarios: [{ name: 'Main plan', drafts: DRAFTS }] });
     const client: ScenarioClient = {
@@ -328,6 +328,9 @@ describe('the auto-scheduler’s proposals on the change list (PLN-004)', () => 
     const run = scheduleRunFixture({
       scenario: { id: main.id, name: main.name, main: true, version: 1 },
     });
+    run.result.tickets = run.result.tickets.map((x) =>
+      meanwhile.includes(x.key) ? { ...x, changedMeanwhile: true } : x,
+    );
     render(
       <I18nProvider locale="en">
         <PlanChangesPage
@@ -362,6 +365,21 @@ describe('the auto-scheduler’s proposals on the change list (PLN-004)', () => 
     ).toBeVisible();
     // A person's draft has no why, though the run kept it.
     expect(within(rowOf('OPS-4')).queryByText(/^Why:/)).toBeNull();
+  });
+
+  it('[PLN-004] gives no why to a proposal the run left as it was because it changed meanwhile', async () => {
+    await withRun(() => {}, ['SHOP-2']);
+    await screen.findByRole('heading', { name: 'Changes in Main plan, the main scenario' });
+    // SHOP-2's drafts are an earlier run's: the reason this run gives is not theirs. (The
+    // result above lists it too, apart, as left as it was.)
+    const result = screen.getByRole('region', { name: 'Auto-schedule' });
+    const shop2 = screen
+      .getAllByRole('link', { name: /^SHOP-2 / })
+      .filter((link) => !result.contains(link))
+      .map((link) => link.closest('tr, li') as HTMLElement)[0] as HTMLElement;
+    expect(within(shop2).getByText('Proposed by the auto-scheduler')).toBeVisible();
+    expect(within(shop2).queryByText(/^Why:/)).toBeNull();
+    expect(within(rowOf('SHOP-3')).getByText(/^Why: Starts Nov 21/)).toBeVisible();
   });
 
   it('[PLN-004] [PLN-003] puts the result on top, compares the main scenario with Live and runs again', async () => {

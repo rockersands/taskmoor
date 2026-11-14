@@ -78,7 +78,13 @@ export function ScheduleResult({
   const words = useScheduleWords(unit, names);
   const { result, choices } = run;
   const { counts } = result;
-  const listed = (outcome: ScheduleOutcome) => result.tickets.filter((x) => x.outcome === outcome);
+  // A proposal left out of the write because it changed meanwhile stands nowhere: it is listed
+  // apart, never among the placed, whose count leaves it out too.
+  const listed = (outcome: ScheduleOutcome) =>
+    result.tickets.filter(
+      (x) => x.outcome === outcome && !(outcome === 'placed' && x.changedMeanwhile),
+    );
+  const meanwhile = result.tickets.filter((x) => x.changedMeanwhile);
   const sizes: Record<ScheduleOutcome, number> = {
     placed: counts.placed,
     not_placed: total(counts.notPlaced),
@@ -99,7 +105,7 @@ export function ScheduleResult({
 
   const rows = listed(shown);
   const leftOut = total(counts.leftOut);
-  const yours = counts.kept.person_draft ?? 0;
+  const peoples = counts.kept.person_draft ?? 0;
   const day = (text: string) =>
     intl.formatDate(new Date(`${text}T00:00:00Z`), {
       day: 'numeric',
@@ -130,12 +136,15 @@ export function ScheduleResult({
       ].filter((x): x is string => typeof x === 'string' && x !== '')
     : [t('schedule.choices.from', { day: day(result.from), count: result.periods.length })];
 
+  const link = (entry: ScheduleEntry) => (
+    <a href={routeHref(`#/tickets/${encodeURIComponent(entry.key)}`)}>
+      <span className="scenario-key">{entry.key}</span>
+      {entry.summary ? ` ${entry.summary}` : ''}
+    </a>
+  );
   const row = (entry: ScheduleEntry) => (
     <li key={entry.id}>
-      <a href={routeHref(`#/tickets/${encodeURIComponent(entry.key)}`)}>
-        <span className="scenario-key">{entry.key}</span>
-        {entry.summary ? ` ${entry.summary}` : ''}
-      </a>
+      {link(entry)}
       <span className="scenario-state">{words.reason(entry)}</span>
       {entry.warnings.map((w) => (
         <span key={w.kind} className="scenario-state is-changed">
@@ -157,7 +166,7 @@ export function ScheduleResult({
           notPlaced: sizes.not_placed,
           withdrawn: counts.withdrawn,
         })}
-        {yours > 0 && ` ${t('schedule.result.yours', { count: yours })}`}
+        {peoples > 0 && ` ${t('schedule.result.peopleDrafts', { count: peoples })}`}
       </p>
       <p className="scenario-meta">
         {t(result.created ? 'schedule.result.made' : 'schedule.result.in', {
@@ -170,6 +179,13 @@ export function ScheduleResult({
         <p className="scenario-state is-changed">
           {t('schedule.result.changedMeanwhile', { count: counts.changedMeanwhile })}
         </p>
+      )}
+      {meanwhile.length > 0 && (
+        <ul className="scenario-differing" aria-label={t('schedule.result.meanwhileList')}>
+          {meanwhile.map((entry) => (
+            <li key={entry.id}>{link(entry)}</li>
+          ))}
+        </ul>
       )}
       <fieldset className="filter-chips">
         <legend className="visually-hidden">{t('schedule.result.show')}</legend>

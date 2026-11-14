@@ -7366,11 +7366,12 @@ export const messagesEn = {
   'schedule.result.title': 'Auto-schedule',
   'schedule.result.counts':
     '{placed} placed, {kept} kept, {notPlaced} not placed, {withdrawn, plural, one {# earlier proposal} other {# earlier proposals}} removed.',
-  'schedule.result.yours':
-    '{count, plural, one {# of your drafts stays} other {# of your drafts stay}}.',
+  'schedule.result.peopleDrafts':
+    '{count, plural, one {# draft a person made stays} other {# drafts people made stay}}.',
   'schedule.result.leftOut': '{count, plural, one {# ticket was} other {# tickets were}} left out.',
   'schedule.result.changedMeanwhile':
-    '{count, plural, one {# ticket} other {# tickets}} changed while the run worked; run again.',
+    '{count, plural, one {# ticket was left as it was: it or a ticket blocking it changed while the run worked. Run again.} other {# tickets were left as they were: they or tickets blocking them changed while the run worked. Run again.}}',
+  'schedule.result.meanwhileList': 'Tickets left as they were',
   'schedule.result.notShown':
     '{count, plural, one {# earlier proposal stays} other {# earlier proposals stay}} on tickets this plan does not show you.',
   'schedule.result.in': 'Into {scenario}.',
@@ -7413,7 +7414,7 @@ export const messagesEn = {
     'Placed from {start}: higher-ranked tickets of {subject} come first.',
   'schedule.reason.firstForBlocked': 'Placed early because it blocks {ticket}.',
   'schedule.reason.already': 'Placed where it already is: nothing to change.',
-  'schedule.reason.personDraft': 'Kept: your draft in this scenario.',
+  'schedule.reason.personDraft': 'Kept: a person drafted its days in this scenario.',
   'schedule.reason.mayNotSchedule': 'Kept: you may not schedule tickets in {track}.',
   'schedule.reason.keptByQuery': 'Kept: it matches the tickets to keep.',
   'schedule.reason.inProgress': 'Kept: it is in progress.',

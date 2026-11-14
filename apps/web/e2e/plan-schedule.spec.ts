@@ -307,11 +307,11 @@ test('[PLN-004] [PLN-002] auto-schedules a plan into a new scenario, says why, p
   );
   await expect(panel.getByRole('heading', { name: 'Auto-schedule' })).toBeFocused();
   await expect(panel.getByText(/^2 placed, 1 kept, 1 not placed, /)).toBeVisible();
-  await expect(panel.getByText('1 of your drafts stays.', { exact: false })).toBeVisible();
+  await expect(panel.getByText('1 draft a person made stays.', { exact: false })).toBeVisible();
   await expect(panel.getByText('Into Proposal.')).toBeVisible();
   const kept = await shown(page, 'Kept (1)');
   await expect(kept.getByRole('listitem').filter({ hasText: f.keys.brief })).toContainText(
-    'Kept: your draft in this scenario.',
+    'Kept: a person drafted its days in this scenario.',
   );
   expect(await seriousAxeViolations(page)).toEqual([]);
   expect(await noSidewaysScroll(page)).toBe(true);

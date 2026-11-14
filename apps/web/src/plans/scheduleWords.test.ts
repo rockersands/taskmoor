@@ -111,7 +111,10 @@ describe('the words of an auto-schedule run (PLN-004)', () => {
       'Starts Dec 9, the day after SPA-10 ends; SPA-10 blocks it.',
     );
     expect(said.reason(entry('first_for_blocked'))).toBe('Placed early because it blocks SPA-3.');
-    expect(said.reason(entry('person_draft'))).toBe('Kept: your draft in this scenario.');
+    // Anyone's draft, not only the runner's: scenarios are shared.
+    expect(said.reason(entry('person_draft'))).toBe(
+      'Kept: a person drafted its days in this scenario.',
+    );
     expect(said.reason(entry('may_not_schedule'))).toBe(
       'Kept: you may not schedule tickets in OPS.',
     );

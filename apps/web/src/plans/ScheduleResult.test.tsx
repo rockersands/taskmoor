@@ -30,7 +30,7 @@ describe('the result of an auto-schedule run (PLN-004)', () => {
     expect(screen.getByRole('region', { name: 'Auto-schedule' })).toBeVisible();
     expect(
       screen.getByText(
-        '2 placed, 1 kept, 2 not placed, 1 earlier proposal removed. 1 of your drafts stays.',
+        '2 placed, 1 kept, 2 not placed, 1 earlier proposal removed. 1 draft a person made stays.',
       ),
     ).toBeVisible();
     expect(
@@ -82,7 +82,9 @@ describe('the result of an auto-schedule run (PLN-004)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Kept (1)' }));
     list = screen.getByRole('list', { name: 'Tickets Kept (1)' });
     expect(within(list).getByRole('link', { name: 'OPS-4 Warehouse sync' })).toBeVisible();
-    expect(within(list).getByText('Kept: your draft in this scenario.')).toBeVisible();
+    expect(
+      within(list).getByText('Kept: a person drafted its days in this scenario.'),
+    ).toBeVisible();
   });
 
   it('[PLN-004] [PLN-003] compares with main, runs again and says its choices in sentences', async () => {
@@ -114,15 +116,33 @@ describe('the result of an auto-schedule run (PLN-004)', () => {
     expect(screen.getByText('No tickets here.')).toBeVisible();
   });
 
-  it('[PLN-004] says tickets that changed while it ran, and a scenario it made', () => {
-    show(
-      scheduleRunFixture({
-        created: true,
-        scenario: { id: 5, name: 'Auto-schedule 14 Nov', main: true, version: 1 },
-        counts: { ...scheduleRunFixture().result.counts, changedMeanwhile: 2, notShown: 0 },
-      }),
+  it('[PLN-004] says tickets that changed while it ran, and a scenario it made', async () => {
+    const run = scheduleRunFixture({
+      created: true,
+      scenario: { id: 5, name: 'Auto-schedule 14 Nov', main: true, version: 1 },
+      counts: {
+        ...scheduleRunFixture().result.counts,
+        placed: 1,
+        changedMeanwhile: 1,
+        notShown: 0,
+      },
+    });
+    // SHOP-2 changed while the run worked: nothing was written for it, so it is not placed.
+    run.result.tickets = run.result.tickets.map((x) =>
+      x.key === 'SHOP-2' ? { ...x, changedMeanwhile: true } : x,
     );
-    expect(screen.getByText('2 tickets changed while the run worked; run again.')).toBeVisible();
+    show(run);
+    expect(
+      screen.getByText(
+        '1 ticket was left as it was: it or a ticket blocking it changed while the run worked. Run again.',
+      ),
+    ).toBeVisible();
+    const apart = screen.getByRole('list', { name: 'Tickets left as they were' });
+    expect(within(apart).getByRole('link', { name: 'SHOP-2 Cart totals' })).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Placed (1)' }));
+    const placed = screen.getByRole('list', { name: 'Tickets Placed (1)' });
+    expect(within(placed).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(placed).queryByRole('link', { name: /^SHOP-2 / })).toBeNull();
     expect(
       screen.getByText('Into Auto-schedule 14 Nov, a new scenario. 1 ticket was left out.'),
     ).toBeVisible();
