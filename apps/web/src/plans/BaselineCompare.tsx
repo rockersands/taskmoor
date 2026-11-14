@@ -53,8 +53,8 @@ const endOf = (d: BaselineDays | null): string | null => {
  * A baseline set against the days now (T-089a; PLN-011; ADR-122 stage 9), laid out as the
  * Scenarios compare is: first a sentence ("3 tickets end later than in Kick-off, by up to 14 days;
  * 1 earlier; 1 the same. The plan ends 3 days later (4 Dec, was 1 Dec)."), with how many of the
- * baseline's tickets the reader is not shown; then filter buttons (Later, Earlier, Added since,
- * All) and a list, never a table, a ticket a line with its delay in words and "(closed)" where it
+ * baseline's tickets the reader is not shown; then filter buttons (Later, Earlier, Not in the
+ * baseline, All) and a list, never a table, a ticket a line with its delay in words and "(closed)" where it
  * is. Show more reads the next page; Download CSV holds every page of the filter chosen.
  */
 export function BaselineCompare({
@@ -282,6 +282,7 @@ export function BaselineCompare({
                 undatedThen: shown.first.counts.undatedThen,
                 undatedNow: shown.first.counts.undatedNow,
               })}
+              {shown.first.counts.addedSince > 0 && ` ${t('baselines.compare.notInBaseline')}`}
             </p>
           )}
           <fieldset className="filter-chips">

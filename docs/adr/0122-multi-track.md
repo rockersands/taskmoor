@@ -3036,6 +3036,11 @@ the build differs from the design above, or settles what it left open:
 - **`then` is `was`** in the comparison's answer (`tickets[].was`, `planEnd.was`): Biome's
   `noThenProperty` refuses a property named `then`, since it makes an object look like a promise.
   `was` is null for a ticket added since, rather than an object of nulls.
+- **"Added since" reads "Not in the baseline"** on the page (the filter, the count and each line),
+  with a sentence that such a ticket was added to the plan since or was not shown to whoever
+  captured it. A row is kept only for what the capturer was shown, so a reader who sees more (a
+  site administrator, say) finds the capturer's hidden tickets without a row, and the page cannot
+  tell them from tickets added since. The answer's names (`addedSince`, `show=added`) are kept.
 - **The comparison answers more:** `mostLater` (the largest delay, for "by up to N days"),
   `query` and `show`. Each ticket's `level` is `{ rank, kind }`, as on the Timeline, and `closed` is
   the ticket's state now; the `closed` flag stored at capture is kept but not answered. `show` is

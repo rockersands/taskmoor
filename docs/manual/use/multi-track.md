@@ -633,17 +633,17 @@ who may change them.
 **Compare** opens a baseline against the days now under the list; the page's address keeps it. The
 days now are Live, or the scenario open on the page, and the plan's filters apply. First comes a
 sentence, for example "12 tickets end later than in Kick-off, by up to 14 days; 3 earlier; 40 the
-same. The plan ends 9 days later (Feb 21, was Feb 12).", then how many tickets were added since,
-had no days then or have none now.
+same. The plan ends 9 days later (Feb 21, was Feb 12).", then how many tickets are not in the
+baseline, had no days then or have none now.
 
 - **Delay** is a ticket's end now less its end in the baseline, in calendar days. A ticket's end is
   its due day, else its start day, else its sprint's end. Closed tickets count the same way and
   say "(closed)".
 - **The plan's end**, then and now, is the latest end of the tickets that have days in both.
-- **Later**, **Earlier**, **Added since** and **All** choose the list, each with its count. Each
-  ticket shows its key and summary, a link, with its delay in words: "9 days later: due Feb 21, was
-  Feb 12". The list shows 200 tickets at a time, by delay, largest first; **Show more** brings
-  the next ones. On a phone it stays a list.
+- **Later**, **Earlier**, **Not in the baseline** and **All** choose the list, each with its
+  count. Each ticket shows its key and summary, a link, with its delay in words: "9 days later: due
+  Feb 21, was Feb 12". The list shows 200 tickets at a time, by delay, largest first; **Show more**
+  brings the next ones. On a phone it stays a list.
 - **Download CSV** gives every ticket of the chosen list, with its start and due days then and now,
   where each came from, its delay and how many days its start moved.
 
@@ -651,6 +651,9 @@ had no days then or have none now.
 tickets the plan shows you now. Its other tickets, hidden from you or gone from the plan, are one
 number, "4 tickets in this baseline are not shown to you.", which never says which. Tickets the
 filters leave out are not compared. So two people can read different numbers from one baseline.
+A ticket the plan shows you that has no row in the baseline is listed as **Not in the baseline**:
+it was added to the plan since, or its capturer was not shown it (when you see more than they did,
+for example as a site administrator). The page cannot tell which, so it never says "added".
 
 A copy of a plan takes no baselines, and deleting a plan deletes them. The baselines you captured
 are in your data download by name, plan, source and time, without their days. Capturing, renaming

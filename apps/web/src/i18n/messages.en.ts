@@ -7477,13 +7477,15 @@ export const messagesEn = {
   'baselines.compare.notShown':
     '{count, plural, one {# ticket in this baseline is not shown to you.} other {# tickets in this baseline are not shown to you.}}',
   'baselines.compare.others':
-    '{added} added since; {undatedThen} without days then; {undatedNow} without days now.',
+    '{added} not in the baseline; {undatedThen} without days then; {undatedNow} without days now.',
+  'baselines.compare.notInBaseline':
+    'A ticket not in the baseline was added to the plan since, or was not shown to whoever captured it.',
   'baselines.compare.yours':
     'Delays are in calendar days, over the tickets this plan shows you with the page’s filters.',
   'baselines.compare.show': 'Show',
   'baselines.compare.show.slipped': 'Later ({count})',
   'baselines.compare.show.earlier': 'Earlier ({count})',
-  'baselines.compare.show.added': 'Added since ({count})',
+  'baselines.compare.show.added': 'Not in the baseline ({count})',
   'baselines.compare.show.all': 'All',
   'baselines.compare.list': 'Tickets: {which}',
   'baselines.compare.none': 'No tickets here',
@@ -7495,7 +7497,7 @@ export const messagesEn = {
   'baselines.compare.due': 'due {day}',
   'baselines.compare.ends': 'ends {day}',
   'baselines.compare.noDays': 'no days',
-  'baselines.compare.addedLine': 'Added since the baseline: {now}',
+  'baselines.compare.addedLine': 'Not in the baseline: {now}',
   'baselines.compare.undatedThenLine': 'No days then; now {now}',
   'baselines.compare.undatedNowLine': 'No days now; then {was}',
   'baselines.compare.closed': '(closed)',

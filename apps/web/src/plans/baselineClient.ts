@@ -33,7 +33,10 @@ export interface BaselineList {
   limits: { baselines: number; tickets: number; page: number };
 }
 
-/** What a comparison lists: tickets that end later (the default), earlier, added since, or all. */
+/**
+ * What a comparison lists: tickets that end later (the default), earlier, not in the baseline
+ * (added to the plan since, or not shown to whoever captured it), or all.
+ */
 export const BASELINE_SHOWS = ['slipped', 'earlier', 'added', 'all'] as const;
 export type BaselineShow = (typeof BASELINE_SHOWS)[number];
 
@@ -51,7 +54,7 @@ export interface BaselineTicket {
   level: { rank: number; kind: string };
   /** Closed now. */
   closed: boolean;
-  /** Its days in the baseline; null for a ticket added since. */
+  /** Its days in the baseline; null for a ticket not in it (added since, or not shown to its capturer). */
   was: BaselineDays | null;
   now: BaselineDays;
   /** Its end now less its end then, in calendar days; null unless dated on both sides. */

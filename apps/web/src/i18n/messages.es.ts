@@ -7648,13 +7648,15 @@ export const messagesEs: Record<MessageId, string> = {
   'baselines.compare.notShown':
     '{count, plural, one {# ticket de esta línea base no se te muestra.} other {# tickets de esta línea base no se te muestran.}}',
   'baselines.compare.others':
-    '{added} añadidos desde entonces; {undatedThen} sin días entonces; {undatedNow} sin días ahora.',
+    '{added} fuera de la línea base; {undatedThen} sin días entonces; {undatedNow} sin días ahora.',
+  'baselines.compare.notInBaseline':
+    'Un ticket fuera de la línea base se añadió al plan después, o no se le mostraba a quien la capturó.',
   'baselines.compare.yours':
     'Los retrasos van en días naturales, sobre los tickets que este plan te muestra con los filtros de la página.',
   'baselines.compare.show': 'Mostrar',
   'baselines.compare.show.slipped': 'Más tarde ({count})',
   'baselines.compare.show.earlier': 'Antes ({count})',
-  'baselines.compare.show.added': 'Añadidos desde entonces ({count})',
+  'baselines.compare.show.added': 'Fuera de la línea base ({count})',
   'baselines.compare.show.all': 'Todos',
   'baselines.compare.list': 'Tickets: {which}',
   'baselines.compare.none': 'No hay tickets aquí',
@@ -7666,7 +7668,7 @@ export const messagesEs: Record<MessageId, string> = {
   'baselines.compare.due': 'vence el {day}',
   'baselines.compare.ends': 'termina el {day}',
   'baselines.compare.noDays': 'sin días',
-  'baselines.compare.addedLine': 'Añadido después de la línea base: {now}',
+  'baselines.compare.addedLine': 'Fuera de la línea base: {now}',
   'baselines.compare.undatedThenLine': 'Sin días entonces; ahora {now}',
   'baselines.compare.undatedNowLine': 'Sin días ahora; entonces {was}',
   'baselines.compare.closed': '(cerrado)',

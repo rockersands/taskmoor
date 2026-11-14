@@ -21,7 +21,7 @@ const KICK_OFF: BaselineRow = {
 
 /**
  * "Kick-off" against the days now (T-089a; PLN-011; ADR-122 stage 9): SHOP-2 ends 14 days later,
- * SHOP-1 9, OPS-5 (closed) 3; OPS-4 3 days earlier; SHOP-3 the same; WEB-6 added since; WEB-7
+ * SHOP-1 9, OPS-5 (closed) 3; OPS-4 3 days earlier; SHOP-3 the same; WEB-6 not in it; WEB-7
  * without days then. The plan's end moves from 1 to 4 December.
  */
 function renderCompare(options: FakeBaselineOptions = {}) {
@@ -54,7 +54,9 @@ describe('a baseline compared with the days now (PLN-011)', () => {
       ),
     ).toBeVisible();
     expect(
-      screen.getByText('1 added since; 1 without days then; 0 without days now.'),
+      screen.getByText(
+        '1 not in the baseline; 1 without days then; 0 without days now. A ticket not in the baseline was added to the plan since, or was not shown to whoever captured it.',
+      ),
     ).toBeVisible();
     // Later by default, the largest delay first, each in words.
     const list = screen.getByRole('list', { name: 'Tickets: Later (3)' });
@@ -73,7 +75,7 @@ describe('a baseline compared with the days now (PLN-011)', () => {
     );
   });
 
-  it('[PLN-011] filters by Later, Earlier, Added since and All, pressed in turn', async () => {
+  it('[PLN-011] filters by Later, Earlier, Not in the baseline and All, pressed in turn', async () => {
     const user = userEvent.setup();
     renderCompare();
     const later = await screen.findByRole('button', { name: 'Later (3)' });
@@ -85,8 +87,9 @@ describe('a baseline compared with the days now (PLN-011)', () => {
     expect(earlier).toHaveFocus();
     expect(await screen.findByText('3 days earlier: due Nov 28, was Dec 1')).toBeVisible();
     expect(earlier).toHaveFocus();
-    await user.click(screen.getByRole('button', { name: 'Added since (1)' }));
-    expect(await screen.findByText('Added since the baseline: due Dec 10')).toBeVisible();
+    // Never "added since": a ticket without a row may also have been hidden from the capturer.
+    await user.click(screen.getByRole('button', { name: 'Not in the baseline (1)' }));
+    expect(await screen.findByText('Not in the baseline: due Dec 10')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'All' }));
     const all = await screen.findByRole('list', { name: 'Tickets: All' });
     expect(within(all).getAllByRole('listitem')).toHaveLength(7);
