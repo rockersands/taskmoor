@@ -171,6 +171,44 @@ export const KeyboardOnly: Story = {
 };
 
 /**
+ * With a mouse, in a ticket's description beside Details at 1280 px (about 470 px; S3-WK-3), the
+ * tools that do not fit go behind More too, so no tool sits alone on a second row; More shows them.
+ */
+export const OneRowWhereNarrow: Story = {
+  render: (args) => (
+    <div style={{ width: 470 }}>
+      <RichTextEditor {...args} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const toolbar = canvas.getByRole('toolbar', { name: 'Formatting' });
+    const more = await within(toolbar).findByRole('button', { name: 'More tools' });
+    const buttons = within(toolbar).getAllByRole('button');
+    await expect(buttons.at(-1)).toBe(more);
+    const tops = new Set(buttons.map((button) => Math.round(button.getBoundingClientRect().top)));
+    await expect(tops.size, [...tops].join()).toBe(1);
+    await userEvent.click(more);
+    await expect(within(toolbar).getByRole('button', { name: 'Mention someone' })).toBeVisible();
+    await expect(more).toHaveAttribute('aria-expanded', 'true');
+  },
+};
+
+/** Wide enough for every tool: no More. */
+export const AllToolsWhereWide: Story = {
+  render: (args) => (
+    <div style={{ width: 700 }}>
+      <RichTextEditor {...args} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const toolbar = within(canvasElement).getByRole('toolbar', { name: 'Formatting' });
+    await expect(within(toolbar).getByRole('button', { name: 'Redo' })).toBeVisible();
+    await expect(within(toolbar).queryByRole('button', { name: 'More tools' })).toBeNull();
+  },
+};
+
+/**
  * On a touch phone, in a card's width (about 290 px at 375; NTF-006, PL-42), the toolbar keeps
  * one row: More is counted when the tools are fitted, so it never wraps alone onto a second row.
  */
