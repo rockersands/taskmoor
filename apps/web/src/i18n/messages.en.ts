@@ -5413,6 +5413,7 @@ export const messagesEn = {
   'statistics.axis.type': 'Type',
   'statistics.axis.assignee': 'Assignee',
   'statistics.axis.requester': 'Requester',
+  'statistics.axis.track': 'Track',
   'statistics.axis.creator': 'Creator',
   'statistics.axis.closeReason': 'Close reason',
   'statistics.axis.labels': 'Labels',

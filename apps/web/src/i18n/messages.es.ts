@@ -5549,6 +5549,7 @@ export const messagesEs: Record<MessageId, string> = {
   'statistics.axis.type': 'Tipo',
   'statistics.axis.assignee': 'Asignado',
   'statistics.axis.requester': 'Solicitante',
+  'statistics.axis.track': 'Track',
   'statistics.axis.creator': 'Creador',
   'statistics.axis.closeReason': 'Motivo de cierre',
   'statistics.axis.labels': 'Etiquetas',

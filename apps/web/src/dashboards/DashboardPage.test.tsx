@@ -30,7 +30,7 @@ function open(
       </SessionProvider>
     </I18nProvider>,
   );
-  return { client, errors, container: view.container };
+  return { client, errors, container: view.container, unmount: view.unmount };
 }
 const widget = (name: string) => screen.getByRole('article', { name });
 
@@ -174,6 +174,28 @@ describe('a dashboard (M1-064)', () => {
     expect(await within(widget('Ticket statistics')).findByRole('alert')).toHaveTextContent(
       'This widget could not be loaded.',
     );
+  });
+
+  it('[RPT-005] heads a table grouped by track with Track, in English and Spanish', async () => {
+    const { WIDGET_DATA } = await import('./fixtures');
+    const data = {
+      ...WIDGET_DATA,
+      stats: {
+        field: 'track',
+        values: [{ id: 'SHOP', name: 'Shop', kind: 'value', total: 41 }],
+        total: 41,
+      },
+    };
+    const header = async (name: string) =>
+      within(
+        await within(await screen.findByRole('article', { name })).findByRole('table'),
+      ).getAllByRole('columnheader')[0];
+    const english = open({ client: fakeDashboardClient(undefined, data) });
+    // Not 'Value': a track is one of the fields a widget groups by.
+    expect(await header('Ticket statistics')).toHaveTextContent('Track');
+    english.unmount();
+    open({ client: fakeDashboardClient(undefined, data), locale: 'es' });
+    expect(await header('Estadísticas de tickets')).toHaveTextContent('Track');
   });
 
   it('[RPT-005] heads a table with the field it counts by, and says when nothing closed', async () => {
@@ -401,6 +423,25 @@ describe('a dashboard (M1-064)', () => {
     expect(screen.getByRole('combobox', { name: 'Who sees it' })).toHaveDisplayValue(
       'Everyone signed in',
     );
+  });
+
+  it('[RPT-004] says so when everyone’s home could not be shared with everyone', async () => {
+    const user = userEvent.setup();
+    const { client } = open({
+      session: ADMIN,
+      client: fakeDashboardClient([{ ...TEAM_DASHBOARD, shares: [] }]),
+    });
+    const who = await screen.findByRole('combobox', { name: 'Who sees it' });
+    // Its owner saves it in another tab meanwhile: the share goes out with a stale version.
+    const stored = client.dashboards[0];
+    if (stored) stored.version = 9;
+    await user.click(screen.getByRole('button', { name: 'Make it everyone’s home' }));
+    expect(client.defaultId).toBe(5);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Someone changed this dashboard meanwhile. Reload it and try again.',
+    );
+    expect(screen.getByRole('status')).not.toHaveTextContent('everyone signed in sees it');
+    expect(who).toHaveDisplayValue('Only me');
   });
 
   it('[RPT-004] a wallboard has no controls and turns to the next dashboard', async () => {

@@ -201,6 +201,7 @@ export function DashboardPage({
   // Everyone signed in sees everyone's home whatever its shares, so one that only its owner saw
   // is shared with everyone signed in too: the choice of who sees it then says what is true.
   const makeDefault = async () => {
+    setProblem(null);
     await client.setDefault(dashboard.id);
     let next: Dashboard = { ...dashboard, isDefault: true };
     let said: MessageId = 'dashboards.madeDefault';
@@ -212,6 +213,10 @@ export function DashboardPage({
       if (outcome.ok) {
         next = { ...outcome.dashboard, isDefault: true };
         said = 'dashboards.madeDefaultShared';
+      } else {
+        // It is everyone's home, but its sharing did not change: say so rather than let 'Who sees
+        // it' disagree in silence.
+        setProblem(t('dashboards.conflict'));
       }
     }
     setDashboard(next);

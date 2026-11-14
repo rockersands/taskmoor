@@ -68,6 +68,7 @@ const FIELD_NAMES: Record<string, MessageId> = {
   status: 'statistics.axis.status',
   priority: 'statistics.axis.priority',
   type: 'statistics.axis.type',
+  track: 'statistics.axis.track',
   assignee: 'statistics.axis.assignee',
   requester: 'statistics.axis.requester',
   creator: 'statistics.axis.creator',
