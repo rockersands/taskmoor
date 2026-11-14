@@ -69,6 +69,7 @@ session's later number reaches `main` first, renumber yours to the next free one
 | T-296 to T-299 (the sweep's press areas, custom field names in refusals, the guard through our components, template and release-notes follow-ups) | Mac | `wave23m/*` | 2026-11-14 | Done (main `e9adbd70`) |
 | T-350 to T-353 (template person, group and team values; release-notes headings; the clone dialog's field names; the guard's template-literal classes and cascade) | Mac | `wave24m/*` | 2026-11-14 | Done (main `d0795328`) |
 | T-355 and T-356 (the sweep's partly covered press areas; the guard's glass per component and resets) | Mac | `wave25m/*` | 2026-11-14 | Done (main `c10ea330`) |
+| T-358 (a third sweep of every page; the Mac reads Plans pages too and passes their faults to Windows) | Mac | `wave26m/*` | 2026-11-14 | In progress |
 | T-089d: Multi-track program board with live editing, with PLN-013 (dependency options) | Windows | merged | 2026-11-13 | Done: `main` `443b2dcd` (migration 0108) |
 | T-089e: draft changes and scenarios (PLN-002, PLN-003), migration 0110 | Windows | `wave15/t089e-scenarios` | 2026-11-14 | In progress |
 | T-089f (auto-scheduler), then T-089a (hierarchy grid, baselines) | Windows | | 2026-11-13 | Next, in that order |
