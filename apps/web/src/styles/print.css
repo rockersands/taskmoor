@@ -5,6 +5,55 @@
  * on a ticket open in its pop-up over any page (below).
  */
 @media print {
+  /*
+   * Paper is light whatever the skin (D37): a dark skin's canvas and pale text would print as a
+   * black page. The skin's colours give way to the printer's own, dark text on white, on the ticket
+   * page and under a ticket's pop-up alike.
+   */
+  :root:has(.ticket-page) {
+    color-scheme: light;
+    --color-canvas: Canvas;
+    --canvas-image: none;
+    --color-bg: Canvas;
+    --color-surface: Canvas;
+    --color-surface-raised: Canvas;
+    --color-surface-sunken: Canvas;
+    --glass-surface: transparent;
+    --glass-surface-strong: transparent;
+    --glass-surface-sunken: transparent;
+    --field-surface: transparent;
+    --color-text: CanvasText;
+    --color-text-muted: GrayText;
+    --color-border: GrayText;
+    --color-field-border: GrayText;
+    --glass-edge: GrayText;
+    --color-accent: LinkText;
+    --color-primary: CanvasText;
+    /*
+     * The tones (a high priority's glyph, a warning, a done state) take the light skin's values,
+     * which hold their contrast on white: the dark skin's pale tones and dark tints would print
+     * barely seen, or as dark blocks. Kept equal to tokens.css's light block.
+     */
+    --color-danger: #b3261e;
+    --color-danger-soft: #fbe4e1;
+    --color-success: #2c6a44;
+    --color-success-soft: #e0f2e6;
+    --color-warning: #8a5300;
+    --color-warning-soft: #fcefd6;
+    --color-blue: #2f5f8f;
+    --color-blue-soft: #e1edf9;
+    --color-blush: #9b3550;
+    --color-blush-soft: #fbe5ea;
+    --color-butter: #7a5a00;
+    --color-butter-soft: #fbf1d3;
+    --color-accent-soft: #fde6d9;
+  }
+
+  :root:has(.ticket-page) body {
+    background: Canvas;
+    color: CanvasText;
+  }
+
   .shell:has(.ticket-page)
     :is(.skip-link, .shell-topbar, .shell-sidebar, .shell-drawer, .shell-backdrop) {
     display: none;
@@ -30,10 +79,30 @@
     .ticket-info,
     .ticket-tabs,
     .comment-composer,
+    .rt-collab-status,
     .ticket-tabpanel button,
     .comment-panel button,
-    .ticket-details button
+    .ticket-details button:not(.icon-select-button)
   ) {
+    display: none;
+  }
+
+  /* A value chosen from an icon menu (Priority) prints as its icon and name, with no button. */
+  .ticket-page .ticket-details .icon-select-button {
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: inherit;
+  }
+
+  .ticket-page .ticket-details .icon-select-button > svg:last-child {
+    display: none;
+  }
+
+  /* A date prints as the date, with no calendar button beside it. */
+  .ticket-page input::-webkit-calendar-picker-indicator {
     display: none;
   }
 

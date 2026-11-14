@@ -1,4 +1,4 @@
-import { type Ref, useImperativeHandle } from 'react';
+import { type Ref, useImperativeHandle, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
 import { leaveMotion } from '../../shell/motion';
 import { useMenuButton } from '../../shell/useMenuButton';
@@ -23,6 +23,10 @@ export function StatusMenu({ status, transitions, onChoose, ref }: StatusMenuPro
   const { open, openMenu, close, container, button, menu, buttonId, menuId, ...keys } =
     useMenuButton();
   useImperativeHandle(ref, () => ({ focus: () => button.current?.focus() }), [button]);
+  // Opened with a click, the first place to go takes the focus for the keyboard's sake but is
+  // not filled until a key or the pointer reaches it: a filled row is how the other menus mark the
+  // current value, and here the current status is the 'Now' line (PL-47).
+  const [byPointer, setByPointer] = useState(false);
 
   const targets = transitions.filter((to) => to.to.id !== status.id);
   if (targets.length === 0) {
@@ -47,14 +51,26 @@ export function StatusMenu({ status, transitions, onChoose, ref }: StatusMenuPro
         aria-haspopup="menu"
         aria-expanded={open}
         {...(open ? { 'aria-controls': menuId } : {})}
-        onClick={() => (open ? close(false) : openMenu(true))}
-        onKeyDown={keys.onButtonKeyDown}
+        onClick={(event) => {
+          if (open) return close(false);
+          // A click from Enter or Space has no detail: the keyboard opened it.
+          setByPointer(event.detail > 0);
+          openMenu(true);
+        }}
+        onKeyDown={(event) => {
+          setByPointer(false);
+          keys.onButtonKeyDown(event);
+        }}
       >
         {status.name}
         <span className="status-menu-caret" aria-hidden="true" />
       </button>
       {open && (
-        <div ref={leaveMotion} className="user-menu-popup status-menu-popup">
+        <div
+          ref={leaveMotion}
+          className="user-menu-popup status-menu-popup"
+          data-pointer={byPointer || undefined}
+        >
           {/* Where the ticket is now, marked as such above the places it can go, so the focus on
               the first of them is never read as the current status (PL-47). */}
           <p className="status-menu-current" data-stage={status.stage}>
@@ -66,7 +82,10 @@ export function StatusMenu({ status, transitions, onChoose, ref }: StatusMenuPro
             role="menu"
             aria-labelledby={buttonId}
             className="user-menu-list"
-            onKeyDown={keys.onMenuKeyDown}
+            onKeyDown={(event) => {
+              setByPointer(false);
+              keys.onMenuKeyDown(event);
+            }}
           >
             {targets.map((to) => (
               <button

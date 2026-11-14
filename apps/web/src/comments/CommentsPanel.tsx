@@ -32,6 +32,30 @@ export interface CommentsPanelProps {
   mentions?: MentionSource | undefined;
 }
 
+/** A smiling face with a plus at its shoulder: add a reaction. Original line art. */
+function AddReactionIcon() {
+  return (
+    <svg
+      className="comment-react-icon"
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M19.5 12.5a8 8 0 1 1-8-8" />
+      <path d="M8 14.5c1 1.4 2.2 2 3.5 2s2.5-.6 3.5-2" />
+      <path d="M9 9.5h.01M14 9.5h.01" />
+      <path d="M19 2.5v6M16 5.5h6" />
+    </svg>
+  );
+}
+
 /** The reactions offered in the picker; any emoji others gave shows too. */
 const PICKS = ['👍', '👎', '😄', '🎉', '😕', '❤️', '🚀', '👀'];
 
@@ -605,9 +629,11 @@ function CommentItem({
                 className="comment-reaction comment-react-open"
                 aria-expanded={picking}
                 aria-label={t('comments.react')}
+                // A face with a plus says what it does, and the tooltip says it in words.
+                title={t('comments.react')}
                 onClick={() => setPicking((p) => !p)}
               >
-                <span aria-hidden="true">+</span>
+                <AddReactionIcon />
               </button>
               {picking && (
                 <span className="comment-picker">

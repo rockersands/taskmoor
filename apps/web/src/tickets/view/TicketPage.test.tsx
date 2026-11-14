@@ -747,6 +747,15 @@ describe('the ticket view after the page review (T-220)', () => {
       expect(hidden(await heading())).toBe(false);
       expect(hidden(details())).toBe(false);
       expect(hidden(page.querySelector('.ticket-text'))).toBe(false);
+      // Priority prints its value as text: its menu's button stays, without its chevron.
+      const priority = within(details()).getByRole('combobox', { name: 'Priority' });
+      expect(hidden(priority)).toBe(false);
+      expect(priority).toHaveTextContent('High');
+      expect(hidden(priority.querySelector('svg:last-child'))).toBe(true);
+      // Other buttons in the details still go.
+      const other = details().querySelector('button:not(.icon-select-button)');
+      expect(other).not.toBeNull();
+      expect(hidden(other)).toBe(true);
     } finally {
       gone();
     }

@@ -7,7 +7,12 @@ import type { Locale } from '../i18n/locale';
 import { untranslated, visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
 import type { MentionPerson } from './mentions';
-import { linkTarget, RichTextEditor, type RichTextEditorProps } from './RichTextEditor';
+import {
+  linkTarget,
+  RichTextEditor,
+  type RichTextEditorProps,
+  toolsThatFit,
+} from './RichTextEditor';
 
 const PEOPLE: MentionPerson[] = [
   { id: 7, name: 'Kalo Smith', canView: true },
@@ -71,6 +76,19 @@ describe('the rich text editor (M1-017)', () => {
         .getAllByRole('button')
         .filter((b) => b.tabIndex === 0),
     ).toHaveLength(1);
+  });
+
+  it('[NTF-006] counts More when fitting the tools to a phone row, so More never wraps alone', () => {
+    // A 274 px bar of 44 px tools 2 px apart holds six buttons: five tools and More.
+    expect(toolsThatFit(274, 44, 2)).toBe(5);
+    // Room for seven: six tools and More.
+    expect(toolsThatFit(330, 44, 2)).toBe(6);
+    // A tablet's wider row: as many tools as fit, then More.
+    expect(toolsThatFit(700, 44, 2)).toBe(14);
+    // Very narrow: one tool and More, never none.
+    expect(toolsThatFit(60, 44, 2)).toBe(1);
+    // Not laid out (no measurement): the six first tools.
+    expect(toolsThatFit(0, 0, 0)).toBe(6);
   });
 
   it('[NTF-006] is a named multi-line text box with a formatting toolbar of one tab stop', async () => {

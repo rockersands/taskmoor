@@ -93,6 +93,27 @@ describe('design token contrast (M1-115)', () => {
       expect(short).toEqual([]);
     });
   }
+
+  it("[CORE-022] prints the tones in the light skin's values, whatever the skin (PL-27, D37)", () => {
+    const sheet = file ? readFileSync(file.replace('tokens.css', 'print.css'), 'utf8') : '';
+    const printed = Object.fromEntries(
+      [...sheet.matchAll(/--(color-[a-z0-9-]+):\s*(#[0-9a-fA-F]{6})\b/g)].map((m) => [m[1], m[2]]),
+    );
+    const light = skin('light');
+    const tones = ['danger', 'warning', 'success', 'blue', 'blush', 'butter'].flatMap((tone) => [
+      `color-${tone}`,
+      `color-${tone}-soft`,
+    ]);
+    expect(Object.fromEntries(tones.map((tone) => [tone, printed[tone]]))).toEqual(
+      Object.fromEntries(tones.map((tone) => [tone, light[tone]])),
+    );
+    // And so they keep their contrast on the white paper.
+    for (const tone of ['danger', 'warning', 'success', 'blue']) {
+      expect(contrast(printed[`color-${tone}`] ?? '#ffffff', '#ffffff')).toBeGreaterThanOrEqual(
+        4.5,
+      );
+    }
+  });
 });
 
 /**

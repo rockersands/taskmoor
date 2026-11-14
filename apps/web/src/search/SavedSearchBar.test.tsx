@@ -64,10 +64,15 @@ describe('the saved searches bar (M1-063)', () => {
     expect(star).toHaveTextContent('★');
     const subscribe = screen.getByRole('button', { name: 'Subscribe' });
     expect(subscribe).not.toHaveAttribute('data-on');
+    // Like Star, Subscribe carries a mark and a pressed state either way (PL-32).
+    expect(subscribe).toHaveAttribute('aria-pressed', 'false');
+    expect(subscribe).toHaveTextContent('✉');
     await user.click(subscribe);
     await user.click(screen.getByRole('button', { name: 'Subscribe by email' }));
     const subscribed = await screen.findByRole('button', { name: 'Subscribed' });
     expect(subscribed).toHaveAttribute('data-on');
+    expect(subscribed).toHaveAttribute('aria-pressed', 'true');
+    expect(subscribed).toHaveTextContent('✓');
   });
 
   it('[QRY-012] reads that the person already gets it by email', async () => {

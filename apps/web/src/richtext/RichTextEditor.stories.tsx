@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fromAdfJson, fromMarkdown } from '@taskmoor/richtext';
 import { expect, userEvent, within } from 'storybook/test';
+import { onARealTouchScreen } from '../test/touch';
 import type { MentionPerson } from './mentions';
 import { RichTextEditor } from './RichTextEditor';
 
@@ -166,5 +167,32 @@ export const KeyboardOnly: Story = {
     await expect(canvas.getByRole('button', { name: 'Strikethrough' })).toHaveFocus();
     await userEvent.tab();
     await expect(canvas.getByRole('textbox', { name: 'Description' })).toHaveFocus();
+  },
+};
+
+/**
+ * On a touch phone, in a card's width (about 290 px at 375; NTF-006, PL-42), the toolbar keeps
+ * one row: More is counted when the tools are fitted, so it never wraps alone onto a second row.
+ */
+export const OneRowOnAPhone: Story = {
+  beforeEach: onARealTouchScreen,
+  render: (args) => (
+    <div style={{ width: 290 }}>
+      <RichTextEditor {...args} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const toolbar = canvas.getByRole('toolbar', { name: 'Formatting' });
+    const buttons = within(toolbar).getAllByRole('button');
+    await expect(buttons.at(-1)).toHaveAccessibleName('More tools');
+    const top = buttons[0]?.getBoundingClientRect().top ?? 0;
+    for (const button of buttons) {
+      await expect(
+        button.getBoundingClientRect().top,
+        button.getAttribute('aria-label') ?? '',
+      ).toBe(top);
+    }
+    await expect(buttons.length).toBeGreaterThan(2);
   },
 };

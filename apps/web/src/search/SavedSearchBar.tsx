@@ -249,14 +249,15 @@ export function SavedSearchBar({
             type="button"
             className="button-secondary saved-state"
             data-on={subscribed || undefined}
+            // The state shows as Star's does (PL-32): a mark either way, and pressed while the
+            // person gets it by email. The button opens the subscription's settings.
+            aria-pressed={subscribed}
             aria-expanded={panel === 'subscribe'}
             onClick={() => toggle('subscribe')}
           >
-            {subscribed && (
-              <span className="saved-state-mark" aria-hidden="true">
-                {'\u2713'}
-              </span>
-            )}
+            <span className="saved-state-mark" aria-hidden="true">
+              {subscribed ? '\u2713' : '\u2709\uFE0E'}
+            </span>
             {t(subscribed ? 'saved.subscribedButton' : 'saved.subscribe')}
           </button>
         )}
