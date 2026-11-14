@@ -7,6 +7,7 @@ import { setViewportWidth } from '../test/viewport';
 import type { PlanSection } from './address';
 import { type FakePlanOptions, fakePlanClient, manyPlanItems } from './fixtures';
 import { PlanPage, showCurrentTab } from './PlanPage';
+import { fakeBoardClient } from './programBoardFixtures';
 
 function renderPlan(section: PlanSection, hash: string, options: FakePlanOptions = {}) {
   window.location.hash = hash;
@@ -46,6 +47,7 @@ describe('a plan (PLN-001, PLN-012)', () => {
       'Calendar',
       'Capacity',
       'Releases',
+      'Program boards',
       'Settings',
     ]);
     const searched = (link: HTMLElement) =>
@@ -223,6 +225,32 @@ describe('a plan (PLN-001, PLN-012)', () => {
       expect(itemOf(client, 'OPS-4')).toMatchObject({ start: '2026-11-13', due: '2026-11-19' }),
     );
     expect(await screen.findByText('OPS-4 is now due on Nov 19, 2026.')).toBeVisible();
+  });
+
+  it('[PLN-008] [PLN-012] keeps a program board open when its filters change', async () => {
+    const user = userEvent.setup();
+    window.location.hash = '#/plans/12/boards/5';
+    const boards = fakeBoardClient();
+    render(
+      <I18nProvider locale="en">
+        <PlanPage
+          id={12}
+          section="boards"
+          boardId={5}
+          client={fakePlanClient()}
+          boards={boards}
+          now={() => new Date('2026-11-04T09:00:00Z')}
+        />
+      </I18nProvider>,
+    );
+    await screen.findByRole('table', { name: 'Spring PI' });
+    await user.selectOptions(screen.getByLabelText('Assignee'), 'me');
+    await waitFor(() => expect(window.location.hash).toBe('#/plans/12/boards/5?assignee=me'));
+    // The tab to the list keeps the filter too.
+    expect(screen.getByRole('link', { name: 'All program boards' })).toHaveAttribute(
+      'href',
+      '#/plans/12/boards?assignee=me',
+    );
   });
 
   it('[PLN-012] offers clearing the filters when the address holds one that does not read', async () => {

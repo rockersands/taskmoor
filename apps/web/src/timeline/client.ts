@@ -22,8 +22,11 @@ export interface TimelineItem {
 export interface Timeline {
   track: { id: number; key: string; name: string };
   items: TimelineItem[];
-  /** Blocking links between listed tickets: `from` blocks `to`. */
-  links: { from: number; to: number }[];
+  /**
+   * Dependencies between listed tickets: `from` finishes first and `to` waits for it. On a plan,
+   * also the link types it chose and whether both are in the same sprint (PLN-013).
+   */
+  links: { from: number; to: number; linkTypeId?: number; sameSprint?: boolean }[];
   markers: {
     sprints: { id: number; name: string; state: string; start: string; end: string }[];
     releases: ReleaseMarker[];

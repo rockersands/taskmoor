@@ -4,17 +4,18 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { fakeListClient, fakeListSearch } from '../list/fixtures';
 import { setViewportWidth } from '../test/viewport';
-import { fakePlanClient } from './fixtures';
+import { type FakePlanOptions, fakePlanClient, LINK_TYPES } from './fixtures';
 import { PlanPage } from './PlanPage';
+import { PlanSettingsPage } from './PlanSettingsPage';
 
 /**
  * The dependencies on a plan's Timeline (T-089; PLN-006; ADR-122), with the fixture plan:
  * SHOP-2 blocks SHOP-3 (late: SHOP-3 starts on Nov 9, SHOP-2 ends on Nov 10) and OPS-4 (on time),
  * OPS-4 blocks OPS-5 (no dates) and is blocked by two tickets outside the plan.
  */
-function renderTimeline(hash = '#/plans/12/timeline') {
+function renderTimeline(hash = '#/plans/12/timeline', options: FakePlanOptions = {}) {
   window.location.hash = hash;
-  const client = fakePlanClient();
+  const client = fakePlanClient(options);
   const search = fakeListSearch();
   render(
     <I18nProvider locale="en">
@@ -150,5 +151,76 @@ describe('the dependencies of a plan (PLN-006)', () => {
     renderTimeline();
     expect(await screen.findByRole('region', { name: 'Dependencies' })).toBeVisible();
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
+  });
+  describe('a plan’s dependency options (PLN-013)', () => {
+    it('[PLN-013] offers the site’s link types but blocking ones, and saves them with the sprint flag', async () => {
+      const user = userEvent.setup();
+      const client = fakePlanClient();
+      const plan = await client.get(12);
+      render(
+        <I18nProvider locale="en">
+          <PlanSettingsPage plan={plan} client={client} onSaved={() => {}} />
+        </I18nProvider>,
+      );
+      const group = await screen.findByRole('group', { name: 'Dependencies' });
+      const boxes = await within(group).findAllByRole('checkbox');
+      expect(boxes.map((b) => (b as HTMLInputElement).labels?.[0]?.textContent)).toEqual([
+        'Relates: A relates to B',
+        'Precedes: A precedes B',
+        'Flag dependencies within one sprint',
+      ]);
+      await user.click(within(group).getByRole('checkbox', { name: 'Precedes: A precedes B' }));
+      await user.click(
+        within(group).getByRole('checkbox', { name: 'Flag dependencies within one sprint' }),
+      );
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+      await waitFor(() =>
+        expect(client.saved.at(-1)?.dependencies).toEqual({ linkTypeIds: [3], sameSprint: true }),
+      );
+    });
+
+    it('[PLN-013] drops a chosen type an administrator has since made a blocking one, so the settings still save', async () => {
+      const user = userEvent.setup();
+      // The plan counts type 1, whose outward phrase now reads "blocks": always counted.
+      const client = fakePlanClient({
+        dependencies: { linkTypeIds: [1], sameSprint: false, linkTypes: LINK_TYPES.slice(0, 1) },
+      });
+      const plan = await client.get(12);
+      expect(plan.dependencies?.linkTypes.map((l) => l.id)).toEqual([1]);
+      render(
+        <I18nProvider locale="en">
+          <PlanSettingsPage plan={plan} client={client} onSaved={() => {}} />
+        </I18nProvider>,
+      );
+      const group = await screen.findByRole('group', { name: 'Dependencies' });
+      const boxes = await within(group).findAllByRole('checkbox');
+      expect(boxes.map((b) => (b as HTMLInputElement).labels?.[0]?.textContent)).toEqual([
+        'Relates: A relates to B',
+        'Precedes: A precedes B',
+        'Flag dependencies within one sprint',
+      ]);
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+      await waitFor(() =>
+        expect(client.saved.at(-1)?.dependencies).toEqual({ linkTypeIds: [], sameSprint: false }),
+      );
+    });
+
+    it('[PLN-013] marks a dependency within one sprint on the Timeline in words and colour, and says a chosen type’s phrase', async () => {
+      renderTimeline('#/plans/12/timeline', {
+        dependencies: { linkTypeIds: [3], sameSprint: true },
+      });
+      // SHOP-2 blocks SHOP-3 in the same sprint: said on the bar's badge, and the line marked.
+      const shop3 = await screen.findByRole('button', {
+        name: 'SHOP-3: Nov 9, 2026 to Nov 20, 2026',
+        description: /Blocked by 1 ticket, 1 late, 1 in the same sprint$/,
+      });
+      const badge = shop3.parentElement?.querySelector('.timeline-badge') as HTMLElement;
+      expect(badge).toHaveTextContent('1 · late · same sprint');
+      expect(document.querySelectorAll('.timeline-link.is-same-sprint')).toHaveLength(1);
+      // SHOP-3 precedes OPS-4: a line and a blocker of its own, named by its phrase in the list.
+      expect(document.querySelectorAll('.timeline-link')).toHaveLength(3);
+      expect(entryOf('OPS-4')).toHaveTextContent('SHOP-3 Take payments (precedes)');
+      expect(entryOf('SHOP-3')).toHaveTextContent('Same sprint');
+    });
   });
 });

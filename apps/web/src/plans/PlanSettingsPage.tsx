@@ -4,6 +4,7 @@ import { useT } from '../i18n/I18nProvider';
 import { navigate } from '../routing/router';
 import type {
   CapacityUnit,
+  LinkTypeOption,
   Plan,
   PlanClient,
   PlanPeriod,
@@ -48,6 +49,9 @@ export interface PlanSettingsPageProps {
   onSaved: () => void;
 }
 
+/** A link type that reads "A blocks B": always counted as a dependency, never chosen (PLN-013). */
+const isBlocking = (l: { outward: string }) => l.outward.trim().toLowerCase() === 'blocks';
+
 /**
  * A plan's settings (PLN-001), for its owner and site administrators: its name, description,
  * sources and who sees it, and deleting it. The sources hidden from the editor stay as they are:
@@ -77,6 +81,15 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
     plan.period.kind === 'month' ? 'month' : String(plan.period.weeks),
   );
   const [anchor, setAnchor] = useState(plan.period.kind === 'weeks' ? plan.period.anchor : '');
+  // Dependency options (PLN-013): link types counted beside blocking ones, and the sprint flag.
+  // A chosen type an administrator has since made a blocking one is always counted: it is neither
+  // offered nor sent again, which the plan's update would refuse (`always_counted`).
+  const [linkTypes, setLinkTypes] = useState<number[]>(
+    () => plan.dependencies?.linkTypes.filter((l) => !isBlocking(l)).map((l) => l.id) ?? [],
+  );
+  const [sameSprint, setSameSprint] = useState(plan.dependencies?.sameSprint ?? false);
+  const [linkOptions, setLinkOptions] = useState<LinkTypeOption[] | null>(null);
+  const [linksFailed, setLinksFailed] = useState(false);
 
   // Read once per plan, not again for each version saved.
   // biome-ignore lint/correctness/useExhaustiveDependencies: once per plan, not per version
@@ -125,6 +138,30 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
     };
   }, [client, plan.id]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once per plan, not per version
+  useEffect(() => {
+    let live = true;
+    client.linkTypeOptions().then(
+      (list) => {
+        if (!live) return;
+        // Blocking links are always counted, so they are not offered.
+        const offered = list.filter((l) => !isBlocking(l));
+        const blocking = new Set(list.filter(isBlocking).map((l) => l.id));
+        for (const l of plan.dependencies?.linkTypes ?? []) {
+          if (!blocking.has(l.id) && !isBlocking(l) && !offered.some((o) => o.id === l.id)) {
+            offered.push(l);
+          }
+        }
+        setLinkTypes((chosen) => chosen.filter((id) => !blocking.has(id)));
+        setLinkOptions(offered);
+      },
+      () => live && setLinksFailed(true),
+    );
+    return () => {
+      live = false;
+    };
+  }, [client, plan.id]);
+
   const period: PlanPeriod | null =
     periodChoice === 'month'
       ? { kind: 'month' }
@@ -152,6 +189,7 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
       teams,
       capacityUnit: unit,
       period,
+      dependencies: { linkTypeIds: linkTypes, sameSprint },
       version: plan.version,
     });
     setBusy(false);
@@ -167,9 +205,11 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
           ? t('plans.settings.mayNotShare')
           : Object.keys(saved.fields).some((k) => k.startsWith('teams'))
             ? t('plans.settings.teamGone')
-            : Object.values(saved.fields).includes('not_found')
-              ? t('plans.create.sourceGone')
-              : t('plans.settings.failed'),
+            : Object.keys(saved.fields).some((k) => k.startsWith('dependencies'))
+              ? t('plans.settings.linkTypeGone')
+              : Object.values(saved.fields).includes('not_found')
+                ? t('plans.create.sourceGone')
+                : t('plans.settings.failed'),
     );
   };
 
@@ -302,6 +342,50 @@ export function PlanSettingsPage({ plan, client, onSaved }: PlanSettingsPageProp
           )}
         </div>
         <p className="board-hint">{t('plans.settings.capacityHint')}</p>
+      </fieldset>
+      <fieldset className="plan-dependency-settings">
+        <legend>{t('plans.settings.dependencies')}</legend>
+        <p className="board-hint">{t('plans.settings.dependenciesHint')}</p>
+        {linksFailed ? (
+          <p className="board-problem" role="alert">
+            {t('plans.settings.linkTypesFailed')}
+          </p>
+        ) : linkOptions === null ? (
+          <p className="board-hint">{t('reports.loading')}</p>
+        ) : linkOptions.length === 0 ? (
+          <p className="board-hint">{t('plans.settings.noLinkTypes')}</p>
+        ) : (
+          <ul className="plan-link-types">
+            {linkOptions.map((l) => (
+              <li key={l.id} className="form-field form-field-inline">
+                <input
+                  id={`${id}-link-${l.id}`}
+                  type="checkbox"
+                  checked={linkTypes.includes(l.id)}
+                  onChange={(event) =>
+                    setLinkTypes((list) =>
+                      event.target.checked
+                        ? [...list, l.id].sort((a, b) => a - b)
+                        : list.filter((x) => x !== l.id),
+                    )
+                  }
+                />
+                <label htmlFor={`${id}-link-${l.id}`}>
+                  {t('plans.settings.linkType', { name: l.name, phrase: l.outward })}
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="form-field form-field-inline">
+          <input
+            id={`${id}-same-sprint`}
+            type="checkbox"
+            checked={sameSprint}
+            onChange={(event) => setSameSprint(event.target.checked)}
+          />
+          <label htmlFor={`${id}-same-sprint`}>{t('plans.settings.sameSprint')}</label>
+        </div>
       </fieldset>
       <p className="board-hint" role="status">
         {status}

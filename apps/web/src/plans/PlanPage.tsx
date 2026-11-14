@@ -11,6 +11,7 @@ import { PageHeader } from '../shell/PageHeader';
 import { typeName } from '../shell/seededNames';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 import {
+  boardHref,
   GROUP_LABELS,
   PLAN_GROUPS,
   PLAN_SECTIONS,
@@ -31,11 +32,18 @@ import { PlanSettingsPage } from './PlanSettingsPage';
 import { PlanShareActions } from './PlanShareActions';
 import { PlanSummaryPage } from './PlanSummaryPage';
 import { PlanTimelinePage } from './PlanTimelinePage';
+import { ProgramBoardPage } from './ProgramBoardPage';
+import { ProgramBoardsPage } from './ProgramBoardsPage';
+import type { ProgramBoardClient } from './programBoardClient';
 
 export interface PlanPageProps {
   id: number;
   section: PlanSection;
+  /** One program board of the Program boards section (PLN-008). */
+  boardId?: number;
   client?: PlanClient;
+  /** The program boards' own client; the real one by default. */
+  boards?: ProgramBoardClient;
   search?: SearchClient;
   list?: ListClient;
   /** Today, for the Timeline and the Calendar. */
@@ -78,7 +86,9 @@ const STAGES = [
 export function PlanPage({
   id,
   section,
+  boardId,
   client = planClient,
+  boards,
   search = searchClient,
   list = listClient,
   now = () => new Date(),
@@ -137,7 +147,12 @@ export function PlanPage({
   if (problem === 'missing') {
     return <NotFoundPage title={t('notFound.plan')}>{t('plans.notFound')}</NotFoundPage>;
   }
-  if (problem === 'filter') return <FilterProblem id={id} section={section} />;
+  // This page's own address for a view: one program board keeps its id (PLN-008).
+  const here = (next?: PlanView) =>
+    section === 'boards' && boardId !== undefined
+      ? boardHref(id, boardId, next)
+      : planHref(id, section, next);
+  if (problem === 'filter') return <FilterProblem clearHref={here()} />;
   if (!plan && problem === 'failed') {
     return (
       <section className="page plan-page" aria-labelledby={titleId}>
@@ -150,14 +165,17 @@ export function PlanPage({
   }
   if (!plan) return <p className="report-loading">{t('reports.loading')}</p>;
 
-  const go = (next: PlanView) => navigate(planHref(id, section, next));
+  const go = (next: PlanView) => navigate(here(next));
   const tabs = PLAN_SECTIONS.filter((s) => s.id !== 'settings' || plan.editable);
   const broken = plan.sources.filter((s) => s.kind === 'savedSearch' && s.state === 'broken');
   const archived = plan.sources.filter((s) => s.kind === 'track' && s.state === 'archived');
   const grouped = section === 'timeline' || section === 'list';
-  const wide = section === 'timeline' || section === 'capacity';
+  const wide =
+    section === 'timeline' ||
+    section === 'capacity' ||
+    (section === 'boards' && boardId !== undefined);
   const onPosition = (change: PlanPosition) =>
-    redirectRoute(planHref(id, section, { ...view, position: { ...view.position, ...change } }));
+    redirectRoute(here({ ...view, position: { ...view.position, ...change } }));
   const viewProps = {
     id,
     plan,
@@ -221,7 +239,7 @@ export function PlanPage({
           ))}
         </ul>
       )}
-      {section !== 'settings' && (
+      {section !== 'settings' && !(section === 'boards' && boardId === undefined) && (
         <PlanFilterBar view={view} choices={choices} grouped={grouped} onChange={go} />
       )}
       <div ref={body}>
@@ -241,6 +259,25 @@ export function PlanPage({
         {problem !== 'failed' && section === 'calendar' && <PlanCalendarPage {...viewProps} />}
         {problem !== 'failed' && section === 'capacity' && <PlanCapacityPage {...viewProps} />}
         {problem !== 'failed' && section === 'releases' && <PlanReleasesPage {...viewProps} />}
+        {problem !== 'failed' && section === 'boards' && boardId === undefined && (
+          <ProgramBoardsPage
+            planId={id}
+            view={view}
+            now={now}
+            {...(boards ? { client: boards } : {})}
+          />
+        )}
+        {problem !== 'failed' && section === 'boards' && boardId !== undefined && (
+          <ProgramBoardPage
+            key={boardId}
+            planId={id}
+            boardId={boardId}
+            filters={view.filters}
+            view={view}
+            now={now}
+            {...(boards ? { client: boards } : {})}
+          />
+        )}
         {problem !== 'failed' && section === 'settings' && plan.editable && (
           <PlanSettingsPage plan={plan} client={client} onSaved={() => setVersion((v) => v + 1)} />
         )}
@@ -250,7 +287,7 @@ export function PlanPage({
 }
 
 /** A filter in the address that does not read: say so, and offer the plan without filters. */
-function FilterProblem({ id, section }: { id: number; section: PlanSection }) {
+function FilterProblem({ clearHref }: { clearHref: string }) {
   const t = useT();
   const titleId = useId();
   return (
@@ -260,7 +297,7 @@ function FilterProblem({ id, section }: { id: number; section: PlanSection }) {
         title={t('nav.plans')}
         purpose={t('purpose.plan')}
         actions={
-          <a className="button-quiet" href={routeHref(planHref(id, section))}>
+          <a className="button-quiet" href={routeHref(clearHref)}>
             {t('plans.filters.clear')}
           </a>
         }

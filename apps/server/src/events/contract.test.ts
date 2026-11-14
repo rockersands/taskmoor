@@ -3616,6 +3616,47 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           payload: { entries: [{ teamId: state.capacityTeam, period: null, amount: 30 }] },
         }),
     },
+    // Program boards (PLN-008; ADR-122 stage 5): they place cards by a Team field.
+    {
+      route: 'POST /api/v1/plans/:id/program-boards',
+      expect: 'plan.program_board_created',
+      prepare: async () => {
+        await admin({
+          method: 'POST',
+          url: '/api/v1/fields',
+          payload: { name: 'Contract board team', type: 'team' },
+        });
+      },
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/plans/${state.plan}/program-boards`,
+          payload: { name: 'Contract board' },
+        });
+        state.programBoard = res.json().board?.id;
+        state.programBoardVersion = res.json().board?.version;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/plans/:id/program-boards/:boardId',
+      expect: 'plan.program_board_updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/plans/${state.plan}/program-boards/${state.programBoard}`,
+          payload: { name: 'Contract board, renamed', version: state.programBoardVersion },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/plans/:id/program-boards/:boardId',
+      expect: 'plan.program_board_deleted',
+      run: () =>
+        admin({
+          method: 'DELETE',
+          url: `/api/v1/plans/${state.plan}/program-boards/${state.programBoard}`,
+        }),
+    },
     // Releases across tracks (PLN-007; ADR-122 stage 4).
     {
       route: 'POST /api/v1/cross-track-releases',

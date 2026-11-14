@@ -82,6 +82,7 @@ import { registerPlanCapacityRoutes } from './routes/plan-capacity';
 import { registerPlanViewRoutes } from './routes/plan-views';
 import { registerPlanRoutes } from './routes/plans';
 import { registerPriorityRoutes } from './routes/priorities';
+import { registerProgramBoardRoutes } from './routes/program-boards';
 import { registerCorePropertyRoutes } from './routes/properties';
 import { registerRateLimitRoutes, registerRateLimits } from './routes/rate-limits';
 import { registerReleaseHubRoutes } from './routes/release-hub';
@@ -598,6 +599,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });
     registerPlanCapacityRoutes(app, db, {
+      catalogs: fieldCatalogs,
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
+    registerProgramBoardRoutes(app, db, {
       catalogs: fieldCatalogs,
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });

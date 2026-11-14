@@ -245,6 +245,9 @@ export const AUDITED_EVENTS = [
   'plan.duplicated',
   'plan.deleted',
   'plan.capacity_set',
+  'plan.program_board_created',
+  'plan.program_board_updated',
+  'plan.program_board_deleted',
   // Releases across tracks (PLN-007): configuration others may see, as plans are.
   'cross_track_release.created',
   'cross_track_release.updated',

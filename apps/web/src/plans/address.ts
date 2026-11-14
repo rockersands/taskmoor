@@ -9,6 +9,7 @@ export const PLAN_SECTIONS = [
   { id: 'calendar', path: '/calendar', labelId: 'plans.section.calendar' },
   { id: 'capacity', path: '/capacity', labelId: 'plans.section.capacity' },
   { id: 'releases', path: '/releases', labelId: 'plans.section.releases' },
+  { id: 'boards', path: '/boards', labelId: 'plans.section.boards' },
   { id: 'settings', path: '/settings', labelId: 'plans.section.settings' },
 ] as const satisfies readonly { id: string; path: string; labelId: MessageId }[];
 
@@ -54,7 +55,10 @@ export interface PlanView {
 
 /** `#/plans/12`, `#/plans/12/timeline` and the like, with or without a query. */
 export const PLAN_ROUTE =
-  /^#\/plans\/(\d{1,10})(?:\/(timeline|list|calendar|capacity|releases|settings))?(?:[/?]|$)/;
+  /^#\/plans\/(\d{1,10})(?:\/(timeline|list|calendar|capacity|releases|boards|settings))?(?:[/?]|$)/;
+
+/** One program board of a plan (PLN-008): `#/plans/12/boards/5`, with or without a query. */
+export const PLAN_BOARD_ROUTE = /^#\/plans\/(\d{1,10})\/boards\/(\d{1,10})(?:[/?]|$)/;
 
 const STAGES = ['new', 'active', 'closed'] as const;
 
@@ -123,6 +127,13 @@ export function planHref(id: number, section: PlanSection = 'summary', view?: Pl
   }
   const text = params.toString();
   return text ? `${path}?${text}` : path;
+}
+
+/** The address of one program board, with the view's filters when given. */
+export function boardHref(id: number, boardId: number, view?: PlanView): string {
+  const list = planHref(id, 'boards', view);
+  const at = list.indexOf('?');
+  return at < 0 ? `${list}/${boardId}` : `${list.slice(0, at)}/${boardId}${list.slice(at)}`;
 }
 
 /**

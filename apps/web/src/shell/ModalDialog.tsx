@@ -46,7 +46,9 @@ export function ModalDialog({
   // biome-ignore lint/correctness/useExhaustiveDependencies: where focus starts is decided once
   useEffect(() => {
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const first = focusFirstField ? box.current?.querySelector('input') : null;
+    const first = focusFirstField
+      ? box.current?.querySelector<HTMLElement>('input, select, textarea')
+      : null;
     (first ?? box.current)?.focus();
     return () => (giveBack.current ? giveBack.current(opener) : opener?.focus());
   }, []);

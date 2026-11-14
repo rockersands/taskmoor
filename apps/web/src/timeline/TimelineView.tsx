@@ -467,7 +467,13 @@ export function TimelineView({
     const blocked = dependencies?.get(item.id);
     const badgeId = blocked ? `${id}-dep-${item.id}` : undefined;
     const badgeText = blocked
-      ? t('timeline.badge', { count: blockerCount(blocked), late: blocked.late })
+      ? blocked.sameSprint > 0
+        ? t('timeline.badge.withSprint', {
+            count: blockerCount(blocked),
+            late: blocked.late,
+            sprint: blocked.sameSprint,
+          })
+        : t('timeline.badge', { count: blockerCount(blocked), late: blocked.late })
       : '';
     // A bar wholly outside the days in view gets a marker at that edge, so no row looks empty.
     const edge =
@@ -625,6 +631,7 @@ export function TimelineView({
                 {blocked.late > 0
                   ? t('timeline.badge.late', { count: blockerCount(blocked) })
                   : blockerCount(blocked)}
+                {blocked.sameSprint > 0 && ` · ${t('timeline.badge.sprint')}`}
               </span>
               <span className="visually-hidden">{badgeText}</span>
             </span>
@@ -812,7 +819,7 @@ export function TimelineView({
                   return (
                     <path
                       key={`${l.from}-${l.to}`}
-                      className={`timeline-link${late ? ' is-late' : ''}`}
+                      className={`timeline-link${late ? ' is-late' : ''}${l.sameSprint ? ' is-same-sprint' : ''}`}
                       d={`M ${x1} ${y1} H ${x1 + 8} V ${y2} H ${Math.max(x2, x1 + 8)}`}
                     />
                   );

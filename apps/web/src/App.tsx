@@ -53,7 +53,7 @@ import { UsersPage } from './people/UsersPage';
 import { PermissionExplainerPage } from './permissions/PermissionExplainerPage';
 import { PermissionsPage } from './permissions/PermissionsPage';
 import { VisibilityPage } from './permissions/VisibilityPage';
-import { PLAN_ROUTE, type PlanSection } from './plans/address';
+import { PLAN_BOARD_ROUTE, PLAN_ROUTE, type PlanSection } from './plans/address';
 import { PlanPage } from './plans/PlanPage';
 import { PlansPage } from './plans/PlansPage';
 import { CrossTrackReleasePage } from './releases/CrossTrackReleasePage';
@@ -977,11 +977,13 @@ function Pages() {
     active = 'plans';
     guarded = true;
     const plan = PLAN_ROUTE.exec(hash);
+    const board = PLAN_BOARD_ROUTE.exec(hash)?.[2];
     content = plan ? (
       <PlanPage
         key={plan[1]}
         id={Number(plan[1])}
         section={(plan[2] as PlanSection | undefined) ?? 'summary'}
+        {...(board ? { boardId: Number(board) } : {})}
       />
     ) : (
       <PlansPage />

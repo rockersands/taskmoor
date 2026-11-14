@@ -7215,6 +7215,113 @@ export const messagesEs: Record<MessageId, string> = {
   'release.crossTrack.pick': 'A cuál unirse',
   'releases.crossTrackLabel': 'En {name}',
   'plans.section.releases': 'Versiones',
+  // Tableros de programa (T-089d; PLN-008; ADR-122 etapa 5) y opciones de dependencias (PLN-013).
+  'plans.section.boards': 'Tableros de programa',
+  'notFound.programBoard': 'Tablero de programa no encontrado',
+  'programBoard.notFound':
+    'Este tablero de programa no existe en este plan, o no puedes ver el plan.',
+  'programBoard.failed':
+    'No se pudo cargar el tablero de programa. Inténtalo de nuevo en un momento.',
+  'programBoard.all': 'Todos los tableros de programa',
+  'programBoard.facts':
+    'Equipos según {field}; {count, plural, one {# periodo} other {# periodos}} desde el {from}.',
+  'programBoard.noField':
+    'Su campo de equipo ya no existe, así que todas las tarjetas están en una fila y solo se mueven entre periodos. Quien edita el plan puede elegir otro campo.',
+  'programBoard.archivedNote':
+    'Este tablero de programa está archivado: sus tarjetas se muestran y ninguna se mueve aquí.',
+  'programBoard.nothing':
+    'No ves nada del trabajo de este plan, así que este tablero está vacío para ti.',
+  'programBoard.hint':
+    'Arrastra una tarjeta a otro equipo o periodo, o usa su botón Mover. Mover una tarjeta cambia su equipo y su fecha de vencimiento.',
+  'programBoard.hintPhone':
+    'Elige un equipo para ver su trabajo por periodo. Mueve una tarjeta con su botón Mover.',
+  'programBoard.team': 'Equipo',
+  'programBoard.periodLabel': 'Periodo',
+  'programBoard.unscheduled': 'Sin programar',
+  'programBoard.period': '{start} – {end}',
+  'programBoard.now': 'Ahora',
+  'programBoard.otherTeam': 'Otro equipo o ninguno',
+  'programBoard.allTeams': 'Todo el trabajo',
+  'programBoard.count': '{count, plural, =0 {sin tarjetas} one {# tarjeta} other {# tarjetas}}',
+  'programBoard.empty': 'Nada aquí.',
+  'programBoard.more': '{count, plural, one {y # más} other {y # más}}',
+  'programBoard.closed': 'Cerrado',
+  'programBoard.cardTeam': 'Equipo: {name}',
+  'programBoard.cardMoving': 'Moviendo…',
+  'programBoard.move': 'Mover…',
+  'programBoard.moveCard': 'Mover {key}…',
+  'programBoard.moveTitle': 'Mover {key}',
+  'programBoard.moveHint':
+    'Otro equipo cambia su valor de equipo. Otro periodo mueve sus fechas de inicio y vencimiento los mismos días, con el vencimiento dentro de ese periodo; Sin programar quita la fecha de vencimiento.',
+  'programBoard.moveSave': 'Mover',
+  'programBoard.cancel': 'Cancelar',
+  'programBoard.place': '{team}, {period}',
+  'programBoard.moving': 'Moviendo {key}…',
+  'programBoard.moved': '{key} se movió a {place}.',
+  'programBoard.conflict':
+    '{key} cambió mientras lo movías, quizá porque otra persona lo movió. Ahora se muestra donde está; muévelo otra vez si aún quieres.',
+  'programBoard.unreachable':
+    'Puede que {key} no se haya movido: no se pudo contactar con el servidor. El tablero muestra lo último que leyó.',
+  'programBoard.refused.forbidden':
+    'No se pudo mover {key}: no puedes cambiar su equipo ni sus fechas en su track.',
+  'programBoard.refused.locked':
+    'No se pudo mover {key}: su estado o uno de sus campos está bloqueado para ti.',
+  'programBoard.refused.archived': 'No se pudo mover {key}: su track está archivado.',
+  'programBoard.refused.gone': 'No se pudo mover {key}: se eliminó o ya no puedes verlo.',
+  'programBoard.refused.invalid':
+    'No se pudo mover {key}: su track no usa {field}, o las nuevas fechas no son válidas.',
+  'programBoard.refused.other': 'No se pudo mover {key}. Inténtalo de nuevo en un momento.',
+  'programBoards.title': 'Tableros de programa',
+  'programBoards.about':
+    'Un tablero de programa ordena los objetivos y el trabajo de este plan por equipo y periodo. Quien ve el plan ve sus tableros y mueve tarjetas en la medida en que puede cambiar esos tickets.',
+  'programBoards.noField':
+    'Un tablero de programa coloca las tarjetas según un campo de equipo. Pide a un administrador del sitio que añada uno.',
+  'programBoards.none': 'Aún no hay tableros de programa.',
+  'programBoards.failed':
+    'No se pudieron cargar los tableros de programa. Inténtalo de nuevo en un momento.',
+  'programBoards.new': 'Nuevo tablero de programa',
+  'programBoards.edit': 'Editar',
+  'programBoards.editNamed': 'Editar {name}',
+  'programBoards.editTitle': 'Editar {name}',
+  'programBoards.archive': 'Archivar',
+  'programBoards.archiveNamed': 'Archivar {name}',
+  'programBoards.restore': 'Restaurar',
+  'programBoards.restoreNamed': 'Restaurar {name}',
+  'programBoards.isArchived': 'Archivado',
+  'programBoards.archived': '{name} está archivado.',
+  'programBoards.restored': '{name} vuelve a estar activo.',
+  'programBoards.delete': 'Eliminar',
+  'programBoards.deleteNamed': 'Eliminar {name}',
+  'programBoards.deleteOutcome':
+    'El tablero {name} desaparece para todos. Sus tickets quedan como están, con sus equipos y fechas.',
+  'programBoards.deleted': '{name} se eliminó.',
+  'programBoards.saved': '{name} se guardó.',
+  'programBoards.saveFailed': 'No se pudo guardar. Inténtalo de nuevo en un momento.',
+  'programBoards.conflict':
+    'Otra persona cambió este tablero mientras tanto. La lista lo muestra como está ahora; inténtalo de nuevo.',
+  'programBoards.fieldGone': 'Ese campo de equipo ya no existe. Elige otro.',
+  'programBoards.name': 'Nombre',
+  'programBoards.field': 'Campo de equipo',
+  'programBoards.from': 'El primer periodo incluye',
+  'programBoards.periods': 'Número de periodos',
+  'programBoards.dialogHint':
+    'Las columnas son los periodos del propio plan, definidos en su configuración, empezando por el que incluye este día.',
+  'programBoards.save': 'Guardar',
+  'programBoards.nameRequired': 'Dale un nombre al tablero.',
+  'plans.settings.dependencies': 'Dependencias',
+  'plans.settings.dependenciesHint':
+    'Los enlaces de bloqueo siempre cuentan. Marca otros tipos de enlace para contarlos también: en «A precede a B», B espera a A.',
+  'plans.settings.linkType': '{name}: A {phrase} B',
+  'plans.settings.noLinkTypes': 'El sitio no tiene tipos de enlace aparte de los de bloqueo.',
+  'plans.settings.linkTypesFailed': 'No se pudieron cargar los tipos de enlace.',
+  'plans.settings.sameSprint': 'Marcar las dependencias dentro de un mismo sprint',
+  'plans.settings.linkTypeGone':
+    'Un tipo de enlace que elegiste ya no existe, o siempre cuenta. Recarga la página y vuelve a elegir.',
+  'dependencies.via': '({phrase})',
+  'dependencies.sameSprint': 'Mismo sprint',
+  'timeline.badge.sprint': 'mismo sprint',
+  'timeline.badge.withSprint':
+    'Bloqueado por {count, plural, one {# ticket} other {# tickets}}{late, plural, =0 {} other {, # con retraso}}, {sprint, plural, one {# en el mismo sprint} other {# en el mismo sprint}}',
   'plans.releases.none': 'No hay versiones en este plan.',
   'plans.releases.filtersNote':
     'Aquí solo se aplica el filtro de track: una versión no tiene responsable, tipo ni etapa.',

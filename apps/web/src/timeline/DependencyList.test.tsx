@@ -164,4 +164,42 @@ describe('the dependencies as a list (PLN-006)', () => {
     expect(screen.getByRole('button', { name: 'Solo las que van con retraso' })).toBeVisible();
     expect(screen.getAllByText('Con retraso:')).toHaveLength(1);
   });
+  describe('dependency options in the list (PLN-013)', () => {
+    it('[PLN-013] says a chosen link type’s phrase and "Same sprint" in words', () => {
+      const links = [
+        { from: 1, to: 2, linkTypeId: 1, sameSprint: true },
+        { from: 5, to: 3, linkTypeId: 7 },
+      ];
+      render(
+        <I18nProvider locale="en">
+          <DependencyList
+            dependencies={dependenciesOf(ITEMS, links, [])}
+            headingId="deps"
+            linkTypes={[
+              { id: 1, outward: 'blocks' },
+              { id: 7, outward: 'precedes' },
+            ]}
+          />
+        </I18nProvider>,
+      );
+      const section = screen.getByRole('region', { name: 'Dependencies' });
+      const build = within(section)
+        .getAllByRole('listitem')
+        .find((li) => li.getAttribute('data-state') === 'late') as HTMLElement;
+      expect(build).toHaveTextContent('LCH-1');
+      expect(build).toHaveTextContent('Same sprint');
+      // A blocking link says no phrase; a chosen one says its own.
+      expect(build).not.toHaveTextContent('(blocks)');
+      expect(section).toHaveTextContent('LCH-5 Write the notes (precedes)');
+    });
+
+    it('[PLN-013] counts the dependencies within one sprint on the ticket that waits', () => {
+      const map = dependenciesOf(ITEMS, [
+        { from: 1, to: 2, sameSprint: true },
+        { from: 4, to: 2 },
+      ]);
+      expect(map.get(2)?.sameSprint).toBe(1);
+      expect(map.get(2)?.blockers.map((b) => b.sameSprint)).toEqual([true, false]);
+    });
+  });
 });

@@ -204,7 +204,11 @@ export function PlanTimelinePage({
           </>
         }
       />
-      <DependencyList dependencies={dependencies} headingId={listId} />
+      <DependencyList
+        dependencies={dependencies}
+        headingId={listId}
+        linkTypes={data?.linkTypes ?? []}
+      />
     </div>
   );
 }

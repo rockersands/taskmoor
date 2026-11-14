@@ -194,6 +194,12 @@ describe('token scopes per route (IAM-007)', () => {
     // Teams and capacity (PLN-005, PLN-009): the view reads, setting capacity writes.
     expect(classes['GET /api/v1/plans/:id/capacity']).toBe('read');
     expect(classes['PUT /api/v1/plans/:id/capacity']).toBe('write');
+    // [IAM-007] Program boards (PLN-008): reads read, changes write; a card moves by its ticket.
+    expect(classes['GET /api/v1/plans/:id/program-boards']).toBe('read');
+    expect(classes['POST /api/v1/plans/:id/program-boards']).toBe('write');
+    expect(classes['GET /api/v1/plans/:id/program-boards/:boardId']).toBe('read');
+    expect(classes['PATCH /api/v1/plans/:id/program-boards/:boardId']).toBe('write');
+    expect(classes['DELETE /api/v1/plans/:id/program-boards/:boardId']).toBe('write');
     // [IAM-007] Releases across tracks (PLN-007): reads read, changes write.
     expect(classes['GET /api/v1/cross-track-releases']).toBe('read');
     expect(classes['GET /api/v1/cross-track-releases/candidates']).toBe('read');

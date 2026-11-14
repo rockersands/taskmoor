@@ -50,20 +50,42 @@ export interface BlockersElsewhere {
   unlisted: number;
 }
 
+/**
+ * A dependency as an answer gives it: `from` finishes first and `to` waits for it. A plan may
+ * count link types beside blocking ones (PLN-013): `linkTypeId` says which, and `sameSprint` that
+ * both tickets are in the same sprint now, when the plan asks.
+ */
+export interface DependencyLink {
+  from: number;
+  to: number;
+  linkTypeId?: number;
+  sameSprint?: boolean;
+}
+
+/** A listed blocker of a ticket: its state, its link type and whether it shares the sprint. */
+export interface ListedBlocker {
+  item: TimelineItem;
+  state: DependencyState;
+  linkTypeId?: number;
+  sameSprint: boolean;
+}
+
 /** A ticket's blockers: those listed with their state, and the others as counts. */
 export interface Blocked {
   item: TimelineItem;
-  blockers: { item: TimelineItem; state: DependencyState }[];
+  blockers: ListedBlocker[];
   outside: number;
   unlisted: number;
   /** How many of the listed blockers are late. */
   late: number;
+  /** How many of the listed blockers are in the same sprint as the ticket (PLN-013). */
+  sameSprint: number;
 }
 
 /** Every listed ticket with a blocker, in the timeline's order (rank), by its id. */
 export function dependenciesOf(
   items: readonly TimelineItem[],
-  links: readonly { from: number; to: number }[],
+  links: readonly DependencyLink[],
   elsewhere: readonly BlockersElsewhere[] = [],
 ): Map<number, Blocked> {
   const byId = new Map(items.map((i) => [i.id, i]));
@@ -72,7 +94,14 @@ export function dependenciesOf(
   const entry = (item: TimelineItem) => {
     const known = found.get(item.id);
     if (known) return known;
-    const made: Blocked = { item, blockers: [], outside: 0, unlisted: 0, late: 0 };
+    const made: Blocked = {
+      item,
+      blockers: [],
+      outside: 0,
+      unlisted: 0,
+      late: 0,
+      sameSprint: 0,
+    };
     found.set(item.id, made);
     return made;
   };
@@ -82,8 +111,15 @@ export function dependenciesOf(
     if (!blocker || !blocked) continue;
     const state = dependencyState(blocker, blocked);
     const e = entry(blocked);
-    e.blockers.push({ item: blocker, state });
+    const together = l.sameSprint === true;
+    e.blockers.push({
+      item: blocker,
+      state,
+      ...(l.linkTypeId !== undefined ? { linkTypeId: l.linkTypeId } : {}),
+      sameSprint: together,
+    });
     if (state === 'late') e.late++;
+    if (together) e.sameSprint++;
   }
   for (const o of elsewhere) {
     const blocked = byId.get(o.id);

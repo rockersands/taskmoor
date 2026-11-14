@@ -47,6 +47,8 @@ describe(`a plan of ${TRACKS} tracks and ${TICKETS} tickets (PLN-012)`, () => {
   let crossAll = 0;
   let crossHundred = 0;
   let adminCookie = '';
+  /** The plan's team, which the program board's rows read (PLN-008). */
+  let bigTeam = 0;
 
   const read = async (options: InjectOptions) => {
     const res = await app.inject({
@@ -258,6 +260,7 @@ describe(`a plan of ${TRACKS} tracks and ${TICKETS} tickets (PLN-012)`, () => {
     const team = await as({ method: 'POST', url: '/api/v1/teams', payload: { name: 'Big team' } });
     expect(team.statusCode, team.body).toBe(201);
     const teamId = team.json().team.id as number;
+    bigTeam = teamId;
     const joined = await as({
       method: 'PUT',
       url: `/api/v1/teams/${teamId}/members/${ids.member}`,
@@ -399,6 +402,55 @@ describe(`a plan of ${TRACKS} tracks and ${TICKETS} tickets (PLN-012)`, () => {
       method: 'GET',
       url: `/api/v1/reports/two-dimensional?${new URLSearchParams({ query, x: 'track', y: 'track' })}`,
     });
+  }, 900_000);
+
+  it(`[PLN-008] [PLN-012] answers a program board over ${TICKETS} tickets in under a second`, async () => {
+    // Half the tickets in the plan's team, by a Team field; six two-week periods from March.
+    const admin = (options: InjectOptions) =>
+      app.inject({ ...options, remoteAddress: nextAddress(), headers: { cookie: adminCookie } });
+    const field = await admin({
+      method: 'POST',
+      url: '/api/v1/fields',
+      payload: { name: 'Big Team field', type: 'team' },
+    });
+    expect(field.statusCode, field.body).toBe(201);
+    const fieldId = field.json().field.id as number;
+    await sql`
+      UPDATE ticket SET fields = fields || jsonb_build_object(${String(fieldId)}::text, ${bigTeam}::int)
+       WHERE number % 2 = 0`.execute(database.db);
+    // The value as the ticket route writes it, in the side table searches read (ADR-008).
+    await sql`
+      INSERT INTO v_option (workspace_id, ticket_id, track_id, field_id, value, created_at)
+      SELECT workspace_id, id, track_id, ${fieldId}::int, ${bigTeam}::int, created_at FROM ticket
+       WHERE number % 2 = 0`.execute(database.db);
+    await sql`ANALYZE ticket`.execute(database.db);
+    const made = await admin({
+      method: 'POST',
+      url: `/api/v1/plans/${plan}/program-boards`,
+      payload: { name: 'Big board', teamFieldId: fieldId, from: '2027-03-01', periods: 6 },
+    });
+    expect(made.statusCode, made.body).toBe(201);
+    const board = await timed('program board', {
+      method: 'GET',
+      url: `/api/v1/plans/${plan}/program-boards/${made.json().board.id}`,
+    });
+    const rows = board.rows as { clause: string; cells: { count: number; cards: number[] }[] }[];
+    const first = rows[0]?.cells[0];
+    expect(first?.count).toBeGreaterThan(20);
+    expect(first?.cards).toHaveLength(20);
+    // The cell's count is its search's.
+    const found = await read({
+      method: 'POST',
+      url: '/api/v1/search',
+      payload: {
+        q: `(${board.query}) AND ${board.clause} AND ${rows[0]?.clause} AND ${
+          (board.periods as { clause: string }[])[0]?.clause
+        }`,
+        count: true,
+        limit: 1,
+      },
+    });
+    expect(first?.count).toBe(found.total.count);
   }, 900_000);
 
   it(`[PLN-014] [PLN-012] a file of all ${TICKETS} tickets starts within a second and holds them all`, async () => {
