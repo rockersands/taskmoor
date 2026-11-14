@@ -6,7 +6,7 @@ import { requireUser } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import { diff, emit } from '../events/bus';
 import { enforceLimit } from '../guardrails/model';
-import { utcDay, viewerDay } from '../reports/zone';
+import { viewerDay } from '../reports/zone';
 import { findTeam } from '../teams';
 import { rewriteTickets, writeOrder } from '../tickets/fields';
 import { isCalendarDay } from '../tickets/model';
@@ -168,9 +168,9 @@ type ReleaseRow = Awaited<ReturnType<ReturnType<typeof releaseQuery>['executeTak
 
 /**
  * A release as its pages show it. `today` is the viewer's day (`viewerDay`, T-282), against which
- * an upcoming release's day has gone by; without one, UTC's (the Plans routes still pass none).
+ * an upcoming release's day has gone by; every caller passes it, a plan's too (T-287).
  */
-export function releaseView(r: ReleaseRow, today: string = utcDay()) {
+export function releaseView(r: ReleaseRow, today: string) {
   const tickets = Number(r.ticket_count ?? 0);
   const closed = Number(r.closed_count ?? 0);
   return {
