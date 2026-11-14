@@ -11,7 +11,8 @@ import { type Statistic, ticketValue } from './sprint-charts';
  * - **Per sprint** of the board, in start order: the work remaining at its start and end, the
  *   work completed during it, the work added (tickets joining, estimates raised, done tickets
  *   reopened) and removed (tickets leaving, estimates lowered). Changes between sprints count in
- *   no sprint but show in the next one's start.
+ *   no sprint but show in the next one's start; they are summed apart as `outside`, so the
+ *   work per sprint and outside the sprints adds up to the scope and completed work now (TR-13).
  * - **Velocity** is the average completed over the last three completed sprints of the report;
  *   the forecast is the sprints still needed at that pace (none when there is no pace yet).
  * - **By day** (the release report): the scope and the completed work at the end of each local
@@ -47,8 +48,17 @@ export interface SprintWork {
   removed: number;
 }
 
+/** Work that changed while no sprint of the board ran. */
+export interface OutsideWork {
+  completed: number;
+  added: number;
+  removed: number;
+}
+
 export interface ScopeBurndown {
   sprints: SprintWork[];
+  /** Completed, added and removed while no sprint ran (before, between or after them). */
+  outside: OutsideWork;
   now: { scope: number; completed: number; remaining: number };
   velocity: number;
   /** Sprints still needed at the velocity; null without one. */
@@ -137,6 +147,7 @@ export function scopeBurndown(
   ]);
   marks.sort((a, b) => a.at - b.at || (a.kind === b.kind ? a.i - b.i : a.kind === 'end' ? -1 : 1));
   const running = new Set<number>();
+  const outside: OutsideWork = { completed: 0, added: 0, removed: 0 };
   let m = 0;
   const pass = (at: number) => {
     // Only marks strictly earlier: a change at a sprint's start is part of what it starts with,
@@ -158,6 +169,11 @@ export function scopeBurndown(
     if (at > nowMs) break;
     pass(at);
     const changed = tally.apply(e);
+    if (running.size === 0) {
+      outside.completed += changed.completed;
+      outside.added += changed.added;
+      outside.removed += changed.removed;
+    }
     for (const i of running) {
       const w = work[i] as SprintWork;
       w.completed += changed.completed;
@@ -177,6 +193,7 @@ export function scopeBurndown(
   const remaining = tally.remaining;
   return {
     sprints: work,
+    outside,
     now: { scope: tally.scope, completed: tally.completed, remaining },
     velocity,
     forecast: remaining === 0 ? 0 : velocity > 0 ? Math.ceil(remaining / velocity) : null,

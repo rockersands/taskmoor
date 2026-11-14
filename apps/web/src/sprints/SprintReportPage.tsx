@@ -33,6 +33,14 @@ export interface SprintReportPageProps {
 export const noEstimates = (statistic: SprintReport['statistic']['statistic'], values: number[]) =>
   statistic !== 'ticketCount' && values.every((v) => v === 0);
 
+/** Whether a velocity chart would draw only zeros: sprints there are, but no estimate in them. */
+const velocityWithoutEstimates = (velocity: Velocity) =>
+  velocity.sprints.length > 0 &&
+  noEstimates(
+    velocity.statistic.statistic,
+    velocity.sprints.flatMap((x) => [x.committed, x.completed]),
+  );
+
 /** The explanation in place of empty charts: why there is nothing, and where estimates are set. */
 export function NoEstimates() {
   const t = useT();
@@ -51,14 +59,7 @@ function VelocityChart({ velocity }: { velocity: Velocity }) {
   if (velocity.sprints.length === 0) {
     return <EmptyState compact title={t('sprints.charts.velocityNone')} />;
   }
-  if (
-    noEstimates(
-      s,
-      velocity.sprints.flatMap((x) => [x.committed, x.completed]),
-    )
-  ) {
-    return <NoEstimates />;
-  }
+  if (velocityWithoutEstimates(velocity)) return <NoEstimates />;
   return (
     <div className="chart-group">
       <ColumnChart
@@ -182,7 +183,13 @@ export function SprintReportPage({
   const charts = () => {
     if (!burndown && !velocity) return null;
     const out = [];
-    if (burndown && empty) {
+    // The burndown and the velocity both without estimates: one explanation across the row, not
+    // the same card twice side by side with nothing saying which chart each replaces.
+    const noneAtAll =
+      burndown !== null && empty && (!velocity || velocityWithoutEstimates(velocity));
+    if (noneAtAll) {
+      out.push(<NoEstimates key="no-estimates" />);
+    } else if (burndown && empty) {
       out.push(<NoEstimates key="burndown" />);
     } else if (burndown) {
       const s = burndown.statistic.statistic;
@@ -245,7 +252,7 @@ export function SprintReportPage({
         />,
       );
     }
-    if (velocity) out.push(<VelocityChart key="velocity" velocity={velocity} />);
+    if (velocity && !noneAtAll) out.push(<VelocityChart key="velocity" velocity={velocity} />);
     return (
       <div className="sprint-charts">
         {out.map((chart) => (

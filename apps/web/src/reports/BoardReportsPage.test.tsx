@@ -256,6 +256,12 @@ describe('release and outcome reports of a Scrum board (M1-062)', () => {
     ]);
     const perSprint = screen.getByRole('figure', { name: 'Work per sprint' });
     expect(within(perSprint).getByRole('list').textContent).toBe('CompletedAdded');
+    // Its text alternative counts the column outside the sprints as well (TR-13).
+    expect(
+      within(perSprint).getByRole('img', {
+        name: 'Completed and added work in each of 3 sprints, and outside the sprints: 12 completed, 54 added.',
+      }),
+    ).toBeInTheDocument();
     const table = screen.getAllByRole('table').at(-1) as HTMLElement;
     expect(cells(within(table).getAllByRole('row')[2] as HTMLElement)).toEqual([
       'Checkout Sprint 9',
@@ -264,6 +270,16 @@ describe('release and outcome reports of a Scrum board (M1-062)', () => {
       '8',
       '3',
       '28',
+    ]);
+    // What was done and added while no sprint ran has its own column, so the columns add up to
+    // the sentence: 12 + 10 + 6 + 12 = 40 done (TR-13).
+    expect(cells(within(table).getAllByRole('row').at(-1) as HTMLElement)).toEqual([
+      'Outside the sprints',
+      '',
+      '12',
+      '54',
+      '0',
+      '',
     ]);
     expect(client.calls.at(-1)).toEqual({ report: 'release-burndown', params: { release: 31 } });
     await user.selectOptions(screen.getByRole('combobox', { name: 'Release' }), 'Checkout 2.1');
@@ -293,7 +309,17 @@ describe('release and outcome reports of a Scrum board (M1-062)', () => {
   it('[RPT-001] the release report shows progress by day, the plan and a forecast', async () => {
     open('release-report', 'en', scrum());
     const figure = await screen.findByRole('figure', { name: 'Release progress' });
-    expect(within(figure).getByRole('list').textContent).toBe('CompletedScope');
+    // The lines name what they add up; Completed is drawn last, over Scope, so it stays seen
+    // once it reaches the scope.
+    expect(within(figure).getByRole('list').textContent).toBe(
+      'Estimate in scopeEstimate completed',
+    );
+    expect(within(figure).getByText('Estimate')).toBeVisible();
+    const lines = [...figure.querySelectorAll('path.chart-line')];
+    expect(lines.map((l) => l.getAttribute('class'))).toEqual([
+      'chart-line chart-line-two',
+      'chart-line chart-line-one',
+    ]);
     expect(
       screen.getByText(
         'Planned for Nov 30. At the pace of the last 14 days, the work is done by Nov 11.',
@@ -318,7 +344,15 @@ describe('release and outcome reports of a Scrum board (M1-062)', () => {
         ...RELEASES.map((r) => r.name),
         'Checkout Sprint',
       ]);
-      const texts = visibleTexts(container).filter((t) => !/\d/.test(t) && !data.has(t));
+      // A column label wrapped onto two lines shows as two pieces: put them back together.
+      const texts = visibleTexts(container)
+        .filter((t) => !/\d/.test(t) && !data.has(t))
+        .reduce<string[]>((out, t) => {
+          const last = out.at(-1);
+          if (last?.startsWith('[') && !last.endsWith(']')) out[out.length - 1] = `${last} ${t}`;
+          else out.push(t);
+          return out;
+        }, []);
       expect(untranslated(texts)).toEqual([]);
       expect(errors).toEqual([]);
       container.remove();

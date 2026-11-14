@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
@@ -122,17 +122,27 @@ describe('sprint charts on the report (M1-060)', () => {
         end: { ...read.end, remaining: 0, scope: 0, completed: 0 },
       };
     };
-    client.velocity = async () => ({
-      statistic: { statistic: 'originalEstimate' },
-      sprints: [
-        ...(await fakeSprintClient().velocity(7)).sprints
-          .slice(0, 1)
-          .map((x) => ({ ...x, committed: 0, completed: 0 })),
-      ],
-      average: 0,
-    });
-    open('en', client);
-    expect(await screen.findAllByText('No estimates to add up')).toHaveLength(2);
+    let velocityRead = false;
+    client.velocity = async () => {
+      const read = {
+        statistic: { statistic: 'originalEstimate' as const },
+        sprints: [
+          ...(await fakeSprintClient().velocity(7)).sprints
+            .slice(0, 1)
+            .map((x) => ({ ...x, committed: 0, completed: 0 })),
+        ],
+        average: 0,
+      };
+      velocityRead = true;
+      return read;
+    };
+    const { container } = open('en', client);
+    await screen.findByText('No estimates to add up');
+    await waitFor(() => expect(velocityRead).toBe(true));
+    await screen.findByRole('link', { name: 'CHK-2' });
+    // One card across the row for both charts, not the same card twice side by side.
+    expect(screen.getAllByText('No estimates to add up')).toHaveLength(1);
+    expect(container.querySelectorAll('.sprint-chart')).toHaveLength(1);
     expect(screen.queryByRole('figure', { name: 'Burndown' })).toBeNull();
     expect(screen.queryByRole('figure', { name: 'Velocity' })).toBeNull();
     expect(screen.queryByText('Committed at the start')).toBeNull();

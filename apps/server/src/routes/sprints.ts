@@ -9,6 +9,7 @@ import { emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
 import { readReportEvents } from '../reports/events';
 import { sprintChart } from '../reports/sprint-charts';
+import { viewerTimeZone } from '../reports/zone';
 import { readOnly } from '../search/run';
 import {
   completeSprint,
@@ -1005,8 +1006,7 @@ export function registerSprintRoutes(
     if (!q.success) return invalidFields(reply, shapeErrors(q.error));
     const { sprint, board } = found;
     if (!hasStarted(sprint)) return reply.code(409).send({ error: 'sprint_not_started' });
-    const timeZone =
-      q.data.timeZone ?? (user.timeZone && knownTimeZone(user.timeZone) ? user.timeZone : 'UTC');
+    const timeZone = viewerTimeZone(request, q.data.timeZone);
     return sprintBurndown(db, catalogs, request, sprint, board, timeZone);
   });
 

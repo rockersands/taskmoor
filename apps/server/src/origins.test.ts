@@ -163,13 +163,20 @@ describe('origins: CORS, the origin check and WebSockets (M1-107)', () => {
       headers: {
         origin: FRONTEND,
         'access-control-request-method': 'PATCH',
-        'access-control-request-headers': 'authorization, content-type, taskmoor-mutation-id',
+        'access-control-request-headers':
+          'authorization, content-type, taskmoor-mutation-id, taskmoor-time-zone',
       },
     });
     expect(preflight.statusCode).toBe(204);
     expect(preflight.headers['access-control-allow-origin']).toBe(FRONTEND);
     expect(preflight.headers['access-control-allow-methods']).toContain('PATCH');
-    for (const header of ['authorization', 'content-type', 'taskmoor-mutation-id']) {
+    // The web app sends the browser's time zone on every request (T-272).
+    for (const header of [
+      'authorization',
+      'content-type',
+      'taskmoor-mutation-id',
+      'taskmoor-time-zone',
+    ]) {
       expect(preflight.headers['access-control-allow-headers']).toContain(header);
     }
     // This instance's own pages need no CORS: same origin.

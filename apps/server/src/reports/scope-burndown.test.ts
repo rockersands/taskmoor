@@ -102,6 +102,10 @@ describe('release and outcome burndowns (M1-062)', () => {
       [29, 7, 0, 0, 22],
     ]);
     expect(report.now).toEqual({ scope: 37, completed: 15, remaining: 22 });
+    // Outside the sprints: 23 joined and 7 closed before the first, 8 joined between. So all
+    // that was added (29 + 2 + 14), less what was removed (4 + 3) and completed (1 + 5 + 3 + 7),
+    // is what remains now, and the bars and the sentence agree (TR-13).
+    expect(report.outside).toEqual({ completed: 1, added: 29, removed: 0 });
     // Two completed sprints: (5 + 3) / 2 = 4 a sprint, so 22 needs 6 more.
     expect(report.velocity).toBe(4);
     expect(report.forecast).toBe(6);

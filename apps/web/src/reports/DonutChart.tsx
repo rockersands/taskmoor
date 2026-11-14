@@ -66,7 +66,13 @@ export function DonutChart({
       </figcaption>
       <div className="chart-donut">
         <div className="chart-plot">
-          <svg width={SIZE} height={SIZE} role="img" aria-label={summary}>
+          <svg
+            width={SIZE}
+            height={SIZE}
+            viewBox={`0 0 ${SIZE} ${SIZE}`}
+            role="img"
+            aria-label={summary}
+          >
             <circle className="chart-donut-track" cx={SIZE / 2} cy={SIZE / 2} r={R} />
             {arcs.map(({ slice, i, start, length }) =>
               length <= 0 ? null : (

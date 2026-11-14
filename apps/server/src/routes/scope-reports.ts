@@ -9,6 +9,7 @@ import { fold, type ReportState, readReportEvents } from '../reports/events';
 import { datesBetween } from '../reports/flow';
 import { type ScopeInput, scopeBurndown, scopeByDay } from '../reports/scope-burndown';
 import { type Statistic, ticketValue } from '../reports/sprint-charts';
+import { viewerTimeZone } from '../reports/zone';
 import { doneStatuses } from '../sprints/lifecycle';
 import { resolveTicket } from '../tickets/store';
 import type { SprintBoard, SprintRouteDeps } from './sprints';
@@ -257,13 +258,14 @@ export function registerScopeReportRoutes(
     if (!board) return reply;
     const release = await visibleRelease(request, q.data.release);
     if (!release) return notFound(reply);
-    const timeZone =
-      q.data.timeZone ?? (user.timeZone && knownTimeZone(user.timeZone) ? user.timeZone : 'UTC');
+    const timeZone = viewerTimeZone(request, q.data.timeZone);
     const candidates = await everInRelease(request.workspaceId, release.id);
     const input = await inputs(request, board, candidates, (s: ReportState) =>
       s.targetReleases.has(release.id),
     );
-    // From the release's start, else the first day a ticket targeted it; at most two years.
+    // From the release's start; else the earliest of the day it was made, the first day a ticket
+    // targeted it and its release date, so a shipped release's day is on the axis; at most two
+    // years.
     const first = input.events.find(
       (e) =>
         e.kind === 'field' &&
@@ -271,7 +273,12 @@ export function registerScopeReportRoutes(
         (e.to ?? '').split(',').includes(String(release.id)),
     );
     const today = localDate(input.now, timeZone);
-    let from = release.start_date ?? localDate(first?.at ?? release.created_at, timeZone);
+    const earliest = [
+      localDate(release.created_at, timeZone),
+      ...(first ? [localDate(first.at, timeZone)] : []),
+      ...(release.release_date ? [release.release_date] : []),
+    ].sort()[0] as string;
+    let from = release.start_date ?? earliest;
     if (from > today) from = today;
     const span = datesBetween(from, today);
     if (span.length > MAX_DAYS) from = span[span.length - MAX_DAYS] as string;
@@ -300,8 +307,7 @@ export function registerScopeReportRoutes(
     if (!board) return reply;
     const outcome = await visibleOutcome(request, q.data.outcome);
     if (!outcome) return notFound(reply);
-    const timeZone =
-      q.data.timeZone ?? (user.timeZone && knownTimeZone(user.timeZone) ? user.timeZone : 'UTC');
+    const timeZone = viewerTimeZone(request, q.data.timeZone);
     const candidates = await everUnder(request.workspaceId, outcome.id);
     const member = (s: ReportState) => s.parentId === outcome.id;
     const input = await inputs(request, board, candidates, member);

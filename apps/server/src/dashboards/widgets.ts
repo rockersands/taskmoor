@@ -1,5 +1,5 @@
 import type { Database } from '@taskmoor/db';
-import { knownTimeZone, localDate, parseQuery, printQuery } from '@taskmoor/query';
+import { localDate, parseQuery, printQuery } from '@taskmoor/query';
 import type { FastifyRequest } from 'fastify';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { boardScope, compileQuery, type Scope } from '../boards/data';
@@ -8,6 +8,7 @@ import type { FieldCatalogs } from '../fields/catalog';
 import { readStatusChanges } from '../reports/events';
 import { datesBetween, dayEnd, dayStart, timeInStatus } from '../reports/flow';
 import {
+  type Axis,
   averageAge,
   createdVsClosed,
   groupBy,
@@ -21,6 +22,7 @@ import {
   twoDimensional,
   workload,
 } from '../reports/general';
+import { viewerTimeZone } from '../reports/zone';
 import { visibleBoardRecord } from '../routes/boards';
 import { searchPerson } from '../routes/search';
 import {
@@ -110,11 +112,12 @@ const ASSIGNED =
 const FOLLOWED = 'follower = currentUser() ORDER BY updated DESC';
 const DAY = 86_400_000;
 
-/** The viewer's time zone, else UTC. */
-function zoneOf(request: FastifyRequest): string {
-  const zone = searchPerson(request).timeZone;
-  return zone && knownTimeZone(zone) ? zone : 'UTC';
-}
+/** A custom field's name, which heads a table counted by it; a system field's name is the app's. */
+const fieldName = (axis: Axis, s: Scope) =>
+  axis.kind === 'custom' ? { fieldName: s.catalog.fields.get(axis.fieldId)?.name ?? null } : {};
+
+/** The viewer's time zone: their browser's, else their profile's, else UTC (T-272). */
+const zoneOf = (request: FastifyRequest): string => viewerTimeZone(request);
 
 /** The last `days` local days up to today, as dates and instants. */
 function window(request: FastifyRequest, days: number) {
@@ -348,7 +351,7 @@ export async function widgetData(ctx: WidgetContext, widget: Widget): Promise<un
         const rank = (kind: string) => (kind === 'value' ? 0 : 1);
         counted.values.sort((a, b) => rank(a.kind) - rank(b.kind) || b.total - a.total);
       }
-      return { field: c.field, ...counted };
+      return { field: c.field, ...fieldName(axis, s), ...counted };
     }
     case 'two-dimensional': {
       const c = config as WidgetSettings<'two-dimensional'>;
@@ -396,6 +399,7 @@ export async function widgetData(ctx: WidgetContext, widget: Widget): Promise<un
       const condition = await compileQuery(db, s, c.query, new Date());
       return {
         field: c.field,
+        ...fieldName(axis, s),
         ...(await read((trx) =>
           groupBy(trx, { workspaceId: ws, scope: condition, axis, limit: c.limit }),
         )),
@@ -414,6 +418,7 @@ export async function widgetData(ctx: WidgetContext, widget: Widget): Promise<un
       );
       return {
         field: c.field,
+        ...fieldName(axis, s),
         statistic: c.statistic,
         open: c.open,
         release: c.release,

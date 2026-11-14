@@ -205,6 +205,8 @@ describe('a track’s statistics and its customized summary', () => {
     expect(perType.statusCode).toBe(400);
     const grouped = await statistic('member', 'ticket-statistics', `?field=cf[${field.id}]`);
     expect(grouped.data.total).toBe(3);
+    // The table heads its first column with the field's name, not 'Value'.
+    expect(grouped.data.fieldName).toBe('Squad');
   });
 
   it('[RPT-002] reads each general report, and only for those who see the track', async () => {

@@ -224,14 +224,7 @@ export function ScopeReport({ board, kind, client, outcomes }: ScopeReportProps)
     }
     // Nothing estimated: empty charts and '0 remaining of 0' would contradict the tickets in
     // the release, so it says why instead (TR-13), as the sprint report does.
-    if (
-      noEstimates(b.statistic.statistic, [
-        b.now.scope,
-        b.now.completed,
-        b.now.remaining,
-        ...b.sprints.flatMap((s) => [s.start, s.completed, s.added, s.removed, s.end]),
-      ])
-    ) {
+    if (noEstimates(b.statistic.statistic, [b.now.scope])) {
       return (
         <EmptyState title={t('sprints.charts.noEstimates.title')}>
           {t('reports.scope.noEstimates')}
@@ -240,6 +233,16 @@ export function ScopeReport({ board, kind, client, outcomes }: ScopeReportProps)
     }
     const first = b.sprints[0];
     const points = [...b.sprints.map((s) => s.start), b.now.remaining];
+    // Work done or added while no sprint ran has its own column, so the columns add up to the
+    // sentence above them: done is everything completed, remaining what was added less that.
+    const outside =
+      b.outside && (b.outside.completed > 0 || b.outside.added > 0 || b.outside.removed > 0)
+        ? b.outside
+        : null;
+    const columns = [
+      ...b.sprints.map((s) => ({ key: String(s.sprintId), label: s.name, ...s })),
+      ...(outside ? [{ key: 'outside', label: t('reports.scope.outside'), ...outside }] : []),
+    ];
     return (
       <>
         {b.outcome && (
@@ -284,20 +287,28 @@ export function ScopeReport({ board, kind, client, outcomes }: ScopeReportProps)
         />
         <ColumnChart
           title={t('reports.scope.sprintTitle')}
-          summary={t('reports.scope.sprintSummary', { count: b.sprints.length })}
-          categories={b.sprints.map((s) => ({ key: String(s.sprintId), label: s.name }))}
+          summary={
+            outside
+              ? t('reports.scope.sprintSummaryOutside', {
+                  count: b.sprints.length,
+                  completed: value(outside.completed),
+                  added: value(outside.added),
+                })
+              : t('reports.scope.sprintSummary', { count: b.sprints.length })
+          }
+          categories={columns.map((c) => ({ key: c.key, label: c.label }))}
           series={[
             {
               id: 'completed',
               label: t('reports.scope.completed'),
               tone: 'one',
-              values: b.sprints.map((s) => s.completed),
+              values: columns.map((c) => c.completed),
             },
             {
               id: 'added',
               label: t('reports.scope.added'),
               tone: 'two',
-              values: b.sprints.map((s) => s.added),
+              values: columns.map((c) => c.added),
             },
           ]}
           format={value}
@@ -328,6 +339,16 @@ export function ScopeReport({ board, kind, client, outcomes }: ScopeReportProps)
                   <td>{value(s.end)}</td>
                 </tr>
               ))}
+              {outside && (
+                <tr>
+                  <th scope="row">{t('reports.scope.outside')}</th>
+                  <td />
+                  <td>{value(outside.completed)}</td>
+                  <td>{value(outside.added)}</td>
+                  <td>{value(outside.removed)}</td>
+                  <td />
+                </tr>
+              )}
             </tbody>
           </table>
         </ReportTable>
@@ -335,28 +356,31 @@ export function ScopeReport({ board, kind, client, outcomes }: ScopeReportProps)
     );
   };
 
-  const byDay = (days: ReleaseReport['days']) => {
+  const byDay = (days: ReleaseReport['days'], of: 'release' | 'outcome') => {
     const last = days[days.length - 1];
     return (
       <LineChart
-        title={t('reports.release.title')}
-        summary={t('reports.release.summary', {
+        title={t(of === 'outcome' ? 'reports.outcome.chartTitle' : 'reports.release.title')}
+        summary={t(of === 'outcome' ? 'reports.outcome.chartSummary' : 'reports.release.summary', {
           completed: value(last?.completed ?? 0),
           scope: value(last?.scope ?? 0),
         })}
+        // The measure the lines add up, since the tiles above count tickets (outcome report).
+        measure={t(`reports.measure.${statistic}`)}
         xLabels={days.map((d) => day(d.date))}
+        // Scope first, so Completed is drawn over it and stays seen once it reaches the scope.
         series={[
           {
-            id: 'completed',
-            label: t('reports.release.completed'),
-            tone: 'one',
-            values: days.map((d) => d.completed),
-          },
-          {
             id: 'scope',
-            label: t('reports.release.scope'),
+            label: t(`reports.measure.scope.${statistic}`),
             tone: 'two',
             values: days.map((d) => d.scope),
+          },
+          {
+            id: 'completed',
+            label: t(`reports.measure.completed.${statistic}`),
+            tone: 'one',
+            values: days.map((d) => d.completed),
           },
         ]}
         format={value}
@@ -392,7 +416,7 @@ export function ScopeReport({ board, kind, client, outcomes }: ScopeReportProps)
           ? t('reports.release.forecast', { date: day(r.forecast) })
           : t('reports.release.noForecast')}
       </p>
-      {byDay(r.days)}
+      {byDay(r.days, 'outcome')}
       {r.tickets.length === 0 ? (
         <EmptyState compact title={t('reports.outcome.empty')}>
           {t('empty.reports.outcome')}
@@ -445,7 +469,7 @@ export function ScopeReport({ board, kind, client, outcomes }: ScopeReportProps)
           </>
         )}
       </p>
-      {byDay(r.days)}
+      {byDay(r.days, 'release')}
     </>
   );
 

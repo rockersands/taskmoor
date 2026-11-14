@@ -359,11 +359,17 @@ describe('a track’s statistics (ADR-116)', () => {
 
   it('[RPT-001] the outcome report lists the outcome’s tickets, done and open', async () => {
     open('outcome-report', SCRUM);
-    expect(await screen.findByRole('figure', { name: 'Release progress' })).toBeVisible();
+    // Its own title, and the measure the lines add up named, since the tiles count tickets.
+    const chart = await screen.findByRole('figure', { name: 'Outcome progress' });
+    expect(screen.queryByRole('figure', { name: 'Release progress' })).toBeNull();
+    expect(within(chart).getByText('Estimate')).toBeVisible();
+    expect(within(chart).getByRole('list').textContent).toBe('Estimate in scopeEstimate completed');
     const tickets = screen.getByRole('region', { name: 'Tickets under the outcome' });
     expect(within(tickets).getAllByRole('cell', { name: 'Closed (done)' })).toHaveLength(2);
     expect(within(tickets).getByRole('cell', { name: 'No estimate' })).toBeVisible();
-    expect(screen.getByText('Open without an estimate')).toBeVisible();
+    for (const tile of ['Tickets done', 'Tickets still open', 'Open tickets without an estimate']) {
+      expect(screen.getByText(tile)).toBeVisible();
+    }
   });
 
   it('[RPT-001] picks an outcome from the track’s outcomes, the first chosen, instead of a typed key (D25)', async () => {
@@ -407,6 +413,49 @@ describe('a track’s statistics (ADR-116)', () => {
     });
     expect(await screen.findByText('No estimates to add up')).toBeVisible();
     expect(screen.queryByRole('figure', { name: 'Remaining work' })).toBeNull();
+  });
+
+  it('[RPT-001] an estimate total of 0 explains itself even when estimates came and went (TR-13)', async () => {
+    openWithReports('outcome-burndown', (client) => {
+      const read = client.outcomeBurndown;
+      client.outcomeBurndown = async (board, outcome) => {
+        const report = await read(board, outcome);
+        // Every estimate was later taken off: nothing is left to add up.
+        return {
+          ...report,
+          statistic: { statistic: 'field', fieldId: 31 },
+          sprints: report.sprints.map((s) => ({ ...s, start: 3, removed: 3, end: 0 })),
+          outside: { completed: 0, added: 3, removed: 0 },
+          now: { scope: 0, completed: 0, remaining: 0 },
+        };
+      };
+    });
+    expect(await screen.findByText('No estimates to add up')).toBeVisible();
+    expect(screen.queryByRole('figure', { name: 'Work per sprint' })).toBeNull();
+  });
+
+  it('[RPT-001] work done before the sprints is counted beside them, as the sentence says (TR-13)', async () => {
+    openWithReports('release-burndown', (client) => {
+      const read = client.releaseBurndown;
+      client.releaseBurndown = async (board, release) => {
+        const report = await read(board, release);
+        const zero = { start: 0, completed: 0, added: 0, removed: 0, end: 0 };
+        // The sweep's release 5.0: both points done before its first sprint.
+        return {
+          ...report,
+          sprints: report.sprints.map((s) => ({ ...s, ...zero })),
+          outside: { completed: 2, added: 2, removed: 0 },
+          now: { scope: 2, completed: 2, remaining: 0 },
+          forecast: 0,
+        };
+      };
+    });
+    expect(await screen.findByText(/0 remaining of 2; 2 done\./)).toBeVisible();
+    const perSprint = screen.getByRole('figure', { name: 'Work per sprint' });
+    // Its column label may wrap onto two lines.
+    expect(perSprint.querySelector('svg')?.textContent).toMatch(/Outside the\s*sprints/);
+    const table = screen.getByRole('region', { name: 'Work by sprint' });
+    expect(within(table).getAllByRole('row').at(-1)?.textContent).toBe('Outside the sprints220');
   });
 
   it('[RPT-001] says a shipped release shipped on its own day, with no forecast (TR-15)', async () => {
