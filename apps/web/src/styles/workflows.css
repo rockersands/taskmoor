@@ -109,16 +109,9 @@
   min-width: 0;
 }
 
+/* A workflow not shown yet: the way back to the list, a pill after the note (T-222). */
 .workflow-back {
-  margin: 0;
-}
-
-.workflow-back a {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--hit-target);
-  color: var(--color-accent);
-  font-weight: var(--font-weight-strong);
+  margin: var(--space-3) 0 0;
 }
 
 /* A disclosure with the shared chevron beside its words (AD-28). */
