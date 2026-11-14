@@ -4,6 +4,7 @@ import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDb } from './client';
 import { knownMigrations, migrateTo, migrateToLatest, migrationStatus } from './migrate';
+import { up } from './migrations/0107_workflows_left_without_moves';
 import { snapshotSchema } from './snapshot';
 import { seededRows, UPGRADE_SEEDS } from './upgrade-fixtures';
 
@@ -359,6 +360,231 @@ describe('upgrade from earlier releases', () => {
         await migrateToLatest(db);
         expect(await atDefault(db)).toEqual(before);
         expect(await reasonsNamed(db, 'completed')).toHaveLength(1);
+      } finally {
+        await db.destroy();
+        await database.drop();
+      }
+    });
+  });
+
+  describe('old workflows left with no moves (0107)', () => {
+    interface Stored {
+      initialStatusId: number;
+      statuses: { statusId: number }[];
+      transitions: {
+        id: number;
+        name: string;
+        from: unknown;
+        to: number;
+        effects?: { type: string; field?: string; value?: unknown }[];
+      }[];
+      rules?: Record<string, unknown[]>;
+      board?: unknown;
+    }
+    type Db = ReturnType<typeof createDb>;
+    const CLEAR = [{ type: 'clear-field', field: 'close-reason' }];
+    const setting = (reason: number) => [
+      { type: 'update-system-field', field: 'close-reason', value: String(reason) },
+    ];
+    const before0107 = async () => {
+      const database = await createDatabase(testPgAdminUrl());
+      const db = createDb({ connectionString: database.url, maxConnections: 2 });
+      await migrateTo(db, '0106_cross_track_releases');
+      return { database, db };
+    };
+    const idOf = async (db: Db, table: 'status' | 'close_reason', name: string) =>
+      (
+        await sql<{ id: number }>`
+          SELECT id FROM ${sql.table(table)} WHERE workspace_id = 1 AND name = ${name}`.execute(db)
+      ).rows[0]?.id as number;
+    const writeVersion = async (
+      db: Db,
+      workflowId: number,
+      version: number,
+      definition: Stored,
+      at: string | null = null,
+    ) => {
+      await sql`
+        INSERT INTO workflow_version (workspace_id, workflow_id, version, definition, created_at)
+        VALUES (1, ${workflowId}, ${version}, ${JSON.stringify(definition)},
+                coalesce(${at}::timestamptz, now()))`.execute(db);
+      await sql`
+        INSERT INTO workflow_version_status (workspace_id, workflow_id, version, status_id)
+        SELECT 1, ${workflowId}, ${version}, unnest(${definition.statuses.map((s) => s.statusId)}::int[])`.execute(
+        db,
+      );
+    };
+    /** A workflow as an old release left it: its published version has no transitions. */
+    const leftEmpty = async (
+      db: Db,
+      name: string,
+      statusIds: number[],
+      extra: Partial<Stored> = {},
+    ) => {
+      const made = await sql<{ id: number }>`
+        INSERT INTO workflow (workspace_id, name) VALUES (1, ${name}) RETURNING id`.execute(db);
+      const id = made.rows[0]?.id as number;
+      const definition: Stored = {
+        initialStatusId: statusIds[0] as number,
+        statuses: statusIds.map((statusId) => ({ statusId })),
+        transitions: [],
+        ...extra,
+      };
+      await writeVersion(db, id, 1, definition);
+      return { id, definition };
+    };
+    const current = async (db: Db, id: number) => {
+      const { rows } = await sql<{
+        published_version: number;
+        draft_version: number | null;
+        definition: Stored;
+      }>`
+        SELECT w.published_version, w.draft_version, v.definition
+          FROM workflow w
+          JOIN workflow_version v ON v.workflow_id = w.id AND v.version = w.published_version
+         WHERE w.id = ${id}`.execute(db);
+      return rows[0] as NonNullable<(typeof rows)[0]>;
+    };
+    const versionRow = async (db: Db, id: number, version: number) =>
+      (
+        await sql<{ definition: Stored; created_at: Date; published_at: Date | null }>`
+          SELECT definition, created_at, published_at FROM workflow_version
+           WHERE workflow_id = ${id} AND version = ${version}`.execute(db)
+      ).rows[0];
+    const statusesOf = async (db: Db, id: number, version: number) =>
+      (
+        await sql<{ status_id: number }>`
+          SELECT status_id FROM workflow_version_status
+           WHERE workflow_id = ${id} AND version = ${version} ORDER BY status_id`.execute(db)
+      ).rows.map((r) => r.status_id);
+
+    it('[WF-008] gives an old workflow with no transitions a move into each status as its next published version', async () => {
+      const { database, db } = await before0107();
+      try {
+        const [fresh, active, closed] = [
+          await idOf(db, 'status', 'New'),
+          await idOf(db, 'status', 'Active'),
+          await idOf(db, 'status', 'Closed'),
+        ];
+        const completed = await idOf(db, 'close_reason', 'Completed');
+        // An earlier version used transition id 7; version 2 was published with none.
+        const { id, definition } = await leftEmpty(db, 'Left empty', [fresh, active, closed], {
+          transitions: [{ id: 7, name: 'Start', from: [fresh], to: active }],
+        });
+        await writeVersion(db, id, 2, { ...definition, transitions: [] });
+        await sql`UPDATE workflow SET published_version = 2 WHERE id = ${id}`.execute(db);
+        // A draft someone saved stays theirs.
+        const saved = { ...definition, statuses: [{ statusId: fresh }, { statusId: active }] };
+        await writeVersion(db, id, 3, saved, '2026-10-01T09:00:00Z');
+        await sql`UPDATE workflow SET draft_version = 3 WHERE id = ${id}`.execute(db);
+
+        await migrateToLatest(db);
+
+        const after = await current(db, id);
+        // The new version takes the draft's number; the draft moves above it.
+        expect(after.published_version).toBe(3);
+        expect(after.draft_version).toBe(4);
+        expect(after.definition).toEqual({
+          ...definition,
+          transitions: [
+            { id: 8, name: 'New', from: 'any', to: fresh, effects: CLEAR },
+            { id: 9, name: 'Active', from: 'any', to: active, effects: CLEAR },
+            { id: 10, name: 'Closed', from: 'any', to: closed, effects: setting(completed) },
+          ],
+        });
+        expect((await versionRow(db, id, 3))?.published_at).not.toBeNull();
+        expect(await statusesOf(db, id, 3)).toEqual([fresh, active, closed].sort((a, b) => a - b));
+        const draft = await versionRow(db, id, 4);
+        expect(draft?.definition).toEqual(saved);
+        expect(draft?.created_at.toISOString()).toBe('2026-10-01T09:00:00.000Z');
+        expect(draft?.published_at).toBeNull();
+        expect(await statusesOf(db, id, 4)).toEqual([fresh, active].sort((a, b) => a - b));
+        // Earlier versions stay as they were written.
+        expect((await versionRow(db, id, 2))?.definition.transitions).toEqual([]);
+        expect((await versionRow(db, id, 1))?.definition).toEqual(definition);
+      } finally {
+        await db.destroy();
+        await database.drop();
+      }
+    });
+
+    it('[WF-008] closes with the reason the default workflow sets once Completed was renamed, and gives a closing status nothing when there is no reason to name', async () => {
+      const { database, db } = await before0107();
+      try {
+        const fresh = await idOf(db, 'status', 'New');
+        const closed = await idOf(db, 'status', 'Closed');
+        const completed = await idOf(db, 'close_reason', 'Completed');
+        await sql`UPDATE close_reason SET name = 'Done' WHERE id = ${completed}`.execute(db);
+        const renamed = await leftEmpty(db, 'Renamed reason', [fresh, closed]);
+        // Nothing a free move could close with: the default workflow sets no reason either.
+        const { rows } = await sql<{ id: number; published_version: number; definition: Stored }>`
+          SELECT w.id, w.published_version, v.definition FROM workflow w
+            JOIN workflow_version v ON v.workflow_id = w.id AND v.version = w.published_version
+           WHERE w.is_default`.execute(db);
+        const fallback = rows[0] as NonNullable<(typeof rows)[0]>;
+        await up(db as never);
+        expect((await current(db, renamed.id)).definition.transitions).toEqual([
+          { id: 1, name: 'New', from: 'any', to: fresh, effects: CLEAR },
+          { id: 2, name: 'Closed', from: 'any', to: closed, effects: setting(completed) },
+        ]);
+
+        await sql`
+          UPDATE workflow_version
+             SET definition = ${JSON.stringify({
+               ...fallback.definition,
+               transitions: fallback.definition.transitions.map((t) => ({ ...t, effects: [] })),
+             })}
+           WHERE workflow_id = ${fallback.id} AND version = ${fallback.published_version}`.execute(
+          db,
+        );
+        const partly = await leftEmpty(db, 'Partly', [fresh, closed]);
+        const closingOnly = await leftEmpty(db, 'Closing only', [closed]);
+        const reasons = await sql<{
+          n: number;
+        }>`SELECT count(*)::int AS n FROM close_reason`.execute(db);
+        await up(db as never);
+        expect((await current(db, partly.id)).definition.transitions).toEqual([
+          { id: 1, name: 'New', from: 'any', to: fresh, effects: CLEAR },
+        ]);
+        // No move at all: it stays as it was, for the operator's check to list.
+        expect(await current(db, closingOnly.id)).toEqual({
+          published_version: 1,
+          draft_version: null,
+          definition: closingOnly.definition,
+        });
+        // No reason is made.
+        expect(
+          (await sql<{ n: number }>`SELECT count(*)::int AS n FROM close_reason`.execute(db))
+            .rows[0]?.n,
+        ).toBe(reasons.rows[0]?.n);
+      } finally {
+        await db.destroy();
+        await database.drop();
+      }
+    });
+
+    it('[WF-008] leaves a board-managed workflow, one with a rule and one that has moves', async () => {
+      const { database, db } = await before0107();
+      try {
+        const fresh = await idOf(db, 'status', 'New');
+        const active = await idOf(db, 'status', 'Active');
+        const board = await leftEmpty(db, 'Board managed', [fresh, active], {
+          board: { boardId: 1, columns: [fresh, active] },
+        });
+        const ruled = await leftEmpty(db, 'With a rule', [fresh, active], {
+          rules: { '1': [{ type: 'clear-field', field: 'close-reason' }] },
+        });
+        const moving = await leftEmpty(db, 'Moving', [fresh, active], {
+          transitions: [{ id: 1, name: 'Start', from: [fresh], to: active }],
+        });
+        const before = await Promise.all([board, ruled, moving].map((w) => current(db, w.id)));
+        await migrateToLatest(db);
+        expect(await Promise.all([board, ruled, moving].map((w) => current(db, w.id)))).toEqual(
+          before,
+        );
+        for (const w of [board, ruled, moving]) {
+          expect((await current(db, w.id)).published_version).toBe(1);
+        }
       } finally {
         await db.destroy();
         await database.drop();
