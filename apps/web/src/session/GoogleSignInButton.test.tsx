@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
@@ -120,6 +120,30 @@ describe("Google's sign-in button (T-061)", () => {
     expect(within(form).getAllByRole('button')).toHaveLength(1);
     // Enter in the email field leads there too, as the form's submit.
     await user.type(screen.getByLabelText('Email'), '{Enter}');
+    expect(went).toEqual(['/api/v1/auth/oidc/9/start?returnTo=%2F']);
+  });
+
+  it("[IAM-031] focus stays on the form's button when sending it turns the domain into Google's", async () => {
+    const user = userEvent.setup();
+    const went = openSignIn();
+    // A password manager fills the address and a password without the email field losing focus,
+    // so the domain is first asked about when the form is sent.
+    fireEvent.change(await screen.findByLabelText('Email'), {
+      target: { value: 'ann@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'saved one' } });
+    const form = screen.getByRole('form', { name: 'Sign in' });
+    const button = within(form).getByRole('button', { name: 'Sign in' });
+    button.focus();
+    await user.keyboard(' ');
+    const google = await within(form).findByRole('button', { name: 'Sign in with Google' });
+    expect(google).toHaveClass('google-sign-in');
+    expect(google).not.toHaveClass('button-primary');
+    // The same element, only dressed as Google's: a keyboard or screen reader stays on it.
+    expect(google).toBe(button);
+    expect(google).toHaveFocus();
+    expect(went).toEqual([]);
+    await user.keyboard(' ');
     expect(went).toEqual(['/api/v1/auth/oidc/9/start?returnTo=%2F']);
   });
 

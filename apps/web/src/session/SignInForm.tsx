@@ -16,7 +16,11 @@ import {
 import { ssoErrorMessage, ssoRequiredProvider } from '../sso/errors';
 import { EnrollmentStep } from './EnrollmentStep';
 import { tooManyAttemptsMessage } from './errors';
-import { GoogleSignInButton } from './GoogleSignInButton';
+import {
+  GOOGLE_SIGN_IN_CLASS,
+  GoogleSignInButton,
+  GoogleSignInContent,
+} from './GoogleSignInButton';
 import { PasswordField } from './PasswordField';
 import { SecondFactorStep } from './SecondFactorStep';
 import { type SecondFactorMethod, type SessionUser, useSession } from './SessionProvider';
@@ -306,14 +310,21 @@ export function SignInForm({
           </p>
         )}
         {/* One button: when the domain enforces single sign-on it leads there, so focus stays.
-            Through Google it is Google's own button (T-061), whatever the provider's name. */}
-        {enforced?.brand === 'google' ? (
-          <GoogleSignInButton type="submit" disabled={busy} />
-        ) : (
-          <button type="submit" className="button-primary" disabled={busy}>
-            {enforced ? t('auth.sso.signInWith', { name: enforced.name }) : t('auth.signIn')}
-          </button>
-        )}
+            Through Google it takes Google's look and words (T-061), whatever the provider's
+            name; only its class and contents change, never the element, so focus stays then too. */}
+        <button
+          type="submit"
+          className={enforced?.brand === 'google' ? GOOGLE_SIGN_IN_CLASS : 'button-primary'}
+          disabled={busy}
+        >
+          {enforced?.brand === 'google' ? (
+            <GoogleSignInContent />
+          ) : enforced ? (
+            t('auth.sso.signInWith', { name: enforced.name })
+          ) : (
+            t('auth.signIn')
+          )}
+        </button>
       </form>
       {others.length > 0 && (
         <fieldset className="sso-options">
