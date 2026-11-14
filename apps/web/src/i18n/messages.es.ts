@@ -493,7 +493,7 @@ export const messagesEs: Record<MessageId, string> = {
   'tutorial.section.import': 'Importación',
   'tutorial.section.importHint':
     'Trae tickets desde un archivo CSV, con una prueba previa para comprobar qué pasará.',
-  'tutorial.setupOnly': 'Para administradores',
+  'tutorial.setupOnly': 'Para administradores del sitio y de configuración',
   'tutorial.actionOn': '{action}: {title}',
   'tutorial.loading': 'Leyendo tu progreso…',
   'tutorial.loadFailed':
@@ -1009,17 +1009,17 @@ export const messagesEs: Record<MessageId, string> = {
   'auth.sso.error.invalidState':
     'El inicio de sesión tardó demasiado, o se empezó en otro navegador. Inténtalo de nuevo.',
   'auth.sso.error.providerError':
-    'Tu proveedor de identidad no completó el inicio de sesión. Inténtalo de nuevo y pregunta a tu administrador si sigue pasando.',
+    'Tu proveedor de identidad no completó el inicio de sesión. Inténtalo de nuevo y pregunta a un administrador del sitio si sigue pasando.',
   'auth.sso.error.providerUnavailable':
-    'El inicio de sesión único no está disponible ahora mismo. Inténtalo más tarde o pregunta a tu administrador.',
+    'El inicio de sesión único no está disponible ahora mismo. Inténtalo más tarde o pregunta a un administrador del sitio.',
   'auth.sso.error.emailUnverified':
-    'Tu proveedor de identidad no confirmó tu dirección de correo, así que no se pudo iniciar tu sesión. Pide ayuda a tu administrador.',
+    'Tu proveedor de identidad no confirmó tu dirección de correo, así que no se pudo iniciar tu sesión. Pide ayuda a un administrador del sitio.',
   'auth.sso.error.domainNotAllowed':
-    'Tu dirección de correo está en un dominio que esta opción de inicio de sesión no atiende. Pide ayuda a tu administrador.',
+    'Tu dirección de correo está en un dominio que esta opción de inicio de sesión no atiende. Pide ayuda a un administrador del sitio.',
   'auth.sso.error.noAccount':
-    'Aún no tienes una cuenta aquí. Pide a tu administrador que cree una. Si te invitaron, inicia sesión con la misma dirección a la que llegó la invitación.',
+    'Aún no tienes una cuenta aquí. Pide a un administrador del sitio que cree una. Si te invitaron, inicia sesión con la misma dirección a la que llegó la invitación.',
   'auth.sso.error.accountDeactivated':
-    'Tu cuenta está desactivada. Pregunta a tu administrador si la necesitas de nuevo.',
+    'Tu cuenta está desactivada. Pregunta a un administrador del sitio si la necesitas de nuevo.',
   'auth.sso.error.unknown':
     'El inicio de sesión único no funcionó. Inténtalo de nuevo en un momento.',
   'auth.sso.breakGlassOnly':
@@ -1177,7 +1177,7 @@ export const messagesEs: Record<MessageId, string> = {
   'account.intro.profile':
     'Tu nombre, tu correo, tu zona horaria y tu idioma, y cómo se ve Taskmoor para ti.',
   'account.intro.notifications':
-    'Cuándo te avisa Taskmoor de los cambios, y si es por correo, en tu bandeja de entrada o en ambos.',
+    'Cuándo te avisa Taskmoor de los cambios en los tickets en los que trabajas y que sigues, por correo, en tu bandeja de entrada o en ambos. Los cambios se guardan al instante.',
   'account.intro.security':
     'Tu contraseña, la verificación en dos pasos y los dispositivos donde tienes la sesión iniciada.',
   'account.intro.tokens':
@@ -1191,8 +1191,6 @@ export const messagesEs: Record<MessageId, string> = {
   'account.appearance.systemHint': 'Claro u oscuro, según la configuración de tu dispositivo.',
   'account.appearance.saved': 'La apariencia se guardó en tu cuenta.',
   'notifications.title': 'Notificaciones',
-  'notifications.intro':
-    'Cómo te avisa Taskmoor de los cambios en los tickets en los que trabajas y que sigues. Los cambios se guardan al instante.',
   'notifications.loading': 'Leyendo tu configuración de notificaciones…',
   'notifications.failed':
     'No se pudo leer tu configuración de notificaciones. Inténtalo de nuevo en un momento.',

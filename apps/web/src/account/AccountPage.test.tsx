@@ -96,6 +96,15 @@ describe('account page: profile', () => {
     expect(screen.getByText(/A choice saves at once\./)).toBeVisible();
   });
 
+  it('[NTF-004] says once what Notifications holds, and that changes save at once (D17)', async () => {
+    await openAccount({}, '#/account/notifications');
+    await screen.findByRole('radio', { name: /Daily digest/ });
+    // One intro under the title; the card under it no longer says nearly the same again.
+    const intros = screen.getAllByText(/Taskmoor tells you about changes/);
+    expect(intros).toHaveLength(1);
+    expect(intros[0]).toHaveTextContent(/Changes save at once\.$/);
+  });
+
   it('[IAM-008] keeps focus on the section chosen from the keyboard (D17)', async () => {
     const user = userEvent.setup();
     await openAccount();

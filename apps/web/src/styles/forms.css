@@ -159,6 +159,14 @@
   max-width: 32rem;
 }
 
+/*
+ * A form that is the whole of a dialog fills it (AC-16): the New track dialog borrows the people
+ * page's form, whose reading width is for a page (T-219) and left a fifth of the dialog empty.
+ */
+.new-track-dialog .people-form {
+  max-width: none;
+}
+
 /* A group of fields: a glass slab on the canvas, ... */
 .form fieldset {
   display: grid;
@@ -293,6 +301,11 @@
 .password-toggle[aria-pressed="true"] {
   background: var(--color-accent-soft);
   color: var(--color-accent);
+}
+
+/* A field marked wrong is marked whole: the show/hide end takes the input's red edge too. */
+.password-control:has([aria-invalid="true"]) .password-toggle {
+  border-color: var(--color-danger);
 }
 
 /* Success and progress messages; empty while there is nothing to say. */

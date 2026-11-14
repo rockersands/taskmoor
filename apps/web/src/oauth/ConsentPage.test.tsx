@@ -66,7 +66,10 @@ describe('the OAuth consent page (M1-072)', () => {
 
   it('[API-002] says when the request is gone, also signed out (D35), with no intro above it', async () => {
     renderPage(fakeConsentClient({ load: failingLoad(404) }));
-    expect(await screen.findByText(/This request has expired/)).toBeVisible();
+    // An alert in the shared error style, as on every link page (D24).
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/This request has expired/);
+    expect(alert).toHaveClass('page-note');
     // The intro would ask to read and answer a request that is not there (AC-7).
     expect(screen.queryByText(/Read what it wants/)).toBeNull();
     expect(screen.getByRole('link', { name: 'Go to sign in' })).toHaveAttribute(
@@ -78,6 +81,8 @@ describe('the OAuth consent page (M1-072)', () => {
   it('[API-002] leads someone signed out to sign in and back to the request (D24)', async () => {
     renderPage(fakeConsentClient({ load: failingLoad(401) }));
     expect(await screen.findByText('Sign in to answer this request.')).toBeVisible();
+    // Signing in is the way on, not a fault.
+    expect(screen.queryByRole('alert')).toBeNull();
     // One way out, at the top: it comes back to the request.
     const links = screen.getAllByRole('link');
     expect(links).toHaveLength(1);
@@ -90,7 +95,9 @@ describe('the OAuth consent page (M1-072)', () => {
   it('[API-002] says an address with no request names none', () => {
     window.location.hash = '#/oauth/consent';
     renderPage();
-    expect(screen.getByText(/This address names no request from an app/)).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      /This address names no request from an app/,
+    );
     expect(screen.queryByText(/expired or was already answered/)).toBeNull();
   });
 

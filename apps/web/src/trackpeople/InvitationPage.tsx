@@ -15,7 +15,7 @@ import type { SecondFactorMethod, SessionUser } from '../session/SessionProvider
 import { useSession } from '../session/SessionProvider';
 import { SignInForm } from '../session/SignInForm';
 import { PageHeader } from '../shell/PageHeader';
-import { StandaloneFrame } from '../shell/StandaloneFrame';
+import { StandaloneFrame, StandaloneNote } from '../shell/StandaloneFrame';
 import { hashParam, type SignInSsoClient, signInSsoClient } from '../sso/client';
 import { type InvitationClient, type InvitationLink, invitationClient } from './client';
 
@@ -269,11 +269,9 @@ export function InvitationPage({
             title={title}
             {...(state.status === 'checking' ? { purpose: t('purpose.invitation') } : {})}
           />
-          <div className="glass-card account-section">
-            <p className="page-note" role={state.status === 'checking' ? 'status' : undefined}>
-              {note}
-            </p>
-          </div>
+          <StandaloneNote kind={state.status === 'checking' ? 'checking' : 'problem'}>
+            {note}
+          </StandaloneNote>
         </main>
       </StandaloneFrame>
     );

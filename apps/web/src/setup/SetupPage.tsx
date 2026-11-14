@@ -6,7 +6,7 @@ import { PASSWORD_MIN_LENGTH, passwordProblemMessages } from '../session/errors'
 import { PasswordField } from '../session/PasswordField';
 import { useSession } from '../session/SessionProvider';
 import { PageHeader } from '../shell/PageHeader';
-import { StandaloneFrame } from '../shell/StandaloneFrame';
+import { StandaloneFrame, StandaloneNote } from '../shell/StandaloneFrame';
 
 type Status = 'checking' | 'ready' | 'done' | 'submitting' | 'already-set-up' | 'no-token';
 
@@ -106,15 +106,16 @@ export function SetupPage({ onDone }: { onDone: () => void }) {
             title={t('setup.title')}
             {...(status === 'checking' ? { purpose: t('setup.intro') } : {})}
           />
-          <div className="glass-card account-section">
-            <p className="page-note" role={status === 'checking' ? 'status' : undefined}>
-              {status === 'checking'
-                ? t('setup.checking')
-                : status === 'no-token'
-                  ? t('setup.noToken')
-                  : t('setup.alreadySetUp')}
-            </p>
-          </div>
+          {/* A missing link is a problem; a site already set up is only information. */}
+          <StandaloneNote
+            kind={status === 'checking' ? 'checking' : status === 'no-token' ? 'problem' : 'note'}
+          >
+            {status === 'checking'
+              ? t('setup.checking')
+              : status === 'no-token'
+                ? t('setup.noToken')
+                : t('setup.alreadySetUp')}
+          </StandaloneNote>
         </main>
       </StandaloneFrame>
     );
@@ -126,7 +127,13 @@ export function SetupPage({ onDone }: { onDone: () => void }) {
     <StandaloneFrame wayOut={false}>
       <main className="setup">
         <PageHeader title={t('setup.title')} purpose={t('setup.intro')} />
-        <form className="form" onSubmit={submit} aria-label={t('setup.title')}>
+        {/* One card, as on every stand-alone form (D24, AC-16): its groups are wells inside it,
+            and 'Finish setup' ends the card rather than standing under it. */}
+        <form
+          className="form glass-card account-section"
+          onSubmit={submit}
+          aria-label={t('setup.title')}
+        >
           <fieldset>
             <legend>{t('setup.instance')}</legend>
             <div className="form-field">

@@ -39,3 +39,31 @@ export function StandaloneFrame({
     </div>
   );
 }
+
+export interface StandaloneNoteProps {
+  /**
+   * What the line is: `checking` while a link is read (announced politely), `problem` when the
+   * page cannot go on (an alert), `note` for information such as a site that is already set up.
+   */
+  kind: 'checking' | 'problem' | 'note';
+  children: ReactNode;
+}
+
+const NOTE_ROLES = { checking: 'status', problem: 'alert', note: undefined } as const;
+
+/**
+ * The one line a stand-alone page shows on its card instead of its form (D24). A link that is
+ * missing, used or expired is an alert, drawn in the shared error style (`.page-note` with an
+ * alert, forms.css) as the sign-in page's errors are, and announced as one; anything else is a
+ * note.
+ */
+export function StandaloneNote({ kind, children }: StandaloneNoteProps) {
+  const role = NOTE_ROLES[kind];
+  return (
+    <div className="glass-card account-section">
+      <p className="page-note" {...(role ? { role } : {})}>
+        {children}
+      </p>
+    </div>
+  );
+}

@@ -40,6 +40,7 @@ export function NewTrackDialog({ client, modes, onClose, onAdded }: NewTrackDial
       onClose={onClose}
       labelledBy={titleId}
       closeLabel={t('tracks.new.close')}
+      className="new-track-dialog"
       focusFirstField
     >
       <DialogHead titleId={titleId} title={t('tracks.new')} onClose={onClose} />

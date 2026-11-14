@@ -46,7 +46,8 @@ describe('the tutorial picker (ADR-115)', () => {
       </I18nProvider>,
     );
     expect(screen.getByRole('checkbox', { name: 'Learn Workflows' })).toBeVisible();
-    expect(screen.getByText('For administrators')).toBeVisible();
+    // The real role, beside 'For site administrators' on other cards (D12, AD-40).
+    expect(screen.getByText('For site and configuration administrators')).toBeVisible();
     expect(screen.queryByRole('checkbox', { name: 'Learn Import' })).toBeNull();
     // Without a way to start one, as in the first-run offer: no button on each card.
     expect(screen.queryByRole('button')).toBeNull();

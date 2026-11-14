@@ -4,7 +4,7 @@ import type { MessageId } from '../i18n/messages.en';
 import { currentRoute, routeHref } from '../routing/router';
 import { passwordTokenFromHash } from '../session/PasswordLinkPage';
 import { PageHeader } from '../shell/PageHeader';
-import { StandaloneFrame } from '../shell/StandaloneFrame';
+import { StandaloneFrame, StandaloneNote } from '../shell/StandaloneFrame';
 import { type UnsubscribeClient, type UnsubscribeLink, unsubscribeClient } from './client';
 
 export interface UnsubscribePageProps {
@@ -66,10 +66,10 @@ export function UnsubscribePage({ client = unsubscribeClient }: UnsubscribePageP
   let body: ReactNode;
   switch (state.status) {
     case 'no-token':
-      body = <p className="page-note">{t('unsubscribe.noToken')}</p>;
+      body = t('unsubscribe.noToken');
       break;
     case 'invalid':
-      body = <p className="page-note">{t('unsubscribe.invalid')}</p>;
+      body = t('unsubscribe.invalid');
       break;
     case 'checking':
       body = (
@@ -123,7 +123,12 @@ export function UnsubscribePage({ client = unsubscribeClient }: UnsubscribePageP
           title={t('unsubscribe.title')}
           {...(problem ? {} : { purpose: t('purpose.unsubscribe') })}
         />
-        <div className="glass-card account-section">{body}</div>
+        {/* A missing or spent link is an alert, as on every link page (D24). */}
+        {problem ? (
+          <StandaloneNote kind="problem">{body}</StandaloneNote>
+        ) : (
+          <div className="glass-card account-section">{body}</div>
+        )}
       </main>
     </StandaloneFrame>
   );

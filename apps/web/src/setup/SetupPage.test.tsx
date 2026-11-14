@@ -44,7 +44,8 @@ describe('setup page', () => {
     window.location.hash = '#/setup';
     render(<App />);
     expect(await screen.findByRole('heading', { level: 1, name: 'Set up Taskmoor' })).toBeVisible();
-    expect(await screen.findByText(/needs the whole setup link/)).toBeVisible();
+    // A missing link is a problem, said as an alert as on every link page (D24).
+    expect(await screen.findByRole('alert')).toHaveTextContent(/needs the whole setup link/);
     // No intro that says to create an account here (AC-7).
     expect(screen.queryByText(/This runs once/)).toBeNull();
     expect(screen.queryByRole('button', { name: 'Finish setup' })).toBeNull();
@@ -65,6 +66,8 @@ describe('setup page', () => {
       await screen.findByText('This site is already set up. Sign in with your account.'),
     ).toBeVisible();
     expect(screen.queryByText(/needs the whole setup link/)).toBeNull();
+    // Information, not a fault.
+    expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.getByRole('link', { name: 'Go to sign in' })).toHaveAttribute(
       'href',
       '#/sign-in',

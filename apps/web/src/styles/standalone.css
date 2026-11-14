@@ -31,7 +31,11 @@
   pointer-events: none;
 }
 
-/* The product name, and the one way out (D24), above the column. */
+/*
+ * The product name, and the one way out (D24), above the column. The row is as tall as the way
+ * out whether or not a page shows it, so the name and the heading sit at the same heights on the
+ * sign-in page and on the link pages that lead to it.
+ */
 .standalone-bar {
   display: flex;
   flex-wrap: wrap;
@@ -41,8 +45,15 @@
   box-sizing: border-box;
   width: 100%;
   max-width: 40rem;
+  min-height: calc(var(--space-5) + var(--hit-target));
   margin: 0 auto;
   padding: var(--space-5) var(--space-4) 0;
+}
+
+@media (pointer: coarse) {
+  .standalone-bar {
+    min-height: calc(var(--space-5) + var(--hit-target-touch));
+  }
 }
 
 .standalone-brand {
@@ -88,9 +99,12 @@
 
 /*
  * One card width and one button width in every stand-alone form (D24, AC-16): the cards fill
- * the column, and so do a form's fields and its primary button.
+ * the column, and so do a form's fields and its primary button. A form inside a card fills the
+ * card too (the sign-in and invitation forms): the reading width Account gives its forms
+ * (account.css, T-219) is for a page of settings, not for a card that is only the form.
  */
-.setup :is(.form, .sign-in-card, .sign-in-methods) {
+.setup :is(.form, .sign-in-card, .sign-in-methods),
+.setup .account-section :is(.form, .sign-in-methods) {
   max-width: none;
 }
 
