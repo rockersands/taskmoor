@@ -1270,7 +1270,8 @@ tickets are in the same sprint now.* Acceptance (1) and (2) as now.
 
 ### Stage 6 (T-089e): draft changes and scenarios
 
-**Designed on 2026-11-14; the server built the same day (see "As built"), the web app not yet.**
+**Designed on 2026-11-14; the server and the web app built the same day (see the two "As built"
+parts).**
 PLN-002 and PLN-003 move to M1 with this stage, reworded to
 what will be built (the wordings are under "Tests"). Two designs were made and judged against the
 spec, privacy, the earlier stages and the code; this one is the server-first design with the
@@ -1687,8 +1688,9 @@ a scenario main makes its drafts the plan's drafts to apply, and keeps the forme
 
 Built on 2026-11-14 in `plans/drafts.ts` (the model, `writeDrafts`, `draftOverlay`, `draftMarks`,
 `refusalOf`) and `routes/plan-scenarios.ts`; the views gained `scenario=` in `plan-views.ts`,
-`plan-capacity.ts` and `program-boards.ts`. The web app, the manual's section and the budgets in
-`plans.large.test.ts` wait for the next builder. Where this differs from the design above:
+`plan-capacity.ts` and `program-boards.ts`. The web app and the manual's section followed (see
+"As built (the web app)"); the budgets in `plans.large.test.ts` wait for the user's hold on
+benchmarking. Where this differs from the design above:
 
 - **Migration 0110** also has an index on `plan_scenario.created_by` (the data download) and on
   `plan_draft.team_field_id` (deleting a field). `(plan_id, id)` on `plan_scenario` is unique, so a
@@ -1741,6 +1743,51 @@ Built on 2026-11-14 in `plans/drafts.ts` (the model, `writeDrafts`, `draftOverla
   `privacy/privacy.test.ts`, `events/contract.test.ts`, `tokens/scopes.test.ts`, the upgrade
   fixture and the schema golden file. The locked case is a field lock (a field rule set); a
   status lock goes through the same refusal and is not tested here.
+
+#### As built (the web app; T-089e)
+
+Built on 2026-11-14 in `plans/scenarioClient.ts` (the calls and their types), `ScenarioBar.tsx`,
+`ScenarioDialogs.tsx` (New scenario, Rename and `AskFirst`, Apply's and Make main's question in
+place), `PlanChangesPage.tsx` with `changeWords.ts`, `PlanScenariosPage.tsx`, `ScenarioCompare.tsx`
+and `drafting.ts` (the stage 1 seam: `reschedule` and `move` become a draft in a scenario); the
+views, `TimelineView`, `CalendarView`, `ResultTable`, `planExport.ts` and `address.ts` gained their
+parts, and the manual's page its section. Where this differs from the design above:
+
+- **The scenario bar** is on every tab but Settings, between the plan's description and its tab
+  bar. **New scenario…** opens the same dialog as the Scenarios tab and, once made, the page opens
+  the new scenario. A change of scenario is announced in a status line of its own; opening a page
+  on one is not.
+- **The address** keeps `scenario=` on every tab and `a=` and `b=` only on the Scenarios tab. The
+  page waits for the scenarios before a view reads one; a scenario not found, or a list that could
+  not be read, leaves the views live and says so.
+- **Drafting** on the Timeline, the Calendar and a board always asks the server; someone who may not
+  draft is answered `edit_plan` and the page says "only the plan's owner and site administrators
+  can draft in a scenario". **Undo this draft** writes the live values back, which removes the
+  draft. The board reads again every 15 s only in a scenario; live it keeps the local copy, as
+  before.
+- **Summary and Releases** say they stay live in a scenario, as the List does.
+- **The change list** reads pages of 100 with **Show more**; it does not offer `only=`, and **Only
+  those I can apply** filters the pages read. **Keep my draft** writes all of the ticket's drafted
+  fields again. **Apply all** and **Discard all** are on a desktop only; on a phone the bar holds
+  **Apply N** and **Discard N** of the chosen tickets, and **Select all** chooses every one shown.
+  Apply all counts its progress against the drafts shown less those refused. A `gone` ticket is
+  listed in the result by its reason alone, without a key.
+- **Make main** shows its scenario's name ("Make Faster main") wherever it is: axe's
+  label-content-name rule refused a "Make main" button named otherwise.
+- **The comparison** uses the server's Team field; it offers no choice of another (`teamField=`).
+  A differing ticket says both sides' days, and its team where the sides differ in it.
+- **Files made in a scenario** start with the line "Scenario: Faster, drafts not applied"; the
+  Timeline's and the Calendar's add a Draft column (Yes, "Yes, changed since drafted" or No), and
+  Capacity's has the line only. The Timeline's image says the scenario in its title. A file made
+  live is as before.
+- **For stories**, whose browser is not a phone, `PlanChangesPage`, `PlanScenariosPage` and
+  `ScenarioCompare` take `phone` to draw the phone's layout.
+- **Tests:** `ScenarioBar.test.tsx` (6), `PlanChanges.test.tsx` (9), `PlanScenarios.test.tsx` (6),
+  additions to `PlanViews.test.tsx` (7), `ProgramBoardPage.test.tsx` (2), `address.test.ts` (3),
+  `planExport.test.tsx` (1) and `PlanPage.test.tsx`; stories for the bar, the dialogs, the change
+  list, the Scenarios tab, the comparison and PlanPage's Timeline and Calendar in a scenario, with
+  phone-width ones on a real touch screen; and `e2e/plan-scenarios.spec.ts` on a desktop and a
+  phone, whose refused ticket is a field lock, as on the server.
 
 #### Questions for the user (the design takes the first answer each time)
 
