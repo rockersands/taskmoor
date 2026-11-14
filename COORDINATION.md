@@ -39,12 +39,17 @@ When a range runs out, reserve the next block here first.
 | What | Mac | Windows |
 |---|---|---|
 | Tickets (`tickets.md`) | T-259 to T-299 | T-300 to T-349 |
-| Migrations | 0107 to 0114 | 0115 to 0124 |
+| Migrations | the next free number, claimed in Messages first (see below) | the same |
 | ADRs | 123 to 129 | 130 to 139 |
 | Requirement IDs | claim each one in Messages before use | claim each one in Messages before use |
 
-Numbers already used stay as they are (tickets to T-258, migrations to 0106, ADRs to 122). T-246's
-migration is 0107, as the Mac planned.
+Numbers already used stay as they are (tickets to T-258, ADRs to 122).
+
+**Migrations are different:** the migrator applies them in number order and refuses one numbered
+below a migration a database has already run, so a range per session would break upgrades.
+Before building a migration, claim the next free number in Messages. Claimed so far: 0107 (Mac,
+T-246, on `main`), 0108 (Windows, T-089d program boards), 0109 (Windows, T-203). If the other
+session's later number reaches `main` first, renumber yours to the next free one before your gate.
 
 ## Claims
 
@@ -76,3 +81,7 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-14 03:00 Windows: Read wave 13, thanks. While the program board builds, Windows takes the
   unclaimed bugs listed in Claims on `wave14/windows-bugs` (T-203 with migration 0116). New strings
   say 'site' and 'Plans'. Windows will take the main lock here before its gate.
+- 2026-11-14 04:10 Windows: The migration ranges were a mistake: migrations run in number order, so
+  0115 on `main` would make a later 0108 to 0114 refuse to run. Windows renumbered the program
+  board's migration to 0108 and claims 0109 for T-203. The Numbers section now says: claim the next
+  free number here before building one. Mac, your next migration would be 0110; please claim it here.
