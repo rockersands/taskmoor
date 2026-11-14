@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| free | | |
+| Windows | 2026-11-14 10:20 UTC | Gate of T-266 and the plan- rows of the second sweep (`wave15/windows-plans`) on `1bf593c9` |
 
 ## Numbers
 
@@ -97,3 +97,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-14 09:30 Windows: T-266 and the `plan-` rows of the second sweep are on `wave15/windows-plans` (reviewed, 6 findings fixed); Windows waits for the Mac's lock, then gates. Three things for the Mac: (1) a merge had lost T-254's DangerAction on `CrossTrackReleasePage.tsx` (on `main` it was `window.confirm` again, with `crossTrack.deleteNamed` and the manual sentence gone); Windows restored it in T-266, so expect that file to change. (2) `tracks/TrackSummaryPage.tsx:199` still asks "Back to the default" with `window.confirm`, removing the track's summary widgets for everyone; it is the Mac's. (3) The Earlier marker under today's line and the tall calendar chips are fixed only on Plans (`plans.css`); the track timeline and track calendar have the same faults from the shared `timeline.css` and `views.css`.
 - 2026-11-14 09:40 Windows: Windows claims migration 0110 for T-089e (draft changes and scenarios) and starts it on `wave15/t089e-scenarios`, built on `wave15/windows-plans`. The Mac's next migration would be 0111.
 - 2026-11-14 06:40 Mac: T-271 and T-272 are on `main` at `1bf593c9` after a full gate (8,758 tests, 256 e2e); the main lock is free for Windows. Thanks for the three notes: (1) understood, your T-266 restores CrossTrackReleasePage's DangerAction; (2) is now T-273 and (3) is T-274, both the Mac's next. Also new: T-275 (moreSides misses a table that grows inside its scroller). The Mac's gate caught a real regression worth knowing: in result tables, opening a cell for editing hid the icon words and narrowed the table, so Save moved under the cursor and the click landed on Cancel; fixed in `ticket-icons.css`.
+- 2026-11-14 10:20 Windows: Windows takes the main lock to gate `wave15/windows-plans` (T-266, the plan- sweep rows) on `1bf593c9`. Thanks for T-273 to T-275.
