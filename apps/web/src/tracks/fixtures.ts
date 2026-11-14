@@ -1,6 +1,8 @@
 import { BOARD } from '../boards/fixtures';
 import type { Widget } from '../dashboards/client';
+import type { Transition } from '../tickets/view/client';
 import type {
+  OutcomeRights,
   SummaryItem,
   TrackClient,
   TrackOutcome,
@@ -9,6 +11,7 @@ import type {
   TrackSummary,
   TrackSummaryLayout,
 } from './client';
+import type { OutcomeManager } from './outcomeManager';
 
 /** A track's summary for stories and tests (M1-064): made up, its parts adding up. */
 const item = (id: string, name: string | null, query: string, count: number): SummaryItem => ({
@@ -243,11 +246,29 @@ export const SHOP_OUTCOMES: TrackOutcome[] = [
   },
 ];
 
+/** Everything the Outcomes section offers to manage, with the seeded type (T-082). */
+export const ALL_RIGHTS: OutcomeRights = {
+  create: true,
+  edit: true,
+  schedule: true,
+  close: true,
+  types: [{ id: 9, name: 'Outcome' }],
+};
+/** What a viewer may manage there: nothing. */
+export const NO_RIGHTS: OutcomeRights = {
+  create: false,
+  edit: false,
+  schedule: false,
+  close: false,
+  types: [{ id: 9, name: 'Outcome' }],
+};
+
 /** Outcomes as the server pages them, `size` a page, for stories and tests. */
 export function outcomePages(
   outcomes: TrackOutcome[],
   size = 100,
   outcomeTypes = ['Outcome'],
+  manage: OutcomeRights = NO_RIGHTS,
 ): (key: string, cursor?: string) => Promise<TrackOutcomes> {
   return async (_key, cursor) => {
     const from = cursor ? Number(cursor) : 0;
@@ -255,9 +276,91 @@ export function outcomePages(
     return {
       track: { id: 1, key: 'SHOP', name: 'Shop' },
       outcomeTypes,
+      manage,
       outcomes: outcomes.slice(from, from + size),
       next,
     };
+  };
+}
+
+/** The workflow's ways out of an open outcome, for stories and tests. */
+export const OUTCOME_WAYS: Transition[] = [
+  { id: 1, name: 'Start', to: { id: 2, name: 'Active', stage: 'active' }, layout: [] },
+  { id: 2, name: 'Done', to: { id: 3, name: 'Closed', stage: 'closed' }, layout: [] },
+];
+
+/**
+ * Outcomes that the manage panel changes, for stories and tests (T-082): the list and the manager
+ * share one array, ordered as the server orders it (open first, each in rank order), and every
+ * call is recorded. `ways` are the transitions every outcome offers; `refuse` answers each change
+ * with that error instead.
+ */
+export function managedOutcomes(
+  start: TrackOutcome[] = SHOP_OUTCOMES,
+  options: { rights?: OutcomeRights; ways?: Transition[]; refuse?: Error } = {},
+) {
+  const list = start.map((o) => ({ ...o }));
+  const calls: unknown[][] = [];
+  let next = 60;
+  const ordered = () => [
+    ...list.filter((o) => o.status.stage !== 'closed'),
+    ...list.filter((o) => o.status.stage === 'closed'),
+  ];
+  const at = (id: number) => list.findIndex((o) => o.id === id);
+  const refused = async () => {
+    if (options.refuse) throw options.refuse;
+  };
+  const manager: OutcomeManager = {
+    create: async (trackKey, ticketTypeId, summary) => {
+      calls.push(['create', trackKey, ticketTypeId, summary]);
+      await refused();
+      const made: TrackOutcome = {
+        id: next,
+        key: `SHOP-${next++}`,
+        summary,
+        type: 'Outcome',
+        status: { name: 'New', stage: 'new' },
+        startDate: null,
+        dueDate: null,
+        progress: { total: 0, closed: 0 },
+      };
+      list.push(made);
+      return { key: made.key };
+    },
+    edit: async (id, change) => {
+      calls.push(['edit', id, change]);
+      await refused();
+      Object.assign(list[at(id)] as TrackOutcome, change);
+    },
+    rank: async (id, place) => {
+      calls.push(['rank', id, place]);
+      await refused();
+      const [moved] = list.splice(at(id), 1);
+      const anchor = 'before' in place ? place.before : place.after;
+      list.splice(at(anchor) + ('before' in place ? 0 : 1), 0, moved as TrackOutcome);
+    },
+    transitions: async (id) => {
+      calls.push(['transitions', id]);
+      return options.ways ?? OUTCOME_WAYS;
+    },
+    transition: async (id, transitionId, fields) => {
+      calls.push(['transition', id, transitionId, ...(fields ? [fields] : [])]);
+      await refused();
+      const way = (options.ways ?? OUTCOME_WAYS).find((w) => w.id === transitionId);
+      const outcome = list[at(id)] as TrackOutcome;
+      if (way) outcome.status = { name: way.to.name, stage: way.to.stage as 'closed' };
+    },
+    closeReasons: async () => [
+      { id: 1, name: 'Done' },
+      { id: 2, name: "Won't do" },
+    ],
+    priorities: async () => [],
+  };
+  return {
+    calls,
+    manager,
+    outcomes: (key: string, cursor?: string) =>
+      outcomePages(ordered(), 100, ['Outcome'], options.rights ?? ALL_RIGHTS)(key, cursor),
   };
 }
 
@@ -274,6 +377,8 @@ export interface FakeTrackOptions {
 
 export type FakeTrackClient = TrackClient & {
   saved: unknown[];
+  /** The filters the numbers and the widgets were read with, in order ('' for none; T-075a). */
+  filters: string[];
   statisticCalls: { kind: string; settings: unknown }[];
   /** The track ids the custom fields to group by were asked for. */
   groupFieldCalls: number[];
@@ -295,8 +400,10 @@ export function fakeTrackClient(
   const saved: unknown[] = [];
   const statisticCalls: { kind: string; settings: unknown }[] = [];
   const groupFieldCalls: number[] = [];
+  const filters: string[] = [];
   return {
     saved,
+    filters,
     statisticCalls,
     groupFieldCalls,
     summaryLayout: async () => read(),
@@ -313,7 +420,10 @@ export function fakeTrackClient(
     resetSummaryLayout: async () => {
       custom = null;
     },
-    summaryWidget: async (_key, id) => WIDGET_DATA[id] ?? null,
+    summaryWidget: async (_key, id, filter) => {
+      filters.push(filter ?? '');
+      return WIDGET_DATA[id] ?? null;
+    },
     statistics: async (_key, kind, settings) => {
       statisticCalls.push({ kind, settings });
       return STATISTICS[kind] ?? CREATED_VS_CLOSED;
@@ -349,9 +459,30 @@ export function fakeTrackClient(
       truncated: false,
     }),
     outcomes: outcomePages(SHOP_OUTCOMES),
-    summary: async () => {
+    summary: async (_key, filter) => {
+      filters.push(filter ?? '');
       if (!summary) throw new Error('not_found');
-      return summary;
+      return filter ? filteredSummary(summary, filter) : summary;
     },
+  };
+}
+
+/**
+ * The numbers as a filter narrows them (T-075a), for stories and tests: each query gains the
+ * filter after the track, as the server writes it, and each count drops to a third.
+ */
+export function filteredSummary(summary: TrackSummary, filter: string): TrackSummary {
+  const narrow = (i: SummaryItem): SummaryItem => ({
+    ...i,
+    query: i.query.replace(/^track = (\w+)/, `track = $1 AND ${filter}`),
+    count: Math.floor(i.count / 3),
+  });
+  return {
+    ...summary,
+    overview: summary.overview.map(narrow),
+    stages: summary.stages.map(narrow),
+    priorities: summary.priorities.map(narrow),
+    types: summary.types.map(narrow),
+    assignees: summary.assignees.map(narrow),
   };
 }

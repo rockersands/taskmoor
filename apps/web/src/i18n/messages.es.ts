@@ -95,6 +95,39 @@ export const messagesEs: Record<MessageId, string> = {
   'track.outcomes.howToNone':
     'Ninguno de los tipos de ticket de este track está en el nivel de objetivo. Un administrador puede añadir uno en la configuración del track.',
   'track.outcomes.create': 'Crear un ticket',
+  'track.outcomes.howToManage':
+    'Elige Nuevo objetivo para crear uno del tipo {types} y luego, desde su página, añade los tickets que contribuyen a él.',
+  'track.outcomes.manage.toggle': 'Gestionar objetivos',
+  'track.outcomes.manage.title': 'Gestionar objetivos',
+  'track.outcomes.manage.note':
+    'Crea aquí un objetivo y usa las herramientas de cada uno para cambiar su resumen y sus fechas, subirlo o bajarlo entre los abiertos, o cerrarlo. Cada cambio es el mismo que en la página del propio objetivo.',
+  'track.outcomes.manage.new': 'Nuevo objetivo',
+  'track.outcomes.manage.summary': 'Resumen',
+  'track.outcomes.manage.summaryMissing': 'Ponle un resumen al objetivo.',
+  'track.outcomes.manage.type': 'Tipo',
+  'track.outcomes.manage.create': 'Crear objetivo',
+  'track.outcomes.manage.created': 'Se creó {key}.',
+  'track.outcomes.manage.tools': 'Gestionar {key}',
+  'track.outcomes.manage.edit': 'Editar',
+  'track.outcomes.manage.editOf': 'Editar {key}',
+  'track.outcomes.manage.startDate': 'Fecha de inicio',
+  'track.outcomes.manage.dueDate': 'Fecha de vencimiento',
+  'track.outcomes.manage.save': 'Guardar',
+  'track.outcomes.manage.saved': 'Se guardó {key}.',
+  'track.outcomes.manage.up': 'Subir',
+  'track.outcomes.manage.down': 'Bajar',
+  'track.outcomes.manage.movedUp': 'Se subió {key}.',
+  'track.outcomes.manage.movedDown': 'Se bajó {key}.',
+  'track.outcomes.manage.close': 'Cerrar',
+  'track.outcomes.manage.closeHow': 'Cómo cerrar {key}',
+  'track.outcomes.manage.closed': 'Se cerró {key}.',
+  'track.outcomes.manage.noClose':
+    'El flujo de trabajo de {key} no ofrece ningún paso a un estado cerrado desde donde está ahora.',
+  'track.outcomes.manage.onPage':
+    'Cerrar {key} pide más de lo que se puede rellenar aquí: ábrelo y ciérralo desde su página.',
+  'track.outcomes.manage.forbidden': 'No puedes hacer este cambio en este objetivo.',
+  'track.outcomes.manage.stale':
+    'El cambio se hizo, pero la lista no se pudo volver a leer. Recarga la página para verla como está ahora.',
   'popover.done': 'Listo',
   'dialog.close': 'Cerrar',
   'danger.cancel': 'Cancelar',
@@ -5429,7 +5462,7 @@ export const messagesEs: Record<MessageId, string> = {
   'summary.purpose':
     'Cómo va este track, de un vistazo: cada número abre la búsqueda que hay detrás.',
   'summary.about':
-    'Hasta que alguien la personalice, esta página muestra los números del track. Su propietario y sus administradores pueden cambiarla por cualquier widget, y los demás que pueden ver el track la leen tal como está. Un widget nunca muestra un ticket que no podrías encontrar con una búsqueda.',
+    'Hasta que alguien la personalice, esta página muestra los números del track. Su propietario y sus administradores pueden cambiarla por cualquier widget, y los demás que pueden ver el track la leen tal como está. Un widget nunca muestra un ticket que no podrías encontrar con una búsqueda. Cualquiera puede filtrarlo para sí, sin cambiarlo para nadie más.',
   'summary.customize': 'Personalizar',
   'summary.backToDefault': 'Volver al predeterminado',
   'summary.confirmDefault':
@@ -5447,6 +5480,18 @@ export const messagesEs: Record<MessageId, string> = {
   'summary.empty': 'Los administradores del track aún no eligieron widgets para él.',
   'summary.emptyEditable':
     'Elige Personalizar para añadir algunos, o Volver al predeterminado para los números con los que empieza esta página.',
+  'summary.filter.label': 'Filtrar este resumen solo para ti',
+  'summary.filter.field': 'Solo los tickets que coincidan con',
+  'summary.filter.placeholder': 'Por ejemplo: assignee = currentUser()',
+  'summary.filter.apply': 'Filtrar',
+  'summary.filter.mine': 'Mis tickets',
+  'summary.filter.clear': 'Quitar el filtro',
+  'summary.filter.note':
+    'Solo tú ves este filtro. Reduce cada número y cada widget de aquí a los tickets que también coinciden, y se queda en la dirección de esta página, así que puedes guardarla en marcadores. El resumen que ven los demás no cambia.',
+  'summary.filter.bad':
+    'Ese filtro no se lee como una búsqueda. Revísalo en la página de búsqueda.',
+  'summary.filter.on': 'Solo se muestran los tickets que coinciden con {filter}.',
+  'summary.filter.sprints': 'Los widgets de sprint siguen mostrando todo su sprint.',
   'statistics.report': 'Informe',
   'statistics.purpose':
     'Todos los informes de este track en un solo lugar: cómo fluye su trabajo, sus sprints, sus versiones y sus tickets.',

@@ -36,4 +36,22 @@ test('[RPT-006] a track’s summary counts what its searches find', async ({ pag
   await openNumber.click();
   await expect(page).toHaveURL(/#\/search\?q=/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+  // Filtered for oneself (T-075a): the numbers narrow, the filter stays in the address through a
+  // reload, and clearing it brings the whole track back.
+  await page.goto(`${BASE}/#/tracks/${key}`);
+  await expect(openNumber).toHaveText('3');
+  const form = page.getByRole('form', { name: 'Filter this summary for yourself' });
+  await form.getByRole('textbox', { name: 'Only tickets that match' }).fill('summary ~ "Two"');
+  await form.getByRole('button', { name: 'Filter', exact: true }).click();
+  await expect(openNumber).toHaveText('1');
+  await expect(page).toHaveURL(/#\/tracks\/[A-Z0-9]+\?filter=summary/);
+  await expect(
+    form.getByText('Showing only the tickets that match summary ~ "Two".'),
+  ).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.reload();
+  await expect(openNumber).toHaveText('1');
+  await form.getByRole('button', { name: 'Clear the filter' }).click();
+  await expect(openNumber).toHaveText('3');
 });

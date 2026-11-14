@@ -337,6 +337,87 @@ describe('a track’s statistics and its customized summary', () => {
     await save('owner', { layout: 'six', widgets: [] }, 400);
   });
 
+  it('[RPT-006] a member filters the Summary for themselves and cannot change the shared layout (T-075a)', async () => {
+    const saved = (
+      await save('owner', {
+        layout: 'two',
+        widgets: [
+          { kind: 'search-results', config: { query: '', limit: 50 } },
+          { kind: 'ticket-statistics', column: 1, config: { query: '', field: 'assignee' } },
+          { kind: 'track-summary' },
+        ],
+      })
+    ).custom;
+    const id = (i: number) => saved.widgets[i].id as string;
+    const mine = encodeURIComponent('assignee = currentUser()');
+    const filtered = (who: Person, i: number, filter: string) =>
+      call(who, {
+        method: 'GET',
+        url: `/api/v1/tracks/STA/summary-layout/widgets/${id(i)}?filter=${filter}`,
+      });
+
+    // The member's own filter narrows each widget and each number to their tickets...
+    expect(keysOf((await filtered('member', 0, mine)).data)).toEqual(['STA']);
+    expect((await filtered('member', 1, mine)).data.total).toBe(1);
+    const numbers = await call('member', {
+      method: 'GET',
+      url: `/api/v1/tracks/STA/summary?filter=${mine}`,
+    });
+    const open = numbers.overview.find((o: { id: string }) => o.id === 'open');
+    expect(open.count).toBe(1);
+    // ...and each number still links to the search that finds exactly those tickets.
+    expect(open.query).toBe('track = STA AND assignee = currentUser() AND closeReason IS EMPTY');
+    // Unfiltered, the same widget reads the whole track as the member sees it.
+    expect(keysOf((await widget('member', id(0))).data)).toEqual(['STA', 'STA', 'STA']);
+
+    // A filter narrows, never widens: an OR stays inside its brackets, and another track's
+    // tickets do not come in.
+    const either = encodeURIComponent('assignee = currentUser() OR track = OTH');
+    expect(keysOf((await filtered('manager', 0, either)).data)).toEqual(['STA', 'STA', 'STA']);
+    expect((await filtered('manager', 0, encodeURIComponent('track = OTH'))).data.tickets).toEqual(
+      [],
+    );
+    // One that does not read is refused, as by a search; brackets cannot be broken out of.
+    for (const bad of ['assignee = ', ') OR (track = OTH']) {
+      const res = await as('member', {
+        method: 'GET',
+        url: `/api/v1/tracks/STA/summary-layout/widgets/${id(0)}?filter=${encodeURIComponent(bad)}`,
+      });
+      expect(res.statusCode, bad).toBe(400);
+      expect(res.json().error).toBe('invalid_query');
+    }
+    const long = await as('member', {
+      method: 'GET',
+      url: `/api/v1/tracks/STA/summary?filter=${'a'.repeat(2001)}`,
+    });
+    expect(long.statusCode).toBe(400);
+
+    // Filtering saved nothing: the shared layout is as the owner left it, and the owner reads it
+    // whole.
+    const stored = await database.db
+      .selectFrom('track_summary_layout')
+      .select(['layout', 'widgets', 'version', 'updated_at'])
+      .where('track_id', '=', trackId)
+      .executeTakeFirstOrThrow();
+    expect(stored.version).toBe(saved.version);
+    expect((await layout('member')).custom).toEqual(saved);
+    expect(keysOf((await widget('owner', id(0))).data)).toEqual(['STA', 'STA', 'STA']);
+
+    // The member still cannot change the shared layout, filter or not.
+    const theirs = { layout: 'one', widgets: [{ kind: 'track-summary' }], version: saved.version };
+    expect((await save('member', theirs, 403)).permission).toBe('administer_track');
+    await reset('member', 403);
+    const sneaky = await as('member', {
+      method: 'PUT',
+      url: `/api/v1/tracks/STA/summary-layout?filter=${mine}`,
+      payload: theirs,
+    });
+    expect(sneaky.statusCode).toBe(403);
+    expect((await layout('owner')).custom).toEqual(saved);
+    expect((await layout('member')).mayCustomize).toBe(false);
+    await reset('owner');
+  });
+
   it('[RPT-006] leaves an archived track’s summary as it is, and goes with a removed track', async () => {
     await save('owner', { layout: 'one', widgets: [{ kind: 'track-summary' }] });
     await call('admin', { method: 'POST', url: `/api/v1/tracks/${trackId}/archive` });

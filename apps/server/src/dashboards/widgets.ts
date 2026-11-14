@@ -1,5 +1,5 @@
 import type { Database } from '@taskmoor/db';
-import { knownTimeZone, localDate } from '@taskmoor/query';
+import { knownTimeZone, localDate, parseQuery, printQuery } from '@taskmoor/query';
 import type { FastifyRequest } from 'fastify';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { boardScope, compileQuery, type Scope } from '../boards/data';
@@ -52,6 +52,29 @@ export interface WidgetContext {
    * every ticket, and the viewer's own lists stay inside it. The viewer's filter still applies.
    */
   track?: { key: string };
+  /**
+   * The viewer's own filter on a track's Summary (T-075a; RPT-006 "view and filter"): a condition
+   * every query the widget runs must also meet. It narrows, never widens, and changes nothing
+   * saved. Widgets that read a sprint rather than a query (burndown, health, days remaining) are
+   * not narrowed.
+   */
+  filter?: string;
+}
+
+/**
+ * A query that also meets `filter` (T-075a): both conditions joined by AND, each kept whole (an OR
+ * in either stays inside its own brackets), in the query's own order; the filter's order, if it
+ * has one, is ignored. Throws QueryError when either does not read, as a search would.
+ */
+export function narrowQuery(query: string, filter: string | undefined): string {
+  if (filter === undefined || filter.trim() === '') return query;
+  const extra = parseQuery(filter).where;
+  if (!extra) return query;
+  const base = parseQuery(query);
+  const where = base.where
+    ? { kind: 'and' as const, items: [base.where, extra], span: { start: 0, end: 0 } }
+    : extra;
+  return printQuery({ where, orderBy: base.orderBy });
 }
 
 export type Unavailable = {
@@ -213,8 +236,13 @@ export async function widgetData(ctx: WidgetContext, widget: Widget): Promise<un
   const ws = request.workspaceId;
   const inTrack = ctx.track ? trackBoardQuery(ctx.track.key) : null;
   const blank = typeof widget.config.query === 'string' && widget.config.query.trim() === '';
-  const config = inTrack && blank ? { ...widget.config, query: inTrack } : widget.config;
-  const within = (q: string) => (inTrack ? `${inTrack} AND ${q}` : q);
+  const given = inTrack && blank ? { ...widget.config, query: inTrack } : widget.config;
+  // The viewer's own filter narrows every query the widget runs (T-075a).
+  const config =
+    ctx.filter && typeof given.query === 'string'
+      ? { ...given, query: narrowQuery(given.query, ctx.filter) }
+      : given;
+  const within = (q: string) => narrowQuery(inTrack ? `${inTrack} AND ${q}` : q, ctx.filter);
   const scope = () => boardScope(db, catalogs, request);
   const where = async (q: string) => compileQuery(db, await scope(), q, new Date());
   // Reads run read-only under the search time limit.

@@ -1,7 +1,7 @@
 ---
 title: "List, calendar, timeline and outcomes"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/list/GroupSection.tsx, apps/web/src/shell/seededNames.ts, apps/web/src/shell/priorityName.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/touch.ts, apps/web/src/styles/timeline.css, apps/web/src/styles/views.css, apps/web/src/timeline/dependencies.ts, apps/web/src/timeline/refusal.ts, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, docs/plan/page-review-findings.md, apps/web/src/shell/Popover.tsx, docs/plan/decisions.csv, apps/web/src/styles/dashboards.css
+sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/list/GroupSection.tsx, apps/web/src/shell/seededNames.ts, apps/web/src/shell/priorityName.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/touch.ts, apps/web/src/styles/timeline.css, apps/web/src/styles/views.css, apps/web/src/timeline/dependencies.ts, apps/web/src/timeline/refusal.ts, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, docs/plan/page-review-findings.md, apps/web/src/shell/Popover.tsx, docs/plan/decisions.csv, apps/web/src/styles/dashboards.css, apps/web/src/tracks/outcomeManager.ts, apps/web/src/styles/surfaces.css, apps/server/src/routes/tickets.ts
 accessed: 2026-11-13
 attestation: own-words
 ---
@@ -29,6 +29,26 @@ the track's other sections, such as its [**Releases**](boards.md#releases),
 [**Statistics**](dashboards-and-reports.md#a-tracks-statistics), **Timeline**,
 [**Outcomes**](#outcomes), **List** and **Calendar**.
 
+### Filtering the summary for yourself
+
+Anyone who can see the track can narrow its summary to the tickets they care about, without
+changing it for anyone else. Under the title, **Only tickets that match** takes a condition in the
+[search language](search.md), for example `assignee = currentUser()` or `type = Bug`. **Filter**
+checks it as a search would and then applies it; **My tickets** fills in and applies
+`assignee = currentUser()`; **Clear the filter** takes it away. A filter that does not read as a
+search is refused with a message, and the summary stays as it was.
+
+With a filter on, every number and every widget counts only the tickets that also match it, and
+the page says which filter is on. Each number still opens the search that finds exactly its
+tickets, with your filter in it. Sprint widgets (burndown, sprint health, days remaining) read a
+whole sprint rather than a query, so they stay as they are, and the page says so.
+
+The filter is yours alone. It is kept in the page's address (`tracks/PAY?filter=...`), so it
+survives a reload and you can bookmark the filtered summary or send yourself the link; anyone who
+opens that link sees the summary filtered the same way, as far as they may see. Nothing is saved
+on the server, and the summary the owner set up does not change. Pressing **Customize** shows the
+widgets unfiltered, as everyone will see them.
+
 ### Customizing the summary
 
 The track's owner and its administrators see **Customize**. It starts from the numbers above, as
@@ -40,7 +60,8 @@ summary**. The numbers can be
 removed and added back. Nobody has to set this up: a track shows its default summary until someone
 does.
 
-Everyone else who can see the track reads the same widgets and has no controls to change them.
+Everyone else who can see the track reads the same widgets, filtered for themselves if they wish,
+and has no controls to change them: only the owner and administrators customize it for everyone.
 Each widget is read as the person looking at it, through the same permission filter as a search,
 so two people can read different numbers and nobody sees a ticket they could not find themselves.
 
@@ -230,7 +251,32 @@ is a ticket under an outcome that you may not see: it counts neither as closed n
 people can therefore read different progress for the same outcome. A ticket counts as closed when its
 status is in the closed stage, as subticket progress and the backlog's outcome panel count it.
 
-To make an outcome, create a ticket of a type at the outcome level, then add the tickets that work
-towards it from its page. When none of the track's ticket types is at the outcome level, the empty
-list says so; an administrator can add one to the track's
+### Managing outcomes
+
+Every track manages its outcomes here, Kanban tracks as well as Scrum ones. **Manage outcomes**,
+beside the title, opens the manage panel for anyone whose role in the track lets them change
+outcomes; it is not offered to someone who may only read them, nor on an archived track.
+
+- **New outcome**: type a **Summary** and press **Create outcome**. When the track has more than
+  one type at the outcome level, choose its **Type** first. The new outcome joins the open ones at
+  the end of the planned order. On an empty list, **New outcome** opens the panel with the
+  summary field ready.
+- Under each outcome, **Edit** changes its summary and its start and due dates, then **Save**.
+- **Move up** and **Move down** change its place among the open outcomes, the same planned order
+  the backlog shows on a Scrum track. Closed outcomes keep their place after the open ones.
+- **Close** moves it to a closed status by its workflow, as the status control on its page does.
+  When the workflow offers more than one way to close it, the panel asks which; when that way asks
+  for a close reason or a priority, the panel asks for it. When its workflow offers no way to a
+  closed status from where it is, or asks for more than the panel can fill in, it says so, and
+  you can close it from its own page.
+
+Each change is the same as making it on the outcome's own page: the same permissions apply, so the
+panel offers only what your role allows (creating needs the right to create tickets, editing the
+summary the right to edit them, dates and order the right to schedule them, and closing the right
+to move them through the workflow), and the change shows in the outcome's history. If the server
+refuses one, the panel says why and the list stays as it was.
+
+To make an outcome without the panel, create a ticket of a type at the outcome level, then add
+the tickets that work towards it from its page. When none of the track's ticket types is at the
+outcome level, the empty list says so; an administrator can add one to the track's
 [ticket types](../admin/tracks.md#configuration-sets).

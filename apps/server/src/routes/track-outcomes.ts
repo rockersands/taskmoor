@@ -2,6 +2,7 @@ import type { Database } from '@taskmoor/db';
 import type { FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
+import type { TrackPermission } from '../authz/permissions';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
 import { childProgress } from '../tickets/progress';
 import { searchRefusal } from './search';
@@ -18,6 +19,15 @@ import { searchRefusal } from './search';
  * ticket under one that they may not see counts neither as done nor at all. A track they may not
  * see answers as if there were none. The answer also names the outcome-level types the track
  * offers, so an empty section can say which type makes one.
+ *
+ * Every track type, Kanban included, manages its outcomes from this section (T-082, the user's
+ * decision of 2026-11-13): the answer's `manage` says what the person's roles in the track let
+ * them do there, so the page offers only that: create one (`create_tickets` and an outcome-level
+ * type, with the types' ids), edit its summary (`edit_tickets`), its dates and its place in the
+ * order (`schedule_tickets`), and close it (`transition_tickets`). Nothing is done here: the page
+ * calls the ticket routes (`POST /tickets`, `PATCH /tickets/:id`, `PUT /tickets/:id/rank`,
+ * `POST /tickets/:id/transitions`), which check each ticket again, with their events, exactly as
+ * on the ticket page and the backlog. An archived track offers nothing.
  */
 const MAX_INT = 2_147_483_647;
 const PAGE_SIZE = 100;
@@ -95,7 +105,14 @@ export function registerTrackOutcomeRoutes(
         't.id',
         't.key',
         't.name',
-        // The outcome-level types the track offers, in its type set's order.
+        't.archived_at',
+        // The outcome-level types the track offers, in its type set's order, with their ids.
+        sql<number[]>`ARRAY(
+          SELECT y.id FROM type_set_member m
+            JOIN ticket_type y ON y.id = m.ticket_type_id
+            JOIN hierarchy_level h ON h.id = y.level_id
+           WHERE m.type_set_id = t.type_set_id AND h.kind = 'outcome'
+           ORDER BY m.sort_order)`.as('type_ids'),
         sql<string[]>`ARRAY(
           SELECT y.name FROM type_set_member m
             JOIN ticket_type y ON y.id = m.ticket_type_id
@@ -140,10 +157,19 @@ export function registerTrackOutcomeRoutes(
         return rows;
       });
       const shown = rows.slice(0, limit);
+      const open = track.archived_at === null;
+      const may = (permission: TrackPermission) => open && held.has(permission);
       const last = shown[shown.length - 1];
       return {
         track: { id: track.id, key: track.key, name: track.name },
         outcomeTypes: track.types,
+        manage: {
+          create: may('create_tickets') && track.type_ids.length > 0,
+          edit: may('edit_tickets'),
+          schedule: may('schedule_tickets'),
+          close: may('transition_tickets'),
+          types: track.type_ids.map((id, i) => ({ id, name: track.types[i] ?? '' })),
+        },
         outcomes: shown.map((o) => ({
           id: o.id,
           key: `${track.key}-${o.number}`,

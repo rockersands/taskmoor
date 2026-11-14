@@ -359,6 +359,78 @@
   }
 }
 
+/* The Outcomes section's manage panel (T-082): a new outcome's fields in a row on a wide screen,
+   and each row's tools under it, across the whole row. */
+.track-outcomes-manage {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.track-outcomes-manage h2 {
+  margin: 0;
+  font-size: var(--font-size-300);
+}
+
+.track-outcomes-manage .page-note {
+  margin: 0;
+}
+
+.track-outcomes-new {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: end;
+  gap: var(--space-2) var(--space-3);
+}
+
+.track-outcomes-new .form-field:only-of-type {
+  grid-column: span 2;
+}
+
+.track-outcome-tools {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.track-outcome-tools legend:not(.visually-hidden) {
+  float: inline-start;
+  width: 100%;
+  padding: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
+.track-outcome-edit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  align-items: end;
+}
+
+.track-outcome-edit .form-actions {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 40rem) {
+  .track-outcomes-new {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .track-outcomes-new .form-field:only-of-type {
+    grid-column: auto;
+  }
+
+  .track-outcomes-new > button {
+    justify-self: start;
+  }
+}
+
 /* The directory of tracks. */
 .tracks-find {
   max-width: 24rem;

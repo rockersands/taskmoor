@@ -82,6 +82,39 @@ export const messagesEn = {
   'track.outcomes.howToNone':
     "None of this track's ticket types is at the outcome level. An administrator can add one in the track's settings.",
   'track.outcomes.create': 'Create a ticket',
+  'track.outcomes.howToManage':
+    'Choose New outcome to create one of the type {types}, then add the tickets that work towards it from its page.',
+  'track.outcomes.manage.toggle': 'Manage outcomes',
+  'track.outcomes.manage.title': 'Manage outcomes',
+  'track.outcomes.manage.note':
+    "Create an outcome here, and use the tools under each one to change its summary and dates, move it up or down among the open ones, or close it. Each change is the same as on the outcome's own page.",
+  'track.outcomes.manage.new': 'New outcome',
+  'track.outcomes.manage.summary': 'Summary',
+  'track.outcomes.manage.summaryMissing': 'Give the outcome a summary.',
+  'track.outcomes.manage.type': 'Type',
+  'track.outcomes.manage.create': 'Create outcome',
+  'track.outcomes.manage.created': 'Created {key}.',
+  'track.outcomes.manage.tools': 'Manage {key}',
+  'track.outcomes.manage.edit': 'Edit',
+  'track.outcomes.manage.editOf': 'Edit {key}',
+  'track.outcomes.manage.startDate': 'Start date',
+  'track.outcomes.manage.dueDate': 'Due date',
+  'track.outcomes.manage.save': 'Save',
+  'track.outcomes.manage.saved': 'Saved {key}.',
+  'track.outcomes.manage.up': 'Move up',
+  'track.outcomes.manage.down': 'Move down',
+  'track.outcomes.manage.movedUp': 'Moved {key} up.',
+  'track.outcomes.manage.movedDown': 'Moved {key} down.',
+  'track.outcomes.manage.close': 'Close',
+  'track.outcomes.manage.closeHow': 'How to close {key}',
+  'track.outcomes.manage.closed': 'Closed {key}.',
+  'track.outcomes.manage.noClose':
+    "{key}'s workflow offers no way to a closed status from where it is now.",
+  'track.outcomes.manage.onPage':
+    'Closing {key} asks for more than can be filled in here: open it and close it from its page.',
+  'track.outcomes.manage.forbidden': 'You may not make this change to this outcome.',
+  'track.outcomes.manage.stale':
+    'The change was made, but the list could not be read again. Reload the page to see it as it is now.',
   'popover.done': 'Done',
   'dialog.close': 'Close',
   'danger.cancel': 'Cancel',
@@ -5302,7 +5335,7 @@ export const messagesEn = {
   'summary.purpose':
     'Where this track stands, at a glance: every number opens the search behind it.',
   'summary.about':
-    "Until someone customizes it, this page shows the track's numbers. The track's owner and administrators can change it to any widgets, and everyone else who can see the track reads it as it is. A widget never shows a ticket you could not find with a search.",
+    "Until someone customizes it, this page shows the track's numbers. The track's owner and administrators can change it to any widgets, and everyone else who can see the track reads it as it is. A widget never shows a ticket you could not find with a search. Anyone can filter it for themselves, which changes it for no one else.",
   'summary.customize': 'Customize',
   'summary.backToDefault': 'Back to the default',
   'summary.confirmDefault':
@@ -5318,6 +5351,17 @@ export const messagesEn = {
   'summary.empty': "The track's administrators chose no widgets for it yet.",
   'summary.emptyEditable':
     'Choose Customize to add some, or Back to the default for the numbers this page starts with.',
+  'summary.filter.label': 'Filter this summary for yourself',
+  'summary.filter.field': 'Only tickets that match',
+  'summary.filter.placeholder': 'For example: assignee = currentUser()',
+  'summary.filter.apply': 'Filter',
+  'summary.filter.mine': 'My tickets',
+  'summary.filter.clear': 'Clear the filter',
+  'summary.filter.note':
+    "Only you see this filter. It narrows every number and widget here to the tickets that also match, and stays in this page's address, so you can bookmark it. The summary everyone else sees does not change.",
+  'summary.filter.bad': 'That filter does not read as a search. Check it on the search page.',
+  'summary.filter.on': 'Showing only the tickets that match {filter}.',
+  'summary.filter.sprints': 'Sprint widgets still show their whole sprint.',
   'statistics.report': 'Report',
   'statistics.purpose':
     'Every report of this track in one place: how its work flows, its sprints, its releases and its tickets.',
