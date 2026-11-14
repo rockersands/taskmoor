@@ -1,9 +1,11 @@
 import type { Database } from '@taskmoor/db';
+import { knownTimeZone, localDate } from '@taskmoor/query';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { boardScope, compileQuery, type Scope } from '../boards/data';
 import type { FieldCatalogs } from '../fields/catalog';
+import { viewerTimeZone } from '../reports/zone';
 import { COUNT_CAP, DEFAULT_QUERY_TIMEOUT_MS, prepareSearch, readOnly } from '../search/run';
 import { searchPerson, searchRefusal } from './search';
 
@@ -16,7 +18,9 @@ import { searchPerson, searchRefusal } from './search';
  *   page links each number to the search that finds the same tickets.
  * - `GET /api/v1/releases/:id/notes`: release notes generated from the closed target tickets
  *   the viewer sees, grouped by ticket type in the order of the track's type set, as data and
- *   as Markdown (`?format=markdown` sends the Markdown as a file). Tickets closed with a reason
+ *   as Markdown (`?format=markdown` sends the Markdown as a file; `?timeZone=` gives the day a
+ *   release with no release date shipped on, for a link that cannot send the reader's zone).
+ *   The Markdown writes its days in plain English (T-277). Tickets closed with a reason
  *   other than the workspace's first (by default Completed: not planned, duplicates) are left
  *   out and counted by reason.
  *
@@ -24,7 +28,18 @@ import { searchPerson, searchRefusal } from './search';
  */
 const MAX_INT = 2_147_483_647;
 const idParam = z.object({ id: z.coerce.number().int().positive().max(MAX_INT) }).strict();
-const notesQuery = z.object({ format: z.enum(['json', 'markdown']).default('json') }).strict();
+const notesQuery = z
+  .object({
+    format: z.enum(['json', 'markdown']).default('json'),
+    /** The reader's zone, for a link that cannot send the header (the Markdown file, T-277). */
+    timeZone: z
+      .string()
+      .min(1)
+      .max(64)
+      .refine((zone) => knownTimeZone(zone))
+      .optional(),
+  })
+  .strict();
 /** How many tickets the overview lists; the counts cover them all. */
 const LISTED = 200;
 /** How many closed tickets the notes take; more and the notes say they are cut. */
@@ -109,6 +124,18 @@ export async function listTicketsWhere(trx: Db, where: RawBuilder<boolean>) {
      LIMIT ${LISTED + 1}`.execute(trx);
   return { rows: rows.slice(0, LISTED), truncated: rows.length > LISTED };
 }
+
+/**
+ * A calendar day as the notes write it, in plain English: 'October 1, 2026', never `2026-10-01`
+ * (T-277). Read on UTC's clock, as a calendar day has no time of day.
+ */
+const longDay = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'UTC',
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+const notesDay = (day: string) => longDay.format(new Date(`${day}T00:00:00Z`));
 
 /** Markdown's own characters in text taken from tickets, escaped so they read as written. */
 const escapeMarkdown = (text: string) => text.replace(/[\\`*_[\]<>#|]/g, (c) => `\\${c}`);
@@ -322,13 +349,18 @@ export function registerReleaseHubRoutes(
         }
         section.tickets.push({ id: r.id, key: r.key, summary: r.summary });
       }
+      // The day it shipped: its release date, or else the day its shipping fell on in the
+      // reader's zone, as the release's page says it (T-240, T-277).
       const shippedOn =
         release.shipped_at === null
           ? null
-          : (release.release_date ?? release.shipped_at.toISOString().slice(0, 10));
+          : (release.release_date ??
+            localDate(release.shipped_at, viewerTimeZone(request, format.data.timeZone)));
       const lines = [`# ${escapeMarkdown(`${release.track_name} ${release.name}`)}`, ''];
-      if (shippedOn) lines.push(`Released on ${shippedOn}.`, '');
-      else if (release.release_date) lines.push(`Planned for ${release.release_date}.`, '');
+      if (shippedOn) lines.push(`Released on ${notesDay(shippedOn)}.`, '');
+      else if (release.release_date) {
+        lines.push(`Planned for ${notesDay(release.release_date)}.`, '');
+      }
       if (release.description.trim() !== '') lines.push(release.description.trim(), '');
       for (const s of sections) {
         lines.push(`## ${escapeMarkdown(s.type)}`, '');
