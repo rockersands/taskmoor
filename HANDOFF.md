@@ -22,7 +22,17 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: wave 13 on main (2026-11-14, the Mac)
+### Latest: wave 12's follow-ups on main (2026-11-14, the Mac)
+
+- **On `main` (`488632e0`, full gate: 8,526 tests, 254 e2e):** T-253 (the create form sets assignee,
+  release, area, parent and person fields; Track is an icon select), T-254 (one confirmation,
+  `shell/DangerAction`, for every destructive action outside Plans), T-255 (small leftovers) and
+  T-257 (`pnpm sweep` merged with tests; phone routes captured by the window with touch kept).
+  New: T-265 to T-270 (T-267 to T-269 for the user). Next for the Mac: T-258, a fresh sweep.
+- **Story files reset touch emulation at their end** (`.storybook/vitest.setup.ts`): a phone
+  story that was last in its file used to leave `(pointer: coarse)` on for the next file.
+
+### Wave 13 on main (2026-11-14, the Mac)
 
 - **On `main` (`d9061d06`, full gate: 8,416 tests, 250 e2e):** the tickets the user answered on
   2026-11-13: T-053, T-061, T-075a, T-082, T-087b, T-088a, T-089j's erasure part, T-205a, T-217,
