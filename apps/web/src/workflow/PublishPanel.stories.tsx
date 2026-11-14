@@ -14,12 +14,14 @@ function Holder({
   failed = false,
   warnings,
   error = null,
+  freeMoves = false,
 }: {
   impact: Impact | null;
   loading?: boolean;
   failed?: boolean;
   warnings: LintIssue[];
   error?: string | null;
+  freeMoves?: boolean;
 }) {
   const t = useT();
   return (
@@ -31,6 +33,7 @@ function Holder({
       warnings={warnings}
       names={namesFor(t, STATUSES, SUPPORT_DEFINITION)}
       draftStatusIds={SUPPORT_DEFINITION.statuses.map((s) => s.statusId)}
+      freeMoves={freeMoves}
       busy={false}
       error={error ? t('workflow.problem.badMapping') : null}
       onPublish={() => {}}
@@ -84,6 +87,21 @@ export const DroppingStatuses: Story = {};
 
 export const NothingDropped: Story = {
   args: { impact: { removedStatuses: [], tracks: [] }, warnings: [] },
+};
+
+/** A draft with no transitions: publishing gives each status its free move (T-246; WF-008). */
+export const NoTransitionsYet: Story = {
+  args: { impact: { removedStatuses: [], tracks: [] }, warnings: [], freeMoves: true },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByText(
+        'This version has no transitions, so publishing gives each of its statuses a move from any status, as a new workflow gets.',
+      ),
+    ).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
 };
 
 export const Checking: Story = { args: { impact: null, loading: true } };

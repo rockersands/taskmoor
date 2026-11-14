@@ -479,11 +479,31 @@ export function fakeWorkflowsClient(
           statuses: needed.map((statusId) => ({ statusId, ticketCount: ticketsIn[statusId] })),
         });
       }
+      // A draft with no transitions is published with a move into every status (T-246; the
+      // server also sets or clears the close reason, which this fake leaves out).
+      const definition = draft.definition;
+      const moving =
+        definition.transitions.length === 0 &&
+        Object.keys(definition.rules ?? {}).length === 0 &&
+        !definition.board
+          ? {
+              ...definition,
+              transitions: definition.statuses.map((x, index) => ({
+                id: index + 1,
+                name: statuses.find((st) => st.id === x.statusId)?.name ?? String(x.statusId),
+                from: 'any' as const,
+                to: x.statusId,
+              })),
+            }
+          : definition;
       const entry = s.versions.get(draft.version);
-      if (entry) entry.published = true;
+      if (entry) {
+        entry.published = true;
+        entry.definition = clone(moving);
+      }
       s.view = {
         ...s.view,
-        published: { ...draft, publishedAt: now() },
+        published: { ...draft, definition: moving, publishedAt: now() },
         draft: null,
       };
       return clone(s.view);

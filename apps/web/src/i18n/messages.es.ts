@@ -4421,6 +4421,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.publishPanel.warnings':
     '{count, plural, one {El borrador tiene # aviso; aun así se puede publicar.} other {El borrador tiene # avisos; aun así se puede publicar.}}',
   'admin.workflow.publishPanel.dropped': 'Estados que quita esta versión',
+  'admin.workflow.publishPanel.freeMoves':
+    'Esta versión no tiene transiciones, así que al publicarla cada uno de sus estados recibe una transición desde cualquier estado, como un flujo de trabajo nuevo.',
   'admin.workflow.publishPanel.moveTo':
     'Mover {count, plural, one {el # ticket} other {los # tickets}} de {status} a',
   'admin.workflow.publishPanel.empty': '{status}: no hay tickets que mover.',

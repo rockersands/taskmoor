@@ -711,6 +711,11 @@ export function WorkflowEditorPage({
           warnings={issues.filter((i) => i.severity === 'warning')}
           names={names}
           draftStatusIds={statusIdsOf(working)}
+          freeMoves={
+            working.transitions.length === 0 &&
+            Object.keys(working.rules ?? {}).length === 0 &&
+            !working.board
+          }
           busy={busy}
           error={publishError}
           headingRef={panelHeading}

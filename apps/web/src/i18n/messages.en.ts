@@ -4308,6 +4308,8 @@ export const messagesEn = {
   'admin.workflow.publishPanel.warnings':
     '{count, plural, one {The draft has # warning; it can still be published.} other {The draft has # warnings; it can still be published.}}',
   'admin.workflow.publishPanel.dropped': 'Statuses this version drops',
+  'admin.workflow.publishPanel.freeMoves':
+    'This version has no transitions, so publishing gives each of its statuses a move from any status, as a new workflow gets.',
   'admin.workflow.publishPanel.moveTo':
     'Move the {count, plural, one {# ticket} other {# tickets}} in {status} to',
   'admin.workflow.publishPanel.empty': '{status}: no tickets to move.',

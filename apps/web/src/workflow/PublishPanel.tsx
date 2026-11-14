@@ -16,6 +16,11 @@ export interface PublishPanelProps {
   names: Names;
   /** The draft's statuses, where tickets of dropped statuses may go. */
   draftStatusIds: readonly number[];
+  /**
+   * The draft has no transitions and nothing to keep it so (no rule, no board): the server
+   * publishes it with a move into every status, as a new workflow gets (T-246; WF-008 (4)).
+   */
+  freeMoves?: boolean;
   busy: boolean;
   error: string | null;
   onPublish: (statusMapping: Record<string, number>) => void;
@@ -36,6 +41,7 @@ export function PublishPanel({
   warnings,
   names,
   draftStatusIds,
+  freeMoves = false,
   busy,
   error,
   onPublish,
@@ -92,6 +98,7 @@ export function PublishPanel({
               keys: intl.formatList(impact.tracks.map((x) => t('common.value', { value: x.key }))),
             })}
           </p>
+          {freeMoves && <p className="page-note">{t('admin.workflow.publishPanel.freeMoves')}</p>}
           {warnings.length > 0 && (
             <div className="workflow-publish-warnings">
               <p>{t('admin.workflow.publishPanel.warnings', { count: warnings.length })}</p>
