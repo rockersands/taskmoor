@@ -22,7 +22,19 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: T-350 to T-353 (2026-11-14, the Mac)
+### Latest: T-355 and T-356 (2026-11-14, the Mac)
+
+On `main` at `c10ea330` after a full gate (9,257 tests, 266 e2e).
+
+- T-355: the sweep's probe judges the uncovered part of a press area; the phone sweep of the
+  timeline no longer lists the key link.
+- T-356: the design guard checks glass per component, sees later resets that undo touch rules,
+  and ignores JSX in a native element's attributes. No offender came up.
+- T-357 holds the remaining small gaps in both tools, low priority.
+- Waiting on the user: T-354 (restricted person fields in a template for every track) and T-278
+  (picker permissions), which T-284 needs.
+
+### Earlier: T-350 to T-353 (2026-11-14, the Mac)
 
 On `main` at `d0795328` after a full gate (9,249 tests, 266 e2e; the local-embedding speed limit
 missed on this Mac, not enforced, benchmarking set aside).
