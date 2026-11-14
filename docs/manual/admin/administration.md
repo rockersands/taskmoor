@@ -81,7 +81,8 @@ Each page shows where it sits with a breadcrumb: **Administration**, then its gr
 A page inside another one goes further: a workflow ends at its name, under **Workflows**, and a
 track's own pages go through **Tracks you run** and the track, as in **Tracks you run › OPS ›
 Layout sets**. A group you may not open, such as **Tracks and setup** for someone who only runs
-tracks, is named without a link. The group's own page says what each of its pages is for. Addresses
+tracks, is named without a link, and so are its pages: someone who opens their track's own workflow
+sees **Workflows** in its breadcrumb, but not as a link to the list they may not use. The group's own page says what each of its pages is for. Addresses
 of pages did not change, so links you saved keep working.
 
 ## The groups

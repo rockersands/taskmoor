@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
@@ -320,6 +320,30 @@ describe('Administration (ADR-114)', () => {
     expect(within(crumbs).getByText('Tracks and setup')).toBeVisible();
     expect(within(crumbs).queryByRole('link', { name: 'Tracks and setup' })).toBeNull();
     expect(within(crumbs).getByText('Layout sets')).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('[IAM-030] links a track manager to no Setup page that refuses them, below a page that adds steps (T-227)', () => {
+    // Someone who runs a track opens its own workflow; the list of workflows is for administrators.
+    renderAt('#/admin/workflows/12', TRACK_ADMIN, [{ label: 'Ops flow' }]);
+    const crumbs = screen.getByRole('navigation', { name: 'Where this page sits' });
+    expect(
+      within(crumbs)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual(['Administration', 'Tracks and setup', 'Workflows', 'Ops flow']);
+    expect(
+      within(crumbs)
+        .getAllByRole('link')
+        .map((a) => a.textContent),
+    ).toEqual(['Administration']);
+    cleanup();
+    // A configuration administrator still goes back to the list.
+    renderAt('#/admin/workflows/12', CONFIG_ADMIN, [{ label: 'Ops flow' }]);
+    expect(
+      within(screen.getByRole('navigation', { name: 'Where this page sits' })).getByRole('link', {
+        name: 'Workflows',
+      }),
+    ).toHaveAttribute('href', '#/admin/workflows');
   });
 
   it("[IAM-030] ends the breadcrumb of a track's people at the track (AD-15)", async () => {

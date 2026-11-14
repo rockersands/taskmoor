@@ -174,8 +174,9 @@ function AdminNavGroup({
 
 /**
  * Administration, then the page's group, then the page itself, then whatever the page adds (a
- * track and its sub-page, a workflow). A group the person may not open is named without a link
- * (T-227). Each separator travels with the step before it, so a wrapped line never starts with
+ * track and its sub-page, a workflow). A group the person may not open is named without a link,
+ * and so is a page of it: someone who runs a track opens its own workflow, but the list of
+ * workflows refuses them (T-227). Each separator travels with the step before it, so a wrapped line never starts with
  * one (AD-14).
  */
 export function AdminBreadcrumb({
@@ -198,7 +199,10 @@ export function AdminBreadcrumb({
     });
     if (place.page) {
       const more = trail && trail.length > 0;
-      steps.push({ label: t(place.page.labelId), ...(more ? { href: place.page.href } : {}) });
+      steps.push({
+        label: t(place.page.labelId),
+        ...(more && groupAllowed ? { href: place.page.href } : {}),
+      });
       if (more) steps.push(...trail);
     }
   }
