@@ -9,7 +9,9 @@ import { uniqueKey } from './unique';
  * its own gets two create layouts, one per ticket type, and a rule that makes Environment
  * required for the first. The dialog, opened with C, shows each type's fields and no others,
  * refuses the first type without its environment and creates it once given. The home page then
- * lists a ticket assigned to the person, opened by them and followed. No serious axe issue. It uses the attachments database (preview 4174), whose site administrator the API
+ * lists a ticket assigned to the person, opened by them and followed. Custom person, group,
+ * team, release and area fields are set with their pickers, and a ticket template's values fill
+ * them (T-276). No serious axe issue. It uses the attachments database (preview 4174), whose site administrator the API
  * server made.
  */
 const BASE = 'http://localhost:4174';
@@ -298,8 +300,9 @@ test('[CORE-008] [CORE-010] [CORE-009] [CORE-006] the create dialog sets the req
   const { group } = await api('post', '/groups', { name: `Approvers ${key}` });
   await api('put', `/groups/${group.id}/members/${rae.id}`);
   const { team } = await api('post', '/teams', { name: `Ledger team ${key}` });
-  await api('post', `/tracks/${track.id}/releases`, { name: 'Autumn' });
-  await api('post', `/tracks/${track.id}/areas`, { name: 'Billing' });
+  const { team: squad } = await api('post', '/teams', { name: `Ledger squad ${key}` });
+  const { release: autumn } = await api('post', `/tracks/${track.id}/releases`, { name: 'Autumn' });
+  const { area: billing } = await api('post', `/tracks/${track.id}/areas`, { name: 'Billing' });
   const { ticketTypes } = (await api('get', `/tracks/${key}/ticket-types`)) as {
     ticketTypes: { id: number; name: string }[];
   };
@@ -386,10 +389,11 @@ test('[CORE-008] [CORE-010] [CORE-009] [CORE-006] the create dialog sets the req
   await expect(dialog.getByText('No one matches.')).toBeVisible();
   await approverSearch.fill(rae.name);
   await dialog.getByRole('button', { name: rae.name, exact: true }).click();
-  // A group by name; a team and a release from a list; an area ticked.
+  // A group and a team by name (T-276); a release from a list; an area ticked.
   await dialog.getByRole('searchbox', { name: owning.name }).fill(`Approvers ${key}`);
   await dialog.getByRole('button', { name: `Approvers ${key}`, exact: true }).click();
-  await dialog.getByRole('combobox', { name: ledgerTeam.name }).selectOption(team.name);
+  await dialog.getByRole('searchbox', { name: ledgerTeam.name }).fill(`Ledger team ${key}`);
+  await dialog.getByRole('button', { name: team.name, exact: true }).click();
   await dialog.getByRole('combobox', { name: fixedIn.name }).selectOption('Autumn');
   await dialog.getByRole('group', { name: parts.name }).getByLabel('Billing').check();
   expect(await seriousAxeViolations(page)).toEqual([]);
@@ -407,6 +411,65 @@ test('[CORE-008] [CORE-010] [CORE-009] [CORE-006] the create dialog sets the req
   expect(ticket.fields?.[String(ledgerTeam.id)]).toEqual({ id: team.id, name: team.name });
   expect(ticket.fields?.[String(fixedIn.id)]).toMatchObject({ name: 'Autumn' });
   expect(ticket.fields?.[String(parts.id)]).toMatchObject([{ name: 'Billing' }]);
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(dialog).toBeHidden();
+
+  // A ticket template with the same values fills the same pickers (T-276); a team chosen in
+  // the form instead wins.
+  const templateName = `Ledger split ${key}`;
+  await api('post', '/ticket-templates', {
+    track: key,
+    name: templateName,
+    summary: 'Split from a template',
+    ticketTypeIds: [child.id],
+    defaults: {
+      fields: {
+        [approver.id]: rae.id,
+        [owning.id]: group.id,
+        [ledgerTeam.id]: team.id,
+        [fixedIn.id]: autumn.id,
+        [parts.id]: [billing.id],
+      },
+    },
+  });
+  await page.goto(`${BASE}/#/home`);
+  await expect(page.getByRole('button', { name: 'New ticket' })).toBeVisible();
+  await page.keyboard.press('c');
+  await expect(dialog).toBeVisible();
+  await chooseTrack(dialog, key);
+  await dialog.getByLabel('Ticket type').click();
+  await dialog.getByRole('option', { name: child.name, exact: true }).click();
+  // The track's releases and areas are here before the template is chosen.
+  await expect(dialog.getByRole('group', { name: parts.name }).getByLabel('Billing')).toBeVisible();
+  const startFrom = dialog.getByRole('combobox', { name: 'Start from a template' });
+  await expect(startFrom).toBeEnabled();
+  await startFrom.selectOption({ label: templateName });
+  await expect(dialog.getByLabel('Summary (required)')).toHaveValue('Split from a template');
+  await expect(dialog.getByRole('list', { name: approver.name })).toContainText(rae.name);
+  await expect(dialog.getByRole('list', { name: owning.name })).toContainText(`Approvers ${key}`);
+  await expect(dialog.getByRole('list', { name: ledgerTeam.name })).toContainText(team.name);
+  await expect(dialog.getByRole('combobox', { name: fixedIn.name })).toHaveValue(String(autumn.id));
+  await expect(dialog.getByRole('group', { name: parts.name }).getByLabel('Billing')).toBeChecked();
+  await expect(dialog.getByRole('group', { name: 'Also from this template' })).toHaveCount(0);
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await dialog.getByRole('button', { name: `Remove ${team.name}` }).click();
+  await dialog.getByRole('searchbox', { name: ledgerTeam.name }).fill(`Ledger squad ${key}`);
+  await dialog.getByRole('button', { name: squad.name, exact: true }).click();
+  await dialog.getByRole('button', { name: 'Create', exact: true }).click();
+  const fromTemplate = dialog.getByText(new RegExp(`^${key}-\\d+ was created\\.$`));
+  await expect(fromTemplate).toBeVisible();
+  const templated = (
+    await api('get', `/tickets/${((await fromTemplate.textContent()) ?? '').split(' ')[0]}`)
+  ).ticket;
+  expect(templated.fields?.[String(approver.id)]).toEqual({ id: rae.id, name: rae.name });
+  expect(templated.fields?.[String(owning.id)]).toEqual({
+    id: group.id,
+    name: `Approvers ${key}`,
+  });
+  expect(templated.fields?.[String(ledgerTeam.id)]).toEqual({ id: squad.id, name: squad.name });
+  expect(templated.fields?.[String(fixedIn.id)]).toMatchObject({ name: 'Autumn' });
+  expect(templated.fields?.[String(parts.id)]).toMatchObject([{ name: 'Billing' }]);
 });
 
 test('[AGL-019] the home page lists what is assigned to me, what I opened and what I follow', async ({
