@@ -1,5 +1,6 @@
 import type { Database } from '@taskmoor/db';
 import { sql, type Transaction } from 'kysely';
+import { dropLapsedCreateTracks, type LapsedCreateTracks } from '../authz/create-tracks';
 import { activeAdminCount } from '../directory';
 
 /**
@@ -8,15 +9,25 @@ import { activeAdminCount } from '../directory';
  * work, ends its sessions and unused password links; break-glass accounts and the last active
  * site administrator are never deactivated by a directory, since they are how people get in
  * when the directory is wrong.
+ *
+ * As every deactivation does, it takes the permission to create tracks that came with a role
+ * (T-087b; IAM-033, ADR-118): `lapsed`, for the caller's event. Reactivating does not give it back.
  */
 export type Protected = 'break_glass' | 'last_admin';
+
+export interface Deactivation {
+  deactivated: boolean;
+  endedSessions: number;
+  refused: Protected | null;
+  lapsed: LapsedCreateTracks[];
+}
 
 export async function deactivateAccount(
   trx: Transaction<Database>,
   workspaceId: number,
   userId: number,
   now: Date,
-): Promise<{ deactivated: boolean; endedSessions: number; refused: Protected | null }> {
+): Promise<Deactivation> {
   const row = await trx
     .selectFrom('app_user')
     .select(['deactivated_at', 'is_site_admin', 'break_glass'])
@@ -25,18 +36,22 @@ export async function deactivateAccount(
     .forUpdate()
     .executeTakeFirst();
   if (!row || row.deactivated_at !== null) {
-    return { deactivated: false, endedSessions: 0, refused: null };
+    return { deactivated: false, endedSessions: 0, refused: null, lapsed: [] };
   }
-  if (row.break_glass) return { deactivated: false, endedSessions: 0, refused: 'break_glass' };
+  if (row.break_glass) {
+    return { deactivated: false, endedSessions: 0, refused: 'break_glass', lapsed: [] };
+  }
   if (row.is_site_admin && (await activeAdminCount(trx, workspaceId)) <= 1) {
-    return { deactivated: false, endedSessions: 0, refused: 'last_admin' };
+    return { deactivated: false, endedSessions: 0, refused: 'last_admin', lapsed: [] };
   }
   await trx
     .updateTable('app_user')
     .set({ deactivated_at: now, updated_at: now })
     .where('id', '=', userId)
     .execute();
-  return { deactivated: true, endedSessions: await endSessions(trx, userId), refused: null };
+  const endedSessions = await endSessions(trx, userId);
+  const lapsed = await dropLapsedCreateTracks(trx, workspaceId, [userId]);
+  return { deactivated: true, endedSessions, refused: null, lapsed };
 }
 
 /** Ends a person's sessions and unused password links; returns how many sessions ended. */

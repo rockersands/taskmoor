@@ -156,8 +156,14 @@ function toView(row: Row): AuditView {
   };
 }
 
+/** An audit record's action and details, as a view or a personal data download shows them. */
+interface AuditDetails {
+  action: string;
+  details: unknown;
+}
+
 /** The people whose capacity a `plan.capacity_set` record changed, by id. */
-function capacityPeople(view: AuditView): number[] {
+function capacityPeople(view: AuditDetails): number[] {
   if (view.action !== 'plan.capacity_set') return [];
   const changes = (view.details as { changes?: unknown } | null)?.changes;
   if (!Array.isArray(changes)) return [];
@@ -170,13 +176,15 @@ function capacityPeople(view: AuditView): number[] {
 /**
  * Capacity notes about erased people, shown empty (T-089j; ADR-111, ADR-122): the erasure
  * clears them from the plans' events, but the audit log is never rewritten, so its
- * `plan.capacity_set` records are masked when read, as records about an erased person are.
+ * `plan.capacity_set` records are masked wherever they are read (search, export, syslog and a
+ * personal data download), as records about an erased person are. A record it changed is a new
+ * object; the others are returned as they came.
  */
-async function maskCapacityNotes(
+export async function withoutErasedCapacityNotes<T extends AuditDetails>(
   db: Kysely<Database>,
   workspaceId: number,
-  views: AuditView[],
-): Promise<AuditView[]> {
+  views: T[],
+): Promise<T[]> {
   const people = [...new Set(views.flatMap(capacityPeople))];
   if (people.length === 0) return views;
   const erased = new Set(
@@ -198,8 +206,18 @@ async function maskCapacityNotes(
       (d, id) => withoutCapacityNotes(d, `user:${id}`),
       view.details,
     );
-    return { ...view, details, masked: true };
+    return { ...view, details };
   });
+}
+
+/** Views with erased people's capacity notes empty, marked as masked (`masked: true`). */
+async function maskCapacityNotes(
+  db: Kysely<Database>,
+  workspaceId: number,
+  views: AuditView[],
+): Promise<AuditView[]> {
+  const out = await withoutErasedCapacityNotes(db, workspaceId, views);
+  return out.map((view, i) => (view === views[i] ? view : { ...view, masked: true as const }));
 }
 
 /** One page, newest first; `before` is the cursor (the last seq of the previous page). */

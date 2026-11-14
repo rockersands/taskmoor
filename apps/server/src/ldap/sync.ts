@@ -1,7 +1,11 @@
 import type { Database, JsonValue } from '@taskmoor/db';
 import type { PepperRing } from '@taskmoor/iam';
 import { type Kysely, sql, type Transaction } from 'kysely';
-import { dropLapsedCreateTracks, lapsedPayload } from '../authz/create-tracks';
+import {
+  dropLapsedCreateTracks,
+  type LapsedCreateTracks,
+  lapsedPayload,
+} from '../authz/create-tracks';
 import { emitMany } from '../events/bus';
 import type { DomainEventInput } from '../events/catalogue';
 import { deactivateAccount, lockNesting, reactivateAccount } from './accounts';
@@ -283,7 +287,10 @@ async function removeUsers(ctx: Context, links: UserLink[]): Promise<void> {
           .execute();
         // Deactivated, or out of the directory's groups, the person may run no track: a
         // permission to create tracks that came with a role goes (T-087b; IAM-033).
-        const lapsed = await dropLapsedCreateTracks(trx, ctx.ws, [link.user_id]);
+        const lapsed = [
+          ...outcome.lapsed,
+          ...(await dropLapsedCreateTracks(trx, ctx.ws, [link.user_id])),
+        ];
         count(ctx, 'usersRemoved');
         if (outcome.deactivated) count(ctx, 'usersDeactivated');
         events.push({
@@ -380,6 +387,7 @@ async function updateUsers(
         }
         let deactivatedBySync = link.deactivated_by_sync;
         let endedSessions = 0;
+        let lapsed: LapsedCreateTracks[] = [];
         const active = link.deactivated_at === null;
         if (entry.disabled && active) {
           const outcome = await deactivateAccount(trx, ctx.ws, link.user_id, ctx.now);
@@ -387,6 +395,7 @@ async function updateUsers(
           if (outcome.deactivated) {
             deactivatedBySync = true;
             endedSessions = outcome.endedSessions;
+            lapsed = outcome.lapsed;
             changes.active = { from: true, to: false };
             count(ctx, 'usersDeactivated');
           }
@@ -422,7 +431,7 @@ async function updateUsers(
           events.push({
             type: 'directory.user_updated',
             subjectId: link.user_id,
-            payload: { ...tag(ctx), changes, endedSessions },
+            payload: { ...tag(ctx), changes, endedSessions, ...lapsedPayload(lapsed) },
           });
         }
       }
@@ -530,10 +539,12 @@ async function addUsers(ctx: Context, fresh: DirectoryUser[]): Promise<Directory
             : null;
         await trx.deleteFrom('ldap_user').where('user_id', '=', account.id).execute();
         let deactivated = false;
+        let lapsed: LapsedCreateTracks[] = [];
         if (entry.disabled && account.deactivated_at === null) {
           const outcome = await deactivateAccount(trx, ctx.ws, account.id, ctx.now);
           if (outcome.refused) warn(ctx, `kept_${outcome.refused}`, entry.dn);
           deactivated = outcome.deactivated;
+          lapsed = outcome.lapsed;
           if (deactivated) count(ctx, 'usersDeactivated');
         }
         await trx
@@ -574,6 +585,7 @@ async function addUsers(ctx: Context, fresh: DirectoryUser[]): Promise<Directory
             linked: true,
             takenFromDirectoryId: takenFrom,
             active: account.deactivated_at === null && !deactivated,
+            ...lapsedPayload(lapsed),
           },
         });
       }

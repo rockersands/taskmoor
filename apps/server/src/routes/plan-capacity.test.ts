@@ -1,17 +1,25 @@
 import { randomBytes } from 'node:crypto';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createDb, type Database } from '@taskmoor/db';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
+import { LocalStore } from '@taskmoor/storage';
 import type { FastifyInstance, InjectOptions } from 'fastify';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
+import { storesOf } from '../attachments/stores';
 import { exportAudit, searchAudit } from '../audit/query';
 import { SESSION_COOKIE } from '../auth';
+import { Authorizer } from '../authz/authorizer';
 import { EventBus } from '../events/bus';
 import { JobRunner } from '../events/queue';
 import { registerSubscribers } from '../events/subscribers';
+import { folderSink } from '../export/sinks';
 import { registerEraseJobs } from '../privacy/erase';
+import { writePersonalData } from '../privacy/export';
 
 // Made for this run: no password is written in the repository.
 const PASSWORD = `plan-capacity-${randomBytes(18).toString('base64url')}`;
@@ -966,6 +974,31 @@ describe('teams and capacity in a plan (PLN-005, PLN-009)', () => {
         exported.push(record.details);
       }
       expect(JSON.stringify(exported)).not.toContain('Part time after surgery');
+
+      // So does the personal data download of whoever set them: its audit records are theirs.
+      const files = mkdtempSync(join(tmpdir(), 'taskmoor-capacity-erasure-'));
+      try {
+        const dir = join(files, 'download');
+        await writePersonalData(database.db, folderSink(dir), {
+          workspaceId: 1,
+          userId: users.admin?.id as number,
+          self: true,
+          stores: storesOf(await LocalStore.open(join(files, 'store'))),
+          authorizer: new Authorizer(database.db),
+        });
+        const lines = readFileSync(join(dir, 'audit.ndjson'), 'utf8')
+          .split('\n')
+          .filter((line) => line !== '')
+          .map((line) => JSON.parse(line) as { action: string; details: { changes: unknown } });
+        const theirs = lines.filter((r) => r.action === 'plan.capacity_set');
+        expect(theirs.length).toBeGreaterThan(0);
+        const notes = theirs.flatMap((r) => notesIn(r.details.changes, ana));
+        expect(notes.length).toBeGreaterThan(0);
+        expect(notes.every((n) => n === '')).toBe(true);
+        expect(theirs.flatMap((r) => notesIn(r.details.changes, web))).toContain('Web keeps this');
+      } finally {
+        rmSync(files, { recursive: true, force: true });
+      }
     });
   });
 });

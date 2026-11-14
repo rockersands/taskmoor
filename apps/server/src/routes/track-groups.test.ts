@@ -1527,6 +1527,76 @@ describe('personal track groups (CORE-034, IAM-034)', () => {
       expect(taken.json()).toEqual({ error: 'last_track_admin' });
     });
 
+    it('[IAM-033] taking a share back, or erasing whoever shared it, takes the create-tracks grant that came with a role from someone left running no track', async () => {
+      // T-087b (ADR-118): the grant goes with the last role, whichever change takes it.
+      for (const name of ['tia', 'uma', 'vic']) await addUser(name);
+      const policy = await database.db
+        .selectFrom('access_policy')
+        .select('id')
+        .where('name', '=', 'Default access policy')
+        .executeTakeFirstOrThrow();
+      tracks.LAPSE = (
+        await database.db
+          .insertInto('track')
+          .values({ workspace_id: 1, key: 'LAPSE', name: 'Lapse', access_policy_id: policy.id })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+      expect((await give('LAPSE', 'Administrators', 'tia')).statusCode).toBe(204);
+      const group = await makeGroup('tia', 'Tia runs', ['LAPSE']);
+      const grantsOf = () =>
+        database.db
+          .selectFrom('global_grant')
+          .select('id')
+          .where('permission', '=', 'create_local_tracks')
+          .where('grantee', '=', 'user')
+          .where('user_id', '=', ids.uma as number)
+          .execute();
+      /** ALPHA's manager role with the box ticked, then LAPSE's through Tia's share; ALPHA's goes. */
+      const managerThroughShareOnly = async () => {
+        const given = await as('admin', {
+          method: 'PUT',
+          url: `/api/v1/tracks/${tracks.ALPHA}/roles/${roles.Administrators}/users/${ids.uma}`,
+          payload: { createTracks: true },
+        });
+        expect(given.statusCode, given.body).toBe(204);
+        const [grant] = await grantsOf();
+        expect(grant).toBeDefined();
+        expect((await share('tia', group, 'uma', 'Administrators')).statusCode).toBe(201);
+        expect((await take('ALPHA', 'Administrators', 'uma')).statusCode).toBe(204);
+        // Uma still runs LAPSE through the share: still a manager, the grant stays.
+        expect(await grantsOf()).toEqual([grant]);
+        expect(await rolesOf('uma')).toEqual(['LAPSE:Administrators']);
+        return grant;
+      };
+
+      // Tia takes the share back: Uma runs nothing now, and the grant goes in that one event.
+      const first = await managerThroughShareOnly();
+      expect((await unshare('tia', group, 'uma')).statusCode).toBe(204);
+      expect(await rolesOf('uma')).toEqual([]);
+      expect(await grantsOf()).toEqual([]);
+      expect((await lastEvent('track_group.unshared')).payload).toMatchObject({
+        userId: ids.uma,
+        createTracksGrantsRemoved: [{ userId: ids.uma, grantId: first?.id }],
+      });
+
+      // Again, and Tia is erased while Vic runs LAPSE too: the share's role goes, the grant too.
+      const second = await managerThroughShareOnly();
+      expect((await give('LAPSE', 'Administrators', 'vic')).statusCode).toBe(204);
+      const erased = await as('admin', {
+        method: 'POST',
+        url: `/api/v1/users/${ids.tia}/erase`,
+        payload: { confirmEmail: 'tia@example.com' },
+      });
+      expect(erased.statusCode, erased.body).toBe(200);
+      expect(await rolesOf('uma')).toEqual([]);
+      expect(await grantsOf()).toEqual([]);
+      expect((await lastEvent('user.erased')).payload).toMatchObject({
+        groupAccess: [{ trackId: tracks.LAPSE, userId: ids.uma, roleId: roles.Administrators }],
+        createTracksGrantsRemoved: [{ userId: ids.uma, grantId: second?.id }],
+      });
+    });
+
     /**
      * An erasure that runs while a group is being shared with the person, or a role given them.
      * A second client holds locks in its own transactions, as a change half done would, and

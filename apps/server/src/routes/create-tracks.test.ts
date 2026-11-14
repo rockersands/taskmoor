@@ -674,6 +674,81 @@ describe('who may create tracks (IAM-033)', () => {
       });
     });
 
+    it('[IAM-033] an invitation sent again once the address has an account gives the grant, and losing the role takes it', async () => {
+      const made = await invite('admin', { addresses: ['rex@example.net'], createTracks: true });
+      expect(made.statusCode, made.body).toBe(201);
+      const invitationId = made.json().results[0].invitationId as number;
+      // No account yet, so nothing was given. Rex then gets one another way.
+      const rex = await database.db
+        .insertInto('app_user')
+        .values({
+          workspace_id: 1,
+          email: 'rex@example.net',
+          name: 'rex',
+          password_hash: await passwords.hash(PASSWORD),
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      ids.rex = rex.id;
+      expect(await grantsOf('rex')).toEqual([]);
+      const resent = await as('admin', {
+        method: 'POST',
+        url: `/api/v1/tracks/${track}/invitations/${invitationId}/resend`,
+        payload: { delivery: 'link' },
+      });
+      expect(resent.statusCode, resent.body).toBe(200);
+      const [grant] = await grantsOf('rex');
+      expect(grant).toBeDefined();
+      expect((await lastEvent('track_invitation.resent')).payload).toMatchObject({
+        invitationId,
+        createTracksGrantId: grant?.id,
+      });
+      // The role taken on the People page, Rex runs nothing: the grant the resend gave goes.
+      expect((await takeOn(track, 'rex')).statusCode).toBe(204);
+      expect(await grantsOf('rex')).toEqual([]);
+      expect((await lastEvent('track_role.actor_removed')).payload).toMatchObject({
+        createTracksGrantsRemoved: [{ userId: rex.id, grantId: grant?.id }],
+      });
+    });
+
+    it('[IAM-033] a track every signed-in person runs counts as running one: the grant stays', async () => {
+      await addUser('sol');
+      // OPS's own policy gives administer_track to every signed-in person.
+      const open = await database.db
+        .insertInto('access_policy')
+        .values({ workspace_id: 1, name: 'Everyone runs' })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      const grantRow = await database.db
+        .insertInto('access_grant')
+        .values({
+          workspace_id: 1,
+          policy_id: open.id,
+          permission: 'administer_track',
+          grantee: 'any_user',
+        })
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      await database.db
+        .insertInto('track')
+        .values({ workspace_id: 1, key: 'OPS', name: 'Operations', access_policy_id: open.id })
+        .execute();
+      try {
+        expect((await giveOn(track, 'sol', true)).statusCode).toBe(204);
+        const [grant] = await grantsOf('sol');
+        expect(grant).toBeDefined();
+        expect((await takeOn(track, 'sol')).statusCode).toBe(204);
+        // Sol still runs OPS, as everyone does: still a manager, the grant stays.
+        expect(await grantsOf('sol')).toEqual([grant]);
+        expect((await lastEvent('track_role.actor_removed')).payload).not.toHaveProperty(
+          'createTracksGrantsRemoved',
+        );
+      } finally {
+        // The other tests count on nobody running a track through everyone.
+        await database.db.deleteFrom('access_grant').where('id', '=', grantRow.id).execute();
+      }
+    });
+
     it('[IAM-033] deactivating a person takes the grant that came with a role, audited', async () => {
       expect((await giveOn(track, 'pia', true)).statusCode).toBe(204);
       const [grant] = await grantsOf('pia');

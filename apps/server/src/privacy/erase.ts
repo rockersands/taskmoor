@@ -1,6 +1,7 @@
 import type { Database } from '@taskmoor/db';
 import { throttleKeys } from '@taskmoor/iam';
 import { type Kysely, sql, type Transaction } from 'kysely';
+import { dropLapsedCreateTracks, lapsedPayload } from '../authz/create-tracks';
 import { activeAdminCount } from '../directory';
 import { emit } from '../events/bus';
 import { enqueue, type JobRunner } from '../events/queue';
@@ -29,6 +30,9 @@ export { ERASED_DOMAIN, erasedEmail, erasedName } from './placeholder';
  *   rules of taking a share back (`trackgroups/privacy.ts`; ADR-121), except that a role one of
  *   their shares gave the only other person running a track stays with that person, as their own
  *   (T-205a): the erasure goes through, and the track keeps someone to run it.
+ * - A permission to create tracks that came with a role goes, as on any deactivation, from the
+ *   person and from anyone whose last role their shares took back (T-087b; IAM-033); `user.erased`
+ *   lists it as `createTracksGrantsRemoved`.
  * - Their capacity in plans goes with its notes (PLN-009), and the scrub job below clears those
  *   notes from the plans' `plan.capacity_set` events too (T-089j).
  * - Domain events about the person have their old name and email replaced in the payload.
@@ -221,6 +225,9 @@ export async function eraseUser(
   const groups = await eraseTrackGroups(trx, ws, userId);
   count('track_group', groups.groups);
   count('track_group_share', groups.sharesGiven + groups.sharesReceived);
+  // A permission to create tracks that came with a role goes with the last one (T-087b; IAM-033):
+  // for those the person's shares had given it to, above, and for the person, deactivated now.
+  const lapsed = [...groups.lapsed, ...(await dropLapsedCreateTracks(trx, ws, [userId]))];
 
   // The old name and email in events about the person (created, updated, provisioned).
   const replacements = new Map<string, string>([
@@ -288,6 +295,7 @@ export async function eraseUser(
               })),
             }
           : {}),
+        ...lapsedPayload(lapsed),
       },
     },
   );

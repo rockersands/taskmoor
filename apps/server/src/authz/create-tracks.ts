@@ -110,19 +110,22 @@ export interface LapsedCreateTracks {
 
 /**
  * The events that record a grant given with a role (IAM-033): the role given on the People page,
- * an invitation to an existing person, or one taken up. Each carries the grant's id.
+ * an invitation to an existing person, one sent again once the address has an account, or one
+ * taken up. Each carries the grant's id as `createTracksGrantId`.
  */
 const GRANT_EVENTS = [
   'track_role.actor_added',
   'track_invitation.created',
+  'track_invitation.resent',
   'track_invitation.accepted',
 ] as const;
 
 /**
  * The people of these who run no track now, read in the caller's transaction: deactivated, or
  * holding `administer_track` on no live track through a role (directly or through a group,
- * nested groups included), a grant to them or a group of theirs, or as a track's owner. The
- * same ways to run a track that `trackKeepsAdministrator` counts, over every track.
+ * nested groups included), a grant to them, a group of theirs, every signed-in person or anyone,
+ * or as a track's owner. The same ways to run a track that `trackKeepsAdministrator` counts,
+ * over every track.
  */
 async function runningNoTrack(
   db: Db,
@@ -151,6 +154,7 @@ async function runningNoTrack(
                   WHERE a.track_id = t.id AND a.role_id = g.role_id
                     AND (a.user_id = u.id OR a.group_id IN (
                       SELECT mine.group_id FROM mine WHERE mine.user_id = u.id))))
+              OR g.grantee IN ('any_user', 'anyone')
               OR (g.grantee = 'user' AND g.user_id = u.id)
               OR (g.grantee = 'group' AND g.group_id IN (
                     SELECT mine.group_id FROM mine WHERE mine.user_id = u.id))

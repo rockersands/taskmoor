@@ -3,6 +3,7 @@ import { newObjectKey } from '@taskmoor/storage';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { dropUpload, keepUpload, registerUpload } from '../attachments/cleanup';
 import type { AttachmentStores } from '../attachments/stores';
+import { withoutErasedCapacityNotes } from '../audit/query';
 import type { Authorizer } from '../authz/authorizer';
 import { enqueue, extendLock, type JobRunner } from '../events/queue';
 import { type ExportSink, zipSink } from '../export/sinks';
@@ -730,16 +731,21 @@ export async function writePersonalData(
             .limit(PAGE)
             .execute();
           if (rows.length === 0) return;
-          yield rows.map((r) => ({
-            seq: Number(r.seq),
-            occurredAt: iso(r.occurred_at),
-            actorId: r.actor_id,
-            action: r.action,
-            subject: r.subject_type ? { type: r.subject_type, id: r.subject_id } : null,
-            details: r.details,
-            // Someone else's address is theirs, not this person's.
-            ip: r.actor_id === userId ? r.ip : null,
-          }));
+          // An erased person's capacity notes are shown empty here too (T-089j; ADR-122).
+          yield await withoutErasedCapacityNotes(
+            db,
+            ws,
+            rows.map((r) => ({
+              seq: Number(r.seq),
+              occurredAt: iso(r.occurred_at),
+              actorId: r.actor_id,
+              action: r.action,
+              subject: r.subject_type ? { type: r.subject_type, id: r.subject_id } : null,
+              details: r.details as unknown,
+              // Someone else's address is theirs, not this person's.
+              ip: r.actor_id === userId ? r.ip : null,
+            })),
+          );
           after = Number(rows[rows.length - 1]?.seq ?? after);
           options.heartbeat?.();
           if (rows.length < PAGE) return;

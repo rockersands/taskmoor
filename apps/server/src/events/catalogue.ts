@@ -156,6 +156,7 @@ export const EVENT_TYPES = {
        * was the last way to run its track (T-205a; ADR-121). Absent when there were none.
        */
       groupAccessKept: groupAccess.optional(),
+      createTracksGrantsRemoved,
     }),
   },
   /** A download of a person's data was asked for (ASVS 8.3.2): by them, or by an administrator. */
@@ -1421,6 +1422,7 @@ export const EVENT_TYPES = {
       name: z.string(),
       deactivatedUsers: z.number().int().min(0),
       releasedGroups: z.number().int().min(0),
+      createTracksGrantsRemoved,
     }),
   },
   /** Precedence: the directories in their new order, first wins. */
@@ -1460,6 +1462,7 @@ export const EVENT_TYPES = {
       linked: z.boolean(),
       takenFromDirectoryId: id.nullable(),
       active: z.boolean(),
+      createTracksGrantsRemoved,
     }),
   },
   /** Changes to the account (`email`, `name`, `active`) and its entry (`dn`, `username`, ...). */
@@ -1470,6 +1473,7 @@ export const EVENT_TYPES = {
       runId: id,
       changes,
       endedSessions: z.number().int().min(0),
+      createTracksGrantsRemoved,
     }),
   },
   /** The entry left the directory or its filter: deactivated, unless protected. */
@@ -1833,13 +1837,23 @@ export const EVENT_TYPES = {
   // Personal track groups (CORE-034; ADR-121): ids and names, and the roles shares gave or took.
   'track_group.created': {
     subject: 'track_group',
-    payload: z.object({ name: z.string(), trackIds: z.array(id), removed: groupAccess }),
+    payload: z.object({
+      name: z.string(),
+      trackIds: z.array(id),
+      removed: groupAccess,
+      createTracksGrantsRemoved,
+    }),
   },
   /** A rename, or the group minimized or opened by its owner or by someone it is shared with. */
   'track_group.updated': { subject: 'track_group', payload: z.object({ changes }) },
   'track_group.deleted': {
     subject: 'track_group',
-    payload: z.object({ name: z.string(), trackIds: z.array(id), removed: groupAccess }),
+    payload: z.object({
+      name: z.string(),
+      trackIds: z.array(id),
+      removed: groupAccess,
+      createTracksGrantsRemoved,
+    }),
   },
   /** A person's order of their groups and those shared with them. */
   'track_group.reordered': { subject: 'user', payload: z.object({ groupIds: z.array(id) }) },
@@ -1853,6 +1867,7 @@ export const EVENT_TYPES = {
       position: z.number().int().min(0).nullable(),
       given: groupAccess,
       removed: groupAccess,
+      createTracksGrantsRemoved,
     }),
   },
   'track_group.shared': {
@@ -1861,7 +1876,13 @@ export const EVENT_TYPES = {
   },
   'track_group.unshared': {
     subject: 'track_group',
-    payload: z.object({ shareId: id, userId: id, roleId: id.nullable(), removed: groupAccess }),
+    payload: z.object({
+      shareId: id,
+      userId: id,
+      roleId: id.nullable(),
+      removed: groupAccess,
+      createTracksGrantsRemoved,
+    }),
   },
   /**
    * The person a group was shared with left it (T-204): the owner's group is the subject, and
@@ -1875,6 +1896,7 @@ export const EVENT_TYPES = {
       ownerId: id,
       roleId: id.nullable(),
       removed: groupAccess,
+      createTracksGrantsRemoved,
     }),
   },
   /** A group set on someone: their own copy (the subject), and the roles given outright. */

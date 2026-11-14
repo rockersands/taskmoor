@@ -1,6 +1,7 @@
 import type { Database } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import type { AuthzContext } from '../authz/authorizer';
+import { dropLapsedCreateTracks, type LapsedCreateTracks } from '../authz/create-tracks';
 import { roleRunsTrack, trackKeepsAdministrator } from '../authz/track-admins';
 
 type Db = Kysely<Database> | Transaction<Database>;
@@ -23,6 +24,15 @@ export interface AccessChange {
   trackId: number;
   userId: number;
   roleId: number;
+}
+
+/**
+ * What taking shares back took: the roles that went, and the permissions to create tracks that
+ * went with the last of a person's roles (T-087b; IAM-033, ADR-118), for the change's one event.
+ */
+export interface Released {
+  removed: AccessChange[];
+  lapsed: LapsedCreateTracks[];
 }
 
 /** A share's taking back would leave these tracks with no one to run them (IAM-028). */
@@ -175,6 +185,9 @@ export async function lockArrangements(db: Db, userIds: readonly number[]): Prom
  * 2026-11-13; ADR-121): instead of refusing, a role whose removal would leave a track with
  * nobody to run it stays, the person's own from then on (no share holds it, as `keepRole`
  * makes it), and is listed there. Someone else's erasure never blocks on their role.
+ *
+ * A person left running no track by the roles that went loses the permission to create tracks
+ * that came with a role (`dropLapsedCreateTracks`), and the result lists it as `lapsed`.
  */
 export async function releaseShares(
   trx: Transaction<Database>,
@@ -182,15 +195,15 @@ export async function releaseShares(
   shareIds: readonly number[],
   trackIds: readonly number[] | null = null,
   options: { keepAdministrators?: boolean; keepLast?: AccessChange[] } = {},
-): Promise<AccessChange[]> {
-  if (shareIds.length === 0 || trackIds?.length === 0) return [];
+): Promise<Released> {
+  if (shareIds.length === 0 || trackIds?.length === 0) return { removed: [], lapsed: [] };
   let query = trx
     .selectFrom('track_group_access')
     .select(['share_id', 'track_id', 'role_id', 'user_id'])
     .where('share_id', 'in', [...shareIds]);
   if (trackIds) query = query.where('track_id', 'in', [...trackIds]);
   const held = await query.orderBy('track_id').orderBy('share_id').execute();
-  if (held.length === 0) return [];
+  if (held.length === 0) return { removed: [], lapsed: [] };
   // One change at a time per track, as on the People page, so two removals cannot both leave
   // the track with no one to run it.
   await lockTracks(
@@ -236,7 +249,12 @@ export async function releaseShares(
     }
   }
   if (last.length > 0) throw new LastTrackAdministrator(last);
-  return removed;
+  const lapsed = await dropLapsedCreateTracks(
+    trx,
+    workspaceId,
+    removed.map((r) => r.userId),
+  );
+  return { removed, lapsed };
 }
 
 /**
