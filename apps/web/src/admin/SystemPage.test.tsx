@@ -166,8 +166,13 @@ describe('system status page', () => {
     const texts: string[] = [];
     const walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT);
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      // A path offers a line break after each '/' (BreakAtSlashes): its pieces are one text.
+      if (node.parentElement?.closest('.slash-breaks')) continue;
       const text = node.textContent?.trim();
       if (text) texts.push(text);
+    }
+    for (const path of main.querySelectorAll('.slash-breaks')) {
+      texts.push(path.textContent?.trim() ?? '');
     }
     expect(texts.length).toBeGreaterThan(20);
     expect(texts.filter((t) => !/^\[.+\]$/s.test(t))).toEqual([]);

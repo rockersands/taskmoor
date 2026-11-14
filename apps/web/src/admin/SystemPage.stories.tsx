@@ -4,6 +4,7 @@ import { expect, within } from 'storybook/test';
 import { SessionProvider } from '../session/SessionProvider';
 import { ADMIN, HEALTHY, MEMBER, NEEDS_ATTENTION, STALE_BACKUP } from './fixtures';
 import { SystemPage } from './SystemPage';
+import { textLines } from './textLines';
 import type { UpdateCheck } from './UpdateNotice';
 
 const updateCheck: UpdateCheck = {
@@ -88,5 +89,36 @@ export const AtPhoneWidth: Story = {
     await expect(await canvas.findByRole('heading', { name: 'Database' })).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Refresh' })).toBeVisible();
     await fitsPhoneWidth(canvas);
+  },
+};
+
+/**
+ * A long data directory wraps only after a '/', never inside a folder's name: it once broke as
+ * '.cache/dem' and 'o/data'.
+ */
+export const DataDirectoryBreaksAtSlashes: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 420 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  args: {
+    load: async () => ({
+      ...HEALTHY,
+      disk: {
+        ...(HEALTHY.disk as NonNullable<typeof HEALTHY.disk>),
+        path: '/Users/someone/Documents/taskmoor/.cache/demo/data',
+      },
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const label = await canvas.findByText('Data directory');
+    const value = label.nextElementSibling as HTMLElement;
+    const lines = textLines(value);
+    await expect(lines.length).toBeGreaterThan(1);
+    await expect(lines.slice(0, -1).filter((line) => !line.endsWith('/'))).toEqual([]);
   },
 };

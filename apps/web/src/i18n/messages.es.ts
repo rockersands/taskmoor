@@ -6005,6 +6005,8 @@ export const messagesEs: Record<MessageId, string> = {
   'ai.strict': 'Modo estricto',
   'ai.strictHint':
     'La IA queda desactivada, y sus controles ocultos, en todas partes salvo en los tracks que actives abajo.',
+  'admin.ai.strictHintNoTracks':
+    'La IA queda desactivada, y sus controles ocultos, en todas partes salvo en los tracks que actives. Activa la IA y guarda para elegirlos.',
   'ai.provider': 'Proveedor',
   'ai.provider.none': 'Ningún proveedor',
   'ai.provider.anthropic': 'API de Anthropic',
@@ -6131,6 +6133,8 @@ export const messagesEs: Record<MessageId, string> = {
   'ai.refused.unavailable': 'El proveedor de IA no responde. Inténtalo más tarde.',
   'ai.refused.failed': 'La IA no pudo ayudar con esta petición.',
   'admin.aiUsage.title': 'Uso de la IA',
+  'admin.aiUsage.about':
+    'Las llamadas de IA de un periodo, contadas por día, función, persona y modelo, a las tarifas de Límites y precios de la IA. Tu organización paga al proveedor directamente; Taskmoor no cobra nada. Los días van en UTC.',
   'admin.aiUsage.forbidden': 'Solo los administradores del sitio ven el uso de la IA.',
   'admin.aiUsage.statementFailed': 'No se pudo cargar qué sale de este sitio.',
   'admin.aiUsage.usage': 'Uso',

@@ -83,12 +83,8 @@ export function ImportsPage({
               {...(pollMs !== undefined ? { pollMs } : {})}
               onStarted={() => void reload()}
               onDone={() => void reload()}
+              onAnother={() => fresh(null)}
             />
-          </div>
-          <div className="form-actions">
-            <button type="button" className="button-secondary" onClick={() => fresh(null)}>
-              {t('admin.imports.new')}
-            </button>
           </div>
 
           <section aria-labelledby={`${id}-runs`} className="import-runs">

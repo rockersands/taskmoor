@@ -5,6 +5,7 @@ import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSession } from '../session/SessionProvider';
 import { PageHeader } from '../shell/PageHeader';
+import { BreakAtSlashes } from './BreakAtSlashes';
 import { Fact, Facts } from './Facts';
 import { httpUpdateCheckClient, type UpdateCheckClient, UpdateCheckSection } from './UpdateNotice';
 
@@ -218,7 +219,12 @@ function Details({ info, updates }: { info: SystemInfo; updates: UpdateCheckClie
       </Facts>
       <Facts title={t('admin.system.storage')}>
         <Fact label={t('admin.system.dataDir')}>
-          {info.disk ? plain(info.disk.path) : t('admin.system.noDataDir')}
+          {/* Breaks only after a '/', never inside a folder's name. */}
+          {info.disk ? (
+            <BreakAtSlashes text={plain(info.disk.path)} />
+          ) : (
+            t('admin.system.noDataDir')
+          )}
         </Fact>
         {info.disk && (
           <Fact label={t('admin.system.freeSpace')}>

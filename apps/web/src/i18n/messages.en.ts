@@ -5871,6 +5871,8 @@ export const messagesEn = {
   'ai.strict': 'Strict mode',
   'ai.strictHint':
     'AI stays off, and its controls hidden, everywhere except the tracks you turn it on for below.',
+  'admin.ai.strictHintNoTracks':
+    'AI stays off, and its controls hidden, everywhere except the tracks you turn it on for. Turn AI on and save to choose them.',
   'ai.provider': 'Provider',
   'ai.provider.none': 'No provider',
   'ai.provider.anthropic': 'Anthropic API',
@@ -5994,6 +5996,8 @@ export const messagesEn = {
   'ai.refused.unavailable': 'The AI provider is not answering. Try again later.',
   'ai.refused.failed': 'AI could not help with this request.',
   'admin.aiUsage.title': 'AI usage',
+  'admin.aiUsage.about':
+    'The AI calls of a period, counted by day, feature, person and model, at the rates of AI limits and prices. Your organisation pays the provider directly; Taskmoor charges nothing. Days are in UTC.',
   'admin.aiUsage.forbidden': 'Only site administrators see AI usage.',
   'admin.aiUsage.statementFailed': 'What leaves this site could not be loaded.',
   'admin.aiUsage.usage': 'Usage',

@@ -76,12 +76,18 @@ export function ImportWizard({
   pollMs,
   onStarted,
   onDone,
+  onAnother,
 }: {
   client: ImportsClient;
   delta?: ImportRunView | null;
   pollMs?: number;
   onStarted?: (run: ImportRunView) => void;
   onDone?: () => void;
+  /**
+   * Starts a fresh form. Offered only once an import has run and this form is closed to changes,
+   * never beside a form that is still open.
+   */
+  onAnother?: () => void;
 }) {
   const t = useT();
   const intl = useIntl();
@@ -326,13 +332,15 @@ export function ImportWizard({
                   {/* The app's file button, as the attachment panel has, not the browser's (AD-34). */}
                   <div className="import-file-row">
                     <label className="button-secondary import-file-choose">
-                      {t('admin.imports.upload.choose')}
+                      <span id={`${id}-upload-choose`}>{t('admin.imports.upload.choose')}</span>
+                      {/* Named by the field's label and the button's own words, so saying
+                          "Choose a file" finds it. */}
                       <input
                         id={`${id}-upload`}
                         className="visually-hidden"
                         type="file"
                         accept=".zip,.csv"
-                        aria-labelledby={`${id}-upload-label`}
+                        aria-labelledby={`${id}-upload-label ${id}-upload-choose`}
                         onChange={(e) => setUpload(e.target.files?.[0] ?? null)}
                       />
                     </label>
@@ -537,6 +545,13 @@ export function ImportWizard({
           {...(pollMs !== undefined ? { pollMs } : {})}
           onFinished={(run, report) => void finishedRun(run, report)}
         />
+      )}
+      {imported && onAnother && (
+        <div className="form-actions">
+          <button type="button" className="button-secondary" onClick={onAnother}>
+            {t('admin.imports.new')}
+          </button>
+        </div>
       )}
     </div>
   );

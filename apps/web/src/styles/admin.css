@@ -839,6 +839,11 @@ details[open] > summary.admin-disclosure::after,
   max-width: none;
 }
 
+/* AI: the settings card is as wide as the keys and tracks cards beside it (T-219's form widths). */
+.ai-settings-page > .people-form {
+  max-width: none;
+}
+
 /* Imports: the app's file button and the chosen file's name beside it (AD-34). */
 .import-file-row {
   display: flex;
@@ -894,4 +899,11 @@ details[open] > summary.admin-disclosure::after,
    as nothing, so every row's buttons stand in the same columns. */
 .action-slot {
   visibility: hidden;
+}
+
+/* A path or an address wraps only after a '/' (admin/BreakAtSlashes.tsx): a piece breaks inside
+   only when it is wider than the line on its own. */
+.fact dd .slash-breaks,
+.mcp-snippet .slash-breaks {
+  overflow-wrap: break-word;
 }

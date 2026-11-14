@@ -33,6 +33,12 @@ const rows = (table: HTMLElement) =>
     .map((r) => r.textContent);
 
 describe('AI usage page (M1-077)', () => {
+  it('[OPS-020] has the help mark its neighbours have beside the title (AD-20)', async () => {
+    renderPage();
+    await screen.findByRole('table', { name: 'By person' });
+    expect(screen.getByRole('button', { name: 'What is AI usage for?' })).toBeVisible();
+  });
+
   it('[OPS-020] shows the totals and the usage by day, feature, person and model', async () => {
     renderPage();
     const people = await screen.findByRole('table', { name: 'By person' });
