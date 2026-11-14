@@ -67,7 +67,7 @@ test('[NFR-013] [OPS-015] the setup link makes the administrator on the fresh ba
 }) => {
   await page.goto(SETUP);
   await expect(heading(page)).toHaveText('Set up Taskmoor');
-  await page.getByLabel('Instance name').fill('Fresh install');
+  await page.getByLabel('Site name').fill('Fresh install');
   await page.getByLabel('Name', { exact: true }).fill(ADMIN.name);
   await page.getByLabel('Email').fill(ADMIN.email);
   await page.getByLabel('Password', { exact: true }).fill(ADMIN.password);

@@ -122,7 +122,7 @@ async function readSetupKey(page: Page): Promise<string> {
 test('[OPS-003] the setup link creates the administrator and signs them in', async ({ page }) => {
   await page.goto(`./#/setup?token=${TOKEN}`);
   await expect(heading(page)).toHaveText('Set up Taskmoor');
-  await page.getByLabel('Instance name').fill('E2E Tracker');
+  await page.getByLabel('Site name').fill('E2E Tracker');
   await page.getByLabel('Name', { exact: true }).fill(ADMIN.name);
   await page.getByLabel('Email').fill(ADMIN.email);
   await page.getByLabel('Password', { exact: true }).fill(ADMIN.password);

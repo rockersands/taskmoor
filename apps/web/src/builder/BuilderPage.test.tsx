@@ -139,7 +139,7 @@ describe('the Builder page (M1-112)', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Save project file' }));
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('with the instance secrets'),
+      expect(screen.getByRole('status')).toHaveTextContent('with the site’s secrets'),
     );
     const project = [...blobs.values()].at(-1) as Blob;
     expect(project.type).toBe('application/json');

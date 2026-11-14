@@ -157,10 +157,10 @@ describe('the AI settings page (M1-076)', () => {
   it('[AI-001] hides the per-feature and per-track controls while AI is off for the workspace', async () => {
     const user = userEvent.setup();
     renderPage(fakeAiClient(aiView({ enabled: false })));
-    await screen.findByRole('checkbox', { name: 'Use AI in this workspace' });
+    await screen.findByRole('checkbox', { name: 'Use AI on this site' });
     expect(screen.queryByRole('group', { name: 'Summaries of tickets and threads' })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Tracks' })).toBeNull();
-    await user.click(screen.getByRole('checkbox', { name: 'Use AI in this workspace' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Use AI on this site' }));
     expect(screen.getByRole('group', { name: 'Summaries of tickets and threads' })).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Save AI settings' }));
     expect(await screen.findByRole('heading', { name: 'Tracks' })).toBeVisible();

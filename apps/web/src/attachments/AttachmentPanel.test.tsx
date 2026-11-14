@@ -172,7 +172,7 @@ describe('the attachment panel (M1-016)', () => {
     quota = 'workspace';
     await user.upload(input, new File(['video'], 'again.mp4'));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'again.mp4 was not added: the workspace would pass its storage quota of 10 GB (9.5 GB used, 512 MB left). Ask a site administrator.',
+      'again.mp4 was not added: the site would pass its storage quota of 10 GB (9.5 GB used, 512 MB left). Ask a site administrator.',
     );
   });
 

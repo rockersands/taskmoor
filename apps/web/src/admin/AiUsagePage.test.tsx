@@ -82,9 +82,9 @@ describe('AI usage page (M1-077)', () => {
     expect(within(calls).getAllByRole('row')[1]).toHaveTextContent('Refused by a limit');
   });
 
-  it('[IAM-022] (2) shows administrators what leaves the instance', async () => {
+  it('[IAM-022] (2) shows administrators what leaves the site', async () => {
     renderPage();
-    const statement = await screen.findByRole('region', { name: 'What leaves this instance' });
+    const statement = await screen.findByRole('region', { name: 'What leaves this site' });
     expect(statement).toHaveTextContent(
       'AI features send data to Amazon Bedrock, region eu-central-1.',
     );

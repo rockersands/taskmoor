@@ -176,7 +176,7 @@ test('[OPS-016] a filled form saved with a passphrase rebuilds the same kits, as
 
   await page.getByLabel('Backend address').fill('https://api.example.com');
   await page.getByLabel('Frontend address').fill('https://tracker.example.com/');
-  await page.getByLabel('Instance name (optional)').fill('Acme tracker');
+  await page.getByLabel('Site name (optional)').fill('Acme tracker');
   await page.getByLabel('Addresses inside the app').selectOption('hash');
   await page.getByLabel('Send email through an SMTP server').check();
   await page.getByLabel('SMTP host').fill('mail.example.com');
