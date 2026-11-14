@@ -1879,7 +1879,8 @@ and the page notes above say what changed where they belong):
 
 ### Stage 7 (T-089f): the auto-scheduler
 
-**Designed on 2026-11-14; not built yet.**
+**Designed on 2026-11-14; built the same day (see "As built (T-089f)" below for where the build
+differs).**
 PLN-004 moves to M1 with this stage, reworded to what will be built (the wording is under
 "Tests"). The new wording narrows the spec's: the run fills the plan's periods, not sprints; it
 uses capacity, not velocity; and a release's date is a warning, not a limit (questions 1, 2 and
@@ -1945,7 +1946,7 @@ site administrators; anyone else gets `forbidden` with `edit_plan`, the rule of 
 
 | Route | Scope | What |
 |---|---|---|
-| `GET /api/v1/plans/:id/schedule?scenario=&from=&periods=` | read | **Readiness**, for anyone who sees the plan: `{ unit, pointsField, periods: [{ start, end }], teams: [{ id, name, withCapacity }], people: { withCapacity, without }, tickets: { open, unestimated, unassigned, noTeam }, editable, limits }`, counted over the tickets the reader is shown; no ticket is named |
+| `GET /api/v1/plans/:id/schedule?scenario=&from=&periods=` | read | **Readiness**, for anyone who sees the plan: `{ plan: { id, name }, unit, pointsField, periods: [{ start, end }], period, teams: [{ id, name, withCapacity }], people: { withCapacity, without }, tickets: { open, unestimated, unassigned, noTeam }, scenarios, editable, limits }`, and with `scenario=` also `scenario: { id, name, main, version, applying, proposals, drafts, notShown }`; counted over the tickets the reader is shown; no ticket is named |
 | `POST /api/v1/plans/:id/schedule` | write | Runs. Body below; 200 with the run's answer, or 201 when it made the scenario |
 
 **The body** (zod `scheduleBody`, new, in `apps/server/src/plans/scheduler.ts`):
@@ -2397,6 +2398,73 @@ The spec's PLN-004 row and `requirements-index.csv` move to M1 with this wording
 - Running by itself when capacity changes (stage 3's note), as a background job, or on a schedule.
 - Discarding only the auto-scheduler's drafts in one action; a re-run, or Discard, does it.
 - Resource levelling and saved snapshots of dates (PLN-011, T-089a).
+
+#### As built (T-089f)
+
+Built on 2026-11-14 in `plans/scheduler.ts` (the engine), `plans/scheduleInputs.ts` (its reads),
+`routes/plan-schedule.ts`, the moves of "Shared code" (`plans/capacity.ts`, `plans/drafts.ts`,
+`plans/dependencies.ts`, `plans/sprints.ts`), and on the web `AutoScheduleDialog.tsx`,
+`ScheduleResult.tsx`, `scheduleWords.ts`, `scenarioClient.ts`, `ScenarioBar.tsx`,
+`PlanScenariosPage.tsx`, `PlanChangesPage.tsx`, `PlanPage.tsx`, `TimelineView.tsx` and
+`CalendarView.tsx`, with the manual's "Auto-scheduling" section. No migration. Where this differs
+from the design above, or settles what it left open:
+
+- **The engine's input** is plain data: `ScheduleInput { from, periods, tickets, links, teams,
+  people, leaveOut: { typeIds, releaseIds }, keep: { inProgress, inActiveSprint } }`. The two
+  queries arrive as per-ticket flags (`leftOutByQuery`, `keptByQuery`), and a blocker outside the
+  plan or hidden from the runner only as `hiddenBlocker`. A person's `load` is Capacity's count for
+  the scenario less every ticket passed; the engine adds those back at their due days. A blank
+  query is no query.
+- **Rounding:** the engine's `hundredths` rounds half up from the decimal (1.005 gives 101), so
+  floats decide no fit. Capacity's own `round`, moved unchanged to `plans/capacity.ts`, is still
+  `Math.round(n * 100) / 100` for what the Capacity tab shows.
+- **Choices the design left open:** the effective rank passes only through movable tickets, and
+  the members of a circle share their best rank; circles are found over every link between open
+  tickets the runner is shown, kept ones included. A placed ticket's reason is the first of
+  `already`, `after_blocker`, `after_higher_ranked`, `first_for_blocked` and `fits`. When a team
+  and its member tie, a reason names the team; `no_room` names the subject with the least room
+  left over the periods it could use; `no_capacity` names the assignee's plan teams.
+- **Ids, not keys, in `args`:** `cycle` names up to five other members by id with the circle's
+  `size`, and `late_against_kept` is one warning a ticket with up to five ids and a count. The page
+  says the keys of tickets the answer lists and "another ticket" for the rest, so nothing hidden is
+  named.
+- **`over_where_kept`** goes to any ticket the run could not place (`no_room` or
+  `blocker_not_placed`) whose load, at its due day, takes a cell over capacity after placed work
+  went into that cell.
+- **Left-out tickets** are counted by reason (`level`, `type`, `release`, `query`), never listed.
+- **The answer's counts:** `placed` counts the tickets whose proposal now stands, so those changed
+  meanwhile are not in it; `unchanged` those whose drafts the run did not touch; `withdrawn`
+  those whose earlier proposal went entirely; `notShown` distinct tickets with scheduler drafts the
+  runner is not shown. A listed ticket left out of the write carries `changedMeanwhile: true`.
+  `too_many_to_schedule` is checked after the engine (it takes about 0.1 s), from its counts.
+- **An earlier proposal stays on any ticket a person drafted a day of** under the lock, not only on
+  those kept for `person_draft` (a ticket left out by the run can have one).
+- **Refusals:** a query that does not compile answers 400 `{ error: 'invalid_fields', fields:
+  { 'keep.query' | 'leaveOut.query': 'invalid_query' }, messages }`; `into.newScenario.from` of
+  another plan answers 400 `{ 'into.newScenario.from': 'not_found' }`; readiness with `scenario=`
+  of another plan answers 400 `{ scenario: 'not_found' }`, while a run into one answers 404. The
+  open tickets are counted first, with `LIMIT 50,001`, before `plan_too_large`.
+- **Drafts:** `clearSchedulerDrafts` also clears the refusal of a ticket that lost a draft, as
+  `writeDrafts` does; `createScenario` returns `main` too; `MAX_DRAFT_WRITE` (2,000) is the chunk
+  size. `sprintDay` and `inActiveSprint` read the ticket as `k`.
+- **A dragged proposal:** a person who moves one end of a proposed bar resends the other day
+  unchanged, and `writeDrafts` keeps a resent value with its origin. The run reads that ticket as
+  the person's draft and keeps it, but `DraftMark.origin` and the change list still say
+  `scheduler` until both days are the person's, so the bar keeps "Draft, auto-scheduled" beside
+  the notice "Your draft now". Left as found; the fix belongs in `writeDrafts` or in how the
+  origin is said.
+- **The web app:** the dialog remembers its choices per plan in `localStorage`
+  (`taskmoor.autoSchedule.<planId>`), apart from the first day and the target; it is the target
+  "This scenario" by default only when the plan holds 20 scenarios. Escape does not close it while
+  a run works. "Its choices" counts the ticket types left out rather than naming them. The result
+  is kept per scenario while the plan page is open. `ScheduleReadiness.types` and `.releases`,
+  `ScheduleResult.names` and `ScheduleEntry.summary` are optional in the client and not yet sent
+  by the route, so the Leave out lists offer nothing until readiness sends them, and result rows
+  show keys without summaries.
+- **Measured** on this machine, budgets not enforced (the user's hold on benchmarking): the engine
+  alone on 10,000 tickets, 20,000 links, 50 teams, 300 people and 12 periods, 87 ms; readiness's
+  median 26 ms and a whole run over 10,000 tickets 503 ms (`plans.large.test.ts`), which at the
+  100,000 size expects `too_many_to_schedule`.
 
 #### Questions for the user (the design takes the first answer each time)
 
