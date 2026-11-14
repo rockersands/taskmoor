@@ -844,6 +844,11 @@ details[open] > summary.admin-disclosure::after,
   overflow-wrap: break-word;
 }
 
+/* TASKMOOR_TOKEN=<token> stays one word: Chromium may break a line between = and <. */
+.mcp-snippet .mcp-word {
+  white-space: nowrap;
+}
+
 .mcp-page > :is(.people-form, .account-section) {
   max-width: none;
 }

@@ -65,7 +65,10 @@ export const CommandBreaksAtSlashes: Story = {
   args: { origin: 'http://localhost:8090' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const command = await canvas.findByText(/^TASKMOOR_URL=/);
+    const command = (await canvas.findByText(/^TASKMOOR_URL=/)).closest('code') as HTMLElement;
+    await expect(command.textContent).toBe(
+      'TASKMOOR_URL=http://localhost:8090 TASKMOOR_TOKEN=<token> node cli.mjs mcp',
+    );
     const lines = textLines(command);
     await expect(lines.length).toBeGreaterThan(1);
     await expect(lines.slice(0, -1).filter((line) => !/[/\s]$/.test(line))).toEqual([]);

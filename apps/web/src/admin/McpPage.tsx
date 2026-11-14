@@ -201,12 +201,13 @@ export function McpPage({
           </code>
         </pre>
         <p className="page-note">{t('mcp.connectStdio')}</p>
-        {/* Breaks at its spaces and after a '/', never inside the host or the port (AD-35). */}
+        {/* Breaks at its spaces and after a '/', never inside the host or the port (AD-35), nor
+            between TASKMOOR_TOKEN= and <token>, where Chromium would otherwise break a line. */}
         <pre className="mcp-snippet">
           <code>
-            <BreakAtSlashes
-              text={`TASKMOOR_URL=${origin} TASKMOOR_TOKEN=<token> node cli.mjs mcp`}
-            />
+            <BreakAtSlashes text={`TASKMOOR_URL=${origin} `} />
+            <span className="mcp-word">TASKMOOR_TOKEN=&lt;token&gt;</span>
+            {' node cli.mjs mcp'}
           </code>
         </pre>
       </section>
