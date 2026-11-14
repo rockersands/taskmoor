@@ -531,6 +531,29 @@ describe('the board page (M1-043)', () => {
     expect(client.moves.at(-1)).toEqual({ ticket: 124, columnId: 'doing', after: 123 });
   });
 
+  it('[AGL-002] [NFR-005] the Move menu takes the focus on its first move; the arrows go through it and Escape gives it back (S3-SP-10)', async () => {
+    const user = userEvent.setup();
+    renderBoard();
+    await page();
+    const grip = screen.getByRole('button', { name: 'Move SHOP-23' });
+    await user.click(grip);
+    const menu = (grip.closest('li') as HTMLElement).querySelector('.board-move-menu');
+    expect(menu).not.toBeNull();
+    const moves = [...(menu as HTMLElement).querySelectorAll('button')];
+    expect(moves.length).toBeGreaterThan(2);
+    const first = moves[0] as HTMLButtonElement;
+    await waitFor(() => expect(first).toHaveFocus());
+    await user.keyboard('{ArrowDown}');
+    expect(moves[1]).toHaveFocus();
+    await user.keyboard('{ArrowUp}{ArrowUp}');
+    expect(moves.at(-1)).toHaveFocus();
+    await user.keyboard('{Home}');
+    expect(first).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect((grip.closest('li') as HTMLElement).querySelector('.board-move-menu')).toBeNull();
+    expect(grip).toHaveFocus();
+  });
+
   it('[AGL-002] asks which transition when several lead into the column', async () => {
     const user = userEvent.setup();
     const client = renderBoard();

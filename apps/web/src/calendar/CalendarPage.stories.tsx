@@ -4,7 +4,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { HOLD } from '../shell/pointerDrag';
 import { onARealTouchScreen } from '../test/touch';
 import { CalendarPage } from './CalendarPage';
-import { fakeCalendarClient } from './fixtures';
+import { calendarTicket, fakeCalendarClient } from './fixtures';
 
 /** The width of a small phone; nothing inside may stick out sideways. */
 const atPhoneWidth = (Story: () => ReactElement) => (
@@ -97,6 +97,36 @@ export const EntryGripMenu: Story = {
       expect(menu.getByRole('menuitem', { name: 'One day earlier' })).toBeVisible(),
     );
     await expect(menu.getByRole('menuitem', { name: 'One week later' })).toBeVisible();
+  },
+};
+
+/**
+ * A name longer than its day, its grip pressed (S3-SP-11): the name ends before the grip, with its
+ * ellipsis in sight, rather than under it, where the end of a key was lost.
+ */
+export const LongNameUnderItsGrip: Story = {
+  args: {
+    client: fakeCalendarClient({
+      more: [
+        calendarTicket(4, 'Sweep the whole sign-in flow on both phones before the holidays', {
+          due: '2026-11-12',
+        }),
+      ],
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const grip = await canvas.findByRole('button', { name: 'Move the due day of CAL-4' });
+    await userEvent.click(grip);
+    await canvas.findByRole('menu');
+    const name = grip.closest('.calendar-entry')?.querySelector('.calendar-chip-text');
+    await expect(name).not.toBeNull();
+    const text = name as HTMLElement;
+    // Longer than its day: cut with an ellipsis.
+    await expect(text.scrollWidth).toBeGreaterThan(text.clientWidth);
+    await expect(text.getBoundingClientRect().right).toBeLessThanOrEqual(
+      grip.getBoundingClientRect().left + 0.5,
+    );
   },
 };
 

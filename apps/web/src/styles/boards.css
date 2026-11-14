@@ -415,6 +415,13 @@
   cursor: pointer;
 }
 
+/* The move in hand is filled, as in every grip's menu (S3-SP-10). */
+.board-move-menu button:hover,
+.board-move-menu button:focus {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
 /*
  * A choice asked over the board (which transition, or the fields one needs): a modal dialog
  * (ModalDialog, T-222), so opaque with no blur (D3) and drawn at the end of the body over a veil.

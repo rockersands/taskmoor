@@ -262,6 +262,15 @@ export function BoardPage({
   const [choice, setChoice] = useState<Choice | null>(null);
   const [asking, setAsking] = useState<Asking | null>(null);
   const [menuFor, setMenuFor] = useState<number | null>(null);
+  /**
+   * The open Move menu takes the focus on its first move, as every grip's menu does (S3-SP-10);
+   * the arrows go through its moves and Escape gives the focus back to the grip.
+   */
+  const moveList = useRef<HTMLUListElement>(null);
+  useEffect(() => {
+    if (menuFor === null) return;
+    moveList.current?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
+  }, [menuFor]);
   /** The card whose title is being edited, with the version the person read. */
   const [editing, setEditing] = useState<{ id: number; version: number | undefined } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -871,6 +880,34 @@ export function BoardPage({
     },
   };
 
+  /** The Move menu's keys: the arrows, Home and End go through its moves; Escape closes it. */
+  const onMoveMenuKey = (event: KeyboardEvent<HTMLUListElement>, card: BoardCard) => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      setMenuFor(null);
+      links.current
+        .get(card.id)
+        ?.closest('li')
+        ?.querySelector<HTMLElement>('[data-card-grip]')
+        ?.focus();
+      return;
+    }
+    const moves = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('button')];
+    const at = moves.indexOf(document.activeElement as HTMLButtonElement);
+    const steps: Record<string, number> = {
+      ArrowDown: at + 1,
+      ArrowUp: at - 1,
+      Home: 0,
+      End: moves.length - 1,
+    };
+    const to = steps[event.key];
+    if (to === undefined || moves.length === 0) return;
+    event.preventDefault();
+    moves[(to + moves.length) % moves.length]?.focus();
+  };
+
   /** A card's Move menu: the other columns, then up and down in its own. */
   const moveMenu = (card: BoardCard) => {
     const column = columnById(card.columnId);
@@ -878,7 +915,8 @@ export function BoardPage({
     const cell = cardsIn(card.columnId, card.laneId);
     const position = placeOf.get(card.id) ?? 0;
     return (
-      <ul className="board-move-menu">
+      // In the card, not floating: a column scrolls and would cut off a menu over its edge (T-193).
+      <ul ref={moveList} className="board-move-menu" onKeyDown={(e) => onMoveMenuKey(e, card)}>
         {columns.map((target, i) =>
           target.id === card.columnId ? null : (
             <li key={target.id}>

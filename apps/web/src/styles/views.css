@@ -325,6 +325,16 @@
   opacity: 1;
 }
 
+/*
+ * While the grip shows, the name ends before it, with its ellipsis in sight (S3-SP-11): under the
+ * grip a short name lost the end of its key ("MOB-5" for MOB-51), and a long one its ellipsis.
+ */
+.calendar-entry:hover .calendar-chip,
+.calendar-entry:focus-within .calendar-chip,
+.calendar-entry.is-dragging .calendar-chip {
+  padding-inline-end: calc(24px + var(--space-half));
+}
+
 /* Early in the week the menu opens towards the later days, else towards the earlier ones. */
 .calendar-day.is-early-week .move-grip-popup {
   inset-inline: 0 auto;
@@ -401,6 +411,13 @@
   /* The least a name needs beside the grip; a day with less sends the grip under it. */
   .calendar-entry .calendar-chip {
     flex-basis: 6rem;
+  }
+
+  /* Beside the name or under it, the grip covers none of it: the name keeps its own padding. */
+  .calendar-entry:hover .calendar-chip,
+  .calendar-entry:focus-within .calendar-chip,
+  .calendar-entry.is-dragging .calendar-chip {
+    padding-inline-end: var(--space-1);
   }
 
   .calendar-grip .move-grip-handle {

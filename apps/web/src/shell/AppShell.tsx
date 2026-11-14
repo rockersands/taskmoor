@@ -11,7 +11,7 @@ import { UpdateNotice } from '../admin/UpdateNotice';
 import { useT } from '../i18n/I18nProvider';
 import { UpdateBanner } from '../meta/VersionGate';
 import { startGlassLens } from './glassLens';
-import { MenuIcon } from './icons';
+import { CloseIcon, MenuIcon } from './icons';
 import { leaveMotion, useLeaveMotion } from './motion';
 import { type NavItem, NavList } from './NavList';
 import { COMPACT_QUERY, useMediaQuery } from './useMediaQuery';
@@ -82,7 +82,8 @@ export function AppShell({ items, activeId, topbarEnd, children }: AppShellProps
 
   useEffect(() => {
     if (!drawerOpen) return;
-    drawer.current?.querySelector<HTMLElement>('a, button')?.focus();
+    // The first page, not the close button above it: opening the drawer is for going somewhere.
+    drawer.current?.querySelector<HTMLElement>('nav a, nav button')?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') closeDrawer();
     };
@@ -170,6 +171,19 @@ export function AppShell({ items, activeId, topbarEnd, children }: AppShellProps
             aria-label={t('shell.navigationDialog')}
             onKeyDown={trapFocus}
           >
+            {/* The drawer says what it is and how to leave it (S3-SP-12): the product's name, and
+                a button that closes it, since the drawer covers the menu button. */}
+            <div className="shell-drawer-head">
+              <span className="shell-drawer-brand">{t('app.name')}</span>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label={t('shell.closeNavigation')}
+                onClick={closeDrawer}
+              >
+                <CloseIcon />
+              </button>
+            </div>
             <NavList items={items} activeId={activeId} showLabels onNavigate={closeDrawer} />
           </div>
         </>

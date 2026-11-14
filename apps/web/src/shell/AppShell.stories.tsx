@@ -42,5 +42,9 @@ export const PhoneDrawerOpen: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Open navigation' }));
     // The drawer fades in; wait for the animation to finish.
     await waitFor(() => expect(canvas.getByRole('dialog', { name: 'Navigation' })).toBeVisible());
+    // Its head names the product and gives a way out that shows (S3-SP-12).
+    const drawer = within(canvas.getByRole('dialog', { name: 'Navigation' }));
+    await expect(drawer.getByText('Taskmoor')).toBeVisible();
+    await expect(drawer.getByRole('button', { name: 'Close navigation' })).toBeVisible();
   },
 };
