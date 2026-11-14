@@ -1,6 +1,8 @@
 # Handoff
 
-Read this first in every session, then update it before you stop.
+Read this first in every session, then update it before you stop. Two sessions (Mac and Windows)
+work at once: claims, number ranges, the main lock and messages between them are in
+`COORDINATION.md`; read it before starting anything.
 
 ## Start here: continuing on another device (2026-11-03)
 
