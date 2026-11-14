@@ -290,6 +290,63 @@ describe('the create form (M1-012)', () => {
     expect(asked.every((c) => !c.path.includes('assignable=true'))).toBe(true);
   });
 
+  it('[CORE-008] [CORE-010] [CORE-006] keeps focus on the pickers as people and the parent are taken and removed', async () => {
+    const user = userEvent.setup();
+    const form = withFields(CHORE_FORM, [
+      { key: 'assignee', required: true, description: null },
+      { key: 'parent', required: false, description: null },
+      { key: 'cf[12]', required: false, description: null },
+    ]);
+    form.customFields = [
+      { id: 12, name: 'Reviewers', description: '', type: 'user', multiple: true },
+    ];
+    openCreate({
+      'GET /tracks/SHOP/ticket-types': () =>
+        jsonResponse(200, { typeSetId: 1, defaultTypeId: 4, ticketTypes: TYPES }),
+      'GET /tracks/SHOP/layout?ticketTypeId=4&operation=create': () => jsonResponse(200, form),
+      'POST /search': () =>
+        jsonResponse(200, {
+          tickets: [{ id: 40, key: 'SHOP-4', summary: 'Payments', status: { name: 'Open' } }],
+        }),
+      'GET /people/mentionable*': () =>
+        jsonResponse(200, {
+          people: [
+            { id: 21, name: 'Sam Rivera', canView: true },
+            { id: 22, name: 'Sasha Lee', canView: true },
+          ],
+        }),
+    });
+    // One person: the search field gives way, and focus goes to the Remove button.
+    const assignee = await screen.findByRole('searchbox', { name: 'Assignee (required)' });
+    await user.type(assignee, 'sa');
+    await screen.findByRole('button', { name: 'Sam Rivera' });
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Sam Rivera' })).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('button', { name: 'Remove Sam Rivera' })).toHaveFocus();
+    expect(screen.getByText('Sam Rivera chosen.')).toBeInTheDocument();
+    // Removing brings the search field back, with focus in it.
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('searchbox', { name: 'Assignee (required)' })).toHaveFocus();
+    expect(screen.getByText('Sam Rivera removed.')).toBeInTheDocument();
+    // Several people: focus goes back to the search field for the next one.
+    const reviewers = screen.getByRole('searchbox', { name: 'Reviewers' });
+    await user.type(reviewers, 'sa');
+    await screen.findByRole('button', { name: 'Sasha Lee' });
+    await user.tab();
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Sasha Lee' })).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(reviewers).toHaveFocus();
+    // The parent: picking moves focus to its Remove button, removing back to the field.
+    await user.type(screen.getByRole('combobox', { name: 'Parent' }), 'pay');
+    await screen.findByRole('option', { name: /SHOP-4/ });
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('button', { name: 'Remove SHOP-4 as parent' })).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('combobox', { name: 'Parent' })).toHaveFocus();
+  });
+
   it('[CORE-015] [CORE-016] a track with no releases or areas offers none, and says so where one is required', async () => {
     const form = withFields(CHORE_FORM, [
       { key: 'targetRelease', required: true, description: null },

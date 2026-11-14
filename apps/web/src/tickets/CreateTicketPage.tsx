@@ -278,6 +278,13 @@ export function CreateTicketPage({
   // People chosen in person pickers, by field key, and the parent chosen (T-253).
   const [picks, setPicks] = useState<Record<string, PickedPerson[]>>({});
   const [parent, setParent] = useState<PickedTicket | null>(null);
+  // Focus follows the parent's control as it swaps: to Remove once one is picked, back to the
+  // search field once it is removed, so keyboard and screen-reader users keep their place.
+  const focusParentRemove = useRef(false);
+  const [focusParentSearch, setFocusParentSearch] = useState(false);
+  useEffect(() => {
+    if (focusParentSearch) setFocusParentSearch(false);
+  }, [focusParentSearch]);
   // The track's releases and areas, once a form that places them is here; null until then.
   const [releases, setReleases] = useState<NamedChoice[] | null>(null);
   const [areas, setAreas] = useState<NamedChoice[] | null>(null);
@@ -711,7 +718,15 @@ export function CreateTicketPage({
                 className="button-secondary"
                 disabled={locked}
                 aria-label={t('tickets.create.removeParent', { key: parent.key })}
-                onClick={() => setParent(null)}
+                ref={(button) => {
+                  if (!button || !focusParentRemove.current) return;
+                  focusParentRemove.current = false;
+                  button.focus();
+                }}
+                onClick={() => {
+                  setParent(null);
+                  setFocusParentSearch(true);
+                }}
               >
                 {t('tickets.pickers.removeShort')}
               </button>
@@ -727,7 +742,11 @@ export function CreateTicketPage({
             const query = pickerQuery(typed);
             return query && client.tickets ? client.tickets(query) : Promise.resolve([]);
           }}
-          onPick={setParent}
+          onPick={(ticket) => {
+            focusParentRemove.current = true;
+            setParent(ticket);
+          }}
+          autoFocus={focusParentSearch}
           describedBy={described}
           required={field.required}
           invalid={invalid}

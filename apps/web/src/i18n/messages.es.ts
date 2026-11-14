@@ -2882,6 +2882,8 @@ export const messagesEs: Record<MessageId, string> = {
   'tickets.pickers.peopleFound':
     '{count, plural, one {# persona encontrada} other {# personas encontradas}}',
   'tickets.pickers.peopleFailed': 'La búsqueda no funcionó. Inténtalo de nuevo en un momento.',
+  'tickets.pickers.personChosen': 'Elegiste a {name}.',
+  'tickets.pickers.personRemoved': 'Quitaste a {name}.',
   'workflow.check.fieldRequired': '{field} es obligatorio.',
   'workflow.check.fieldModified': 'Cambia primero {field}.',
   'workflow.check.fieldSingleValue': '{field} admite un solo valor.',

@@ -2797,6 +2797,8 @@ export const messagesEn = {
   'tickets.pickers.noPeople': 'No one matches.',
   'tickets.pickers.peopleFound': '{count, plural, one {# person found} other {# people found}}',
   'tickets.pickers.peopleFailed': 'The search did not work. Try again in a moment.',
+  'tickets.pickers.personChosen': '{name} chosen.',
+  'tickets.pickers.personRemoved': '{name} removed.',
   'workflow.check.fieldRequired': '{field} is required.',
   'workflow.check.fieldModified': 'Change {field} first.',
   'workflow.check.fieldSingleValue': '{field} takes one value only.',
