@@ -107,6 +107,16 @@ paths = [
 ]
 regexes = ['''^pass$''']
 
+[[allowlists]]
+description = "The sweep's redaction: a made-up token its tests must hide, and the word password in an earlier comment's example address"
+targetRules = ["url-credentials"]
+condition = "AND"
+paths = [
+  '''^tools/sweep/plan\.test\.mjs$''',
+  '''^tools/sweep/redact\.mjs$''',
+]
+regexes = ['''^(abc123secret|password)$''']
+
 # --- False positives of the default generic-api-key rule ---------------------------------------
 
 [[allowlists]]

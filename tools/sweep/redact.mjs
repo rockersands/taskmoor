@@ -15,7 +15,7 @@ const RULES = [
     new RegExp(`"(${SECRET_NAMES}|accessToken|refreshToken)"\\s*:\\s*"[^"]*"`, 'gi'),
     `"$1":"${HIDDEN}"`,
   ],
-  // Credentials inside an address: scheme://name:password@host
+  // Credentials inside an address: the name and password between "://" and "@"
   [/(\b[a-z][a-z0-9+.-]*:\/\/[^\s:@/'"]+):[^\s@/'"]+@/gi, `$1:${HIDDEN}@`],
   // Authorization headers and cookies.
   [/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/g, `$1 ${HIDDEN}`],

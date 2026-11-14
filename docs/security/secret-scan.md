@@ -61,6 +61,7 @@ for an example, and none of them ever guarded anything real. The exact values ar
 | `docs/manual/admin/install.md` (2) | `aed7bb35` (2026-10-30) | The example connection string on the installation page |
 | `tools/helm/postgres.yaml` (2) | `50ffbbc9`, `7e56a288` (2026-10-12) | The password of the Postgres in the kind cluster that tests the Helm chart |
 | `tools/image/smoke.sh` (1) | `6004f5b4` (2026-10-12) | The password of the image smoke test's throwaway Postgres container |
+| `tools/sweep/plan.test.mjs` (1), `tools/sweep/redact.mjs` (1) | `20c08a70` (2026-11-13) | A made-up token the sweep must never repeat from its command line, and the word "password" in a comment's example address (the comment no longer has one). Found after the table above was counted |
 
 The other test credentials never enter the history as values. FakeS3 creates its access key and
 secret at run time (`packages/storage/src/fake-s3.ts`). The e2e seed's passphrases are ordinary
