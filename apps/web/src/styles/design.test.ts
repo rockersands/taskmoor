@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
+import { DRAGGED_WHOLE, GRIP_SELECTORS } from '../test/grips';
 import { ALLOWED, OFFENDERS, type Ratchet } from './design-offenders';
 
 /**
@@ -293,6 +294,40 @@ export function shortOnTouch(sources: string[]): string[] {
     .filter((d) => d.value === 'var(--hit-target)')
     .flatMap((d) => selectorsOf(d.selector));
   return [...new Set(short)].filter((selector) => !fingers.has(selector)).sort();
+}
+
+/** A cursor that says "drag me": a grab, a grabbing hand or a move, whatever its fallbacks. */
+const GRAB_CURSOR = /^(?:-webkit-|-moz-)?(?:grab|grabbing|move)(?:\s*!important)?$/;
+
+/**
+ * Grips no touch check knows of (T-290): every selector with both `touch-action: none` and a grab
+ * cursor, read across all the stylesheets and their at-rules, whose element is not one of `listed`
+ * (GRIP_SELECTORS and DRAGGED_WHOLE). Such a selector is a grip: a finger drags by it, so it needs a
+ * finger's size, which the stories measure only for the grips they are told of. A listed grip in a
+ * place of its own, or in a state (`.x .move-grip-handle:hover`), is the same grip.
+ */
+export function unlistedGrips(sources: string[], listed: readonly string[]): string[] {
+  // A selector without its trailing states, so a grip's `:hover` is the grip.
+  const element = (part: string) => part.replace(/(?::{1,2}[\w-]+(?:\([^)]*\))?)+$/, '');
+  const pinned = new Set<string>();
+  const grabbed = new Set<string>();
+  for (const d of sources.flatMap(cssDeclarations)) {
+    const value = d.value.toLowerCase();
+    const parts = selectorsOf(d.selector).map(element);
+    if (d.property === 'touch-action' && /^none\b/.test(value)) {
+      for (const part of parts) pinned.add(part);
+    }
+    if (d.property === 'cursor' && value.split(',').some((v) => GRAB_CURSOR.test(v.trim()))) {
+      for (const part of parts) grabbed.add(part);
+    }
+  }
+  const known = (part: string) => {
+    const subject = part.split(/[\s>+~]+/).at(-1) ?? '';
+    return listed.some((grip) =>
+      new RegExp(`${grip.replaceAll('.', '\\.')}(?![\\w-])`).test(subject),
+    );
+  };
+  return [...pinned].filter((part) => grabbed.has(part) && !known(part)).sort();
 }
 
 /* ---------------------------------------- TSX ---------------------------------------- */
@@ -919,6 +954,37 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
     );
   });
 
+  it('[NFR-007] finds a grip that no touch check knows of (T-290)', () => {
+    const grips = (css: string, listed: string[] = []) => unlistedGrips([css], listed);
+    expect(grips('.a { cursor: grab; touch-action: none; }')).toEqual(['.a']);
+    expect(grips('.a { cursor: grab; touch-action: none; }', ['.a'])).toEqual([]);
+    // Read across rules, at-rules and sheets, as the browser puts them together.
+    expect(
+      unlistedGrips(
+        ['.a { cursor: grab; }', '@media (pointer: coarse) { .a { touch-action: none; } }'],
+        [],
+      ),
+    ).toEqual(['.a']);
+    // Every hand that says "drag me", behind its fallbacks too.
+    for (const cursor of ['grabbing', '-webkit-grab', 'move', 'url(hand.svg) 4 4, grab']) {
+      expect(grips(`.a { cursor: ${cursor}; touch-action: none; }`)).toEqual(['.a']);
+    }
+    // One without the other is no grip: a row a mouse drags, a canvas a finger pans.
+    expect(
+      grips(
+        '.a { cursor: grab; } .b { touch-action: none; } .c { touch-action: pan-y; cursor: grab; }',
+      ),
+    ).toEqual([]);
+    // A listed grip in a place of its own or in a state is the same grip; a longer name is not.
+    expect(
+      grips('.row .a:hover, .a.big { cursor: grabbing; touch-action: none; }', ['.a']),
+    ).toEqual([]);
+    expect(grips('.a-wide, .b { cursor: grab; touch-action: none; }', ['.a'])).toEqual([
+      '.a-wide',
+      '.b',
+    ]);
+  });
+
   it('[NFR-005] holds a list to what is there, in both directions', () => {
     const found = new Map([['a.css', ['one', 'two']]]);
     expect(ratchet(found, { 'a.css': 2 })).toEqual([]);
@@ -972,6 +1038,14 @@ describe('the app reads as one design (ADR-114, T-144)', () => {
 
   it("[NFR-005] gives every mouse-sized target a finger's height on touch (ADR-033)", () => {
     expect(shortOnTouch(cssSources.map(([, source]) => source))).toEqual([]);
+  });
+
+  it('[NFR-007] lists every grip for the touch checks, or why it is dragged whole (T-290)', () => {
+    const sources = cssSources.map(([, source]) => source);
+    expect(unlistedGrips(sources, [...GRIP_SELECTORS, ...Object.keys(DRAGGED_WHOLE)])).toEqual([]);
+    // What is let through is still there to let through, each with its reason.
+    expect(unlistedGrips(sources, GRIP_SELECTORS)).toEqual(Object.keys(DRAGGED_WHOLE).sort());
+    for (const reason of Object.values(DRAGGED_WHOLE)) expect(reason.length).toBeGreaterThan(20);
   });
 
   it('[NFR-005] lifts an edge fade while something in the strip has focus (TR-4)', () => {

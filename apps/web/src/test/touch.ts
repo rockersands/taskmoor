@@ -1,4 +1,5 @@
 import { expect, waitFor } from 'storybook/test';
+import type { GRIP_SELECTORS } from './grips';
 
 /**
  * Measuring a story as on a touch screen (ADR-033). The stories' browser has a mouse, so the page's
@@ -40,24 +41,10 @@ export function tooSmallForAFinger(root: Element, selectors: readonly string[]):
   });
 }
 
-/**
- * Every grip the app draws (T-162; ADR-114, section 12): a finger drags what it belongs to by it,
- * and a press opens its menu of the same moves. Each is a finger's size on a touch screen, which
- * stories check under a real coarse pointer with `gripsTooSmall` (T-231): the rule was once
- * hidden behind a width query with every test green.
- */
-export const GRIP_SELECTORS = [
-  // MoveMenu's grip: track groups and their tracks, a sprint's tickets, the calendar's entries.
-  '.move-grip-handle',
-  // A board card's grip, and the pencil beside it that shares its look.
-  '.board-card-grip',
-  '.board-card-move',
-  '.dashboard-widget-grip',
-  '.layout-grip-handle',
-  '.checklist-grip',
-] as const;
-
 export type GripSelector = (typeof GRIP_SELECTORS)[number];
+
+/** A grip, or one in a place of its own: `.sprint-ticket-grip .move-grip-handle`. */
+export type GripIn = GripSelector | `${string} ${GripSelector}`;
 
 /**
  * The grips that are too small for a finger, as `tooSmallForAFinger` names them, once each of
@@ -66,7 +53,7 @@ export type GripSelector = (typeof GRIP_SELECTORS)[number];
  */
 export async function gripsTooSmall(
   root: Element,
-  selectors: readonly GripSelector[],
+  selectors: readonly GripIn[],
 ): Promise<string[]> {
   await waitFor(() =>
     expect(selectors.filter((selector) => !root.querySelector(selector))).toEqual([]),
