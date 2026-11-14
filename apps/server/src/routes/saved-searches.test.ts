@@ -804,7 +804,7 @@ describe('saved searches (M1-063)', () => {
 
     it('[QRY-011] refuses a cursor it did not give, a limit out of range and unknown parameters', async () => {
       const forged = Buffer.from(JSON.stringify(['x', 0])).toString('base64url');
-      const nul = Buffer.from(JSON.stringify(['a b', 1])).toString('base64url');
+      const nul = Buffer.from(JSON.stringify(['a\u0000b', 1])).toString('base64url');
       for (const query of [
         '?after=not%20a%20cursor',
         '?after=bm90IGpzb24',
