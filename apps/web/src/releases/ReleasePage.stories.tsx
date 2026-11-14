@@ -59,6 +59,23 @@ export const Shipped: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Feature', level: 3 })).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Copy as Markdown' })).toBeVisible();
+    // The reasons left out in words, each with how many (T-299).
+    await expect(
+      canvas.getByText(
+        'Left out (closed without being done): 1 ticket as Duplicate and 2 tickets as Not planned.',
+      ),
+    ).toBeVisible();
+  },
+};
+
+/** The notes at a phone's width: the reasons left out wrap inside the card (T-299). */
+export const ShippedAtPhoneWidth: Story = {
+  args: { releaseId: 1 },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText(/^Left out \(closed without being done\)/)).toBeVisible();
+    await fitsPhoneWidth(canvas);
   },
 };
 

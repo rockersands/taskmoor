@@ -34,3 +34,19 @@ export function typeName(t: Translate, name: string): string {
   const id = Object.hasOwn(TYPES, name) ? TYPES[name] : undefined;
   return id ? t(id) : name;
 }
+
+const CLOSE_REASONS: Readonly<Record<string, MessageId>> = {
+  Completed: 'closeReason.name.completed',
+  'Not planned': 'closeReason.name.notPlanned',
+  Duplicate: 'closeReason.name.duplicate',
+  'Not reproducible': 'closeReason.name.notReproducible',
+};
+
+/**
+ * A close reason's name in the person's language, the same way (T-299): the seeded reasons are
+ * stored in English, a reason someone renamed or added shows as they wrote it.
+ */
+export function closeReasonName(t: Translate, name: string): string {
+  const id = Object.hasOwn(CLOSE_REASONS, name) ? CLOSE_REASONS[name] : undefined;
+  return id ? t(id) : name;
+}

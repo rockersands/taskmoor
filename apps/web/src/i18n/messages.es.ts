@@ -3680,6 +3680,10 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketType.name.toDo': 'Pendiente',
   'ticketType.name.idea': 'Idea',
   'ticketType.name.subticket': 'Subticket',
+  'closeReason.name.completed': 'Completado',
+  'closeReason.name.notPlanned': 'No planificado',
+  'closeReason.name.duplicate': 'Duplicado',
+  'closeReason.name.notReproducible': 'No reproducible',
   'ticketView.editLabels': 'Editar las etiquetas',
   'ticketView.save': 'Guardar',
   'ticketView.cancel': 'Cancelar',
@@ -5878,6 +5882,9 @@ export const messagesEs: Record<MessageId, string> = {
   'release.notes.empty':
     'Aún no hay tickets cerrados: las notas se rellenan a medida que se cierran.',
   'release.notes.leftOut': 'Excluidos (cerrados sin estar hechos): {list}.',
+  'release.notes.leftOutReason': '{count, plural, one {# ticket} other {# tickets}} como {reason}',
+  'release.notes.leftOutNoReason':
+    '{count, plural, one {# ticket} other {# tickets}} con un motivo de cierre ya borrado',
   'release.notes.truncated': 'Solo los primeros 5000 tickets cerrados están en las notas.',
   'release.notes.copy': 'Copiar como Markdown',
   'release.notes.download': 'Descargar en Markdown',
