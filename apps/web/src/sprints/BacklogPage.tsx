@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   type KeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   useCallback,
@@ -248,10 +249,14 @@ export function BacklogPage({
     : [];
   const sectionOf = new Map<number, SectionKey>();
   const ticketOf = new Map<number, BacklogTicket>();
+  // The longest key on the page sizes the key column of every section, so summaries line up
+  // as the sprint report's table has them (TR-22).
+  let keyChars = 0;
   for (const s of sections) {
     for (const x of s.tickets) {
       sectionOf.set(x.id, s.key);
       ticketOf.set(x.id, x);
+      keyChars = Math.max(keyChars, x.key.length);
     }
   }
   const chosen = new Set(selected);
@@ -570,13 +575,18 @@ export function BacklogPage({
               items={gripItems(ticket, section, shown)}
               onDragStart={(event) => beginDrag(event, ticket)}
             />
-            <input
-              type="checkbox"
-              className="sprint-ticket-select"
-              checked={chosen.has(ticket.id)}
-              onChange={() => toggle(ticket.id)}
-              aria-label={t('sprints.select.label', { key: ticket.key })}
-            />
+            {/* The box is drawn at the size of every other; on touch the label around it is
+                the finger's target (T-221). */}
+            <label className="sprint-ticket-select">
+              <input
+                type="checkbox"
+                checked={chosen.has(ticket.id)}
+                onChange={() => toggle(ticket.id)}
+              />
+              <span className="visually-hidden">
+                {t('sprints.select.label', { key: ticket.key })}
+              </span>
+            </label>
             <span className="ticket-icons">
               <TypeIcon name={ticket.type} icon={ticket.typeIcon} />
               {ticket.priority ? (
@@ -652,7 +662,12 @@ export function BacklogPage({
   const first = dragging?.[0] !== undefined ? ticketOf.get(dragging[0]) : undefined;
 
   return (
-    <section ref={page} className="page backlog-page" aria-labelledby={`${id}-title`}>
+    <section
+      ref={page}
+      className="page backlog-page"
+      aria-labelledby={`${id}-title`}
+      style={keyChars > 0 ? ({ '--sprint-key-chars': keyChars } as CSSProperties) : undefined}
+    >
       <PageHeader
         titleId={`${id}-title`}
         title={t('sprints.backlog.pageTitle')}

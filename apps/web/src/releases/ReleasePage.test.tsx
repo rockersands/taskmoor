@@ -267,6 +267,16 @@ describe('a release’s page (M1-050)', () => {
     expect(screen.getByText('Shipped on').nextElementSibling).toHaveTextContent('2026-10-01');
   });
 
+  it('[CORE-016] offers no Markdown to copy or download while the notes are empty (D27)', async () => {
+    renderRelease(3);
+    const notes = within(await screen.findByRole('region', { name: 'Release notes' }));
+    expect(
+      notes.getByText('No closed tickets yet: the notes fill in as tickets close.'),
+    ).toBeVisible();
+    expect(notes.queryByRole('button', { name: 'Copy as Markdown' })).toBeNull();
+    expect(notes.queryByRole('link', { name: 'Download Markdown' })).toBeNull();
+  });
+
   it('[CORE-016] sits under its track’s tab bar with Releases marked, titled by its name under the track (T-215, D26, D7)', async () => {
     renderRelease();
     const heading = await screen.findByRole('heading', { level: 1, name: '2.0' });

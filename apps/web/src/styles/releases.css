@@ -29,6 +29,13 @@
   padding: var(--space-4);
 }
 
+/* A button of a section's own, as "Add to a release across tracks…", is a normal button at the
+   start of the line, never a bar the card's width (D27). */
+.release-section > button {
+  justify-self: start;
+  max-width: 100%;
+}
+
 .release-group h2,
 .release-section h2 {
   margin: 0;

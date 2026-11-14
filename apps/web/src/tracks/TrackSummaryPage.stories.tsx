@@ -64,6 +64,34 @@ export const RowsThatFill: Story = {
   },
 };
 
+/**
+ * Each section ends at its content (RPT-006; second sweep): a short list beside a long one leaves
+ * no empty card under it, as a plan's Summary does (PL-37).
+ */
+export const SectionsEndAtTheirContent: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 960 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('region', { name: 'Open by assignee' });
+    const sections = Array.from(canvasElement.querySelectorAll<HTMLElement>('.summary-section'));
+    await expect(sections.length).toBeGreaterThan(1);
+    const empty = sections.map((section) => {
+      const last = section.lastElementChild?.getBoundingClientRect().bottom ?? 0;
+      const style = getComputedStyle(section);
+      const edge =
+        Number.parseFloat(style.paddingBottom) + Number.parseFloat(style.borderBottomWidth);
+      return Math.round(section.getBoundingClientRect().bottom - edge - last);
+    });
+    await expect(empty).toEqual(sections.map(() => 0));
+  },
+};
+
 /** On a phone the tiles go two to a row and the fifth spans the last row, never alone in half. */
 export const RowsThatFillOnAPhone: Story = {
   decorators: [

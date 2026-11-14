@@ -23,7 +23,8 @@ track's name above it. It shows:
   by assignee** (the ten people with most).
 
 The five numbers sit on one line however their labels wrap; on a phone they go two to a row with
-the last across the row, and the four lists one or two to a row, never three and a lone fourth.
+the last across the row, and the four lists one or two to a row, never three and a lone fourth,
+each card as tall as its own list.
 Every number is a link to the search that finds exactly those tickets. The tab bar above it holds
 the track's other sections, such as its [**Releases**](boards.md#releases),
 [**Statistics**](dashboards-and-reports.md#a-tracks-statistics), **Timeline**,

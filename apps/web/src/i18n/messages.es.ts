@@ -5860,7 +5860,7 @@ export const messagesEs: Record<MessageId, string> = {
   'sprints.settings.statistic': 'Estimar con',
   'sprints.settings.statistic.ticketCount': 'Número de tickets',
   'sprints.settings.statistic.originalEstimate': 'Estimación de tiempo original',
-  'sprints.settings.statistic.field': 'Un campo numérico, como los puntos de historia',
+  'sprints.settings.statistic.field': 'Un campo numérico, como Puntos',
   'sprints.settings.field': 'Campo numérico',
   'sprints.settings.fieldPlaceholder': 'Elige un campo numérico',
   'sprints.settings.fieldUnknown': 'Campo {id}',
