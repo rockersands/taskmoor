@@ -49,7 +49,8 @@ import { ALLOWED, OFFENDERS, type Ratchet } from './design-offenders';
  *   `max-height` that caps a finger's height, it does not: the touch stories and the probe.
  * - A glass card in a component drawn inside one, through a component given the inner card as its
  *   children or a helper imported from another file: the Chrome pass. It reads what each component
- *   draws (T-356), and JSX outside every component as any of its file's.
+ *   draws (T-356), a class it writes on a component of ours among it, and JSX outside every
+ *   component as any of its file's.
  * - Whether a purpose line or an empty state says anything useful, spacing and hierarchy: a person.
  * - An empty message whose ID says neither "none" nor "empty", such as `noTickets`, or that is not
  *   the words of a `p`, `li`, `div`, `td` or `dd`; a list that stays quiet with no message at all; a
@@ -1066,6 +1067,13 @@ export interface ComponentUse {
   root?: string | undefined;
   /** The component it is drawn by, as `ownerIn` reads it (T-356). */
   owner?: string | undefined;
+  /**
+   * The classes written on it (`className`), surely or only under a condition: a component given a
+   * class may draw it on an element of its own (`<TableScroller className="glass-card">`), so it
+   * counts as drawn here wherever the component puts it (T-356).
+   */
+  classes: string[];
+  maybe: string[];
 }
 
 /** The tag names of a control a finger presses; an `<input type="hidden">` is none. */
@@ -1653,7 +1661,16 @@ export function jsxFacts(
       const root = rootIn(node, components);
       const owner = ownerIn(node, components);
       if (native) facts.elements.push({ ...written, around: path, root, owner });
-      else facts.uses.push({ tag, around: path, root, owner });
+      else {
+        facts.uses.push({
+          tag,
+          around: path,
+          root,
+          owner,
+          classes: written.classes,
+          maybe: written.maybe,
+        });
+      }
       if (passer) {
         facts.elements.push({
           ...passer.control,
@@ -1921,7 +1938,8 @@ function componentResolver(
  * Components drawn inside a glass card that draw one themselves (ADR-114), read per component
  * (T-356): a file that draws a glass card in one component does not make its others draw one. A
  * component draws one when an element it draws (`owner`) has the class, surely or only under a
- * condition, or when it draws a component that does, in its own file or another. JSX outside every
+ * condition, when it writes the class on a component it draws (`<Wrapper className="glass-card">`),
+ * or when it draws a component that does, in its own file or another. JSX outside every
  * component (a helper) may be any of them's; what a portal draws lands outside the card.
  */
 export function glassInGlass(
@@ -1945,7 +1963,10 @@ export function glassInGlass(
         (e) => its(e.owner) && [...e.classes, ...e.maybe].includes('glass-card'),
       ) ||
       facts.uses.some((use) => {
-        const target = its(use.owner) ? resolve(file, use.tag) : undefined;
+        if (!its(use.owner)) return false;
+        // A class written on a component of ours is one it draws, whatever element it lands on.
+        if ([...use.classes, ...use.maybe].includes('glass-card')) return true;
+        const target = resolve(file, use.tag);
         return target !== undefined && draws(target, deeper);
       });
     // A no reached while some components were left out on the way may be a yes from elsewhere.
@@ -3056,14 +3077,17 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
       export function Kept() { const card = <div className="glass-card" />; return <i>{card}</i>; }
       export function Outer() { return <div><Card /></div>; }
       export function Popped() { return createPortal(<div className="glass-card" />, document.body); }
+      export function Wrapped() { return <TableScroller className="glass-card glass-scroller" />; }
+      export function Toggled({ on }: P) { return <Wrapper className={on ? 'glass-card' : ''} />; }
     `;
     const page = (inner: string) =>
-      `import { Card, Fields, Maybe, Kept, Outer, Popped } from './cards';\nexport const Page = () => <div className="glass-card">${inner}</div>;`;
+      `import { Card, Fields, Maybe, Kept, Outer, Popped, Wrapped, Toggled } from './cards';\nexport const Page = () => <div className="glass-card">${inner}</div>;`;
     // A component of a file that draws glass elsewhere draws none itself; what a portal draws
     // lands outside the card.
     expect(glass({ 'a/cards.tsx': cards, 'a/page.tsx': page('<Fields /><Popped />') })).toEqual([]);
-    // One that draws one, under a condition, kept aside, or through another component, does.
-    for (const tag of ['Card', 'Maybe', 'Kept', 'Outer']) {
+    // One that draws one, under a condition, kept aside, through another component, or as the
+    // className of a component of ours, does.
+    for (const tag of ['Card', 'Maybe', 'Kept', 'Outer', 'Wrapped', 'Toggled']) {
       expect(glass({ 'a/cards.tsx': cards, 'a/page.tsx': page(`<${tag} />`) })).toEqual([
         `a/page.tsx ${tag}`,
       ]);
