@@ -74,18 +74,17 @@ describe('workflow diagram layout (M1-030)', () => {
     const diagram = layoutDiagram(definition);
     const span = (id: number) => {
       const label = diagram.edges.find((e) => e.transitionId === id)?.label;
-      return label ? [label.x - label.width / 2, label.x + label.width / 2] : [0, 0];
+      if (!label) throw new Error(`No tab for transition ${id}`);
+      return { left: label.x - label.width / 2, right: label.x + label.width / 2 };
     };
     const node = (id: number) => diagram.nodes.find((n) => n.statusId === id);
     // Active's three tabs end before Review's box and Review's lone tab starts after them.
-    const [, activeEnd] = span(5);
-    const [reviewStart] = span(6);
-    expect(activeEnd).toBeLessThan(node(3)?.x ?? 0);
-    expect(reviewStart).toBeGreaterThan(activeEnd);
+    expect(span(5).right).toBeLessThan(node(3)?.x ?? 0);
+    expect(span(6).left).toBeGreaterThan(span(5).right);
     // New's lone tab stops before Active's first tab.
-    expect(span(7)[1]).toBeLessThan(span(3)[0]);
+    expect(span(7).right).toBeLessThan(span(3).left);
     // The lone tabs keep a shared tab's width at least.
-    expect(span(6)[1] - span(6)[0]).toBeGreaterThanOrEqual(TAB_WIDTH);
+    expect(span(6).right - span(6).left).toBeGreaterThanOrEqual(TAB_WIDTH);
   });
 
   it('[WF-002] global tabs in one row never overlap one another or another column’s box', () => {
