@@ -284,9 +284,14 @@ export function evenOut(input: ScheduleInput): EvenOutOutput {
   for (let i = 0; i < N; i++) addLoad(i, 1);
 
   const moved: (Moved | null)[] = new Array(N).fill(null);
-  // A failed try stands until a later pass moves the ticket or fails it again: it says why a
-  // ticket ranked lower stayed while one ranked higher moved.
+  // Why a try failed. `still_over` is cleared at the start of each pass: the last pass moves
+  // nothing, so it is left only on the candidates of the cells that stay over (rule 7), and a
+  // ticket whose cell came to fit after another's move stays where it is, with `already`.
+  // `would_make_late` stands (rule 6): it says why a ticket ranked lower stayed while one ranked
+  // higher moved, and it stays true when the cell fits.
   const failed: (Failed | null)[] = new Array(N).fill(null);
+  // Whether the last move that stood pushed a ticket: a push takes load out of a later period.
+  let pushedAny = false;
   let overLeft: OverLeftCell[] = [];
   let buckets: number[][] = [];
   let movedThisPass = false;
@@ -370,6 +375,7 @@ export function evenOut(input: ScheduleInput): EvenOutOutput {
       enqueue(v);
     }
     // The move stands: loads leave and enter, and each ticket says why it moved.
+    pushedAny = next.size > 1;
     for (const [j, n] of next) {
       const from = dueAt(j);
       addLoad(j, -1);
@@ -409,6 +415,7 @@ export function evenOut(input: ScheduleInput): EvenOutOutput {
   const pass = () => {
     movedThisPass = false;
     overLeft = [];
+    for (let i = 0; i < N; i++) if (failed[i]?.reason === 'still_over') failed[i] = null;
     buckets = Array.from({ length: P }, () => []);
     for (let i = 0; i < N; i++) {
       const p = dueAt(i);
@@ -428,8 +435,9 @@ export function evenOut(input: ScheduleInput): EvenOutOutput {
         const c = cap[s]?.[p];
         if (c === null || c === undefined || (load[s]?.[p] as number) <= c) continue;
         const list = (bySubject.get(s) ?? []).filter((i) => dueAt(i) === p).sort(lowestFirst);
-        // Loads in later periods only grow while a cell is worked on, so when no later period has
-        // room for a size of an assignee's, none has for a larger one: those fail without a look.
+        // A move without pushes only adds load to later periods, so when no later period has room
+        // for a size of an assignee's, none has for a larger one: those fail without a look. A
+        // push takes load out of a later period, so it forgets what was learned.
         const noRoomFrom = new Map<number, number>();
         for (const i of list) {
           const now = load[s]?.[p] as number;
@@ -444,8 +452,10 @@ export function evenOut(input: ScheduleInput): EvenOutOutput {
             };
             continue;
           }
-          if (tryMove(i, s, p, now - c)) movedThisPass = true;
-          else if (failed[i]?.reason === 'still_over')
+          if (tryMove(i, s, p, now - c)) {
+            movedThisPass = true;
+            if (pushedAny) noRoomFrom.clear();
+          } else if (failed[i]?.reason === 'still_over')
             noRoomFrom.set(who, Math.min(size, noRoomFrom.get(who) ?? Number.POSITIVE_INFINITY));
         }
         const left = load[s]?.[p] as number;

@@ -357,6 +357,61 @@ describe('evening out load moves work off over-full periods (PLN-011)', () => {
       ),
     ).toBe(2);
   });
+
+  it('[PLN-011] says still over only of a cell that stays over: a try that failed before another move made it fit is left where it is', () => {
+    // 13 points due in a period of 10. SPA-3 (5, ranked lowest) finds no later period with 5 free,
+    // then SPA-2 (3) moves and the cell fits: SPA-3 stays where it is, not "still over".
+    const out = evenOut(
+      input(
+        [
+          ticket(1, { estimate: pts(5) }),
+          ticket(2, { estimate: pts(3) }),
+          ticket(3, { estimate: pts(5) }),
+        ],
+        {
+          teams: [team(10, [1], every(pts(10)))],
+          people: [person(1, every(null), [0, pts(7), pts(7), pts(7), pts(7), pts(7)])],
+        },
+      ),
+    );
+    expect(why(out, 2)).toEqual(['placed', 'moved_off_over']);
+    expect(why(out, 3)).toEqual(['placed', 'already']);
+    expect(why(out, 1)).toEqual(['placed', 'already']);
+    expect(out.counts.notPlaced.still_over).toBe(0);
+    expect(out.overLeft).toEqual([]);
+  });
+
+  it('[PLN-011] tries the next lowest-ranked ticket again once a push has freed room in a later period', () => {
+    // 17 points due in a period of 10; the second period holds 7 (SPA-9's 5 and 2 elsewhere), the
+    // others 6. SPA-4 (5) finds no room. SPA-3 (3) moves into the second period and pushes SPA-9,
+    // which it blocks, into the third, which frees 5 there: SPA-2 (5), ranked below SPA-1, moves
+    // next and the cell fits, so SPA-1 stays.
+    const out = evenOut(
+      input(
+        [
+          ticket(1, { estimate: pts(4) }),
+          ticket(2, { estimate: pts(5) }),
+          ticket(3, { estimate: pts(3) }),
+          ticket(4, { estimate: pts(5) }),
+          ticket(9, { estimate: pts(5), start: '2026-11-28', due: '2026-12-13' }),
+        ],
+        {
+          links: [{ from: 3, to: 9 }],
+          teams: [team(10, [1], every(pts(10)))],
+          people: [person(1, every(null), [0, pts(2), pts(6), pts(6), pts(6), pts(6)])],
+        },
+      ),
+    );
+    expect(why(out, 3)).toEqual(['placed', 'moved_off_over']);
+    expect(entry(out, 9)).toMatchObject({ reason: 'pushed_by_move', args: { blockerId: 3 } });
+    expect(entry(out, 2)).toMatchObject({
+      outcome: 'placed',
+      reason: 'moved_off_over',
+      args: { toPeriod: P2.start },
+    });
+    expect(why(out, 1)).toEqual(['placed', 'already']);
+    expect(why(out, 4)).toEqual(['placed', 'already']);
+  });
 });
 
 // ---------------------------------------------------------------------------------------------

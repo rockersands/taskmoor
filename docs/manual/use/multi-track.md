@@ -578,7 +578,9 @@ in a scenario, as for any run.
   its sprint, one in a circle) or take a ticket past the run's last day, the whole move is undone,
   the ticket stays, and the next one is tried. So the run makes no dependency late between the
   tickets it reads.
-- **No room:** when no later period has room, the ticket stays, and the period is reported.
+- **No room:** when no later period has room, the ticket stays. If the period is still over at the
+  end, its tickets that could not move say "Still over" and the period is reported; if another
+  ticket's move made it fit, they are simply left where they are.
 
 The result, on the scenario's **Changes** tab, is titled **Even out load** and counts what moved,
 for example "2 tickets moved later, 14 kept, 1 not moved, 3 earlier proposals removed."

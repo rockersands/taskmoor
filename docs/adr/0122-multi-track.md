@@ -3070,9 +3070,12 @@ the build differs from the design above, or settles what it left open:
   null day: a day a ticket does not have stays null. `countOverCells` is exported for readiness.
 - **Evening out's outcomes:** every other movable ticket is placed with `already` and the page
   never lists those; tickets in a circle or behind a hidden blocker are listed as not placed
-  (`cycle`, `hidden_blocker`), as in stage 7. A failed try stays on its ticket even when a later
-  candidate's move makes its cell fit. Within a cell, a size no later period could take is not
-  searched again for the same assignee, which keeps the large case inside its budget.
+  (`cycle`, `hidden_blocker`), as in stage 7. `still_over` is left only on the candidates of a
+  cell that stays over (rule 7): a ticket whose try failed before a later candidate's move made its
+  cell fit stays where it is, with `already`. `would_make_late` stays on its ticket (rule 6), since
+  it still says why it did not move. Within a cell, a size no later period could take is not
+  searched again for the same assignee until a move pushes a ticket, which frees room in a later
+  period; this keeps the large case inside its budget.
 - **Pushes can raise the number of over cells.** Rule 5 checks room only for the moved ticket; a
   pushed ticket lands where the push puts it and its cell is worked when its turn comes. Promise
   (d) holds, since every cell left over is listed, but in the large synthetic plan (packed full,
