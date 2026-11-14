@@ -8,6 +8,7 @@ import { setViewportWidth } from '../test/viewport';
 import type { PlanView } from './address';
 import { fakePlanClient } from './fixtures';
 import { BY_STATUS, ESTIMATES, type FakeGridOptions, fakeGridClient } from './grid/clientFixtures';
+import { bigSkeleton } from './grid/fixtures';
 import { PlanGridPage } from './PlanGridPage';
 import { PlanPage } from './PlanPage';
 import { fakeScenarioClient } from './scenarioFixtures';
@@ -107,6 +108,28 @@ describe('a plan’s Grid (PLN-010)', () => {
     expect(
       within(rowOf('SHOP-70')).getByText('Also reached once more, shown elsewhere'),
     ).toBeVisible();
+  });
+
+  it('[PLN-010] (4) collapsing rows hides nothing from a total: closed rows still count', async () => {
+    const user = userEvent.setup();
+    renderGrid(saved);
+    await screen.findByRole('treegrid');
+    await within(rowOf('SHOP-1')).findByText('Checkout that never loses a cart');
+    const cells = (key: string) => cellsOf(rowOf(key)).map((c) => c.textContent);
+    const last = () =>
+      cellsOf(screen.getByRole('rowheader', { name: 'All rows' }).parentElement as HTMLElement).map(
+        (c) => c.textContent,
+      );
+    const before = { outcome: cells('SHOP-1'), all: last() };
+    expect(before.outcome).toEqual(expect.arrayContaining(['6 h', '2 of 4 closed', '8']));
+    // SHOP-41's subticket (2 h, closed) and then all of SHOP-1's rows go out of view.
+    await user.click(screen.getByRole('button', { name: 'Collapse SHOP-41' }));
+    expect(cells('SHOP-1')).toEqual(before.outcome);
+    await user.click(screen.getByRole('button', { name: 'Collapse SHOP-1' }));
+    expect(screen.queryByRole('rowheader', { name: /SHOP-44/ })).toBeNull();
+    expect(cells('SHOP-1')).toEqual(before.outcome);
+    expect(last()).toEqual(before.all);
+    expect(last()).toContain('2 of 9 closed');
   });
 
   it('[PLN-010] collapses and expands rows, and keeps what is collapsed in this browser', async () => {
@@ -341,7 +364,7 @@ describe('a plan’s Grid (PLN-010)', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('[PLN-010] says when a structure adds no rows, and when it stops at 100,000', async () => {
+  it('[PLN-010] says when a structure adds no rows', async () => {
     renderGrid({ skeleton: 'empty' });
     expect(await screen.findByText('No rows in this structure')).toBeVisible();
   });
@@ -350,6 +373,13 @@ describe('a plan’s Grid (PLN-010)', () => {
     renderGrid({ more: true });
     expect(await screen.findByText('Shows the first 9 rows.')).toBeVisible();
   });
+
+  it('[PLN-010] says a structure stops at 100,000 rows', async () => {
+    const big = bigSkeleton(100_000);
+    big.more = true;
+    renderGrid({ skeleton: big });
+    expect(await screen.findByText('Shows the first 100,000 rows.')).toBeVisible();
+  }, 60_000);
 
   it('[PLN-010] names groups by field and value, "No value" for none', async () => {
     renderGrid({

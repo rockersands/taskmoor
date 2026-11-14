@@ -15,7 +15,7 @@ import {
   totalCell,
 } from './compute';
 import { bigSkeleton, type FixtureRow, skeletonOf } from './fixtures';
-import { buildTree, moveSubtree, visibleRows } from './tree';
+import { buildTree, moveSubtree } from './tree';
 import type { StructureColumn } from './types';
 
 const SUM: StructureColumn = { kind: 'total', fn: 'sum', of: 'cf[1]' };
@@ -147,7 +147,7 @@ describe('totals of the Grid (ADR-122 stage 10, "Totals and formulas")', () => {
     );
   });
 
-  it('[PLN-010] (4) counts hidden tickets beside a total, never in it, and collapsing hides nothing from a total', () => {
+  it('[PLN-010] (4) counts hidden tickets beside a total, never in it', () => {
     const rows: FixtureRow[] = [
       { ticket: 1, parent: -1, notShown: 4, values: { 'cf[1]': 1 } },
       { ticket: 2, parent: 0, notShown: 1, values: { 'cf[1]': 2 } },
@@ -168,9 +168,6 @@ describe('totals of the Grid (ADR-122 stage 10, "Totals and formulas")', () => {
     expect(grid.hiddenBelow[4]).toBe(5);
     expect(totalCell(grid, 1, 4)).toMatchObject({ value: 12, valued: 2, of: 3 });
     expect(totalCell(grid, 4, 0)).toEqual({ kind: 'count', count: 2 });
-    // Collapsing the top row on the page draws fewer rows; the totals are the same.
-    expect([...visibleRows(grid.tree, new Set([0]))]).toEqual([0, 3]);
-    expect(snapshot(computeGrid(s, COLUMNS))).toEqual(snapshot(grid));
   });
 
   it('[PLN-010] totals the rows of a group row, and the last row totals the top rows', () => {
