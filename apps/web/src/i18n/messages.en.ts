@@ -3628,6 +3628,8 @@ export const messagesEn = {
   'clone.left':
     'The copy is without what you may not set there or its track does not take: {fields}.',
   'clone.customField': 'a custom field',
+  // Something left out of a copy that this client cannot name (T-292).
+  'clone.otherValue': 'another value',
   'clone.open': 'Open {key}',
   'clone.details': 'See each ticket’s result',
   'clone.problem.forbidden': 'You may not create tickets in that track.',
@@ -3713,7 +3715,9 @@ export const messagesEn = {
   'ticketView.problem.forbidden': 'You may not make this change to this ticket.',
   'ticketView.problem.stale': 'Someone changed this ticket meanwhile. Read it again and retry.',
   'ticketView.problem.transition': 'The workflow does not let this transition happen now.',
-  'ticketView.problem.fields': 'Check these values: {fields}.',
+  'ticketView.problem.fields': 'Check these values. {fields}',
+  // A custom field a refusal names when the page has no name for it (T-292).
+  'refusal.field.custom': 'A custom field',
   'ticketView.problem.layout':
     'This transition asks for {fields}, which this page cannot fill in yet.',
   'ticketView.problem.other': 'That did not work. Try again in a moment.',
