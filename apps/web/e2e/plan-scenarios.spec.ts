@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { type APIRequestContext, expect, type Page, type TestInfo, test } from '@playwright/test';
+import { uniqueRun } from './unique';
 
 /**
  * Scenarios and draft changes end to end (T-089e; PLN-002, PLN-003; ADR-122 stage 6): a plan over
@@ -11,8 +12,9 @@ import { type APIRequestContext, expect, type Page, type TestInfo, test } from '
  * as they were. SB's due day is then locked by a field rule, so applying Login page and Billing
  * changes the first and refuses the second for the lock, in words, and Search box stays pending.
  * A second scenario, Slower, is compared with Faster by the plan's end and made main. On a phone
- * the same drafts go through the Timeline's side panel and the board's Move dialog, and the change
- * list's actions sit in a bar at the bottom. No serious axe issue and no sideways page scroll. It
+ * the same drafts go through the Timeline's side panel and the board's Move dialog, the change
+ * list's actions sit in a bar at the bottom, the same refusal reads in words and the comparison is
+ * in cards. No serious axe issue and no sideways page scroll. It
  * uses the attachments database (preview 4174), whose administrator (Ada Attach) the API server
  * made.
  */
@@ -60,6 +62,7 @@ const thisMonday = () => {
 };
 
 interface Fixture {
+  run: string;
   plan: number;
   board: number;
   trackB: number;
@@ -71,7 +74,8 @@ interface Fixture {
 /** The plan, its tracks, board and owner, made as the site's administrator. */
 async function fixture(api: APIRequestContext, testInfo: TestInfo): Promise<Fixture> {
   await ok(api.post(`${BASE}/api/v1/session`, { data: ADMIN }));
-  const run = `${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-5)}`;
+  // Two letters and this run's eight: a track key of ten, never one an earlier run used (T-244).
+  const run = uniqueRun(testInfo);
   const email = `planner-${run}@scenario.test`.toLowerCase();
   const owner = (
     await ok<{ user: { id: number } }>(
@@ -154,7 +158,7 @@ async function fixture(api: APIRequestContext, testInfo: TestInfo): Promise<Fixt
       }),
     )
   ).board.id;
-  return { plan, board, trackB, monday, keys: { login, search, billing }, owner: { email } };
+  return { run, plan, board, trackB, monday, keys: { login, search, billing }, owner: { email } };
 }
 
 /** SB's due days may be set only by a group nobody is in: a field lock (WF-007). */
@@ -163,14 +167,14 @@ async function lockBillingsDueDay(api: APIRequestContext, f: Fixture) {
   await ok(api.post(`${BASE}/api/v1/session`, { data: ADMIN }));
   const group = (
     await ok<{ group: { id: number } }>(
-      api.post(`${BASE}/api/v1/groups`, { data: { name: `Planners ${Date.now()}` } }),
+      api.post(`${BASE}/api/v1/groups`, { data: { name: `Planners ${f.run}` } }),
     )
   ).group.id;
   const rules = (
     await ok<{ fieldRuleSet: { id: number } }>(
       api.post(`${BASE}/api/v1/field-rule-sets`, {
         data: {
-          name: `Due locked ${Date.now()}`,
+          name: `Due locked ${f.run}`,
           rules: [{ field: 'dueDate', editableBy: [{ groupId: group }] }],
         },
       }),
@@ -316,7 +320,7 @@ test('[PLN-002] [PLN-003] drafts on the Timeline and a board, applies two of thr
   expect(await noSidewaysScroll(page)).toBe(true);
 });
 
-test('[PLN-002] on a phone drafts go through the side panel and Move, and the actions sit in a bar', async ({
+test('[PLN-002] [PLN-003] on a phone drafts go through the side panel and Move, a refusal reads in words, and scenarios compare in cards', async ({
   page,
 }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'the phone’s layout');
@@ -327,13 +331,18 @@ test('[PLN-002] on a phone drafts go through the side panel and Move, and the ac
   const faster = await newScenario(page, 'Faster');
   expect(await noSidewaysScroll(page)).toBe(true);
 
-  // The side panel: Login page due a day later, saved as a draft.
-  await page.getByRole('button', { name: new RegExp(`^${f.keys.login}: `) }).click();
-  const panel = page.getByRole('complementary', { name: `Days of ${f.keys.login}` });
-  await panel.getByLabel('Due date').fill(plus(f.monday, 3));
-  await panel.getByRole('button', { name: 'Save draft' }).click();
-  await drafted(page, f.keys.login, 'Faster');
+  // The side panel: Login page due a day later and Billing two, saved as drafts.
+  const draftDue = async (key: string, due: string) => {
+    await page.getByRole('button', { name: new RegExp(`^${key}: `) }).click();
+    const panel = page.getByRole('complementary', { name: `Days of ${key}` });
+    await panel.getByLabel('Due date').fill(due);
+    await panel.getByRole('button', { name: 'Save draft' }).click();
+    await drafted(page, key, 'Faster');
+  };
+  await draftDue(f.keys.login, plus(f.monday, 3));
+  await draftDue(f.keys.billing, plus(f.monday, 6));
   expect(await dueOf(page.request, f.keys.login)).toBe(plus(f.monday, 2));
+  expect(await dueOf(page.request, f.keys.billing)).toBe(plus(f.monday, 4));
 
   // The board's Move dialog: Search box a week later.
   await page.goto(`${BASE}/#/plans/${f.plan}/boards/${f.board}?scenario=${faster}`);
@@ -346,16 +355,64 @@ test('[PLN-002] on a phone drafts go through the side panel and Move, and the ac
   );
   expect(await noSidewaysScroll(page)).toBe(true);
 
-  // The change list: cards, and the actions in a bar at the bottom.
+  // The change list: cards, and the actions in a bar at the bottom. Billing's due day is locked.
+  await lockBillingsDueDay(page.request, f);
+  await signIn(page, f);
   await page.goto(`${BASE}/#/plans/${f.plan}/changes?scenario=${faster}`);
   await expect(page.getByRole('table')).toHaveCount(0);
   await page.getByRole('checkbox', { name: `Select ${f.keys.login}` }).check();
+  await page.getByRole('checkbox', { name: `Select ${f.keys.billing}` }).check();
   const bar = page.getByRole('group', { name: 'Chosen changes' });
-  await bar.getByRole('button', { name: 'Apply 1 change' }).click();
-  await bar.getByRole('button', { name: 'Apply 1 change' }).click();
-  await expect(page.getByRole('heading', { name: '1 applied, 0 refused' })).toBeFocused();
+  await bar.getByRole('button', { name: 'Apply 2 changes' }).click();
+  await bar.getByRole('button', { name: 'Apply 2 changes' }).click();
+  await expect(page.getByRole('heading', { name: '1 applied, 1 refused' })).toBeFocused();
+  await expect(page.getByText(new RegExp(`^${f.keys.billing}: it is locked\\.`))).toBeVisible();
   expect(await dueOf(page.request, f.keys.login)).toBe(plus(f.monday, 3));
+  expect(await dueOf(page.request, f.keys.billing)).toBe(plus(f.monday, 4));
+  // Search box stays pending; Billing stays, refused and chosen.
   await expect(page.getByRole('link', { name: new RegExp(`^${f.keys.search} `) })).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: `Select ${f.keys.billing}` })).toBeChecked();
   expect(await noSidewaysScroll(page)).toBe(true);
   expect(await seriousAxeViolations(page)).toEqual([]);
+
+  // Slower, with Billing far later, compared with Faster in cards, then made main.
+  await page.goto(`${BASE}/#/plans/${f.plan}/scenarios`);
+  await page.getByRole('button', { name: 'New scenario' }).click();
+  const dialog = page.getByRole('dialog', { name: 'New scenario' });
+  await dialog.getByLabel('Name').fill('Slower');
+  await dialog.getByRole('button', { name: 'Make scenario' }).click();
+  await expect(page.getByText('Slower is made.')).toBeVisible();
+  const list = await ok<{ scenarios: { id: number; name: string }[] }>(
+    page.request.get(`${BASE}/api/v1/plans/${f.plan}/scenarios`),
+  );
+  const slower = list.scenarios.find((s) => s.name === 'Slower')?.id as number;
+  const billingId = (
+    await ok<{ ticket: { id: number } }>(
+      page.request.get(`${BASE}/api/v1/tickets/${f.keys.billing}`),
+    )
+  ).ticket.id;
+  const put = await page.request.put(`${BASE}/api/v1/plans/${f.plan}/scenarios/${slower}/drafts`, {
+    data: { changes: [{ ticketId: billingId, dueDate: plus(f.monday, 30) }] },
+  });
+  expect(put.status(), await put.text()).toBe(200);
+  await page.goto(`${BASE}/#/plans/${f.plan}/scenarios?a=${faster}&b=${slower}`);
+  await page.reload();
+  await expect(page.getByRole('table')).toHaveCount(0);
+  const ends = page
+    .getByRole('listitem')
+    .filter({ has: page.getByRole('heading', { name: /^The plan ends/ }) });
+  await expect(ends).toContainText('days later in Slower');
+  expect(await noSidewaysScroll(page)).toBe(true);
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  await page.getByRole('button', { name: 'Make Slower main' }).click();
+  await page
+    .getByRole('group', {
+      name: 'Slower’s 1 change becomes the plan’s drafts to apply. Faster keeps its 2 changes as a scenario.',
+    })
+    .getByRole('button', { name: 'Make Slower main' })
+    .click();
+  await expect(
+    page.getByText('Slower is now main: its drafts are the ones to apply.'),
+  ).toBeVisible();
+  expect(await noSidewaysScroll(page)).toBe(true);
 });
