@@ -6,6 +6,7 @@ import { requireUser } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import { diff, emit } from '../events/bus';
 import { enforceLimit } from '../guardrails/model';
+import { utcDay, viewerDay } from '../reports/zone';
 import { findTeam } from '../teams';
 import { rewriteTickets, writeOrder } from '../tickets/fields';
 import { isCalendarDay } from '../tickets/model';
@@ -107,9 +108,6 @@ const invalid = (reply: FastifyReply, detail?: string) =>
   reply.code(400).send({ error: 'invalid_request', ...(detail ? { detail } : {}) });
 const notFound = (reply: FastifyReply) => reply.code(404).send({ error: 'not_found' });
 
-/** Today in UTC, as the day a release ships when none is given. */
-const today = () => new Date().toISOString().slice(0, 10);
-
 /**
  * Releases with their target tickets counted; `visible` limits the counts to the tickets a
  * viewer may see (QRY-008 (1), M1-020), as the ticket filter's predicate on `k`.
@@ -168,7 +166,11 @@ export function releaseQuery(
 }
 type ReleaseRow = Awaited<ReturnType<ReturnType<typeof releaseQuery>['executeTakeFirstOrThrow']>>;
 
-export function releaseView(r: ReleaseRow) {
+/**
+ * A release as its pages show it. `today` is the viewer's day (`viewerDay`, T-282), against which
+ * an upcoming release's day has gone by; without one, UTC's (the Plans routes still pass none).
+ */
+export function releaseView(r: ReleaseRow, today: string = utcDay()) {
   const tickets = Number(r.ticket_count ?? 0);
   const closed = Number(r.closed_count ?? 0);
   return {
@@ -186,7 +188,7 @@ export function releaseView(r: ReleaseRow) {
     requireApprovals: r.require_approvals,
     progress: { tickets, closed, open: tickets - closed },
     // Upcoming, with its release day gone by.
-    overdue: r.shipped_at === null && r.release_date !== null && r.release_date < today(),
+    overdue: r.shipped_at === null && r.release_date !== null && r.release_date < today,
     // Anyone who sees the release sees this: they see one of its linked tracks.
     crossTrack:
       r.cross_id === null
@@ -373,7 +375,7 @@ export function registerReleaseRoutes(
       .where('r.id', '=', releaseId)
       .executeTakeFirst();
     if (!row) return null;
-    return { ...releaseView(row), approvers: await approverViews(releaseId) };
+    return { ...releaseView(row, viewerDay(request)), approvers: await approverViews(releaseId) };
   }
 
   /** The release row, locked; null when it is gone. */
@@ -416,7 +418,8 @@ export function registerReleaseRoutes(
     const mayManage =
       track.archived_at === null &&
       ((await request.authz.can('administer_track', params.data.id)) || (await isAdmin(request)));
-    return { releases: rows.map(releaseView), mayManage };
+    const today = viewerDay(request);
+    return { releases: rows.map((r) => releaseView(r, today)), mayManage };
   });
 
   app.post('/api/v1/tracks/:id/releases', async (request, reply) => {
@@ -515,7 +518,8 @@ export function registerReleaseRoutes(
       .where('r.track_id', '=', trackId)
       .orderBy('r.sort_order')
       .execute();
-    return { releases: rows.map(releaseView) };
+    const today = viewerDay(request);
+    return { releases: rows.map((r) => releaseView(r, today)) };
   });
 
   app.get('/api/v1/releases/:id', async (request, reply) => {
@@ -687,7 +691,8 @@ export function registerReleaseRoutes(
           },
         );
       }
-      const releaseDate = body.releaseDate ?? today();
+      // With no day given, it ships on the shipper's own day, as their screens say today (T-282).
+      const releaseDate = body.releaseDate ?? viewerDay(request);
       await trx
         .updateTable('release')
         .set({ shipped_at: new Date(), release_date: releaseDate, updated_at: new Date() })

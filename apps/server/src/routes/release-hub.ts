@@ -5,7 +5,7 @@ import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { boardScope, compileQuery, type Scope } from '../boards/data';
 import type { FieldCatalogs } from '../fields/catalog';
-import { viewerTimeZone } from '../reports/zone';
+import { viewerDay, viewerTimeZone } from '../reports/zone';
 import { COUNT_CAP, DEFAULT_QUERY_TIMEOUT_MS, prepareSearch, readOnly } from '../search/run';
 import { searchPerson, searchRefusal } from './search';
 
@@ -211,7 +211,8 @@ export function registerReleaseHubRoutes(
         count(request, scope, open),
       ]);
       const shipped = release.shipped_at !== null;
-      const today = new Date().toISOString().slice(0, 10);
+      // Overdue against the viewer's own day, as their screens say today (T-282).
+      const today = viewerDay(request);
       const warnings: Warning[] = [];
       const warn = (code: WarningCode, counted: Counted) => {
         if (counted.count > 0) warnings.push({ code, count: counted.count, query: counted.query });

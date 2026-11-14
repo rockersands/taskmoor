@@ -148,6 +148,21 @@ describe('teams (M1-123)', () => {
     expect(anonymous.statusCode).toBe(401);
   });
 
+  it('[CORE-027] gives a picker at most `limit` teams, by name; every team without one (T-282)', async () => {
+    for (const name of ['Pick C', 'pick a', 'Pick B']) await team(name);
+    const names = async (query: string) => {
+      const res = await get('bob', `/api/v1/teams?${query}`);
+      expect(res.statusCode, res.body).toBe(200);
+      return (res.json().teams as TeamJson[]).map((t) => t.name);
+    };
+    expect(await names('query=pick&limit=2')).toEqual(['pick a', 'Pick B']);
+    expect(await names('query=pick')).toEqual(['pick a', 'Pick B', 'Pick C']);
+    expect((await names('limit=1')).length).toBe(1);
+    for (const bad of ['limit=0', 'limit=201', 'limit=two']) {
+      expect((await get('bob', `/api/v1/teams?${bad}`)).statusCode, bad).toBe(400);
+    }
+  });
+
   it('[CORE-027] keeps a team with a lead, a description and members, and tells about it', async () => {
     const made = await team('Platform', {
       description: 'Runs the servers',

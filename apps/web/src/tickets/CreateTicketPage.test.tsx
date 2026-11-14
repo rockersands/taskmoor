@@ -463,7 +463,7 @@ describe('the create form (M1-012)', () => {
             { id: 42, name: 'Ops leads' },
           ],
         }),
-      'GET /teams?query=pay': () =>
+      'GET /teams?query=pay&limit=8': () =>
         jsonResponse(200, {
           teams: [{ id: 51, name: 'Payments', description: '', lead: null, memberCount: 3 }],
         }),
@@ -504,9 +504,10 @@ describe('the create form (M1-012)', () => {
     expect(await screen.findByText('SHOP-9 was created.')).toBeVisible();
     const sent = calls.filter((c) => c.method === 'POST' && c.path === '/tickets').pop();
     expect(sent?.body).toMatchObject({ fields: { 31: [42, 41], 32: 51, 33: 5, 34: [8] } });
-    // The site's teams are never all loaded at once: only those whose name holds the text.
+    // The site's teams are never all loaded at once: only the first eight whose name holds the
+    // text, which the server picks (T-282).
     expect(calls.filter((c) => c.path.startsWith('/teams')).map((c) => c.path)).toEqual([
-      '/teams?query=pay',
+      '/teams?query=pay&limit=8',
     ]);
   });
 

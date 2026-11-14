@@ -378,6 +378,6 @@ teams.
 | `GET`, `PATCH`, `DELETE /api/v1/groups/:id` | Read, rename or delete a group |
 | `PUT`, `DELETE /api/v1/groups/:id/members/:userId` | Add or remove a member |
 | `PUT`, `DELETE /api/v1/groups/:id/children/:childId` | Put a group inside, or take it out |
-| `GET`, `POST /api/v1/teams` | List (`?query=` finds by name) or create teams; anyone signed in lists |
+| `GET`, `POST /api/v1/teams` | List (`?query=` finds by name, `?limit=` up to 200 keeps the first by name) or create teams; anyone signed in lists |
 | `GET`, `PATCH`, `DELETE /api/v1/teams/:id` | Read (anyone signed in), change or delete a team; `PATCH` takes `name`, `description` and `leadId` |
 | `PUT`, `DELETE /api/v1/teams/:id/members/:userId` | Add or remove a member |

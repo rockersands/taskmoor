@@ -329,6 +329,48 @@ describe('custom fields (M1-010)', () => {
     expect(summary).not.toHaveProperty('valueType');
   });
 
+  it('[CORE-015][CORE-016] refuses an archived release or area in a custom field, as the system fields do, keeping one a ticket has (T-282)', async () => {
+    const shippedIn = await field({ name: 'Delivered in', type: 'release' });
+    const owners = await field({ name: 'Caretaking areas', type: 'area', multiple: true });
+    const old = (await post('admin', `/api/v1/tracks/${tracks.XT}/releases`, { name: 'X0' })).json()
+      .release;
+    const legacy = (
+      await post('admin', `/api/v1/tracks/${tracks.XT}/areas`, { name: 'Legacy' })
+    ).json().area;
+    const live = (await post('admin', `/api/v1/tracks/${tracks.XT}/areas`, { name: 'Live' })).json()
+      .area;
+    const had = await ticket('XT', {
+      fields: { [shippedIn.id]: old.id, [owners.id]: [legacy.id] },
+    });
+    expect((await post('admin', `/api/v1/releases/${old.id}/archive`, {})).statusCode).toBe(200);
+    expect((await post('admin', `/api/v1/areas/${legacy.id}/archive`, {})).statusCode).toBe(200);
+    // No ticket takes an archived one anew, with the system fields' error code.
+    const refused = await create('XT', {
+      fields: { [shippedIn.id]: old.id, [owners.id]: [live.id, legacy.id] },
+    });
+    expect(refused.statusCode).toBe(400);
+    expect(errorsOf(refused)).toEqual({
+      [`fields.${shippedIn.id}`]: 'archived',
+      [`fields.${owners.id}`]: 'archived',
+    });
+    const other = await ticket('XT');
+    const edited = await patch('alice', `/api/v1/tickets/${other.id}`, {
+      fields: { [shippedIn.id]: old.id },
+    });
+    expect(edited.statusCode).toBe(400);
+    expect(errorsOf(edited)).toEqual({ [`fields.${shippedIn.id}`]: 'archived' });
+    // The ticket that has them keeps them through an edit, and may add a live one beside.
+    const kept = await patch('alice', `/api/v1/tickets/${had.id}`, {
+      summary: 'Still on X0',
+      fields: { [shippedIn.id]: old.id, [owners.id]: [legacy.id, live.id] },
+    });
+    expect(kept.statusCode, kept.body).toBe(200);
+    expect((await view(had)).fields[owners.id]).toEqual([
+      { id: legacy.id, name: 'Legacy' },
+      { id: live.id, name: 'Live' },
+    ]);
+  });
+
   it('[CORE-010] checks values on write: numbers, text length, references and read-only text', async () => {
     const points = await field({ name: 'Estimate points', type: 'number' });
     const title = await field({ name: 'Short title', type: 'text' });
