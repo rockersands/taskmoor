@@ -473,7 +473,8 @@ describe('a track’s statistics (ADR-116)', () => {
         };
       };
     });
-    expect(await screen.findByText('Shipped on Aug 18.')).toBeVisible();
+    // With its year, as the release's page and the Releases list say it (T-240).
+    expect(await screen.findByText('Shipped on Aug 18, 2026.')).toBeVisible();
     expect(screen.queryByText(/At the pace of the last/)).toBeNull();
   });
 

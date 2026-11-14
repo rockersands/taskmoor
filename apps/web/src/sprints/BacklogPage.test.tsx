@@ -453,7 +453,7 @@ describe('planning on the backlog (M1-047)', () => {
       'Checkout 2.0',
     );
     expect(await screen.findByRole('button', { name: /Checkout 2\.0/ })).toHaveTextContent(
-      '2 tickets, due 2026-12-01',
+      '2 tickets, due Dec 1, 2026',
     );
     await user.selectOptions(
       selection.getByRole('combobox', { name: 'Put selected under…' }),
