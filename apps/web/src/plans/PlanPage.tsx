@@ -213,7 +213,8 @@ export function PlanPage({
   const active: ScenarioRow | null =
     asked === undefined ? null : (scenarioList?.scenarios.find((s) => s.id === asked) ?? null);
   const waiting = asked !== undefined && scenarioList === null && !scenariosFailed;
-  const missing = asked !== undefined && !waiting && active === null;
+  // Gone only when the list was read and lacks it: a list not read says so on its own.
+  const missing = asked !== undefined && !waiting && !scenariosFailed && active === null;
   const editsDraft = scenarioList?.editable ?? false;
   const inScenario = active
     ? {

@@ -117,6 +117,14 @@ describe('the scenario bar (ADR-122 stage 6)', () => {
     expect(plans.scenarioReads.every((s) => s === undefined)).toBe(true);
   });
 
+  it('[PLN-002] says only that the scenarios could not be read, never that the one asked for is gone', async () => {
+    renderPlan('timeline', '#/plans/12/timeline?scenario=2', { failList: true });
+    const alerts = await screen.findAllByRole('alert');
+    expect(alerts.map((a) => a.textContent)).toEqual([
+      'The plan’s scenarios could not be loaded, so this is the plan live. Try again in a moment.',
+    ]);
+  });
+
   it('[PLN-003] makes a new scenario from the select and opens it', async () => {
     const user = userEvent.setup();
     renderPlan('timeline', '#/plans/12/timeline');
