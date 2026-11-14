@@ -49,6 +49,25 @@ export const Editing: Story = {
   },
 };
 
+/**
+ * A cell open for editing keeps its row still (QRY-014): the text box always shows focus, so the
+ * row shows no icon words while it is open, and a click moving focus from the box to Save cannot
+ * shift the columns between press and release.
+ */
+export const EditingKeepsItsPlace: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'Edit Labels of SHOP-41' }));
+    const box = canvas.getByRole('textbox', { name: 'Edit Labels of SHOP-41' });
+    await expect(box).toHaveFocus();
+    await expect(box.matches(':focus-visible')).toBe(true);
+    const row = box.closest('tr');
+    const words = Array.from(row?.querySelectorAll('.ticket-icon-word') ?? []);
+    await expect(words.length).toBeGreaterThan(0);
+    for (const word of words) await expect(getComputedStyle(word).display).toBe('none');
+  },
+};
+
 /** An edit a status lock refused, shown on its cell. */
 export const Refused: Story = {
   play: async ({ canvasElement }) => {
