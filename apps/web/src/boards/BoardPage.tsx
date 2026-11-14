@@ -347,13 +347,27 @@ export function BoardPage({
     void load(filters, people);
   }, [load, filters, people]);
 
+  // As with the board's own read, only the latest read of the sprints counts: an older answer
+  // that arrives after a newer one would bring back a sprint completed since (T-243).
+  const sprintReads = useRef(0);
   const loadSprints = useCallback(() => {
-    sprints.boardSprints(boardId).then(setSprintList, () => setSprintList(null));
+    const mine = ++sprintReads.current;
+    sprints.boardSprints(boardId).then(
+      (list) => {
+        if (mine === sprintReads.current) setSprintList(list);
+      },
+      () => {
+        if (mine === sprintReads.current) setSprintList(null);
+      },
+    );
   }, [sprints, boardId]);
   const scrum = board?.kind === 'scrum';
   useEffect(() => {
     if (scrum) loadSprints();
-    else setSprintList(null);
+    else {
+      sprintReads.current += 1;
+      setSprintList(null);
+    }
   }, [scrum, loadSprints]);
 
   // A link or the browser's Back can change the address while the page stays: it follows.

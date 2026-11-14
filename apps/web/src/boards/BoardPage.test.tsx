@@ -1091,6 +1091,39 @@ describe('completing a sprint from the board (T-106)', () => {
     expect(screen.getByText('Checkout Sprint 1 completed.')).toBeInTheDocument();
   });
 
+  it('[AGL-010] keeps the newer list of sprints when an older answer arrives after it (T-243)', async () => {
+    const user = userEvent.setup();
+    const sprints = fakeSprints([sprint(10, 'Old', 'closed'), ACTIVE, PLANNED]);
+    const read = sprints.boardSprints;
+    let reads = 0;
+    let answerSecond: () => void = () => {};
+    const second = new Promise<void>((done) => {
+      answerSecond = done;
+    });
+    // The second read, made when the pop-up closes, answers only after the third.
+    sprints.boardSprints = async () => {
+      const mine = ++reads;
+      const answer = await read();
+      if (mine === 2) await second;
+      return answer;
+    };
+    open(scrumBoard(), sprints);
+    const board = await page();
+    await user.click(await board.findByRole('button', { name: 'Complete sprint' }));
+    await user.keyboard('{Escape}');
+    await user.click(board.getByRole('button', { name: 'Complete sprint' }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Complete sprint' }),
+    );
+    await waitFor(() =>
+      expect(board.queryByRole('button', { name: 'Complete sprint' })).toBeNull(),
+    );
+    expect(reads).toBe(3);
+    await act(async () => answerSecond());
+    await act(async () => {});
+    expect(board.queryByRole('button', { name: 'Complete sprint' })).toBeNull();
+  });
+
   it('[AGL-010] shows a refusal in plain words and keeps the pop-up open', async () => {
     const user = userEvent.setup();
     open(
