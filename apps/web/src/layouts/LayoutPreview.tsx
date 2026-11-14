@@ -5,6 +5,7 @@ import type { MessageId } from '../i18n/messages.en';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import { EmptyState } from '../shell/EmptyState';
 import type { LayoutsClient, Named, Preview } from './client';
+import { setAtCreate } from './createForm';
 import { type DraftSet, entriesOf, type FormChoice } from './model';
 import { layoutRefusal } from './refusal';
 
@@ -37,11 +38,45 @@ type State =
   | { status: 'refused'; answer: unknown; last: Preview | null }
   | { status: 'failed'; last: Preview | null };
 
-const REASONS: Record<Preview['leftOut'][number]['reason'], MessageId> = {
+/** Why a placed field is not on the form: the server's reasons, and the create form's own. */
+type LeftOutReason = Preview['leftOut'][number]['reason'] | 'after_create';
+
+const REASONS: Record<LeftOutReason, MessageId> = {
   hidden: 'layouts.preview.reason.hidden',
   not_applicable: 'layouts.preview.reason.notApplicable',
   computed: 'layouts.preview.reason.computed',
+  after_create: 'layouts.preview.reason.afterCreate',
 };
+
+type Shown = Omit<Preview, 'leftOut'> & { leftOut: { field: string; reason: LeftOutReason }[] };
+
+/**
+ * The create form as people get it: a field set only once the ticket exists goes, unless it is
+ * required (the form then says why it cannot set it). One the layout placed is said under the form;
+ * one in the tab of the rest (a tab with no name) was not placed, so it just goes.
+ */
+function asCreated(preview: Preview): Shown {
+  const later: string[] = [];
+  const tabs = preview.layout.tabs.map((tab) => ({
+    ...tab,
+    sections: tab.sections.map((section) => ({
+      ...section,
+      fields: section.fields.filter((field) => {
+        const kept = field.required || setAtCreate(field.key);
+        if (!kept && tab.name !== null) later.push(field.key);
+        return kept;
+      }),
+    })),
+  }));
+  return {
+    ...preview,
+    layout: { ...preview.layout, tabs },
+    leftOut: [
+      ...preview.leftOut,
+      ...later.map((field) => ({ field, reason: 'after_create' as const })),
+    ],
+  };
+}
 
 /**
  * The live preview of the layout editor (UI-T15; ADR-114 section 8; CORE-008, CORE-013): the form
@@ -104,7 +139,10 @@ export function LayoutPreview({
     };
   }, [client, setId, typeId, form.operation, trackId, layouts, delay, expired]);
 
-  const shown = state.status === 'ready' ? state.preview : state.last;
+  const last = state.status === 'ready' ? state.preview : state.last;
+  // The create form leaves out what is set once the ticket exists, Close reason among them, unless
+  // it is required (PL-20, D30): the preview leaves out the same, from the form's own lists.
+  const shown = last && last.layout.operation === 'create' ? asCreated(last) : last;
   // Why, in the catalogue's words; a refusal the editor does not know is said in general.
   const reason = state.status === 'refused' ? layoutRefusal(t, state.answer, knownName) : null;
   const typeName = types.find((x) => x.id === typeId)?.name ?? '';
@@ -166,12 +204,15 @@ export function LayoutPreview({
                 </option>
               ))}
             </select>
-            <p id={`${id}-track-hint`} className="form-hint">
-              {t('layouts.preview.trackHint')}
-            </p>
           </div>
         )}
       </div>
+      {/* Under the row, so the two selects stand side by side at one height (AD-37). */}
+      {!fixedTrack && (
+        <p id={`${id}-track-hint`} className="form-hint">
+          {t('layouts.preview.trackHint')}
+        </p>
+      )}
       {typeId === null ? (
         <p className="page-note">{t('layouts.preview.noTypes')}</p>
       ) : (

@@ -7050,11 +7050,10 @@ export const messagesEs: Record<MessageId, string> = {
     'El formulario tal como lo dará el servidor, con las reglas de campos aplicadas. Sigue tus cambios antes de que guardes.',
   'layouts.preview.type': 'Ver como',
   'layouts.preview.track': 'Campos y reglas de',
-  'layouts.preview.noTrack':
-    'Ningún track en concreto (campos compartidos, reglas predeterminadas)',
+  'layouts.preview.noTrack': 'Ningún track en concreto',
   'layouts.preview.ownerTrack': 'El track al que pertenece este conjunto',
   'layouts.preview.trackHint':
-    'Los tracks pueden tener campos personalizados y reglas de campos distintos: elige uno que use este conjunto para ver su formulario.',
+    'Sin un track en concreto, la vista previa usa los campos compartidos y las reglas predeterminadas. Los tracks pueden tener campos personalizados y reglas de campos distintos: elige uno que use este conjunto para ver su formulario.',
   'layouts.preview.fixedTrack':
     'Con los campos y las reglas de {key} · {name}, el track al que pertenece este conjunto.',
   'layouts.preview.noTypes': 'No hay tipos de ticket para la vista previa.',
@@ -7075,6 +7074,8 @@ export const messagesEs: Record<MessageId, string> = {
   'layouts.preview.leftOut': 'Colocados, pero fuera de este formulario:',
   'layouts.preview.reason.hidden': '{field}: una regla de campo lo oculta.',
   'layouts.preview.reason.notApplicable': '{field}: no aplica a este tipo de ticket aquí.',
+  'layouts.preview.reason.afterCreate':
+    '{field}: se pone en el ticket una vez creado, así que el formulario de crear lo omite.',
   'layouts.preview.reason.computed':
     '{field}: su valor se calcula, así que el formulario de crear lo omite.',
   'purpose.crossTracks':

@@ -121,6 +121,47 @@ describe('the layout editor (UI-T15)', () => {
     expect(within(preview()).getByText('How bad it is')).toBeVisible();
   });
 
+  it('[CORE-008] the create form’s preview and palette leave out what is set once a ticket exists (PL-20, D30)', async () => {
+    const user = userEvent.setup();
+    // A create layout that placed Close reason before D30, and an edit layout that does not.
+    const sets = layoutSetsFixture().map((set) => {
+      const create = set.layouts[0];
+      if (set.id !== 1 || !create) return set;
+      const tabs = create.definition.tabs.map((tab) => ({
+        ...tab,
+        sections: tab.sections.map((s, i) =>
+          i === 1 ? { ...s, fields: [...s.fields, 'closeReason'] } : s,
+        ),
+      }));
+      return {
+        ...set,
+        layouts: [
+          { ...create, definition: { ...create.definition, tabs } },
+          { ticketTypeId: null, operation: 'edit' as const, definition: create.definition },
+        ],
+      };
+    });
+    renderPage(CONFIG_ADMIN, { client: fakeLayoutsClient(sets) });
+    await editor();
+    await within(preview()).findByText('Preview of the create form for Feature');
+    await waitFor(() => expect(previewed()).toContain('Labels'));
+    // The create form never shows them, so neither does its preview.
+    expect(previewed()).not.toContain('Close reason');
+    expect(previewed()).not.toContain('Requester');
+    expect(
+      within(preview()).getByText(
+        'Close reason: it is set on the ticket once it exists, so the create form leaves it out.',
+      ),
+    ).toBeVisible();
+    // Placed already, it can still be taken off; it is not offered again.
+    expect(fieldsIn(SIDE)).toContain('Close reason');
+    await choose(user, 'Move Close reason', 'Take off the layout');
+    expect(unplaced()).not.toContain('Close reason');
+    // The edit form sets it, so its layout offers it.
+    await user.click(screen.getByRole('radio', { name: 'Edit' }));
+    expect(unplaced()).toContain('Close reason');
+  });
+
   it('[CORE-008] moves fields with the keyboard: Alt and the arrows, and each grip’s menu, each move announced', async () => {
     const user = userEvent.setup();
     renderPage();

@@ -6888,10 +6888,10 @@ export const messagesEn = {
     'The form as the server will give it, with the field rules applied. It follows your changes before you save.',
   'layouts.preview.type': 'Preview as',
   'layouts.preview.track': 'Fields and rules of',
-  'layouts.preview.noTrack': 'No particular track (shared fields, default rules)',
+  'layouts.preview.noTrack': 'No particular track',
   'layouts.preview.ownerTrack': 'The track this set belongs to',
   'layouts.preview.trackHint':
-    'Tracks can differ in custom fields and field rules: choose one that uses this set to see its form.',
+    'With no particular track, the preview uses the shared fields and the default rules. Tracks can differ in custom fields and field rules: choose one that uses this set to see its form.',
   'layouts.preview.fixedTrack':
     'With the fields and rules of {key} · {name}, the track this set belongs to.',
   'layouts.preview.noTypes': 'There are no ticket types to preview.',
@@ -6911,6 +6911,8 @@ export const messagesEn = {
   'layouts.preview.leftOut': 'Placed, but not on this form:',
   'layouts.preview.reason.hidden': '{field}: a field rule hides it.',
   'layouts.preview.reason.notApplicable': '{field}: it does not apply to this ticket type here.',
+  'layouts.preview.reason.afterCreate':
+    '{field}: it is set on the ticket once it exists, so the create form leaves it out.',
   'layouts.preview.reason.computed':
     '{field}: its value is computed, so the create form leaves it out.',
   'purpose.crossTracks':
