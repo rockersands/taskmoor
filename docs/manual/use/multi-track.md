@@ -787,18 +787,22 @@ On a wide screen the Grid is a table whose rows open and close; the header row, 
 column and the **All rows** row stay in view as you scroll. Every row opens expanded. **Expand
 all** and **Collapse all** do every row at once, and the rows you closed are remembered in this
 browser for each structure. Cells load as their rows come into view: a row not loaded yet shows
-its key and a quiet line. **Refresh** reads the structure again, with other people's changes: the
+its key and a quiet line. If some cells cannot be read, the page says so, and **Try again** asks
+for them again. **Refresh** reads the structure again, with other people's changes: the
 Grid does not update by itself.
 
 After you edit a cell, the totals above it change at once, and the rows above are read again,
 since a formula field stored on them may have changed. A refusal shows on the cell, as in search
 results.
 
-**Keyboard:** the Grid is one stop for Tab. The arrow keys move between rows and cells. On a
-row's **Ticket** cell, Right and Left open and close the row, and Left on a closed row goes to its
-parent. Enter edits a cell and Escape cancels. Home and End go to the ends of a row, and Control
+**Keyboard:** the Grid is one stop for Tab. Up and Down move between rows. With a whole row in
+focus, rather than one of its cells, Right opens it and Left closes it; Left on a closed row goes to
+its parent, Right on an open row goes into its **Ticket** cell, and Enter opens or closes it. In a
+cell, Right and Left move between cells, and Left from the **Ticket** cell goes back to the row.
+Enter edits a cell and Escape cancels. Home and End go to the ends of a row, and Control
 with Home or End to the first and last rows. Page Up and Page Down move ten rows. Shift and F10,
-or the menu key, open a row's menu.
+or the menu key, open a row's menu. If closing rows hides the row you were on, the Grid's stop for
+Tab moves to the row shown above it.
 
 **On a row:**
 
@@ -843,7 +847,8 @@ last among its new parent's rows.
 
 The Grid is a list of cards, each with a 44-pixel button to open and close it. Cards step in a
 little for each level, up to four, and deeper cards say their level's name instead. Each shows its
-key, summary and the first two columns, with their names. Tapping a card opens a sheet with every
+key, summary and the first two columns, with their names, and its marks, such as "+1 not shown";
+when a card needs more room for them, or for larger text, every card grows to fit. Tapping a card opens a sheet with every
 column, where cells edit, and **Move under…** and **Remove from parent**. There is no dragging on a
 phone, and nothing scrolls sideways.
 
