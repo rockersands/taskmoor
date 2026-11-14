@@ -618,7 +618,7 @@ function LinkDialog({
               />
             </label>
             {known.truncated && <p className="board-hint">{t('crossTrack.new.truncated')}</p>}
-            {shown?.length === 0 && <p className="board-hint">{t('crossTrack.new.noMatch')}</p>}
+            {shown?.length === 0 && <EmptyState compact title={t('crossTrack.new.noMatch')} />}
           </>
         )}
         {candidates !== null && candidates.length > 0 && (
