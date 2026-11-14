@@ -22,7 +22,19 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: the page review fixed (2026-11-13, the Mac)
+### Latest: wave 13 on main (2026-11-14, the Mac)
+
+- **On `main` (`d9061d06`, full gate: 8,416 tests, 250 e2e):** the tickets the user answered on
+  2026-11-13: T-053, T-061, T-075a, T-082, T-087b, T-088a, T-089j's erasure part, T-205a, T-217,
+  T-246 (migration 0107), T-248, T-252, T-256 ('site' and 'Plans' in the interface). Questions the
+  builders raised are T-259 to T-264 for the user.
+- **Two sessions now coordinate through `COORDINATION.md`** (claims, number ranges, the main
+  lock, messages). Windows holds Multi-track (T-089d, then T-089e, T-089f, T-089a). The user said
+  on 2026-11-14 to leave benchmarking tickets (speed limits, load tests) for now: bugs and new
+  features only.
+- **Next for the Mac:** T-253 to T-255, then T-257 and T-258 (the sweep tool and a fresh sweep).
+
+### The page review fixed (2026-11-13, the Mac)
 
 - **On `main` (`bff9aa24`, full gate: 8,299 tests, 250 e2e):** wave 12, the page review's fixes.
   The user answered all 38 questions of direction, the design tickets marked You and T-241's

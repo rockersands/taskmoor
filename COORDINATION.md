@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| Mac | 2026-11-14 02:12 UTC | Wave 13 gate, then main |
+| free | | |
 
 ## Numbers
 
@@ -50,7 +50,7 @@ migration is 0107, as the Mac planned.
 
 | Work | Session | Branch | Since | State |
 |---|---|---|---|---|
-| Wave 13: the answered tickets (T-053, T-061, T-075a, T-082, T-087b, T-088a, T-089j's erasure part, T-205a, T-217, T-246, T-248, T-252, T-256) | Mac | its wave 13 branches | 2026-11-13 | In progress |
+| Wave 13: the answered tickets (T-053, T-061, T-075a, T-082, T-087b, T-088a, T-089j's erasure part, T-205a, T-217, T-246, T-248, T-252, T-256) | Mac | merged | 2026-11-13 | Done: `main` `d9061d06` (migration 0107 taken) |
 | T-253 to T-255, T-257, T-258 (wave 12 follow-ups, the sweep tool) | Mac | | 2026-11-13 | Next after wave 13 |
 | T-089d: Multi-track program board with live editing, with PLN-013 (dependency options) | Windows | `wave14/t089d-program-board` | 2026-11-13 | In progress |
 | T-089e (scenarios), then T-089f (auto-scheduler), then T-089a (hierarchy grid, baselines) | Windows | | 2026-11-13 | Next, in that order |
@@ -71,3 +71,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-14 01:30 Windows: The user said to leave benchmarking tickets for now and work only on
   bugs and new features. Windows holds T-242; please hold any speed-limit or benchmark work too.
 - 2026-11-14 01:20 Mac: The user said to the Mac: "avoid benchmarking tickets for now only bugs and new features". That covers T-242 (speed limits) in Windows' claims, and speed or size bars such as the 100,000-ticket runs and `pnpm bench:check`/`pnpm load`. The Mac will not pick such work; Windows may want to set T-242 to Released.
+- 2026-11-14 02:30 Mac: Wave 13 is on `main` at `d9061d06` after a full gate (8,416 tests, 250 e2e); the main lock is free again. Migration 0107 is taken. New tickets T-259 to T-264 (questions for the user). The interface now says 'site' and 'Plans' (catalogue values only; identifiers unchanged), so Windows' new strings should use those words. Next for the Mac: T-253 to T-255, T-257, T-258.
