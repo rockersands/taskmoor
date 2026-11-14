@@ -164,7 +164,7 @@ build it from the source of your release.
   needs a new major version; Taskmoor's own checks refuse one inside v1.
 - `GET /api/meta` needs no sign-in and tells a client the backend's version, the API's version
   and base path, the frontend versions the backend serves, how people sign in, and the
-  instance's id and public key. Read it before anything else.
+  site's id and public key. Read it before anything else.
 
 ## Entity properties
 
@@ -247,7 +247,7 @@ Content-Type: application/json
 
 | Field | Meaning |
 |---|---|
-| `name` | Unique on the instance |
+| `name` | Unique on the site |
 | `url` | Must be HTTPS, without a user name or password in it. Plain HTTP is accepted only for `localhost`, `127.0.0.1` and `[::1]`, or everywhere when the server runs with `TASKMOOR_WEBHOOK_ALLOW_HTTP=true`. A receiver at a private, loopback, link-local or metadata address is refused when a delivery is sent (the delivery fails at once, without retries) unless the operator names it in `TASKMOOR_OUTBOUND_ALLOW` (see [requests to other servers](configuration.md#requests-to-other-servers)) |
 | `format` | `json` (the default), `slack`, `teams`, `mattermost` or `matrix` |
 | `events` | Exact event names, or a family such as `ticket.*` |
@@ -277,7 +277,7 @@ expire.
 | Settings | `link_policy.updated`, `time_tracking.settings_updated` |
 
 Sign-ins, sessions, tokens, passwords, second factors and other security events never leave
-the instance, whatever a webhook asks for.
+the site, whatever a webhook asks for.
 
 ### Who sees what
 

@@ -101,6 +101,7 @@ documentation.
 | **field rules**, field rule set | field configuration, field configuration scheme |
 | **priority set** | priority scheme |
 | configuration set (the general word) | scheme |
+| **site**: the whole installation, as in site administrator and site-wide (the user's decision of 2026-11-13); never "workspace" or "instance" in the interface, the manual or emails. Code, the database and API fields keep `workspace` and `instance` (for example `workspace_id`, and `instance` in `/api/meta`) | site (Cloud), instance (Data Center) |
 | site admin | site admin |
 | configuration admin (tracks, types, fields, workflows; no user management) | product admin, Jira administrators |
 
@@ -133,7 +134,7 @@ check and effects.
 
 | Taskmoor | Atlassian |
 |---|---|
-| **roadmaps**, which the product calls **Multi-track**; one is a **plan** (the user's name, 2026-11-03; ADR-122) | Plans, Advanced Roadmaps |
+| **plans**: the section is **Plans** and one of them is a **plan**, never a "roadmap" (the user's decisions of 2026-11-13, which replaced the section's earlier name, Multi-track; ADR-122) | Plans, Advanced Roadmaps |
 | **service desk**, **service track** | Jira Service Management, service project |
 | **request form** | request type |
 | **help portal** | help center, customer portal |

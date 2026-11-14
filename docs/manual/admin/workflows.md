@@ -294,7 +294,7 @@ it to this server or another with **Import a workflow**: choose the file, then i
 **A new workflow** (published as version 1, used by no track until a workflow map names it) or
 as **The next draft** of an existing one, to check in the editor and publish.
 
-The import matches statuses by name, ignoring case, and creates those this workspace lacks.
+The import matches statuses by name, ignoring case, and creates those this site lacks.
 Everything else must already exist with the same name. Whatever cannot be found never lets
 more people through: a guard naming it never passes, a list drops it, a check that names it is
 removed and its transition is turned off until you fix it, and effects drop it. The report

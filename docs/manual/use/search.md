@@ -261,7 +261,7 @@ keep no history of their own. Sprint changes are not yet searchable this way;
 ### Ordering
 
 End a query with `ORDER BY` and one or more fields, each `ASC` (the default) or `DESC`. Without
-it, results come newest first. Priorities sort by urgency, statuses by the workspace's order,
+it, results come newest first. Priorities sort by urgency, statuses by the site's order,
 releases by release order, people by name and keys by track and number; empty values come last.
 You can order by `key`, `type`, `hierarchyLevel`, `status`, `priority`, `closeReason`, `summary`,
 `assignee`, `requester`, `creator`, `followers`, `votes`, `area`, the releases, the dates,

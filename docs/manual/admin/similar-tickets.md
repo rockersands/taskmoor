@@ -92,7 +92,7 @@ upgrade. To do it at once and watch it, run the [operator CLI](cli.md#embeddings
 docker compose exec taskmoor node cli.mjs embeddings
 ```
 
-It prints progress, then one JSON line per workspace with what it embedded and how many tickets
+It prints progress, then one JSON line per site with what it embedded and how many tickets
 and comments have an embedding. `--rebuild` deletes every embedding first and makes them all
 again.
 

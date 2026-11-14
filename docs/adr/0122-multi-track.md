@@ -12,7 +12,9 @@ work. Spec 03 section 1 describes it (PLN-001 to PLN-011). The user decided on 2
 rules"):
 
 - The feature is called **Multi-track**; one of them is a **plan** over several tracks and saved
-  searches.
+  searches. Changed on 2026-11-13 (`docs/plan/decisions.csv`, "The Multi-track section's name"):
+  the section is named **Plans**, as its addresses (`/plans`) already were, and one of them stays a
+  **plan**. This record keeps its old title and file name; the interface and the manual say Plans.
 - All of Multi-track is in 1.0 except the hierarchy grid (PLN-010) and baselines (PLN-011). It is
   built in stages, one ticket each: this first one (T-088), then dependencies, teams and
   capacity, cross-track releases, the program board, draft changes and scenarios, the

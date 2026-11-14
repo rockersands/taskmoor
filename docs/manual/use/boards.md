@@ -66,7 +66,7 @@ beside the icons while the keyboard is on the card.
 
 Points are a number field: the one the board estimates with (see [Sprint settings](#sprint-settings)),
 else a number field named Points or Puntos (an imported one under its source's usual name counts
-too). Every workspace starts with a number field called **Points** (**Puntos** in Spanish), and a new
+too). Every site starts with a number field called **Points** (**Puntos** in Spanish), and a new
 track's board estimates with it. Set a ticket's points in its details, on the create form or in a
 search result's cell. A card with no value shows nothing. An administrator may rename the field or
 remove it ([Fields](../admin/fields.md#the-points-field)).
@@ -326,7 +326,7 @@ closed. The track's administrators add releases with **New release**: a **Name**
 optional **Release date**, then **Add release**. A list with no release in it says what would be
 there and how it gets there. A release lined up with other tracks' says **In** and the name of its
 release across tracks, and **Releases across tracks** at the top opens their list (see
-[Multi-track](multi-track.md#releases-across-tracks)).
+[Plans](multi-track.md#releases-across-tracks)).
 
 A release's own page stays under the track's tab bar with **Releases** marked: that tab leads
 back to the list. It is titled by the release's name, with the track's name and the release's

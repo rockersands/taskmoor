@@ -7,7 +7,7 @@ attestation: own-words
 ---
 # Upgrades
 
-One command takes an instance from any of the last three releases, and from the latest
+One command takes a site from any of the last three releases, and from the latest
 long-term-support release, to a new one. There is no step per version in between. The command
 checks first, backs up, applies every migration, verifies the result and rolls back on any
 failure.
@@ -77,7 +77,7 @@ server.
 
 | Question | Answer |
 |---|---|
-| What is sent? | One ordinary request for a public file, through the [outbound guard](configuration.md). It carries no version, instance id or cookie. GitHub sees what any request shows: your server's address |
+| What is sent? | One ordinary request for a public file, through the [outbound guard](configuration.md). It carries no version, site id or cookie. GitHub sees what any request shows: your server's address |
 | How do I turn it off? | **Look for new versions once a day** on the **Updates** card, or `TASKMOOR_UPDATE_CHECK=off` in the server's environment, which also locks the switch. Off, no request is made |
 | What if there is no internet, or GitHub is down? | Nothing: a failed look shows nothing, logs only at debug level, and is tried again the next day |
 | Behind a proxy? | The check does not use an outgoing proxy, so it fails quietly. Run `bash update.sh` from a shell with your proxy settings, as `curl` and `wget` use them |

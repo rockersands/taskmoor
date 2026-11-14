@@ -13,7 +13,7 @@ email. Three things decide who hears what and how:
 - the **notification policy** of the ticket's track names, for each event, the recipients;
 - each person chooses, per event, whether it reaches their inbox, their email or both, and how
   email arrives (see [Notifications and your inbox](../use/notifications.md));
-- the instance's outgoing mail settings decide whether email can be sent at all.
+- the site's outgoing mail settings decide whether email can be sent at all.
 
 This page covers the first and the last.
 
@@ -103,7 +103,7 @@ Content-Type: application/json
 ## Notification policies
 
 A notification policy is a list of rules. Each rule pairs an event with a recipient type. A
-track uses the policy it names, or the instance's default policy when it names none.
+track uses the policy it names, or the site's default policy when it names none.
 
 ### Events
 
@@ -158,7 +158,7 @@ changes](../use/notifications.md#checklist-changes).
 
 ### The default policy
 
-Every instance has a policy called **Default notifications**: the assignee, the requester and
+Every site has a policy called **Default notifications**: the assignee, the requester and
 the followers hear of every event in the table above. You may change its rules, but not delete
 it. Tracks that name no policy use it.
 

@@ -89,7 +89,7 @@ dark**.
 
 **Settings, Tutorials** lists the sections of the guided tutorial that you may take, each with
 where you are in it, to start, resume or do again. Each walks you through making one real thing
-in this instance, and your place is saved with your account. See [Tutorials](tutorials.md).
+on this site, and your place is saved with your account. See [Tutorials](tutorials.md).
 
 ## Language
 
@@ -191,7 +191,7 @@ token never does more than you may, and stops working when it expires or you rev
 2. Choose its **Scopes**: **Read** (read everything you can see) and **Write** (create, change and
    delete what you may change). Site administrators can also give **Administration**.
 3. Choose when it **Expires after**: 7, 30, 60, 90, 180 or 365 days, up to the longest your
-   instance allows.
+   site allows.
 4. Press **Create token**. The token is shown once: **Copy** it into a password manager or the
    program's secret store, then press **Done**.
 

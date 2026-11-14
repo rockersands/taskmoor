@@ -139,7 +139,7 @@ deleted. Downloads need file storage (the same as attachments).
 
 The ZIP holds JSON files: the profile (with groups, teams, single sign-on links, the kinds of
 second factors, API tokens by name, and sessions), settings and saved searches, the
-Multi-track plans they own and their capacity in plans, with its notes, their groups of
+plans they own and their capacity in them, with its notes, their groups of
 tracks and the groups shared with them (`track-groups.json`), the tickets the person reported,
 created or is assigned, their comments and time entries, the files they
 uploaded, and the audit records about them. `manifest.json` lists every file with its size and
@@ -158,7 +158,7 @@ permanently** then:
   mentions, the audit log and exports; their tickets, comments, time and files stay;
 - removes their password, profile settings, sessions, API tokens, second factors and recovery
   codes, single sign-on links, notification settings and inbox, recently viewed tickets, their
-  capacity in [Multi-track plans](../use/multi-track.md#teams-and-capacity) with its notes, and
+  capacity in [plans](../use/multi-track.md#teams-and-capacity) with its notes, and
   their data downloads;
 - deletes their [groups of tracks](tracks.md#groups-of-tracks), taking back the roles those
   groups' shares gave others, and removes the groups shared with them, with the roles those

@@ -8,7 +8,7 @@ attestation: own-words
 # The operator CLI
 
 The Taskmoor image ships a command line for operators, `cli.mjs`, next to the server in `/app`.
-It upgrades, backs up, restores and checks an instance, writes exports, and makes a password
+It upgrades, backs up, restores and checks a site, writes exports, and makes a password
 link when an administrator is locked out. It talks to the database directly, so it runs where
 the backend runs, with the backend's environment.
 
@@ -46,7 +46,7 @@ links. See [Configuration reference](configuration.md).
 | `restore <dir> --yes` | Puts a backup back | 1 failed, 2 no directory or no `--yes` |
 | `drill [<dir>] [--keep]` | Restores a backup into a scratch database and checks it | 1 mismatch, 2 no backup found |
 | `checksum [--wait]` | One checksum per table | 1 failed |
-| `export <dir> [--tracks KEY,KEY]` | The workspace in Taskmoor's export format | 2 no folder, folder not empty or unknown track |
+| `export <dir> [--tracks KEY,KEY]` | The site in Taskmoor's export format | 2 no folder, folder not empty or unknown track |
 | `purge-trash` | Deletes for good what outlived the trash retention | 1 failed |
 | `field-values [--repair]` | Checks the custom field search tables | 1 differences left unrepaired |
 | `workflow-moves [--repair]` | Lists the workflows in which no ticket can move, and gives them free moves | 1 some left without moves |
@@ -130,7 +130,7 @@ and run due jobs. Compare the output before a backup and after a restore.
 
 ### export
 
-`node cli.mjs export <dir>` writes the workspace in Taskmoor's export format into a new or empty
+`node cli.mjs export <dir>` writes the site in Taskmoor's export format into a new or empty
 folder; `--tracks KEY,KEY` exports only those tracks and what belongs to them. The last line is a
 JSON summary: the folder, the seconds it took, the records per kind and the number of files. Each
 export is recorded in the audit log. In the image, write under the data volume:
@@ -150,7 +150,7 @@ the worker's hourly job does, and prints how many it removed.
 
 Custom field values are also kept in side tables that searches filter, sort and count by. This
 command compares them
-with the values stored on every ticket and prints one JSON line per workspace: tickets checked,
+with the values stored on every ticket and prints one JSON line per site: tickets checked,
 how many differ, how many were repaired, and the ids of up to 100 that differ. `--repair` rewrites
 the ones that differ. The worker runs the same check once a day.
 
@@ -158,7 +158,7 @@ the ones that differ. The worker runs the same check once a day.
 
 Lists the workflows whose published version has no transitions at all, so no ticket in them can
 move: workflows made empty before free moving became the rule, and any imported from a file, or
-published from an earlier version, that had none. It prints one JSON line per workspace: how many
+published from an earlier version, that had none. It prints one JSON line per site: how many
 it found (`withoutMoves`), how many it repaired and their ids. `--repair` gives each one a
 transition from any status into each of its statuses, as a new workflow gets, and publishes that
 as the workflow's next version; a move into a closed-stage status sets the close reason free
@@ -170,7 +170,7 @@ exit with 1. See [Workflows](workflows.md).
 ### report-verify
 
 Replays every ticket's report events and compares the result with the tickets as they are, so
-reports can be trusted to rebuild from their events. It prints one JSON line per workspace with
+reports can be trusted to rebuild from their events. It prints one JSON line per site with
 `ok`, the number of differences and the first 20. Tickets older than the change history report
 as having no history.
 
@@ -179,8 +179,8 @@ as having no history.
 Embeds, with the bundled model (or the endpoint `TASKMOOR_EMBEDDINGS` names), every ticket and
 comment whose embedding is missing, made by another model or older than its text, and sets up
 pgvector's index where the database has the extension. It prints progress, then one JSON line
-per workspace: what it embedded, how lookups run (`pgvector` or `exact`) and how many tickets
-and comments have an embedding. `--rebuild` deletes the workspace's embeddings first and makes
+per site: what it embedded, how lookups run (`pgvector` or `exact`) and how many tickets
+and comments have an embedding. `--rebuild` deletes the site's embeddings first and makes
 them all again. The worker does the same in the background on its own; see
 [similar tickets](similar-tickets.md).
 
@@ -199,13 +199,13 @@ The link's creation is recorded in the audit log. See [People and groups](people
 
 ### allowlist-off
 
-Turns off the IP allowlist of every workspace where it is on ([network
+Turns off the IP allowlist of every site where it is on ([network
 access](permissions.md#network-access-the-ip-allowlist)), for an administrator who saved a list
 that keeps them out. The change is in the audit log without a person as its actor.
 
 ### audit-verify
 
-Walks every workspace's audit hash chain and prints one JSON line each: `ok`, the records
+Walks every site's audit hash chain and prints one JSON line each: `ok`, the records
 checked, where checking started, the head's sequence number and hash, and the first broken
 record. Keep the head hash somewhere else as well. See [Monitoring and logs](monitoring.md).
 
