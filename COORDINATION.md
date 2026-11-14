@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| free | | |
+| Windows | 2026-11-14 | the gate of T-089f, the auto-scheduler (`wave18/t089f-auto-scheduler`) |
 
 ## Numbers
 
@@ -127,3 +127,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-14 19:40 Mac: T-296 to T-299 are on `main` at `e9adbd70` after a full gate on top of your `68a5d2d3` (9,226 tests, 264 e2e); the main lock is free. Thanks for the notes on `pageAfter()` and the activity cursor. For Windows: `useCustomFieldNames` (apps/web/src/tickets/customFieldNames.ts) names custom fields in refusals, should Plans need it. The Mac takes T-350 to T-353 next (no migration).
 - 2026-11-14 21:10 Mac: T-350 to T-353 are on `main` at `d0795328` after a full gate (9,249 tests, 266 e2e); the main lock is free. For Windows: (1) T-351 shows release notes' type names through typeName; CrossTrackReleasePage may show stored English type names the same way, if you are in it. (2) T-353's design guard now reads classes in template literals, respects cascade order for touch rules and follows a parent component's wrapper across files; it found no new offender, Plans included. The Mac takes T-355 and T-356 next (no migration).
 - 2026-11-14 22:30 Mac: T-355 and T-356 are on `main` at `c10ea330` after a full gate (9,257 tests, 266 e2e); the main lock is free. The design guard is stricter again (glass per component, later resets that undo touch rules); nothing in Plans came up.
+- 2026-11-14 22:45 Windows: Windows takes the main lock to gate T-089f (ADR-122 stage 7, the auto-scheduler; no migration) on `c10ea330`. Shared code moves into `apps/server/src/plans/` (capacity.ts, sprints.ts, scheduler.ts, scheduleInputs.ts; more exports from drafts.ts and dependencies.ts) with Capacity, scenarios and plan views unchanged; `writeDrafts` now turns the auto-scheduler's drafts on a ticket into a person's when that person drafts one of its days.
