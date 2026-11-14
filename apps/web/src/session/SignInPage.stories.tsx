@@ -89,7 +89,7 @@ export const OrganisationProvider: Story = {
   },
 };
 
-const GOOGLE = { id: 8, name: 'Google' };
+const GOOGLE = { id: 8, name: 'Google', brand: 'google' as const };
 const withGoogle = fakeSignInSso([GOOGLE], { 'gmail.com': { provider: GOOGLE, password: true } });
 
 /** A site with Google set up (IAM-032): on offer for anyone, first for a Gmail address. */
@@ -107,6 +107,10 @@ export const GoogleForAGmailAddress: Story = {
     await userEvent.tab();
     await expect(await canvas.findByText('This address signs in with Google.')).toBeVisible();
     await expect(canvas.getByLabelText('Password')).toBeVisible();
+    // Google's own button, with its G (T-061).
+    const google = canvas.getByRole('button', { name: 'Sign in with Google' });
+    await expect(google).toHaveClass('google-sign-in');
+    await expect(google.querySelector('svg')).not.toBeNull();
   },
 };
 

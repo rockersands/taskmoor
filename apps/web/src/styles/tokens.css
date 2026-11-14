@@ -17,6 +17,8 @@
   --font-weight-medium: 550;
   --font-weight-strong: 600;
   --font-weight-title: 700;
+  /* Google's sign-in button (T-061): its label is Roboto Medium, as Google's guidelines set. */
+  --font-weight-google: 500;
 
   --space-half: 2px;
   --space-1: 4px;
@@ -207,6 +209,13 @@
     inset 0 -1.5px 0 rgb(120 50 20 / 28%), 0 1px 2px rgb(120 60 30 / 24%),
     0 6px 14px -4px rgb(220 120 80 / 45%);
 
+  /* Google's sign-in button, light (T-061): the colours Google's sign-in branding guidelines give
+     for its light button. Google's, not ours: no skin change may alter them. */
+  --color-google-fill: #ffffff;
+  --color-google-stroke: #747775;
+  --color-google-text: #1f1f1f;
+  --google-hover: rgb(31 31 31 / 8%);
+
   /* M0 names, kept so older styles follow the skin. */
   --color-bg: var(--color-canvas);
 
@@ -311,6 +320,12 @@
     inset 0 1.5px 0 rgb(255 255 255 / 75%), inset 0 0 0 1px rgb(255 255 255 / 14%),
     inset 0 -1.5px 0 rgb(120 50 20 / 40%), 0 1px 2px rgb(0 0 0 / 50%),
     0 8px 16px -6px rgb(0 0 0 / 60%);
+
+  /* Google's sign-in button, dark (T-061), as Google's guidelines give it. */
+  --color-google-fill: #131314;
+  --color-google-stroke: #8e918f;
+  --color-google-text: #e3e3e3;
+  --google-hover: rgb(227 227 227 / 8%);
 
   --color-bg: var(--color-canvas);
 

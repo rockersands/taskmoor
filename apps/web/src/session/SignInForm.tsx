@@ -16,6 +16,7 @@ import {
 import { ssoErrorMessage, ssoRequiredProvider } from '../sso/errors';
 import { EnrollmentStep } from './EnrollmentStep';
 import { tooManyAttemptsMessage } from './errors';
+import { GoogleSignInButton } from './GoogleSignInButton';
 import { PasswordField } from './PasswordField';
 import { SecondFactorStep } from './SecondFactorStep';
 import { type SecondFactorMethod, type SessionUser, useSession } from './SessionProvider';
@@ -115,6 +116,7 @@ export function SignInForm({
                   id: found.provider.id,
                   name: found.provider.name,
                   ...(found.provider.protocol === 'saml' ? { protocol: 'saml' as const } : {}),
+                  ...(found.provider.brand === 'google' ? { brand: 'google' as const } : {}),
                 }
               : null;
           const known: Discovery = { provider, password: found?.password !== false };
@@ -268,15 +270,19 @@ export function SignInForm({
             {organisation ? t('auth.sso.organisation', { name: organisation.name }) : ''}
           </p>
         </div>
-        {organisation && !enforced && (
-          <button
-            type="button"
-            className="button-secondary sso-button sso-button-emphasis"
-            onClick={() => start(organisation)}
-          >
-            {t('auth.sso.signInWith', { name: organisation.name })}
-          </button>
-        )}
+        {organisation &&
+          !enforced &&
+          (organisation.brand === 'google' ? (
+            <GoogleSignInButton onClick={() => start(organisation)} />
+          ) : (
+            <button
+              type="button"
+              className="button-secondary sso-button sso-button-emphasis"
+              onClick={() => start(organisation)}
+            >
+              {t('auth.sso.signInWith', { name: organisation.name })}
+            </button>
+          ))}
         {!enforced && (
           <PasswordField
             label={t('auth.password')}
@@ -307,16 +313,20 @@ export function SignInForm({
       {others.length > 0 && (
         <fieldset className="sso-options">
           <legend className="sso-divider">{t('auth.sso.others')}</legend>
-          {others.map((provider) => (
-            <button
-              key={provider.id}
-              type="button"
-              className="button-secondary sso-button"
-              onClick={() => start(provider)}
-            >
-              {t('auth.sso.signInWith', { name: provider.name })}
-            </button>
-          ))}
+          {others.map((provider) =>
+            provider.brand === 'google' ? (
+              <GoogleSignInButton key={provider.id} onClick={() => start(provider)} />
+            ) : (
+              <button
+                key={provider.id}
+                type="button"
+                className="button-secondary sso-button"
+                onClick={() => start(provider)}
+              >
+                {t('auth.sso.signInWith', { name: provider.name })}
+              </button>
+            ),
+          )}
         </fieldset>
       )}
     </div>

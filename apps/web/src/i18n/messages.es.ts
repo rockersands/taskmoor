@@ -971,6 +971,7 @@ export const messagesEs: Record<MessageId, string> = {
   'auth.challengeExpired':
     'El inicio de sesión tardó demasiado o tuvo demasiados códigos erróneos. Vuelve a introducir tu contraseña.',
   'auth.sso.signInWith': 'Iniciar sesión con {name}',
+  'auth.sso.google': 'Iniciar sesión con Google',
   'auth.sso.others': 'Otras formas de iniciar sesión',
   'auth.sso.organisation': 'Esta dirección inicia sesión con {name}.',
   'auth.sso.error.invalidState':

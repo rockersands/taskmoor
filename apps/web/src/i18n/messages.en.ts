@@ -946,6 +946,7 @@ export const messagesEn = {
   'auth.challengeExpired':
     'The sign-in took too long or had too many wrong codes. Enter your password again.',
   'auth.sso.signInWith': 'Sign in with {name}',
+  'auth.sso.google': 'Sign in with Google',
   'auth.sso.others': 'Other ways to sign in',
   'auth.sso.organisation': 'This address signs in with {name}.',
   'auth.sso.error.invalidState':

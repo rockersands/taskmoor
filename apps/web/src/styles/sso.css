@@ -73,6 +73,54 @@
   border-top: 1px solid var(--glass-edge);
 }
 
+/* Google's sign-in button (T-061), as Google's sign-in branding guidelines describe it: the
+   four-colour G at the left on its own fill, light or dark with the skin, a 1px edge, Roboto
+   Medium at 14px on a 20px line, 12px at the sides and 10px between the mark and the words, and
+   the pill shape. It keeps Google's look in both skins and takes no accent, glass or emphasis of
+   ours. 40px high for a mouse, as Google sets it; a finger's height on touch. */
+.google-sign-in {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 1px solid var(--color-google-stroke);
+  border-radius: var(--radius-pill);
+  background: var(--color-google-fill);
+  color: var(--color-google-text);
+  font-family: Roboto, var(--font-sans);
+  font-size: var(--font-size-200);
+  font-weight: var(--font-weight-google);
+  line-height: 20px;
+  letter-spacing: 0.25px;
+  cursor: pointer;
+}
+
+.google-sign-in:hover {
+  background-image: linear-gradient(var(--google-hover), var(--google-hover));
+}
+
+.google-sign-in-mark {
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+/* The words stay whole; a long translation wraps under itself, never past the button. */
+.google-sign-in-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (pointer: coarse) {
+  .google-sign-in {
+    min-height: var(--hit-target-touch);
+  }
+}
+
 /* ---- Administration ---- */
 
 .sso-sections {
