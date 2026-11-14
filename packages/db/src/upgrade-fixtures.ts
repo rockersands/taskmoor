@@ -1784,6 +1784,33 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
       );
     },
   },
+  '0115_program_boards': {
+    tables: {
+      program_board: `name = 'Seed program board' AND periods = 4 AND from_day = DATE '2026-11-02'
+        AND team_field_id = (SELECT id FROM field WHERE name = 'Seed board team')`,
+      plan_dependency_type: `plan_id = (SELECT id FROM plan WHERE name = 'Seed plan')
+        AND link_type_id = (SELECT id FROM link_type WHERE name = 'Seed precedes')`,
+      plan: "name = 'Seed plan' AND flag_same_sprint",
+    },
+    seed: async (db) => {
+      // A program board on the seed plan by a Team field, and a link type the plan counts as a
+      // dependency, with the same-sprint flag on (ADR-122 stage 5).
+      await sql`INSERT INTO field (workspace_id, name, type) VALUES (1, 'Seed board team', 'team')`.execute(
+        db,
+      );
+      await sql`INSERT INTO program_board (workspace_id, plan_id, name, team_field_id, from_day, periods)
+        SELECT 1, p.id, 'Seed program board', f.id, DATE '2026-11-02', 4
+          FROM plan p, field f WHERE p.name = 'Seed plan' AND f.name = 'Seed board team'`.execute(
+        db,
+      );
+      await sql`INSERT INTO link_type (workspace_id, name, outward, inward)
+        VALUES (1, 'Seed precedes', 'precedes', 'is preceded by')`.execute(db);
+      await sql`INSERT INTO plan_dependency_type (workspace_id, plan_id, link_type_id)
+        SELECT 1, p.id, l.id FROM plan p, link_type l
+         WHERE p.name = 'Seed plan' AND l.name = 'Seed precedes'`.execute(db);
+      await sql`UPDATE plan SET flag_same_sprint = true WHERE name = 'Seed plan'`.execute(db);
+    },
+  },
 };
 
 /**

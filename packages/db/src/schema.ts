@@ -1123,6 +1123,35 @@ export interface PlanTable {
   period_weeks: Generated<number>;
   /** A first day of a period (YYYY-MM-DD); periods repeat from it both ways. */
   period_anchor: ColumnType<string, string | undefined, string>;
+  /** Whether dependencies within one sprint are marked (PLN-013; ADR-122 stage 5). */
+  flag_same_sprint: Generated<boolean>;
+}
+
+/**
+ * A program board of a plan (PLN-008; ADR-122 stage 5): the plan's work by team (each ticket's
+ * value in `team_field_id`) and by `periods` of the plan's periods from the one holding
+ * `from_day`. It stores no cards: a card is a ticket.
+ */
+export interface ProgramBoardTable {
+  id: Generated<number>;
+  workspace_id: number;
+  plan_id: number;
+  name: string;
+  /** A shared, single-value `team` field; null once that field is deleted. */
+  team_field_id: number | null;
+  from_day: ColumnType<string, string, string>;
+  periods: Generated<number>;
+  archived_at: Date | null;
+  version: Generated<number>;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+}
+
+/** A link type a plan counts as a dependency beside blocking links (PLN-013). */
+export interface PlanDependencyTypeTable {
+  workspace_id: number;
+  plan_id: number;
+  link_type_id: number;
 }
 
 export type PlanCapacityUnit = 'points' | 'hours';
@@ -2912,6 +2941,8 @@ export interface Database {
   plan_share: PlanShareTable;
   plan_team: PlanTeamTable;
   plan_capacity: PlanCapacityTable;
+  program_board: ProgramBoardTable;
+  plan_dependency_type: PlanDependencyTypeTable;
   cross_track_release: CrossTrackReleaseTable;
   cross_track_release_member: CrossTrackReleaseMemberTable;
   saved_search_star: SavedSearchStarTable;
