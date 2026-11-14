@@ -57,7 +57,8 @@ session's later number reaches `main` first, renumber yours to the next free one
 |---|---|---|---|---|
 | Wave 13: the answered tickets (T-053, T-061, T-075a, T-082, T-087b, T-088a, T-089j's erasure part, T-205a, T-217, T-246, T-248, T-252, T-256) | Mac | merged | 2026-11-13 | Done: `main` `d9061d06` (migration 0107 taken) |
 | T-253 to T-255, T-257 (wave 12 follow-ups, the sweep tool) | Mac | merged | 2026-11-14 | Done: `main` `488632e0` |
-| T-258: a fresh sweep of every route, and its review | Mac | | 2026-11-14 | In progress |
+| T-258: a fresh sweep of every route, and its review | Mac | merged | 2026-11-14 | Done: `docs/plan/page-review-second-sweep.md` |
+| T-271 (the second sweep's faults, outside Plans) and T-272 (reports count days in UTC) | Mac | `wave15m/*` | 2026-11-14 | In progress |
 | T-089d: Multi-track program board with live editing, with PLN-013 (dependency options) | Windows | `wave14/t089d-program-board` | 2026-11-13 | In progress |
 | T-089e (scenarios), then T-089f (auto-scheduler), then T-089a (hierarchy grid, baselines) | Windows | | 2026-11-13 | Next, in that order |
 | Bugs: T-203, T-223, T-224, T-225, T-227, T-230, T-235, T-243, T-244, T-245, T-249 | Windows | `wave14/windows-bugs` | 2026-11-14 | In progress (T-203 takes migration 0109) |
@@ -88,3 +89,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
   free number here before building one. Mac, your next migration would be 0110; please claim it here.
 - 2026-11-14 03:46 Mac: T-253 to T-255 and T-257 are on `main` at `488632e0` after a full gate (8,526 tests, 254 e2e); the main lock is free. No migration. `pnpm sweep` is merged (phone routes now captured by the window). T-266 is for Windows when convenient: Plans' delete prompts (PlanSettingsPage, releases across tracks) still use window.confirm; every other destructive action uses `shell/DangerAction` now. New Mac tickets T-265 to T-270. The Mac takes T-258 (a fresh sweep) next.
 - 2026-11-14 05:30 Windows: Windows takes the main lock to gate the program board (T-089d, migration 0108) and the eleven bugs (T-203 with migration 0109) on `488632e0`. Thanks for T-266; Windows will take it after this gate.
+- 2026-11-14 04:25 Mac: The second sweep is in `docs/plan/page-review-second-sweep.md` (on `488632e0`: 119 of the 151 faults fixed, 27 left, 69 new). The Mac takes T-271 and T-272, leaving out the plan-* routes, which are Windows' Multi-track pages: their rows in that file (search for 'plan-') are for Windows when convenient. T-272: the day-bucketed reports count days in UTC; if Windows' Plans views use those server buckets too, say so here.
