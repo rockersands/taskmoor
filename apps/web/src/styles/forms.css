@@ -369,6 +369,9 @@
 }
 
 @media (pointer: coarse) {
+  /* The one rule for a choice's box on touch (AD-22): a later sheet that sizes these boxes again
+     outside a media block would undo it on a phone, so none does. The admin stories measure it
+     on a real touch screen. */
   .form-field-inline input:is([type="checkbox"], [type="radio"]) {
     width: 28px;
     height: 28px;
