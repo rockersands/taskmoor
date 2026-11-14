@@ -72,10 +72,13 @@ export function BaselineCompare({
   const id = useId();
   const heading = useRef<HTMLHeadingElement>(null);
   const [show, setShow] = useState<BaselineShow>('slipped');
-  const key = JSON.stringify([baseline.id, baseline.version, scenario ?? null, filters, show]);
-  // A comparison shows only for what it was read for: another filter waits for its own.
+  const base = JSON.stringify([baseline.id, baseline.version, scenario ?? null, filters]);
+  const key = JSON.stringify([base, show]);
+  // A list shows only for what it was read for: another filter waits for its own. The sentence and
+  // the filter buttons stay while it is read, so the button just pressed keeps focus.
   const [read, setRead] = useState<{
     key: string;
+    base: string;
     first: BaselineComparison;
     tickets: BaselineTicket[];
     next: string | null;
@@ -84,6 +87,7 @@ export function BaselineCompare({
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const data = read?.key === key ? read : null;
+  const shown = read?.base === base ? read : null;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: once, when the comparison opens
   useEffect(() => heading.current?.focus(), [baseline.id]);
@@ -92,7 +96,7 @@ export function BaselineCompare({
     let live = true;
     setFailed(false);
     client.compare(planId, baseline.id, { filters, scenario, show }).then(
-      (c) => live && setRead({ key, first: c, tickets: c.tickets, next: c.next }),
+      (c) => live && setRead({ key, base, first: c, tickets: c.tickets, next: c.next }),
       () => live && setFailed(true),
     );
     return () => {
@@ -245,28 +249,28 @@ export function BaselineCompare({
         <p className="board-problem" role="alert">
           {t('baselines.compare.failed')}
         </p>
-      ) : !data ? (
+      ) : !shown ? (
         <p className="report-loading">{t('reports.loading')}</p>
       ) : (
         <>
-          <p>{sentence(data.first)}</p>
+          <p>{sentence(shown.first)}</p>
           <p className="board-hint">
-            {data.first.against === 'live'
+            {shown.first.against === 'live'
               ? t('baselines.compare.againstLive')
               : t('baselines.compare.againstScenario', {
-                  name: data.first.against.scenario.name,
+                  name: shown.first.against.scenario.name,
                 })}{' '}
             {t('baselines.compare.yours')}
           </p>
-          {data.first.counts.addedSince +
-            data.first.counts.undatedThen +
-            data.first.counts.undatedNow >
+          {shown.first.counts.addedSince +
+            shown.first.counts.undatedThen +
+            shown.first.counts.undatedNow >
             0 && (
             <p className="board-hint">
               {t('baselines.compare.others', {
-                added: data.first.counts.addedSince,
-                undatedThen: data.first.counts.undatedThen,
-                undatedNow: data.first.counts.undatedNow,
+                added: shown.first.counts.addedSince,
+                undatedThen: shown.first.counts.undatedThen,
+                undatedNow: shown.first.counts.undatedNow,
               })}
             </p>
           )}
@@ -280,7 +284,7 @@ export function BaselineCompare({
                 aria-pressed={show === s}
                 onClick={() => setShow(s)}
               >
-                {label(data.first, s)}
+                {label(shown.first, s)}
               </button>
             ))}
           </fieldset>
@@ -289,7 +293,9 @@ export function BaselineCompare({
               {problem}
             </p>
           )}
-          {data.tickets.length === 0 ? (
+          {!data ? (
+            <p className="report-loading">{t('reports.loading')}</p>
+          ) : data.tickets.length === 0 ? (
             <EmptyState compact title={t('baselines.compare.none')} />
           ) : (
             <ul
@@ -306,7 +312,7 @@ export function BaselineCompare({
               ))}
             </ul>
           )}
-          {data.next && (
+          {data?.next && (
             <div className="scenario-item-actions">
               <button
                 type="button"

@@ -78,12 +78,13 @@ describe('a baseline compared with the days now (PLN-011)', () => {
     renderCompare();
     const later = await screen.findByRole('button', { name: 'Later (3)' });
     expect(later).toHaveAttribute('aria-pressed', 'true');
-    await user.click(screen.getByRole('button', { name: 'Earlier (1)' }));
-    expect(screen.getByRole('button', { name: 'Earlier (1)' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    const earlier = screen.getByRole('button', { name: 'Earlier (1)' });
+    await user.click(earlier);
+    // The pressed button stays where it is while its list is read, and keeps focus.
+    expect(earlier).toHaveAttribute('aria-pressed', 'true');
+    expect(earlier).toHaveFocus();
     expect(await screen.findByText('3 days earlier: due Nov 28, was Dec 1')).toBeVisible();
+    expect(earlier).toHaveFocus();
     await user.click(screen.getByRole('button', { name: 'Added since (1)' }));
     expect(await screen.findByText('Added since the baseline: due Dec 10')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'All' }));
