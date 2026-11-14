@@ -227,6 +227,8 @@ function shownKeys(form: TicketForm, client: CreateClient): Set<string> {
 
 /** The release fields, whose picker lists the track's releases. */
 const RELEASE_KEYS = new Set(['targetRelease', 'foundInRelease']);
+/** Durations typed as time tracking reads them ('2h 30m'). */
+const ESTIMATES = new Set(['originalEstimate', 'remainingEstimate']);
 
 /** The keys of a layout, to know which pickers need their lists. */
 const layoutKeys = (form: TicketForm) =>
@@ -799,8 +801,15 @@ export function CreateTicketPage({
     const label = labelOf(field, custom);
     const help = field.description ?? (custom?.description || null);
     const error = errors[field.key];
+    // What a field expects, where its control cannot show it: labels, a duration, a number.
     const hint =
-      field.key === 'labels' || custom?.type === 'labels' ? t('tickets.create.labelsHint') : null;
+      field.key === 'labels' || custom?.type === 'labels'
+        ? t('tickets.create.labelsHint')
+        : ESTIMATES.has(field.key)
+          ? t('tickets.create.estimateHint')
+          : custom?.type === 'number'
+            ? t('tickets.create.numberHint')
+            : null;
     const lock = lockOfField(loaded.locks, field.key);
     const helpId = help || hint ? `${id}-help` : '';
     const lockId = lock ? `${id}-lock` : '';

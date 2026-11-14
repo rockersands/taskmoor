@@ -6,6 +6,8 @@ import { type LockAction, useLockText } from '../locks/useLockText';
 import { routeHref } from '../routing/router';
 import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
+import { priorityName } from '../shell/priorityName';
+import { SYSTEM_FIELDS } from '../tickets/form';
 import {
   type BulkClient,
   type BulkError,
@@ -73,6 +75,55 @@ export function useReason(): (error: BulkError | null) => string {
 }
 
 const finished = (op: BulkOperation) => op.status === 'done' || op.status === 'cancelled';
+
+/** An edit's fields by the names the ticket route takes them, with their labels. */
+const EDITED: Record<string, MessageId> = {
+  ...Object.fromEntries(Object.values(SYSTEM_FIELDS).map((field) => [field.body, field.label])),
+  ticketTypeId: 'tickets.create.type',
+};
+const DAYS = new Set(['startDate', 'dueDate']);
+
+/**
+ * What the change was, in words (D14): each field an edit set and its new value, or the track a
+ * move went to. Ids name what they can (a priority); otherwise the field alone is named.
+ */
+function useChangeText(op: BulkOperation | null, priorities: { id: number; name: string }[]) {
+  const t = useT();
+  const intl = useIntl();
+  if (!op?.params) return null;
+  const parts: string[] = [];
+  const edit = op.action === 'edit' ? op.params.edit : undefined;
+  for (const [key, value] of Object.entries(edit ?? {})) {
+    if (key === 'fields' && value && typeof value === 'object') {
+      const count = Object.keys(value).length;
+      if (count > 0) parts.push(t('bulk.change.customFields', { count }));
+      continue;
+    }
+    const label = EDITED[key];
+    if (!label) continue;
+    const field = t(label);
+    if (value === null) {
+      parts.push(t('bulk.change.cleared', { field }));
+    } else if (Array.isArray(value) && value.every((v) => typeof v === 'string')) {
+      const shown = value.length > 0 ? intl.formatList(value) : t('bulk.change.none');
+      parts.push(t('bulk.change.set', { field, value: shown }));
+    } else if (typeof value === 'string' && DAYS.has(key)) {
+      const day = intl.formatDate(value, { dateStyle: 'medium', timeZone: 'UTC' });
+      parts.push(t('bulk.change.set', { field, value: day }));
+    } else if (typeof value === 'string') {
+      parts.push(t('bulk.change.set', { field, value }));
+    } else if (key === 'priorityId' && priorities.some((p) => p.id === value)) {
+      const name = priorityName(t, priorities.find((p) => p.id === value)?.name ?? '');
+      parts.push(t('bulk.change.set', { field, value: name }));
+    } else {
+      parts.push(t('bulk.change.changed', { field }));
+    }
+  }
+  const track = op.action === 'move' ? op.params.move?.track : undefined;
+  if (typeof track === 'string') parts.push(t('bulk.change.moved', { track }));
+  else if (track !== undefined) parts.push(t('bulk.change.movedElsewhere'));
+  return parts.length > 0 ? t('bulk.change', { change: intl.formatList(parts) }) : null;
+}
 
 function statusText(t: Translate, op: BulkOperation): string {
   if (op.cancelRequested && !finished(op)) return t('bulk.status.cancelling');
@@ -159,6 +210,50 @@ export function BulkOperationPage({
     setNext(page.next);
   };
 
+  // The tickets the change reached, linked (D14), read once it has finished.
+  const [changed, setChanged] = useState<BulkItem[]>([]);
+  const [nextChanged, setNextChanged] = useState<number | null>(null);
+  const succeededCount = op && finished(op) ? op.succeeded : 0;
+  useEffect(() => {
+    if (succeededCount === 0 || !client.changed) return;
+    let live = true;
+    client.changed(opId).then(
+      (page) => {
+        if (!live) return;
+        setChanged(page.items);
+        setNextChanged(page.next);
+      },
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [client, opId, succeededCount]);
+
+  const moreChanged = async () => {
+    if (nextChanged === null || !client.changed) return;
+    const page = await client.changed(opId, nextChanged);
+    setChanged((c) => [...c, ...page.items]);
+    setNextChanged(page.next);
+  };
+
+  // A priority an edit set is named, not shown as a number.
+  const [priorities, setPriorities] = useState<{ id: number; name: string }[]>([]);
+  const wantsPriority = typeof op?.params?.edit?.priorityId === 'number';
+  useEffect(() => {
+    if (!wantsPriority || !client.priorities) return;
+    let live = true;
+    client.priorities().then(
+      (list) => live && setPriorities(list),
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [client, wantsPriority]);
+  const change = useChangeText(op, priorities);
+  const changedId = useId();
+
   const cancel = async () => {
     setCancelling(true);
     setProblem(null);
@@ -207,6 +302,7 @@ export function BulkOperationPage({
           {statusText(t, op)}
         </p>
       )}
+      {change && <p className="bulk-change">{change}</p>}
       <div className="bulk-progress">
         <label id={progressId} htmlFor={`${progressId}-bar`} className="form-label">
           {t('bulk.progress', { done: number(done), total: number(op.total) })}
@@ -274,6 +370,45 @@ export function BulkOperationPage({
           )}
         </section>
       )}
+      {changed.length > 0 && (
+        <section aria-labelledby={changedId} className="glass-card bulk-failures-card">
+          <h2 id={changedId} className="facts-title">
+            {t(cloning ? 'bulk.clone.changed' : 'bulk.changed')}
+          </h2>
+          <ul className="bulk-changed">
+            {changed.map((item) => {
+              // A clone links its copy; any other change the ticket it changed.
+              const key = cloning ? (item.result?.ticket.key ?? null) : item.key;
+              return (
+                <li key={item.position}>
+                  {key ? (
+                    <a href={routeHref(`#/tickets/${encodeURIComponent(key)}`)}>{key}</a>
+                  ) : (
+                    item.ref
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {nextChanged !== null && (
+            <button type="button" className="button-secondary" onClick={() => void moreChanged()}>
+              {t('bulk.moreChanged')}
+            </button>
+          )}
+        </section>
+      )}
+      <p className="bulk-back">
+        <a
+          className="button-secondary"
+          href={routeHref(
+            op.params?.query
+              ? `#/search?${new URLSearchParams({ q: op.params.query }).toString()}`
+              : '#/search',
+          )}
+        >
+          {t(op.params?.query ? 'bulk.backToSearch' : 'bulk.toSearch')}
+        </a>
+      </p>
     </section>
   );
 }

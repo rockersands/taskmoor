@@ -64,6 +64,8 @@ export const ALLOWED = {
     '.capacity-row.is-team th': STICKY,
     '.capacity-table tbody td:last-child': STICKY,
     '.capacity-row.is-team td:last-child': STICKY,
+    '.create-dialog .create-form > .form-actions':
+      "the create dialog's sticky foot (D3): the form scrolls under Create, so glass would show it through",
     '.timeline-fade':
       'the rows fading out at the foot of the timeline, into the colour of its sticky cells; no text',
     '.skin-preview-bar': SKIN_PREVIEW,

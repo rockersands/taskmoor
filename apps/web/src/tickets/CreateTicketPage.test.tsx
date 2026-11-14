@@ -103,6 +103,29 @@ describe('the create form (M1-012)', () => {
     expect(within(more).getByLabelText('Due date (required)')).toBeVisible();
   });
 
+  it('[CORE-008] says what the estimates and a number field expect, as Labels does', async () => {
+    const form = withFields(CHORE_FORM, [
+      { key: 'originalEstimate', required: false, description: null },
+      { key: 'remainingEstimate', required: false, description: null },
+      { key: 'cf[13]', required: false, description: null },
+    ]);
+    form.customFields = [
+      { id: 13, name: 'Points', description: '', type: 'number', multiple: false },
+    ];
+    openCreate({
+      'GET /tracks/SHOP/ticket-types': () =>
+        jsonResponse(200, { typeSetId: 1, defaultTypeId: 4, ticketTypes: TYPES }),
+      'GET /tracks/SHOP/layout?ticketTypeId=4&operation=create': () => jsonResponse(200, form),
+    });
+    expect(await screen.findByLabelText('Original estimate')).toHaveAccessibleDescription(
+      'For example 2h 30m, or 1d.',
+    );
+    expect(screen.getByLabelText('Remaining estimate')).toHaveAccessibleDescription(
+      'For example 2h 30m, or 1d.',
+    );
+    expect(screen.getByLabelText('Points')).toHaveAccessibleDescription('A number, for example 3.');
+  });
+
   it("[CORE-013] shows the backend's refusals at each field, then creates the ticket", async () => {
     const user = userEvent.setup();
     let attempts = 0;

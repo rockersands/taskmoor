@@ -8,6 +8,7 @@ import { stubBackend, untranslated, visibleTexts } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
 import { BulkOperationPage } from './BulkOperationPage';
+import type { BulkItem } from './client';
 import { FAILURES, fakeBulkClient, RUNNING } from './fixtures';
 
 function openPage(operation = RUNNING) {
@@ -91,6 +92,75 @@ describe('bulk operation progress (M1-021)', () => {
     // reports them, so the list fills a moment after the warning appears.
     const failures = screen.getByRole('region', { name: 'Tickets that were not changed' });
     expect((await within(failures).findAllByRole('listitem')).length).toBeGreaterThan(0);
+  });
+
+  it('[CORE-024] names the change, links the tickets it changed and leads back to the search (PL-23, D14)', async () => {
+    const done: BulkItem = {
+      position: 1,
+      ref: 'SHOP-41',
+      key: 'SHOP-41',
+      outcome: 'done',
+      statusCode: 200,
+      error: null,
+    };
+    const client = fakeBulkClient(
+      {
+        ...RUNNING,
+        total: 2,
+        succeeded: 1,
+        failed: 1,
+        pending: 0,
+        status: 'done',
+        params: {
+          edit: { priorityId: 2, labels: ['refunds', 'web'], dueDate: null },
+          query: 'track = SHOP',
+        },
+      },
+      {
+        failures: FAILURES.slice(1, 2),
+        changed: [done],
+        priorities: [{ id: 2, name: 'High' }],
+      },
+    );
+    render(
+      <I18nProvider locale="en">
+        <BulkOperationPage id="7" client={client} pollMs={5} />
+      </I18nProvider>,
+    );
+    expect(
+      await screen.findByText(
+        'The change: Priority set to High, Labels set to refunds and web, and Due date cleared.',
+      ),
+    ).toBeVisible();
+    const changed = await screen.findByRole('region', { name: 'Tickets that were changed' });
+    expect(within(changed).getByRole('link', { name: 'SHOP-41' })).toHaveAttribute(
+      'href',
+      '#/tickets/SHOP-41',
+    );
+    expect(screen.getByRole('link', { name: 'Back to the search' })).toHaveAttribute(
+      'href',
+      '#/search?q=track+%3D+SHOP',
+    );
+  });
+
+  it('[CORE-024] names a move by its track, and leads to Search when no query chose the tickets (D14)', async () => {
+    const client = fakeBulkClient({
+      ...RUNNING,
+      action: 'move',
+      total: 3,
+      succeeded: 3,
+      failed: 0,
+      pending: 0,
+      status: 'done',
+      params: { move: { track: 'WEB' } },
+    });
+    render(
+      <I18nProvider locale="en">
+        <BulkOperationPage id="7" client={client} pollMs={5} />
+      </I18nProvider>,
+    );
+    expect(await screen.findByText('The change: moved to the WEB track.')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Go to Search' })).toHaveAttribute('href', '#/search');
   });
 
   it('[CORE-024] a cancelled bulk change with failures says how many were changed, failed and skipped (PL-23)', async () => {
