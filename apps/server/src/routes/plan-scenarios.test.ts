@@ -1499,4 +1499,158 @@ describe('plan scenarios and draft changes (PLN-002, PLN-003)', () => {
     expect(applied.applied).toEqual([{ ticketId: ops.id, key: ops.key }]);
     expect(await live(ops.id)).toMatchObject({ start: '2027-12-01', due: '2027-12-12' });
   });
+
+  /** Backends of this test's database waiting on a lock. */
+  const waitingOnLocks = async () =>
+    (
+      await sql<{ n: number }>`
+        SELECT count(*)::int AS n FROM pg_stat_activity
+         WHERE wait_event_type = 'Lock' AND datname = current_database()`.execute(database.db)
+    ).rows[0]?.n ?? 0;
+  /**
+   * Holds what `lock` takes in a transaction while `start` runs, until `waiters` backends wait on a
+   * lock or what started has answered; then lets go and gives what started.
+   */
+  async function whileHolding<T>(
+    lock: (trx: Transaction<Database>) => Promise<unknown>,
+    start: () => Promise<T>,
+    waiters: number,
+  ): Promise<T> {
+    let started: Promise<T> | undefined;
+    await database.db.transaction().execute(async (trx) => {
+      await lock(trx);
+      let answered = false;
+      started = start().finally(() => {
+        answered = true;
+      });
+      for (let i = 0; i < 400 && !answered; i++) {
+        if ((await waitingOnLocks()) >= waiters) break;
+        await new Promise((r) => setTimeout(r, 25));
+      }
+    });
+    return started as Promise<T>;
+  }
+  const newPlan = async (name: string) =>
+    (
+      await call(
+        'admin',
+        {
+          method: 'POST',
+          url: '/api/v1/plans',
+          payload: { name, sources: [{ kind: 'track', trackId: tracks.SCB }] },
+        },
+        201,
+      )
+    ).plan.id as number;
+  const scenariosOf = async (id: number) =>
+    (await call('admin', { method: 'GET', url: `${plan(id)}/scenarios` })).scenarios as Scenario[];
+
+  it('[PLN-003] makes one scenario main when two editors make different ones main at once', async () => {
+    const race = await newPlan('Race');
+    const first = (await makeScenario('admin', 'First', {}, race)).scenario;
+    const b = (await makeScenario('admin', 'B', {}, race)).scenario;
+    const c = (await makeScenario('admin', 'C', {}, race)).scenario;
+    const promote = (s: Scenario) =>
+      as('admin', {
+        method: 'POST',
+        url: scen(s.id, '/promote', race),
+        payload: { version: s.version },
+      });
+    // Both wait on the main scenario's row; the second reads the main one the first committed.
+    const answers = await whileHolding(
+      (trx) =>
+        trx
+          .selectFrom('plan_scenario')
+          .select('id')
+          .where('id', '=', first.id)
+          .forUpdate()
+          .execute(),
+      () => Promise.all([promote(b), promote(c)]),
+      2,
+    );
+    expect(
+      answers.map((r) => r.statusCode),
+      answers.map((r) => r.body).join('\n'),
+    ).toEqual([200, 200]);
+    const mains = (await scenariosOf(race)).filter((x) => x.main);
+    expect(mains).toHaveLength(1);
+    expect([b.id, c.id]).toContain(mains[0]?.id);
+  });
+
+  it('[PLN-003] never leaves a plan without its main scenario when one is made as the main one goes', async () => {
+    const lonely = await newPlan('Lonely');
+    const only = (await makeScenario('admin', 'Only', {}, lonely)).scenario;
+    expect(only.main).toBe(true);
+    // A scenario being made: the plan's row taken and the new one written, not yet committed.
+    const res = await whileHolding(
+      async (trx) => {
+        await trx
+          .selectFrom('plan')
+          .select('id')
+          .where('id', '=', lonely)
+          .forNoKeyUpdate()
+          .execute();
+        await trx
+          .insertInto('plan_scenario')
+          .values({
+            workspace_id: 1,
+            plan_id: lonely,
+            name: 'Made meanwhile',
+            main: false,
+            created_by: users.admin?.id as number,
+          })
+          .execute();
+      },
+      () =>
+        as('admin', {
+          method: 'DELETE',
+          url: `${scen(only.id, '', lonely)}?version=${only.version}`,
+        }),
+      1,
+    );
+    expect(res.statusCode, res.body).toBe(409);
+    expect(res.json()).toEqual({ error: 'main_scenario' });
+    expect((await scenariosOf(lonely)).map((x) => [x.name, x.main])).toEqual([
+      ['Only', true],
+      ['Made meanwhile', false],
+    ]);
+  });
+
+  it('[PLN-003] refuses deleting the main scenario, or making another main, while an apply holds it', async () => {
+    const held = await newPlan('Held');
+    const main = (await makeScenario('admin', 'Held main', {}, held)).scenario;
+    const hold = (since: Date | null) =>
+      database.db
+        .updateTable('plan_scenario')
+        .set({ applying_since: since })
+        .where('id', '=', main.id)
+        .execute();
+    await hold(new Date());
+    // The only scenario, held: deleting it would otherwise go.
+    const gone = await as('admin', {
+      method: 'DELETE',
+      url: `${scen(main.id, '', held)}?version=${main.version}`,
+    });
+    expect(gone.statusCode).toBe(409);
+    expect(gone.json()).toEqual({ error: 'apply_in_progress' });
+    const other = (await makeScenario('admin', 'Other', {}, held)).scenario;
+    const promoted = await as('admin', {
+      method: 'POST',
+      url: scen(other.id, '/promote', held),
+      payload: { version: other.version },
+    });
+    expect(promoted.statusCode).toBe(409);
+    expect(promoted.json()).toEqual({ error: 'apply_in_progress' });
+    expect((await scenariosOf(held)).map((x) => [x.name, x.main])).toEqual([
+      ['Held main', true],
+      ['Other', false],
+    ]);
+    // Once the hold is stale, both go ahead.
+    await hold(new Date(Date.now() - 11 * 60_000));
+    await call('admin', {
+      method: 'POST',
+      url: scen(other.id, '/promote', held),
+      payload: { version: other.version },
+    });
+  });
 });

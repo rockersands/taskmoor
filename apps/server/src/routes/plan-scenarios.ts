@@ -262,6 +262,15 @@ export function registerPlanScenarioRoutes(
     return { user, plan, scenario: scenario as ScenarioRow };
   }
 
+  /**
+   * Locks the plan's row: making, deleting and promoting scenarios take it first, so each sees the
+   * scenarios the others committed (which is main, and whether another exists). A no-key lock, so
+   * a draft written meanwhile (whose foreign keys share the plan's key) never waits on it.
+   */
+  async function lockPlan(trx: Transaction<Database>, planId: number) {
+    await trx.selectFrom('plan').select('id').where('id', '=', planId).forNoKeyUpdate().execute();
+  }
+
   /** How many drafted tickets a scenario holds in all. */
   async function draftedTickets(q: Db, scenarioId: number) {
     const row = await sql<{ n: number }>`
@@ -517,12 +526,7 @@ export function registerPlanScenarioRoutes(
       const shown = tickets?.unfiltered ?? null;
       const outcome = await db.transaction().execute(async (trx) => {
         // The plan's row orders scenario writes, so two makers never pass the limit together.
-        await trx
-          .selectFrom('plan')
-          .select('id')
-          .where('id', '=', o.plan.id)
-          .forUpdate()
-          .executeTakeFirst();
+        await lockPlan(trx, o.plan.id);
         const existing = await trx
           .selectFrom('plan_scenario')
           .select(['id'])
@@ -638,6 +642,9 @@ export function registerPlanScenarioRoutes(
     const q = versionQuery.safeParse(request.query ?? {});
     if (!q.success) return invalidFields(reply, shapeErrors(q.error));
     const outcome = await db.transaction().execute(async (trx) => {
+      // The plan's row first, as making a scenario takes it: a scenario made meanwhile is seen, so
+      // the main one never goes while another stays.
+      await lockPlan(trx, o.plan.id);
       const locked = await trx
         .selectFrom('plan_scenario')
         .select(['name', 'main', 'version', 'applying_since'])
@@ -682,6 +689,8 @@ export function registerPlanScenarioRoutes(
     if (!parsed.success) return invalidFields(reply, shapeErrors(parsed.error));
     const ws = request.workspaceId;
     const outcome = await db.transaction().execute(async (trx) => {
+      // The plan's row orders promotions: the main scenario read next is the one committed last.
+      await lockPlan(trx, o.plan.id);
       // The main scenario's lock first, then the chosen one's, as every apply takes them.
       const main = await trx
         .selectFrom('plan_scenario')

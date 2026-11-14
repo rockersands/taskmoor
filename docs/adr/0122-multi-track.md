@@ -1718,6 +1718,12 @@ benchmarking. Where this differs from the design above:
   .../drafts` answers that list for the tickets it named. `DELETE` answers 204. Promotion answers
   the scenarios. The limits answer 409 with `limit`.
 - **Deleting a scenario while an apply holds it** is refused (`apply_in_progress`), as promotion is.
+- **The plan's row orders scenario writes.** Making, deleting and promoting a scenario each take the
+  plan's row first (a no-key lock, so a draft's foreign keys never wait on it), then the scenarios'
+  rows. Two promotions at once both succeed, the later one main; a main scenario deleted while
+  another is being made is refused (`main_scenario`), so a plan never ends up without its main one.
+  (Built first with only the scenarios' rows locked, which let the second promotion break the
+  one-main index, a 500, and a delete race a make; fixed after review.)
 - **Applying.** A `gone` refusal carries `key: null` and is never stored, so a hidden ticket's
   draft shows no refusal to anyone. A ticket refused by a version raced during the apply gets its
   values now from a second read, as the applier sees it. A throw anywhere clears the hold. The
