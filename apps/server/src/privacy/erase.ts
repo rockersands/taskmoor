@@ -6,7 +6,7 @@ import { emit } from '../events/bus';
 import { enqueue, type JobRunner } from '../events/queue';
 import { canonicalJson } from '../tickets/model';
 import { eraseTrackGroups, lockForErasure } from '../trackgroups/privacy';
-import { erasedEmail, erasedName } from './placeholder';
+import { erasedEmail, erasedName, withoutCapacityNotes } from './placeholder';
 
 export { ERASED_DOMAIN, erasedEmail, erasedName } from './placeholder';
 
@@ -26,14 +26,17 @@ export { ERASED_DOMAIN, erasedEmail, erasedName } from './placeholder';
  *   mappings, sign-in counters kept under their email, and their personal data downloads
  *   (files included). Taskmoor stores no avatar.
  * - Their track groups go, and the shares they gave and received with what those gave, by the
- *   rules of taking a share back (`trackgroups/privacy.ts`; ADR-121): never the last one to run
- *   a track, so a share that gave the only person running a track refuses the erasure until
- *   someone else runs it.
+ *   rules of taking a share back (`trackgroups/privacy.ts`; ADR-121), except that a role one of
+ *   their shares gave the only other person running a track stays with that person, as their own
+ *   (T-205a): the erasure goes through, and the track keeps someone to run it.
+ * - Their capacity in plans goes with its notes (PLN-009), and the scrub job below clears those
+ *   notes from the plans' `plan.capacity_set` events too (T-089j).
  * - Domain events about the person have their old name and email replaced in the payload.
  * - Names written into other records are replaced by a job (`ERASE_SCRUB_TASK`), which finds
  *   them by the account's id alone: the history's display names of People fields, and the
  *   labels of mentions in descriptions, environments, comments, earlier comment versions and
- *   the history of rich text fields. Collaboration states and originals in another format of
+ *   the history of rich text fields. The same job empties the notes of the person's capacity in
+ *   the plans' `plan.capacity_set` events (T-089j); the audit log shows those notes empty. Collaboration states and originals in another format of
  *   the documents it changes are dropped; both are rebuilt from the document.
  * - The audit log is append-only and hash-chained, so its records are never rewritten: they
  *   keep the account's id, which now names the placeholder, and the log hides the personal
@@ -41,9 +44,8 @@ export { ERASED_DOMAIN, erasedEmail, erasedName } from './placeholder';
  *   `audit-verify` still verifies every record; retention removes them in time.
  *
  * Refused: the last active site administrator, oneself, an account a directory or SCIM still
- * manages (it would come back at the next sync), service accounts (not people), a confirmation
- * that is not the account's email, and an erasure that would leave a track with nobody to run it
- * (thrown as `LastTrackAdministrator`, which rolls the caller's transaction back).
+ * manages (it would come back at the next sync), service accounts (not people), and a
+ * confirmation that is not the account's email.
  */
 type Db = Kysely<Database> | Transaction<Database>;
 
@@ -214,8 +216,8 @@ export async function eraseUser(
     .execute();
 
   // Track groups (T-205; ADR-121), once the person is deactivated above, so they no longer count
-  // as running a track: taking back what their shares gave others may refuse the erasure
-  // (`LastTrackAdministrator`, which rolls the whole transaction back).
+  // as running a track: a role their shares gave that would leave a track with nobody to run it
+  // stays with its holder (T-205a).
   const groups = await eraseTrackGroups(trx, ws, userId);
   count('track_group', groups.groups);
   count('track_group_share', groups.sharesGiven + groups.sharesReceived);
@@ -271,6 +273,15 @@ export async function eraseUser(
         ...(groups.removed.length > 0
           ? {
               groupAccess: groups.removed.map((c) => ({
+                trackId: c.trackId,
+                userId: c.userId,
+                roleId: c.roleId,
+              })),
+            }
+          : {}),
+        ...(groups.kept.length > 0
+          ? {
+              groupAccessKept: groups.kept.map((c) => ({
                 trackId: c.trackId,
                 userId: c.userId,
                 roleId: c.roleId,
@@ -361,6 +372,8 @@ function relabelDisplay(
 export interface ScrubReport {
   historyDisplays: number;
   documents: number;
+  /** `plan.capacity_set` events whose notes about the person were cleared (T-089j). */
+  capacityEvents: number;
 }
 
 /**
@@ -379,9 +392,11 @@ export async function scrubPersonReferences(
     .where('id', '=', userId)
     .executeTakeFirst();
   // Only an erased account's name is written over others' records.
-  if (!user || user.erased_at === null) return { historyDisplays: 0, documents: 0 };
+  if (!user || user.erased_at === null) {
+    return { historyDisplays: 0, documents: 0, capacityEvents: 0 };
+  }
   const label = user.name;
-  const report: ScrubReport = { historyDisplays: 0, documents: 0 };
+  const report: ScrubReport = { historyDisplays: 0, documents: 0, capacityEvents: 0 };
   const id = String(userId);
 
   // 1. History: display names of People fields (assignee, requester, user custom fields).
@@ -568,6 +583,38 @@ export async function scrubPersonReferences(
       report.documents++;
     }
     lastChange = rows[rows.length - 1]?.id ?? lastChange;
+  }
+
+  // 3. Capacity notes in the plans' event history (T-089j, the user's decision of 2026-11-13):
+  // the erasure deleted the person's `plan_capacity` rows; the events that set them keep the
+  // amounts but lose the notes.
+  const subject = `user:${userId}`;
+  const touches = JSON.stringify([{ subject }]);
+  let lastEvent = '0';
+  for (;;) {
+    const events = await db
+      .selectFrom('domain_event')
+      .select(['id', 'payload'])
+      .where('workspace_id', '=', ws)
+      .where('subject_type', '=', 'plan')
+      .where('type', '=', 'plan.capacity_set')
+      .where(sql<boolean>`payload -> 'changes' @> ${touches}::jsonb`)
+      .where('id', '>', lastEvent)
+      .orderBy('id')
+      .limit(SCRUB_BATCH)
+      .execute();
+    if (events.length === 0) break;
+    for (const event of events) {
+      const scrubbed = withoutCapacityNotes(event.payload, subject);
+      if (canonicalJson(scrubbed) === canonicalJson(event.payload)) continue;
+      await db
+        .updateTable('domain_event')
+        .set({ payload: JSON.stringify(scrubbed) })
+        .where('id', '=', event.id)
+        .execute();
+      report.capacityEvents++;
+    }
+    lastEvent = events[events.length - 1]?.id ?? lastEvent;
   }
   return report;
 }

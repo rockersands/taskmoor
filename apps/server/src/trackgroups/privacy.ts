@@ -15,8 +15,9 @@ type Db = Kysely<Database>;
  * page does; a site administrator's lists every track.
  *
  * Erasing the person deletes their groups, taking back what the shares of those groups gave by
- * the rules of taking a share back (never the last one to run a track: the erasure is refused),
- * and removes the shares they received with what those gave them. It takes the locks the routes
+ * the rules of taking a share back, except that a role that leaves a track with nobody to run it
+ * stays with the person it was shared with, as their own (T-205a: the erasure goes through), and
+ * removes the shares they received with what those gave them. It takes the locks the routes
  * take, in their order, before it locks the person's account (`lockForErasure`).
  */
 export interface PersonalTrackGroups {
@@ -182,6 +183,11 @@ export interface ErasedTrackGroups {
   sharesReceived: number;
   /** The roles that went with them. */
   removed: AccessChange[];
+  /**
+   * Roles the person's shares gave that stayed, the holder's own now, since taking them back
+   * would leave a track with nobody to run it (T-205a; ADR-121).
+   */
+  kept: AccessChange[];
 }
 
 /** Everyone whose group was shared with the person. */
@@ -250,10 +256,11 @@ export async function lockForErasure(
 
 /**
  * Removes a person's track groups in the caller's transaction, before the person is erased:
- * their groups go, taking back what the groups' shares gave by the rules of taking a share back
- * (throws `LastTrackAdministrator` when that would leave a track with nobody to run it), and the
- * shares they received go with what those gave them. The caller holds `lockForErasure`'s locks,
- * taken before it locked the person's account row.
+ * their groups go, taking back what the groups' shares gave by the rules of taking a share back,
+ * and the shares they received go with what those gave them. A role a share of theirs gave that
+ * was the last way to run a track stays with its holder as their own (`kept`), so the erasure
+ * never waits on someone else's role (T-205a). The caller holds `lockForErasure`'s locks, taken
+ * before it locked the person's account row.
  */
 export async function eraseTrackGroups(
   trx: Transaction<Database>,
@@ -287,11 +294,14 @@ export async function eraseTrackGroups(
     .where('workspace_id', '=', workspaceId)
     .where('user_id', '=', userId)
     .execute();
+  const kept: AccessChange[] = [];
   const removed = [
     ...(await releaseShares(
       trx,
       workspaceId,
       given.map((s) => s.id),
+      null,
+      { keepLast: kept },
     )),
     // The person is deactivated with the erasure: their roles run no track either way.
     ...(await releaseShares(
@@ -327,5 +337,6 @@ export async function eraseTrackGroups(
     sharesGiven: given.length,
     sharesReceived: received.length,
     removed,
+    kept,
   };
 }

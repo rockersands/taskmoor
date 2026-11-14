@@ -170,13 +170,18 @@ export async function lockArrangements(db: Db, userIds: readonly number[]): Prom
  * null). Throws `LastTrackAdministrator`, inside the caller's transaction, when a removal would
  * leave a track with nobody to run it. `keepAdministrators: false` skips that check, for a person
  * being erased: they are deactivated with it, so their role runs nothing either way.
+ *
+ * `keepLast`, for the erasure of the person who shared (T-205a, the user's decision of
+ * 2026-11-13; ADR-121): instead of refusing, a role whose removal would leave a track with
+ * nobody to run it stays, the person's own from then on (no share holds it, as `keepRole`
+ * makes it), and is listed there. Someone else's erasure never blocks on their role.
  */
 export async function releaseShares(
   trx: Transaction<Database>,
   workspaceId: number,
   shareIds: readonly number[],
   trackIds: readonly number[] | null = null,
-  options: { keepAdministrators?: boolean } = {},
+  options: { keepAdministrators?: boolean; keepLast?: AccessChange[] } = {},
 ): Promise<AccessChange[]> {
   if (shareIds.length === 0 || trackIds?.length === 0) return [];
   let query = trx
@@ -214,7 +219,10 @@ export async function releaseShares(
         groupId: null,
       }))
     ) {
-      last.push(h.track_id);
+      // The share's records went above: kept, the role is the person's own now.
+      if (options.keepLast) {
+        options.keepLast.push({ trackId: h.track_id, userId: h.user_id, roleId: h.role_id });
+      } else last.push(h.track_id);
       continue;
     }
     const result = await trx

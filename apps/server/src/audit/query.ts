@@ -1,6 +1,6 @@
 import type { Database } from '@taskmoor/db';
 import { type Kysely, sql } from 'kysely';
-import { erasedEmail, erasedName } from '../privacy/placeholder';
+import { erasedEmail, erasedName, withoutCapacityNotes } from '../privacy/placeholder';
 
 /**
  * Searching and exporting the audit log (M1-003, IAM-013). Search pages newest first with a
@@ -33,7 +33,7 @@ export interface AuditView {
   hash: string;
   /**
    * The record is about an erased person (ADR-111): their name, email and address are shown as
-   * the placeholder. The stored record is unchanged, so `hash` covers what was written, not
+   * the placeholder, and their capacity notes in a plan's record empty (T-089j). The stored record is unchanged, so `hash` covers what was written, not
    * what is shown here; `audit-verify` checks the stored records.
    */
   masked?: true;
@@ -156,6 +156,52 @@ function toView(row: Row): AuditView {
   };
 }
 
+/** The people whose capacity a `plan.capacity_set` record changed, by id. */
+function capacityPeople(view: AuditView): number[] {
+  if (view.action !== 'plan.capacity_set') return [];
+  const changes = (view.details as { changes?: unknown } | null)?.changes;
+  if (!Array.isArray(changes)) return [];
+  return changes.flatMap((c: { subject?: unknown }) => {
+    const match = typeof c?.subject === 'string' ? /^user:([0-9]{1,9})$/.exec(c.subject) : null;
+    return match ? [Number(match[1])] : [];
+  });
+}
+
+/**
+ * Capacity notes about erased people, shown empty (T-089j; ADR-111, ADR-122): the erasure
+ * clears them from the plans' events, but the audit log is never rewritten, so its
+ * `plan.capacity_set` records are masked when read, as records about an erased person are.
+ */
+async function maskCapacityNotes(
+  db: Kysely<Database>,
+  workspaceId: number,
+  views: AuditView[],
+): Promise<AuditView[]> {
+  const people = [...new Set(views.flatMap(capacityPeople))];
+  if (people.length === 0) return views;
+  const erased = new Set(
+    (
+      await db
+        .selectFrom('app_user')
+        .select('id')
+        .where('workspace_id', '=', workspaceId)
+        .where('id', 'in', people)
+        .where('erased_at', 'is not', null)
+        .execute()
+    ).map((u) => u.id),
+  );
+  if (erased.size === 0) return views;
+  return views.map((view) => {
+    const theirs = capacityPeople(view).filter((id) => erased.has(id));
+    if (theirs.length === 0) return view;
+    const details = theirs.reduce<unknown>(
+      (d, id) => withoutCapacityNotes(d, `user:${id}`),
+      view.details,
+    );
+    return { ...view, details, masked: true };
+  });
+}
+
 /** One page, newest first; `before` is the cursor (the last seq of the previous page). */
 export async function searchAudit(
   db: Kysely<Database>,
@@ -169,7 +215,7 @@ export async function searchAudit(
     .orderBy('e.seq', 'desc')
     .limit(page.limit + 1)
     .execute();
-  const records = rows.slice(0, page.limit).map(toView);
+  const records = await maskCapacityNotes(db, workspaceId, rows.slice(0, page.limit).map(toView));
   const last = records[records.length - 1];
   return { records, nextCursor: rows.length > page.limit && last ? String(last.seq) : null };
 }
@@ -189,7 +235,7 @@ export async function* exportAudit(
       .orderBy('e.seq')
       .limit(batch)
       .execute();
-    for (const row of rows) yield toView(row);
+    for (const view of await maskCapacityNotes(db, workspaceId, rows.map(toView))) yield view;
     const last = rows[rows.length - 1];
     if (!last || rows.length < batch) return;
     after = Number(last.seq);

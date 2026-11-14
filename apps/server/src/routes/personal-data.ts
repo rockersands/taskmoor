@@ -12,7 +12,6 @@ import {
   requestPersonalExport,
   toExportView,
 } from '../privacy/export';
-import { LastTrackAdministrator } from '../trackgroups/access';
 
 /**
  * A person's own data (ASVS 8.3.2; IAM-008; ADR-111).
@@ -24,8 +23,8 @@ import { LastTrackAdministrator } from '../trackgroups/access';
  * - Site administrators do the same for anyone under `/api/v1/users/:id/data-exports`; each
  *   download belongs to whoever asked for it.
  * - `POST /api/v1/users/:id/erase` erases a person (`privacy/erase.ts`), confirmed by typing
- *   their email. When taking back what their shared track groups gave would leave a track with
- *   nobody to run it, it answers `409` with `last_track_admin` and the tracks (ADR-121).
+ *   their email. A role their shared track groups gave the last other person running a track
+ *   stays with that person (ADR-121, T-205a): someone else's role never refuses an erasure.
  *
  * Asking for a download and erasing are audited (`personal_data.export_requested`,
  * `user.erased`).
@@ -201,20 +200,14 @@ export function registerPersonalDataRoutes(
     if (!params.success || !body.success) {
       return reply.code(400).send({ error: 'invalid_request' });
     }
-    let outcome: Awaited<ReturnType<typeof eraseUser>>;
-    try {
-      outcome = await db.transaction().execute((trx) =>
-        eraseUser(trx, {
-          workspaceId: req.workspaceId,
-          userId: params.data.id,
-          actorId: admin.id,
-          confirmEmail: body.data.confirmEmail,
-        }),
-      );
-    } catch (error) {
-      if (!(error instanceof LastTrackAdministrator)) throw error;
-      return reply.code(409).send({ error: 'last_track_admin', trackIds: error.trackIds });
-    }
+    const outcome = await db.transaction().execute((trx) =>
+      eraseUser(trx, {
+        workspaceId: req.workspaceId,
+        userId: params.data.id,
+        actorId: admin.id,
+        confirmEmail: body.data.confirmEmail,
+      }),
+    );
     if (typeof outcome === 'string') {
       return reply.code(ERASE_STATUS[outcome]).send({ error: outcome });
     }

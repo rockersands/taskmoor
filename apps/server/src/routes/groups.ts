@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
 import { requireGlobal, requireSiteAdmin } from '../auth';
+import { dropLapsedCreateTracks, lapsedPayload } from '../authz/create-tracks';
 import { effectiveMemberIds, nestingWouldCycle, toUserView, USER_COLUMNS } from '../directory';
 import { diff, emit } from '../events/bus';
 import {
@@ -269,6 +270,8 @@ export function registerGroupRoutes(
     const managed = await directories.group(request.workspaceId, params.data.id);
     if (managed) return directoryManaged(reply, managed.directory);
     const deleted = await db.transaction().execute(async (trx) => {
+      // Everyone in it, nested groups included, may run no track without it (T-087b).
+      const members = await effectiveMemberIds(trx, request.workspaceId, params.data.id);
       const row = await trx
         .deleteFrom('user_group')
         .where('id', '=', params.data.id)
@@ -276,10 +279,15 @@ export function registerGroupRoutes(
         .returning(['id', 'name'])
         .executeTakeFirst();
       if (row) {
+        const lapsed = await dropLapsedCreateTracks(trx, request.workspaceId, members);
         await emit(
           trx,
           { workspaceId: request.workspaceId, actorId: admin.id },
-          { type: 'group.deleted', subjectId: row.id, payload: { name: row.name } },
+          {
+            type: 'group.deleted',
+            subjectId: row.id,
+            payload: { name: row.name, ...lapsedPayload(lapsed) },
+          },
         );
       }
       return row;
@@ -346,13 +354,15 @@ export function registerGroupRoutes(
         .executeTakeFirst();
       const count = Number(result.numDeletedRows);
       if (count > 0) {
+        // A group may have been how they ran their last track (T-087b; IAM-033).
+        const lapsed = await dropLapsedCreateTracks(trx, request.workspaceId, [params.data.userId]);
         await emit(
           trx,
           { workspaceId: request.workspaceId, actorId: admin.id },
           {
             type: 'group.member_removed',
             subjectId: params.data.id,
-            payload: { userId: params.data.userId },
+            payload: { userId: params.data.userId, ...lapsedPayload(lapsed) },
           },
         );
       }
@@ -441,13 +451,19 @@ export function registerGroupRoutes(
         .executeTakeFirst();
       const count = Number(result.numDeletedRows);
       if (count > 0) {
+        // The child's people leave the parent: it may have been how they ran a track (T-087b).
+        const lapsed = await dropLapsedCreateTracks(
+          trx,
+          request.workspaceId,
+          await effectiveMemberIds(trx, request.workspaceId, params.data.childId),
+        );
         await emit(
           trx,
           { workspaceId: request.workspaceId, actorId: admin.id },
           {
             type: 'group.unnested',
             subjectId: params.data.id,
-            payload: { childId: params.data.childId },
+            payload: { childId: params.data.childId, ...lapsedPayload(lapsed) },
           },
         );
       }

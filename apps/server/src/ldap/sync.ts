@@ -1,6 +1,7 @@
 import type { Database, JsonValue } from '@taskmoor/db';
 import type { PepperRing } from '@taskmoor/iam';
 import { type Kysely, sql, type Transaction } from 'kysely';
+import { dropLapsedCreateTracks, lapsedPayload } from '../authz/create-tracks';
 import { emitMany } from '../events/bus';
 import type { DomainEventInput } from '../events/catalogue';
 import { deactivateAccount, lockNesting, reactivateAccount } from './accounts';
@@ -280,6 +281,9 @@ async function removeUsers(ctx: Context, links: UserLink[]): Promise<void> {
               .where('directory_id', '=', ctx.directory.id),
           )
           .execute();
+        // Deactivated, or out of the directory's groups, the person may run no track: a
+        // permission to create tracks that came with a role goes (T-087b; IAM-033).
+        const lapsed = await dropLapsedCreateTracks(trx, ctx.ws, [link.user_id]);
         count(ctx, 'usersRemoved');
         if (outcome.deactivated) count(ctx, 'usersDeactivated');
         events.push({
@@ -291,6 +295,7 @@ async function removeUsers(ctx: Context, links: UserLink[]): Promise<void> {
             dn: link.dn,
             deactivated: outcome.deactivated,
             endedSessions: outcome.endedSessions,
+            ...lapsedPayload(lapsed),
           },
         });
       }

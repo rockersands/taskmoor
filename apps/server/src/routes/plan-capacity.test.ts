@@ -6,7 +6,12 @@ import type { FastifyInstance, InjectOptions } from 'fastify';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
+import { exportAudit, searchAudit } from '../audit/query';
 import { SESSION_COOKIE } from '../auth';
+import { EventBus } from '../events/bus';
+import { JobRunner } from '../events/queue';
+import { registerSubscribers } from '../events/subscribers';
+import { registerEraseJobs } from '../privacy/erase';
 
 // Made for this run: no password is written in the repository.
 const PASSWORD = `plan-capacity-${randomBytes(18).toString('base64url')}`;
@@ -859,6 +864,108 @@ describe('teams and capacity in a plan (PLN-005, PLN-009)', () => {
       expect(res.statusCode, res.body).toBe(409);
       expect(JSON.parse(res.body)).toMatchObject({ error: 'settings_changed', unit: 'points' });
       expect(await rowsOf(ana)).toEqual([]);
+    });
+  });
+
+  /**
+   * T-089j, the user's decision of 2026-11-13: an erased person's capacity notes leave the event
+   * history too, not only `plan_capacity` (IAM-008; ADR-111, ADR-122). Last, as it erases Ana.
+   */
+  describe('an erased person’s capacity notes (IAM-008, T-089j)', () => {
+    /** The worker's part: events to the audit log, and the erasure's scrub job. */
+    async function work(): Promise<void> {
+      const bus = new EventBus(database.db);
+      registerSubscribers(bus, { db: database.db });
+      const runner = new JobRunner(database.db, 'plan-capacity-erasure-test');
+      bus.attach(runner);
+      registerEraseJobs(runner, database.db);
+      for (let i = 0; i < 20; i++) {
+        const relayed = await bus.relayOnce();
+        const ran = await runner.runOnce();
+        if (relayed === 0 && ran === 0) break;
+      }
+    }
+
+    const notesIn = (changes: unknown, subject: string) =>
+      (changes as { subject: string; from: { note: string } | null; to: { note: string } | null }[])
+        .filter((c) => c.subject === subject)
+        .flatMap((c) => [c.from?.note, c.to?.note])
+        .filter((n): n is string => n !== undefined);
+
+    it('[PLN-005] [IAM-008] erasing a person empties their capacity notes in the plans’ events and in the audit log', async () => {
+      const ana = `user:${users.ana?.id}`;
+      const web = `team:${teams.Web}`;
+      await setCapacity('admin', [
+        { teamId: teams.Web, period: null, amount: 21, note: 'Web keeps this' },
+        { userId: users.ana?.id, period: null, amount: 9, note: 'Part time after surgery' },
+      ]);
+      await work();
+      const capacityEvents = () =>
+        database.db
+          .selectFrom('domain_event')
+          .select('payload')
+          .where('type', '=', 'plan.capacity_set')
+          .orderBy('id')
+          .execute();
+      const said = (await capacityEvents()).flatMap((e) =>
+        notesIn((e.payload as { changes: unknown }).changes, ana),
+      );
+      expect(said).toEqual(expect.arrayContaining(['Leave', 'Part time after surgery']));
+
+      const erased = await as('admin', {
+        method: 'POST',
+        url: `/api/v1/users/${users.ana?.id}/erase`,
+        payload: { confirmEmail: 'ana@example.com' },
+      });
+      expect(erased.statusCode, erased.body).toBe(200);
+      await work();
+
+      // Every note about Ana's capacity is empty in the event history; the amounts stay, and
+      // so do the notes of anyone else's capacity.
+      const events = await capacityEvents();
+      const after = events.flatMap((e) =>
+        notesIn((e.payload as { changes: unknown }).changes, ana),
+      );
+      expect(after.length).toBeGreaterThan(0);
+      expect(after.every((n) => n === '')).toBe(true);
+      expect(
+        events.flatMap((e) => notesIn((e.payload as { changes: unknown }).changes, web)),
+      ).toContain('Web keeps this');
+      const last = events[events.length - 1]?.payload as { changes: unknown[] };
+      expect(last.changes).toContainEqual({
+        subject: ana,
+        period: null,
+        from: null,
+        to: { amount: 9, note: '' },
+      });
+
+      // The audit log is never rewritten: its records keep the words, and it shows them empty.
+      const stored = await database.db
+        .selectFrom('audit_event')
+        .select('details')
+        .where('action', '=', 'plan.capacity_set')
+        .execute();
+      expect(JSON.stringify(stored)).toContain('Part time after surgery');
+      const { records } = await searchAudit(
+        database.db,
+        1,
+        { action: 'plan.capacity_set' },
+        { limit: 200 },
+      );
+      const shown = JSON.stringify(records.map((r) => r.details));
+      expect(shown).not.toContain('Part time after surgery');
+      expect(shown).not.toContain('"Leave"');
+      expect(shown).toContain('Web keeps this');
+      const masked = records.filter(
+        (r) => notesIn((r.details as { changes: unknown }).changes, ana).length > 0,
+      );
+      expect(masked.length).toBeGreaterThan(0);
+      expect(masked.every((r) => r.masked === true)).toBe(true);
+      const exported: unknown[] = [];
+      for await (const record of exportAudit(database.db, 1, { action: 'plan.capacity_set' })) {
+        exported.push(record.details);
+      }
+      expect(JSON.stringify(exported)).not.toContain('Part time after surgery');
     });
   });
 });

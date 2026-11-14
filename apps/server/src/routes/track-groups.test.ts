@@ -1432,28 +1432,14 @@ describe('personal track groups (CORE-034, IAM-034)', () => {
       expect(await download('mo', true)).toEqual({ groups: [], sharedWithMe: [] });
     });
 
-    it('[IAM-008] erasure deletes the person’s groups and takes back the shares they gave and received, never the last one to run a track', async () => {
+    it('[IAM-008] erasure deletes the person’s groups and takes back the shares they gave and received', async () => {
       const eraseKai = () =>
         as('admin', {
           method: 'POST',
           url: `/api/v1/users/${ids.kai}/erase`,
           payload: { confirmEmail: 'kai@example.com' },
         });
-      // Erased, Kai runs nothing: Lou, through Kai's share, would be the last to run ERASE.
-      const refused = await eraseKai();
-      expect(refused.statusCode, refused.body).toBe(409);
-      expect(refused.json()).toEqual({ error: 'last_track_admin', trackIds: [erase] });
-      // Nothing changed.
-      const kai = await database.db
-        .selectFrom('app_user')
-        .select(['erased_at', 'deactivated_at'])
-        .where('id', '=', ids.kai as number)
-        .executeTakeFirstOrThrow();
-      expect(kai).toEqual({ erased_at: null, deactivated_at: null });
-      expect(await rolesOf('lou')).toEqual(['ERASE:Administrators']);
-      expect((await layout('lou')).map((g) => g.name)).toEqual(['Kai picks']);
-
-      // Once Mo runs ERASE too, the erasure goes through.
+      // Mo runs ERASE too, so the role Kai's share gave Lou is not the last way to run it.
       expect((await give('ERASE', 'Administrators', 'mo')).statusCode).toBe(204);
       const erased = await eraseKai();
       expect(erased.statusCode, erased.body).toBe(200);
@@ -1473,16 +1459,72 @@ describe('personal track groups (CORE-034, IAM-034)', () => {
           .execute(),
       ).toEqual([]);
       // The erasure's event lists the roles that went with the groups.
-      expect((await lastEvent('user.erased')).payload).toMatchObject({
+      const event = await lastEvent('user.erased');
+      expect(event.payload).toMatchObject({
         groupAccess: expect.arrayContaining([
           { trackId: erase, userId: ids.lou, roleId: roles.Administrators },
           { trackId: tracks.BETA, userId: ids.kai, roleId: roles.Members },
         ]),
       });
+      expect(event.payload).not.toHaveProperty('groupAccessKept');
       await as('owen', {
         method: 'DELETE',
         url: `/api/v1/track-groups/${owens.find((g) => g.name === 'For Kai')?.id}`,
       });
+    });
+
+    it('[IAM-034] erasing the person whose share made a track’s only other runner goes through, and that runner keeps the role as their own', async () => {
+      // T-205a, the user's decision of 2026-11-13 (ADR-121): no 409 last_track_admin.
+      for (const name of ['ria', 'sam']) await addUser(name);
+      const policy = await database.db
+        .selectFrom('access_policy')
+        .select('id')
+        .where('name', '=', 'Default access policy')
+        .executeTakeFirstOrThrow();
+      tracks.KEEP = (
+        await database.db
+          .insertInto('track')
+          .values({ workspace_id: 1, key: 'KEEP', name: 'Keep', access_policy_id: policy.id })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id;
+      expect((await give('KEEP', 'Administrators', 'ria')).statusCode).toBe(204);
+      const group = await makeGroup('ria', 'Ria runs', ['KEEP']);
+      expect((await share('ria', group, 'sam', 'Administrators')).statusCode).toBe(201);
+      expect(await rolesOf('sam')).toEqual(['KEEP:Administrators']);
+
+      // Erased, Ria runs nothing: Sam, through her share, is the only one left to run KEEP.
+      const erased = await as('admin', {
+        method: 'POST',
+        url: `/api/v1/users/${ids.ria}/erase`,
+        payload: { confirmEmail: 'ria@example.com' },
+      });
+      expect(erased.statusCode, erased.body).toBe(200);
+      expect(erased.json().erased.removed).toMatchObject({ track_group: 1, track_group_share: 1 });
+      // Her group and its share are gone; Sam keeps the role, and no share holds it any more.
+      expect(await layout('sam')).toEqual([]);
+      expect(await rolesOf('sam')).toEqual(['KEEP:Administrators']);
+      expect(
+        await database.db
+          .selectFrom('track_group_access')
+          .select('share_id')
+          .where('user_id', '=', ids.sam as number)
+          .execute(),
+      ).toEqual([]);
+      // The erasure's event names the role that stayed, not as one taken back.
+      const event = await lastEvent('user.erased');
+      expect(event.subject_id).toBe(String(ids.ria));
+      expect(event.payload).toMatchObject({
+        groupAccessKept: [{ trackId: tracks.KEEP, userId: ids.sam, roleId: roles.Administrators }],
+      });
+      expect(event.payload).not.toHaveProperty('groupAccess');
+      // It is an ordinary role now: Sam runs KEEP, so it is the last one and cannot be taken.
+      const taken = await as('admin', {
+        method: 'DELETE',
+        url: `/api/v1/tracks/${tracks.KEEP}/roles/${roles.Administrators}/users/${ids.sam}`,
+      });
+      expect(taken.statusCode).toBe(409);
+      expect(taken.json()).toEqual({ error: 'last_track_admin' });
     });
 
     /**

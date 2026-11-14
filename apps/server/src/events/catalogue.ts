@@ -37,6 +37,15 @@ const ticketLink = z.object({
  */
 const createTracksGrantId = id.optional();
 /**
+ * Grants of the permission to create tracks that went because the change left their holders
+ * running no track (T-087b; IAM-033, ADR-118): only grants that came with a role. Absent when
+ * none went, and in older events.
+ */
+const createTracksGrantsRemoved = z
+  .array(z.object({ userId: id, grantId: id }))
+  .min(1)
+  .optional();
+/**
  * Roles in tracks that a change to a track group gave or took away (IAM-034; ADR-121): what a
  * share gave or took back, never a role the person held otherwise.
  */
@@ -100,7 +109,7 @@ export const EVENT_TYPES = {
   'user.updated': { subject: 'user', payload: z.object({ changes }) },
   'user.deactivated': {
     subject: 'user',
-    payload: z.object({ endedSessions: z.number().int().min(0) }),
+    payload: z.object({ endedSessions: z.number().int().min(0), createTracksGrantsRemoved }),
   },
   'user.reactivated': { subject: 'user', payload: z.object({}) },
   'user.password_changed': {
@@ -142,6 +151,11 @@ export const EVENT_TYPES = {
        * and the shares they gave or received (T-205; ADR-121). Absent when there were none.
        */
       groupAccess: groupAccess.optional(),
+      /**
+       * Roles the person's shares gave that stayed with their holders as their own, since each
+       * was the last way to run its track (T-205a; ADR-121). Absent when there were none.
+       */
+      groupAccessKept: groupAccess.optional(),
     }),
   },
   /** A download of a person's data was asked for (ASVS 8.3.2): by them, or by an administrator. */
@@ -252,11 +266,20 @@ export const EVENT_TYPES = {
   // Groups
   'group.created': { subject: 'group', payload: z.object({ name: z.string() }) },
   'group.updated': { subject: 'group', payload: z.object({ changes }) },
-  'group.deleted': { subject: 'group', payload: z.object({ name: z.string() }) },
+  'group.deleted': {
+    subject: 'group',
+    payload: z.object({ name: z.string(), createTracksGrantsRemoved }),
+  },
   'group.member_added': { subject: 'group', payload: z.object({ userId: id }) },
-  'group.member_removed': { subject: 'group', payload: z.object({ userId: id }) },
+  'group.member_removed': {
+    subject: 'group',
+    payload: z.object({ userId: id, createTracksGrantsRemoved }),
+  },
   'group.nested': { subject: 'group', payload: z.object({ childId: id }) },
-  'group.unnested': { subject: 'group', payload: z.object({ childId: id }) },
+  'group.unnested': {
+    subject: 'group',
+    payload: z.object({ childId: id, createTracksGrantsRemoved }),
+  },
   // Teams (M1-123, CORE-027)
   'team.created': { subject: 'team', payload: z.object({ name: z.string() }) },
   'team.updated': { subject: 'team', payload: z.object({ changes }) },
@@ -310,7 +333,12 @@ export const EVENT_TYPES = {
   },
   'track_role.actor_removed': {
     subject: 'track',
-    payload: z.object({ roleId: id, userId: id.nullable(), groupId: id.nullable() }),
+    payload: z.object({
+      roleId: id,
+      userId: id.nullable(),
+      groupId: id.nullable(),
+      createTracksGrantsRemoved,
+    }),
   },
 
   // Invitations into a track (IAM-027; ADR-118). Never a token or a link.
@@ -340,7 +368,7 @@ export const EVENT_TYPES = {
   },
   'track_invitation.revoked': {
     subject: 'track',
-    payload: z.object({ invitationId: id, roleRemoved: z.boolean() }),
+    payload: z.object({ invitationId: id, roleRemoved: z.boolean(), createTracksGrantsRemoved }),
   },
   'track_invitation.accepted': {
     subject: 'track',
@@ -1331,12 +1359,17 @@ export const EVENT_TYPES = {
       changes,
       attributes: z.array(z.string()),
       endedSessions: z.number().int().min(0),
+      createTracksGrantsRemoved,
     }),
   },
   /** Deprovisioned: deactivated and out of SCIM's sight; the account and its work stay. */
   'scim.user_removed': {
     subject: 'user',
-    payload: z.object({ userName: z.string(), endedSessions: z.number().int().min(0) }),
+    payload: z.object({
+      userName: z.string(),
+      endedSessions: z.number().int().min(0),
+      createTracksGrantsRemoved,
+    }),
   },
   'scim.group_created': {
     subject: 'group',
@@ -1348,9 +1381,17 @@ export const EVENT_TYPES = {
   },
   'scim.group_updated': {
     subject: 'group',
-    payload: z.object({ changes, added: z.array(id), removed: z.array(id) }),
+    payload: z.object({
+      changes,
+      added: z.array(id),
+      removed: z.array(id),
+      createTracksGrantsRemoved,
+    }),
   },
-  'scim.group_deleted': { subject: 'group', payload: z.object({ name: z.string() }) },
+  'scim.group_deleted': {
+    subject: 'group',
+    payload: z.object({ name: z.string(), createTracksGrantsRemoved }),
+  },
   // LDAP and Active Directory (M1-082, IAM-005, ADR-019). Administration events name the
   // administrator; a sync's own changes have no actor and name the directory and the run.
   'directory.created': {
@@ -1441,6 +1482,7 @@ export const EVENT_TYPES = {
       dn: z.string(),
       deactivated: z.boolean(),
       endedSessions: z.number().int().min(0),
+      createTracksGrantsRemoved,
     }),
   },
   /** Member and child ids are listed up to 1,000; the counts are complete. */
