@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
+import { dayText, isCalendarDay } from '../i18n/days';
 import { useT } from '../i18n/I18nProvider';
 import { type Lock, useLockText } from '../locks/useLockText';
 import { routeHref } from '../routing/router';
@@ -306,9 +307,11 @@ function Cell({
   const shown =
     DATE_TIMES.has(column) && typeof value === 'string'
       ? intl.formatDate(value, { dateStyle: 'medium', timeStyle: 'short' })
-      : unassigned
-        ? t('search.edit.unassigned')
-        : valueText(value);
+      : editor?.kind === 'date' && isCalendarDay(value)
+        ? dayText(intl, value)
+        : unassigned
+          ? t('search.edit.unassigned')
+          : valueText(value);
 
   const close = () => {
     setInput(null);

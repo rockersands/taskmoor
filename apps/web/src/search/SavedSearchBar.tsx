@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react';
+import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
@@ -48,6 +49,7 @@ export function SavedSearchBar({
   onSaved,
 }: SavedSearchBarProps) {
   const t = useT();
+  const intl = useIntl();
   const id = useId();
   const [list, setList] = useState<SavedSearch[]>([]);
   const [listRead, setListRead] = useState(false);
@@ -189,7 +191,7 @@ export function SavedSearchBar({
       setSubscribed(true);
       return t('saved.subscribed', {
         name: opened.name,
-        when: new Date(sub.nextRunAt).toLocaleString(),
+        when: intl.formatDate(sub.nextRunAt, { dateStyle: 'medium', timeStyle: 'short' }),
       });
     });
 

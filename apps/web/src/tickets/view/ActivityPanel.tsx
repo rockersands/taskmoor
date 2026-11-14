@@ -11,6 +11,7 @@ import { useIntl } from 'react-intl';
 import { ApiError } from '../../api/client';
 import { CommentsPanel } from '../../comments/CommentsPanel';
 import { type CommentClient, commentClient } from '../../comments/client';
+import { dayText, isCalendarDay } from '../../i18n/days';
 import { useT } from '../../i18n/I18nProvider';
 import type { MessageId } from '../../i18n/messages.en';
 import type { MentionSource } from '../../richtext/mentions';
@@ -182,9 +183,13 @@ function useWhen() {
     intl.formatDate(new Date(iso), { dateStyle: 'medium', timeStyle: 'short' });
 }
 
+/** The fields whose values are calendar days (`YYYY-MM-DD`), read in the reader's locale. */
+const DAY_FIELDS = new Set(['startDate', 'dueDate']);
+
 /** What one history row says, in the reader's words. */
 function useChangeText() {
   const t = useT();
+  const intl = useIntl();
   return (c: HistoryEntry) => {
     const id = FIELDS[c.field];
     const field = id
@@ -192,8 +197,12 @@ function useChangeText() {
       : c.field.startsWith('cf[')
         ? t('ticketView.history.customField')
         : c.field;
-    const from = c.from.display ?? c.from.value;
-    const to = c.to.display ?? c.to.value;
+    const shown = (side: HistoryEntry['from']) =>
+      side.display === null && DAY_FIELDS.has(c.field) && isCalendarDay(side.value)
+        ? dayText(intl, side.value)
+        : (side.display ?? side.value);
+    const from = shown(c.from);
+    const to = shown(c.to);
     if (c.field === 'checklistItemState') {
       const stateName = (value: string | null) =>
         t(ITEM_STATE_LABELS[value as ItemState] ?? 'ticketTools.state.open');

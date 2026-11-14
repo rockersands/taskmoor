@@ -6,10 +6,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MEMBER } from '../admin/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { SessionProvider } from '../session/SessionProvider';
+import { useTimeZone } from '../test/timeZone';
 import { setViewportWidth } from '../test/viewport';
-import { exportUrl } from './client';
+import { exportUrl, type SearchTicket } from './client';
 import { cellChange, DEFAULT_COLUMNS, loadColumns, valueText } from './columns';
 import { fakeSavedSearchClient, fakeSearchClient, TICKETS } from './fixtures';
+import { ResultGrid } from './ResultTable';
 import { SearchPage } from './SearchPage';
 
 /** The stylesheets, read from disk: the web project turns CSS imports off. */
@@ -306,6 +308,50 @@ describe('search results (M1-042)', () => {
     await screen.findByRole('table');
     // A due date lies ahead as often as behind: "oldest" would not fit it.
     expect(screen.getByText('Sorted by Due date, earliest first')).toBeVisible();
+  });
+});
+
+// A start, due or custom date cell reads in the person's locale and on its calendar day, as the
+// ticket's own fields do, never '2026-10-13' (T-240).
+describe('date cells in the person’s locale (T-240)', () => {
+  useTimeZone('America/Los_Angeles');
+
+  const dated = (): SearchTicket[] => [
+    {
+      ...(TICKETS[0] as SearchTicket),
+      startDate: '2026-10-01',
+      dueDate: '2026-10-13',
+      fields: { '50': '2026-11-02' },
+    },
+  ];
+  const renderGrid = (locale: 'en' | 'es') =>
+    render(
+      <I18nProvider locale={locale}>
+        <SessionProvider session={MEMBER}>
+          <ResultGrid
+            tickets={dated()}
+            columns={['summary', 'startDate', 'dueDate', 'cf[50]']}
+            fields={[{ id: 50, name: 'Go-live', type: 'date' }]}
+            client={fakeSearchClient()}
+            onSaved={() => {}}
+          />
+        </SessionProvider>
+      </I18nProvider>,
+    );
+  const cells = () =>
+    within(row('SHOP-41'))
+      .getAllByRole('cell')
+      .slice(1)
+      .map((c) => c.querySelector('.search-cell-value')?.textContent);
+
+  it('[QRY-014] [NFR-006] in English', () => {
+    renderGrid('en');
+    expect(cells()).toEqual(['Oct 1, 2026', 'Oct 13, 2026', 'Nov 2, 2026']);
+  });
+
+  it('[QRY-014] [NFR-006] in Spanish', () => {
+    renderGrid('es');
+    expect(cells()).toEqual(['1 oct 2026', '13 oct 2026', '2 nov 2026']);
   });
 });
 

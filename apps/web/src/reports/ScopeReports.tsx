@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useId, useState } from 'react';
 import { useIntl } from 'react-intl';
 import type { Board } from '../boards/client';
+import { dayText, shippedDay } from '../i18n/days';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
@@ -456,15 +457,15 @@ export function ScopeReport({ board, kind, client, outcomes }: ScopeReportProps)
       <p className="report-note">
         {r.release.shippedAt ? (
           t('reports.release.shipped', {
-            date: day(r.release.releaseDate ?? r.release.shippedAt.slice(0, 10)),
+            date: dayText(intl, shippedDay(r.release.releaseDate, r.release.shippedAt)),
           })
         ) : (
           <>
             {r.release.releaseDate
-              ? t('reports.release.planned', { date: day(r.release.releaseDate) })
+              ? t('reports.release.planned', { date: dayText(intl, r.release.releaseDate) })
               : t('reports.release.unplanned')}{' '}
             {r.forecast
-              ? t('reports.release.forecast', { date: day(r.forecast) })
+              ? t('reports.release.forecast', { date: dayText(intl, r.forecast) })
               : t('reports.release.noForecast')}
           </>
         )}

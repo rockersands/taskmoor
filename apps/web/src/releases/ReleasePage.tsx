@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
+import { dayText, shippedDay } from '../i18n/days';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
@@ -26,7 +27,6 @@ import {
   crossTrackClient,
   UNREACHABLE,
 } from './crossTrackClient';
-import { dayText } from './crossTrackText';
 import { ReleaseState } from './ReleaseState';
 import { StageProgress } from './StageProgress';
 
@@ -198,16 +198,18 @@ export function ReleasePage({
         <dl className="release-facts">
           <div>
             <dt>{t('release.startDate')}</dt>
-            <dd>{release.startDate ?? t('release.noDate')}</dd>
+            <dd>{release.startDate ? dayText(intl, release.startDate) : t('release.noDate')}</dd>
           </div>
           <div>
             <dt>{t('release.releaseDate')}</dt>
-            <dd>{release.releaseDate ?? t('release.noDate')}</dd>
+            <dd>
+              {release.releaseDate ? dayText(intl, release.releaseDate) : t('release.noDate')}
+            </dd>
           </div>
-          {release.shipped && notes.release.shippedOn && (
+          {release.shipped && release.shippedAt && (
             <div>
               <dt>{t('release.shippedOn')}</dt>
-              <dd>{notes.release.shippedOn}</dd>
+              <dd>{dayText(intl, shippedDay(release.releaseDate, release.shippedAt))}</dd>
             </div>
           )}
           {linked && (

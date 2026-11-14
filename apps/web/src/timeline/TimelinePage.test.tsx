@@ -4,6 +4,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
+import { useTimeZone } from '../test/timeZone';
 import { setViewportWidth } from '../test/viewport';
 import { fakeTimelineClient } from './fixtures';
 import { TimelinePage } from './TimelinePage';
@@ -213,5 +214,37 @@ describe('the timeline (M1-048)', () => {
     renderTimeline();
     await screen.findByRole('heading', { name: 'Timeline', level: 1 });
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(375);
+  });
+});
+
+// The side panel's roll-up reads its children's days as the bars do, in the person's locale and
+// on their own calendar days, never '2026-10-28' (T-240).
+describe('the side panel’s roll-up in the person’s locale (T-240)', () => {
+  useTimeZone('America/Los_Angeles');
+
+  /** LCH-2 has its own days and a subticket, LCH-3, from 28 October to 5 November. */
+  const openFeature = async (locale: 'en' | 'es', days: string) => {
+    const user = userEvent.setup();
+    render(
+      <I18nProvider locale={locale}>
+        <TimelinePage
+          trackKey="LCH"
+          client={fakeTimelineClient()}
+          now={() => new Date('2026-11-04T09:00:00Z')}
+        />
+      </I18nProvider>,
+    );
+    await user.click(await screen.findByRole('button', { name: /^LCH-2: / }));
+    return screen.getByRole('complementary', { name: days });
+  };
+
+  it('[AGL-015] [NFR-006] in English', async () => {
+    const panel = await openFeature('en', 'Days of LCH-2');
+    expect(panel).toHaveTextContent('Its children run from Oct 28, 2026 to Nov 5, 2026.');
+  });
+
+  it('[AGL-015] [NFR-006] in Spanish', async () => {
+    const panel = await openFeature('es', 'Días de LCH-2');
+    expect(panel).toHaveTextContent('Sus hijos van del 28 oct 2026 al 5 nov 2026.');
   });
 });
