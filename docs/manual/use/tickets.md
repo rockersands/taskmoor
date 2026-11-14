@@ -101,7 +101,7 @@ People, the parent, releases, areas, groups and teams are chosen with pickers:
 | **Requester** | The same way, among the people of the site. Left empty, you are the requester. The field shows only if you have the permission to change the requester. |
 | A custom person field | The same way, among the people of the site. When an administrator limited the field to a group's or a role's people, only they are offered, and the field says so. A field that holds several people keeps its search field for the next one. |
 | A custom group field | Type part of a group's name and pick it, as for people. The site's groups are offered to those with the **See people and groups** permission, as people to mention are. |
-| A custom team field | Choose the team from the list of the site's teams. |
+| A custom team field | Type part of a team's name and pick it, as for people. Everyone signed in can find the site's teams. |
 | **Parent** | Type the parent's key, such as `PAY-12`, or words from its summary, and pick it from the list with the mouse or the arrow keys and Enter. Only tickets one level above the chosen ticket type are offered, and for a subticket only those in the same track. Choosing a type at another level lets go of the parent. **Remove** clears it. |
 | **Target releases**, **Found in releases**, **Areas**, and custom release and area fields | Tick each one that applies, or, for a custom field that holds one, choose it from the list. A track with none leaves the field out, unless it is required: then the form says the track has none to choose. |
 
@@ -128,14 +128,15 @@ clears what it filled in, and changing the ticket type lets go of the template a
 in the form.
 
 A template's summary can hold today's date, the track's key and your name, and its dates count from
-today. Its assignee, releases and areas are filled into the form's pickers like everything else:
-choose another assignee, or untick an area, and your choice takes the place of the template's.
-Its values for custom person, group, team, release and area fields, such as a **Team** field, are
-not filled into those pickers: they show under **Also from this template** with a checkbox, as do
-the template's subtickets (**Create its 2 subtickets**). So do its releases or areas when one of
-them is no longer offered, for example a release archived since the template was saved: untick the
-checkbox to leave them out. A release or area you tick in the form yourself takes the place of the
-template's.
+today. Its assignee, releases and areas are filled into the form's pickers like everything else,
+and so are its values for custom person, group, team, release and area fields, such as a **Team**
+field: choose another assignee or team, or untick an area, and your choice takes the place of the
+template's. A value that cannot go into its picker shows under **Also from this template** with a
+checkbox instead, as do the template's subtickets (**Create its 2 subtickets**): a release or area
+that is no longer offered, for example one archived since the template was saved, and a person or
+group you may not see (without the **See people and groups** permission, or a person whose account
+is deactivated), whose name the form does not show. Untick the checkbox to leave the value out. A
+release or area you tick in the form yourself takes the place of the template's.
 
 A template never gets round what you may do. Fields that are hidden for this type or that you may
 not set do not show, and they stay off the ticket. After **Create** the form names them: **Left
@@ -147,7 +148,8 @@ Administrators keep templates: see [ticket templates](../admin/tracks.md#ticket-
 track's summary page links to its templates, under **Ticket templates**, for anyone to read.
 
 When the server refuses a value, the message shows next to the field, for example **This field
-is required.** If there is no track you may create tickets in, the form says so.
+is required.**, or **This release or area is archived. Choose another.** for one archived after
+the form opened. If there is no track you may create tickets in, the form says so.
 
 Boards' backlogs and a track's list can also make a ticket from a summary alone: see
 [the backlog](boards.md#the-backlog) and [the list view](views.md#the-list-view).
