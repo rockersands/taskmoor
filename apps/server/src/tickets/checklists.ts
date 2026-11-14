@@ -42,6 +42,8 @@ export interface ChecklistItemRow {
   state: string;
   position: number;
   created_by: number | null;
+  /** Who wrote the words as they read now, when not the creator (T-203). */
+  edited_by: number | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -72,6 +74,7 @@ export async function itemsOf(
       'state',
       'position',
       'created_by',
+      'edited_by',
       'created_at',
       'updated_at',
     ])
@@ -157,14 +160,20 @@ export async function copyChecklists(
       await trx
         .insertInto('ticket_checklist_item')
         .values(
-          own.map((item) => ({
-            workspace_id: workspaceId,
-            checklist_id: copy.id,
-            text: item.text,
-            state: 'open',
-            position: item.position,
-            created_by: actorId,
-          })),
+          own.map((item) => {
+            // The person who clones adds the copy, but its words stay their writer's (T-203): a
+            // data download gives the cloner only the words they wrote themselves.
+            const writer = item.edited_by ?? item.created_by;
+            return {
+              workspace_id: workspaceId,
+              checklist_id: copy.id,
+              text: item.text,
+              state: 'open',
+              position: item.position,
+              created_by: actorId,
+              edited_by: writer === actorId ? null : writer,
+            };
+          }),
         )
         .execute();
     }

@@ -1004,6 +1004,7 @@ export async function exportWorkspace(db: Db, options: ExportOptions): Promise<E
             'state',
             'position',
             'created_by',
+            'edited_by',
             ts('created_at').as('created_at'),
             ts('updated_at').as('updated_at'),
           ])
@@ -1036,6 +1037,9 @@ export async function exportWorkspace(db: Db, options: ExportOptions): Promise<E
               state: item.state,
               position: item.position,
               creator: ref('user', item.created_by),
+              // Who wrote the words as they read now, when not the creator (T-203): a data
+              // download on the site this goes to gives them to that person only.
+              editor: ref('user', item.edited_by),
               createdAt: item.created_at,
               updatedAt: item.updated_at,
             })),

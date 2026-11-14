@@ -631,6 +631,8 @@ const MAPPERS: Record<string, (data: Record<string, unknown>) => Mapped> = {
             state: z.enum(['open', 'in_progress', 'done', 'rejected']),
             position: z.number().int(),
             creator: nullableId,
+            // An export from before T-203 names no editor: the words are the creator's.
+            editor: nullableId.optional(),
             createdAt: text,
             updatedAt: text,
           }),
@@ -645,7 +647,11 @@ const MAPPERS: Record<string, (data: Record<string, unknown>) => Mapped> = {
         creator: nr('user', c.creator),
         createdAt: c.createdAt,
         updatedAt: c.updatedAt,
-        items: c.items.map((item) => ({ ...item, creator: nr('user', item.creator) })),
+        items: c.items.map((item) => ({
+          ...item,
+          creator: nr('user', item.creator),
+          editor: nr('user', item.editor ?? null),
+        })),
       }),
     ),
   attachment: (d) =>

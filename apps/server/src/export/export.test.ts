@@ -484,6 +484,12 @@ describe('the full export (M1-098)', () => {
       },
       200,
     );
+    // [CORE-033] Mira rewrote one item's words (T-203): whose words they are travels too.
+    await source.db
+      .updateTable('ticket_checklist_item')
+      .set({ edited_by: mira })
+      .where('text', '=', 'Second')
+      .execute();
     await admin({ method: 'DELETE', url: `/api/v1/tickets/${gone}` }, 204);
   }, 120_000);
 
@@ -632,6 +638,14 @@ describe('the full export (M1-098)', () => {
     }
     const detail = details.join('\n');
     expect(differ, detail).toEqual([]);
+    // [CORE-033] An item someone else rewrote keeps its writer (T-203), so a data download on
+    // this site gives those words to them, not to the item's creator.
+    const rewritten = await target.db
+      .selectFrom('ticket_checklist_item as i')
+      .innerJoin('app_user as u', 'u.id', 'i.edited_by')
+      .select(['i.text', 'u.email'])
+      .execute();
+    expect(rewritten).toEqual([{ text: 'Second', email: 'mira@example.com' }]);
     // The side tables of custom values were written with the tickets.
     const sideRows = await target.db.selectFrom('v_option').select('ticket_id').execute();
     expect(sideRows.length).toBeGreaterThan(0);
