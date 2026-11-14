@@ -686,6 +686,8 @@ describe('workflow editor (M1-030)', () => {
     expect(
       await screen.findByText('Only site and configuration administrators manage workflows.'),
     ).toBeVisible();
+    // Only so: no way on to a list they may not use either (T-222).
+    expect(screen.queryByRole('link', { name: 'All workflows' })).toBeNull();
   });
 
   it('[WF-002] a workflow that does not exist is a not-found page (D4, AD-30)', async () => {
@@ -714,6 +716,12 @@ describe('workflow editor (M1-030)', () => {
     renderEditor(client);
     expect(await screen.findByRole('alert')).toBeVisible();
     expect(screen.getByRole('heading', { level: 1, name: 'Workflows' })).toBeVisible();
+    // The way back to the list is a pill after the note, as on other pages (T-222).
+    const back = screen.getByRole('link', { name: 'All workflows' });
+    expect(back).toHaveClass('button-secondary');
+    expect(screen.getByRole('alert').compareDocumentPosition(back)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
   });
 
   it('[WF-002] opens from its address and passes the pseudo-locale check', async () => {

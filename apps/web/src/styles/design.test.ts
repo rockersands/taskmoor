@@ -356,7 +356,8 @@ export interface JsxFacts {
 const STRING_COLOUR = /^#[0-9a-fA-F]{3,8}$|^(?:rgba?|hsla?)\(\s*[\d.]/;
 /** Elements whose words are a sentence of their own: a "none" there is a list's empty state. */
 const SENTENCES = new Set(['p', 'li', 'div', 'td', 'dd']);
-const EMPTY_ID = /none|empty/i;
+/** A message ID for "there are none": `x.none`, `x.empty`, `x.noTabs` (but not `x.notes`). */
+const EMPTY_ID = /[Nn]one|[Ee]mpty|\.no[A-Z]/;
 
 /** What the stylesheets say: `.parent button` lets a bare button sit under `.parent`. */
 export interface StyledBy {
@@ -860,6 +861,9 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
       'x.empty',
     ]);
     expect(see(`<li>{t('x.none')}</li>`).bareEmpties).toEqual(['x.none']);
+    // A `noX` sentence is one too (T-222); a word that only starts with "no" is not.
+    expect(see(`<p>{t('x.noTabs')}</p>`).bareEmpties).toEqual(['x.noTabs']);
+    expect(see(`<p>{t('x.notes')}</p>`).bareEmpties).toEqual([]);
     // An EmptyState is the fix; a choice in a list and a link are not sentences.
     expect(see(`<div><EmptyState compact title={t('x.none')} /></div>`).bareEmpties).toEqual([]);
     expect(see(`<div><select><option>{t('x.none')}</option></select></div>`).bareEmpties).toEqual(

@@ -448,6 +448,14 @@
   text-align: end;
 }
 
+/* The quiet head of every data table (shared.css `.data-table`, T-222): reports and widgets alike. */
+.report-table thead th {
+  background: var(--glass-surface-sunken);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+  font-weight: var(--font-weight-strong);
+}
+
 .report-table :is(th, td):is(:first-child, :nth-child(2)) {
   text-align: start;
 }

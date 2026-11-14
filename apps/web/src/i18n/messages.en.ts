@@ -1100,6 +1100,7 @@ export const messagesEn = {
   'mcp.intro':
     'AI agents and assistants connect to Taskmoor through the Model Context Protocol with a person’s API token. They can only do what that person and token may, and every tool call is in the audit log.',
   'mcp.failed': 'The MCP settings could not be loaded.',
+  'mcp.forbidden': 'Only site administrators change the MCP server’s settings.',
   'mcp.formLabel': 'MCP settings',
   'mcp.enabled': 'Let agents connect',
   'mcp.profile': 'Tools agents get',
@@ -4575,6 +4576,7 @@ export const messagesEn = {
   'boards.choose.intro': 'Several transitions lead there. Which one?',
   'boards.choose.option': '{name} (to {status})',
   'boards.choose.cancel': 'Cancel',
+  'boards.choose.close': 'Close without moving',
   'boards.sprint.complete': 'Complete {name}',
   'boards.list.title': 'Boards',
   'boards.list.failed': 'The boards could not be loaded.',

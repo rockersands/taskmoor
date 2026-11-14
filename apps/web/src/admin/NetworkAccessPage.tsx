@@ -3,6 +3,7 @@ import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { peopleClient } from '../people/client';
 import { useSession } from '../session/SessionProvider';
+import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 
 /** The IP allowlist as `GET /api/v1/admin/ip-allowlist` answers (M1-085; IAM-015). */
@@ -199,7 +200,7 @@ export function NetworkAccessPage({
             <legend>{t('admin.network.exempt')}</legend>
             <p className="form-hint">{t('admin.network.exemptHint')}</p>
             {groups.length === 0 ? (
-              <p className="form-hint">{t('admin.network.noGroups')}</p>
+              <EmptyState compact title={t('admin.network.noGroups')} />
             ) : (
               groups.map((group) => (
                 <div key={group.id} className="form-field form-field-inline">
