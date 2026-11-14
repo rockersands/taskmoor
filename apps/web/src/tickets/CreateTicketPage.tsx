@@ -5,6 +5,7 @@ import { type AiNoticeClient, aiNoticeClient } from '../ai/AiNotice';
 import type { AiClient, TicketDraft } from '../ai/client';
 import { DraftFromText } from '../ai/DraftFromText';
 import { ApiError, api } from '../api/client';
+import { everyTrack } from '../api/tracks';
 import { useT } from '../i18n/I18nProvider';
 import { lockOfField, useLockText } from '../locks/useLockText';
 import { type MentionSource, mentionSource } from '../richtext/mentions';
@@ -111,7 +112,7 @@ const findPeople = async (track: string, typed: string, assignable: boolean) =>
   ).people.map((p) => ({ id: p.id, name: p.name }));
 
 export const createClient: CreateClient = {
-  tracks: async () => (await api<{ tracks: TrackChoice[] }>('/tracks')).tracks,
+  tracks: () => everyTrack<TrackChoice>(),
   ticketTypes: async (track) => {
     const res = await api<{ defaultTypeId: number | null; ticketTypes: TypeChoice[] }>(
       `/tracks/${encodeURIComponent(track)}/ticket-types`,

@@ -28,7 +28,7 @@ const FEATURES = (available: boolean) =>
 
 function openCreate(handlers: Record<string, Handler>) {
   const calls = stubBackend({
-    'GET /tracks': () => jsonResponse(200, { tracks: TRACKS }),
+    'GET /tracks?limit=500': () => jsonResponse(200, { tracks: TRACKS }),
     'GET /priorities': () => jsonResponse(200, { priorities: PRIORITIES }),
     'GET /tracks/SHOP/ticket-types': () =>
       jsonResponse(200, { typeSetId: 1, defaultTypeId: 3, ticketTypes: TYPES }),
