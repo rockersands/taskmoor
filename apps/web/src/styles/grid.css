@@ -31,6 +31,16 @@
   border-radius: var(--radius-2);
 }
 
+/* A phone's sheet of every column; first, as the tree's cells never hold it. */
+.plan-grid-sheet-table {
+  width: 100%;
+}
+
+.plan-grid-sheet-table th {
+  text-align: start;
+  vertical-align: top;
+}
+
 .plan-grid-table {
   min-width: 100%;
   border-collapse: separate;
@@ -194,7 +204,7 @@
   vertical-align: middle;
 }
 
-.plan-grid-pad td {
+.plan-grid-table .plan-grid-pad td {
   padding: 0;
   border: 0;
 }
@@ -285,15 +295,6 @@
 .plan-grid-card-group {
   align-self: center;
   font-weight: var(--font-weight-strong);
-}
-
-.plan-grid-sheet-table {
-  width: 100%;
-}
-
-.plan-grid-sheet-table th {
-  text-align: start;
-  vertical-align: top;
 }
 
 /* The structure dialog: its steps in order, then its columns. */
