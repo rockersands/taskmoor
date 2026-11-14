@@ -55,7 +55,7 @@ export const OPERATIONS = {
   listPriorities: { method: 'GET', path: '/api/v1/priorities', paged: false },
   listPropertyIndexes: { method: 'GET', path: '/api/v1/admin/property-indexes', paged: false },
   listReleases: { method: 'GET', path: '/api/v1/tracks/{id}/releases', paged: false },
-  listSavedSearches: { method: 'GET', path: '/api/v1/saved-searches', paged: false },
+  listSavedSearches: { method: 'GET', path: '/api/v1/saved-searches', paged: true },
   listSprintProperties: { method: 'GET', path: '/api/v1/sprints/{id}/properties', paged: false },
   listSprints: { method: 'GET', path: '/api/v1/boards/{id}/sprints', paged: false },
   listStatuses: { method: 'GET', path: '/api/v1/statuses', paged: false },

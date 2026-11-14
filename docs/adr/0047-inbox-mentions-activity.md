@@ -66,8 +66,9 @@ history (`ticket_change`) records every change, comment and time entry and is ne
   worker's idle wait drops from 500 to 200 ms so the whole path (relay, subscriber, poll, read)
   fits in a second.
 - **Activity streams** come from the ticket history: one entry per change set and ticket,
-  newest first, with comment excerpts only for readable comments and rich text values left out.
-  `GET /api/v1/tickets/:id/activity` (kinds all, comments, history, time) and
+  newest first, with comment excerpts only for readable comments and rich text values left out
+  (a line of their text since T-309). `GET /api/v1/tickets/:id/activity` (kinds all, comments,
+  history, time; an All page also carries time entries, see Changes) and
   `GET /api/v1/tracks/:id/activity` (the visible tickets of a track, each ticket's history read
   by its primary key through a lateral join, merged by id). Pages never split a change set.
 
@@ -103,3 +104,21 @@ history (`ticket_change`) records every change, comment and time entry and is ne
   tickets): for tracks of tens of thousands of tickets the history needs a way to be read by
   track newest first (an index over a stored track, kept right through moves) before the
   activity widget of dashboards (RPT) builds on it.
+
+## Changes (T-309, 2026-11-14)
+
+- The ticket's All tab reads `GET /api/v1/tickets/:id/activity?kind=all` page by page. The
+  history alone does not give time entries as that tab shows them: an import writes entries
+  and no history rows, and a row says neither whose work it was nor when it started, nor
+  follows the entry's visibility. So a `kind=all` page also answers `timeEntries`, read from
+  `time_entry` (those the reader may see, as the time entries list shows them), newest first by
+  when the work started, `limit` of them at most, back to the oldest history row of the page
+  (the last page: back to the start). The rest of the stream stays the history's.
+- An All page's cursor names both where the history stopped and the time entry it stopped at:
+  `<row>.<µs>.<entry>` (the entry's start in microseconds since the epoch, then its id; row
+  `0` once the history is read). The next page goes on after that entry, so each time entry
+  comes once whatever order the history rows' times are in (an import's, two writes at once),
+  and the pages go on until both are read. Other kinds take only a row id.
+- A rich text change (description, environment) carries a line of each side's text in
+  `display` (80 characters at most, null with no document), never the document, so a reader
+  can tell a change set, changed or cleared it.

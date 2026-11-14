@@ -1,16 +1,8 @@
-import {
-  type KeyboardEvent,
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { type KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { type IntlShape, useIntl } from 'react-intl';
 import { ApiError } from '../../api/client';
 import { CommentsPanel } from '../../comments/CommentsPanel';
-import { type CommentClient, commentClient } from '../../comments/client';
+import type { CommentClient } from '../../comments/client';
 import { dayText, isCalendarDay, isInstant, momentText } from '../../i18n/days';
 import { useT } from '../../i18n/I18nProvider';
 import type { MessageId } from '../../i18n/messages.en';
@@ -19,7 +11,7 @@ import { EmptyState } from '../../shell/EmptyState';
 import { useMoreSides } from '../../shell/moreSides';
 import { useMotionOnChange } from '../../shell/motion';
 import { ITEM_STATE_LABELS, type ItemState } from '../tools/checklistStates';
-import type { HistoryEntry, TicketClient, TimeEntry } from './client';
+import type { ActivityPage, HistoryEntry, TicketClient, TimeEntry } from './client';
 
 export type ActivityTab = 'comments' | 'history' | 'time' | 'all';
 const TABS: { id: ActivityTab; label: MessageId }[] = [
@@ -171,7 +163,7 @@ export function ActivityPanel({
         )}
         {tab === 'history' && <HistoryList ticket={ticket} client={client} revision={revision} />}
         {tab === 'time' && <TimeEntries ticket={ticket} client={client} />}
-        {tab === 'all' && <AllActivity ticket={ticket} client={client} comments={comments} />}
+        {tab === 'all' && <AllActivity ticket={ticket} client={client} revision={revision} />}
       </div>
     </section>
   );
@@ -182,6 +174,9 @@ function useWhen() {
   return (iso: string) => momentText(intl, iso);
 }
 
+/** What a history row or an activity entry says changed. */
+type Change = Pick<HistoryEntry, 'field' | 'fieldName' | 'valueType' | 'from' | 'to'>;
+
 /** The fields whose values are calendar days (`YYYY-MM-DD`), read in the reader's locale. */
 const DAY_FIELDS = new Set(['startDate', 'dueDate']);
 
@@ -190,7 +185,7 @@ const DAY_FIELDS = new Set(['startDate', 'dueDate']);
  * date, a custom date field) or a moment (a custom date-and-time field, T-277) in the reader's
  * locale; else as recorded.
  */
-function sideText(intl: IntlShape, c: HistoryEntry, side: HistoryEntry['from']): string | null {
+function sideText(intl: IntlShape, c: Change, side: Change['from']): string | null {
   if (side.display !== null) return side.display;
   const day = DAY_FIELDS.has(c.field) || c.valueType === 'date';
   if (day && isCalendarDay(side.value)) return dayText(intl, side.value);
@@ -202,7 +197,7 @@ function sideText(intl: IntlShape, c: HistoryEntry, side: HistoryEntry['from']):
 function useChangeText() {
   const t = useT();
   const intl = useIntl();
-  return (c: HistoryEntry) => {
+  return (c: Change) => {
     const id = FIELDS[c.field];
     // A custom field by its name where the reader sees it on the ticket (T-277).
     const field = id
@@ -250,28 +245,54 @@ function HistoryList({
   const [rows, setRows] = useState<HistoryEntry[] | null>(null);
   const [next, setNext] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  /** Bumped by every fresh read, so an older one never replaces it. */
+  const reads = useRef(0);
+  /** What is shown now, for reads that end later: the ticket, its page count, the next cursor. */
+  const shown = useRef<{
+    ticket: number;
+    pages: number;
+    rows: HistoryEntry[];
+    next: string | null;
+  }>({ ticket: ticket.id, pages: 0, rows: [], next: null });
+  const show = (pages: number, list: HistoryEntry[], cursor: string | null) => {
+    shown.current = { ticket: ticket.id, pages, rows: list, next: cursor };
+    setRows(list);
+    setNext(cursor);
+  };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: read again when the ticket changes
   useEffect(() => {
     let live = true;
-    client.history(ticket.id).then(
-      (page) => {
-        if (!live) return;
-        setRows(page.changes);
-        setNext(page.next);
-      },
-      () => live && setFailed(true),
-    );
+    const read = ++reads.current;
+    // As many pages as are shown, so a change keeps the older rows the reader opened (T-311).
+    const wanted = () => (shown.current.ticket === ticket.id ? shown.current.pages : 1);
+    (async () => {
+      const fresh: HistoryEntry[] = [];
+      let pages = 0;
+      let cursor: string | undefined;
+      do {
+        const page = await client.history(ticket.id, cursor);
+        if (!live || read !== reads.current) return;
+        fresh.push(...page.changes);
+        pages++;
+        cursor = page.next ?? undefined;
+      } while (cursor !== undefined && pages < wanted());
+      show(pages, fresh, cursor ?? null);
+    })().catch(() => {
+      if (live && read === reads.current) setFailed(true);
+    });
     return () => {
       live = false;
     };
   }, [client, ticket.id, revision]);
 
   const more = async () => {
-    if (next === null) return;
-    const page = await client.history(ticket.id, next);
-    setRows((r) => [...(r ?? []), ...page.changes]);
-    setNext(page.next);
+    const cursor = shown.current.next;
+    if (cursor === null) return;
+    const page = await client.history(ticket.id, cursor);
+    // A fresh read replaced the rows meanwhile: this page goes on from one no longer shown.
+    if (shown.current.next !== cursor || shown.current.ticket !== ticket.id) return;
+    show(shown.current.pages + 1, [...shown.current.rows, ...page.changes], page.next);
   };
 
   if (failed) return <p className="page-note">{t('ticketView.history.failed')}</p>;
@@ -440,85 +461,190 @@ interface FeedItem {
   text: string;
 }
 
-/** Comments, history and time entries in one stream, newest first (CORE-022 "All"). */
+/**
+ * Comments, history and time entries in one stream, newest first (CORE-022 "All"), read from the
+ * ticket's activity a page at a time (T-309): a busy ticket's newest comments and its oldest
+ * changes are all there, the older ones behind "Show older activity". A page carries time
+ * entries too, and the stream is put in order by time as pages are added. Read again when the
+ * ticket changes, live updates included: as many pages as were shown, so a reader keeps their
+ * place. The focus goes to the first row the last page brought, as its button goes.
+ */
 function AllActivity({
   ticket,
   client,
-  comments,
+  revision,
 }: {
   ticket: { id: number };
   client: TicketClient;
-  comments?: CommentClient | undefined;
+  revision: number;
 }) {
   const t = useT();
   const when = useWhen();
   const text = useChangeText();
   const intl = useIntl();
-  const [items, setItems] = useState<FeedItem[] | null>(null);
-  const said = useMemo(() => comments ?? commentClient(ticket.id), [comments, ticket.id]);
+  const [pages, setPages] = useState<ActivityPage[] | null>(null);
+  const [next, setNext] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [moreFailed, setMoreFailed] = useState(false);
+  const [reading, setReading] = useState(false);
+  /** The row the focus goes to once the last page is drawn and its button gone. */
+  const [focusKey, setFocusKey] = useState<string | null>(null);
+  const list = useRef<HTMLOListElement>(null);
+  /** Bumped by every fresh read, so an older one never replaces it. */
+  const reads = useRef(0);
+  const readingMore = useRef(false);
+  /** What is shown now, for reads that end later: the ticket, its pages, the next cursor. */
+  const shown = useRef<{ ticket: number; pages: ActivityPage[]; next: string | null }>({
+    ticket: ticket.id,
+    pages: [],
+    next: null,
+  });
+  const show = (list: ActivityPage[]) => {
+    const cursor = list[list.length - 1]?.next ?? null;
+    shown.current = { ticket: ticket.id, pages: list, next: cursor };
+    setPages(list);
+    setNext(cursor);
+  };
 
-  // Read once per ticket; the words are the reader's, whatever renders meanwhile.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: t, text and intl only word the rows
+  // biome-ignore lint/correctness/useExhaustiveDependencies: read again when the ticket changes
   useEffect(() => {
     let live = true;
-    const someone = t('ticketView.someone');
-    void Promise.allSettled([
-      client.history(ticket.id),
-      client.timeEntries(ticket.id),
-      said.list(),
-    ]).then(([history, time, said]) => {
-      if (!live) return;
-      const out: FeedItem[] = [];
-      if (history.status === 'fulfilled') {
-        for (const c of history.value.changes) {
-          // Comments and time entries show as themselves below.
-          if (c.field === 'comment' || c.field === 'timeEntry') continue;
-          out.push({ key: `h${c.id}`, at: c.at, actor: c.actor?.name ?? someone, text: text(c) });
-        }
-      }
-      if (time.status === 'fulfilled') {
-        for (const e of time.value) {
-          out.push({
-            key: `t${e.id}`,
-            at: e.startedAt,
-            actor: e.author.name,
-            text: t('ticketView.all.time', {
-              hours: intl.formatNumber(e.duration / 3600, { maximumFractionDigits: 2 }),
-            }),
-          });
-        }
-      }
-      if (said.status === 'fulfilled') {
-        for (const c of said.value.comments) {
-          out.push({
-            key: `c${c.id}`,
-            at: c.createdAt,
-            actor: c.author?.name ?? someone,
-            text: t('ticketView.all.comment'),
-          });
-        }
-      }
-      out.sort((a, b) => b.at.localeCompare(a.at));
-      setItems(out);
+    const read = ++reads.current;
+    setFailed(false);
+    setMoreFailed(false);
+    // As many pages as are shown, one Show older activity adds meanwhile included.
+    const wanted = () => (shown.current.ticket === ticket.id ? shown.current.pages.length : 1);
+    (async () => {
+      const fresh: ActivityPage[] = [];
+      let cursor: string | undefined;
+      do {
+        const page = await client.activity(ticket.id, cursor);
+        if (!live || read !== reads.current) return;
+        fresh.push(page);
+        cursor = page.next ?? undefined;
+      } while (cursor !== undefined && fresh.length < wanted());
+      show(fresh);
+    })().catch(() => {
+      if (live && read === reads.current) setFailed(true);
     });
     return () => {
       live = false;
     };
-  }, [client, said, ticket.id]);
+  }, [client, ticket.id, revision]);
 
-  if (items === null) return <p className="page-note">{t('ticketView.loading')}</p>;
-  if (items.length === 0) return <EmptyState compact title={t('ticketView.history.empty')} />;
+  useEffect(() => {
+    if (focusKey === null) return;
+    list.current?.querySelector<HTMLElement>(`[data-key="${focusKey}"]`)?.focus();
+  }, [focusKey]);
+
+  const someone = t('ticketView.someone');
+  const feed = (from: readonly ActivityPage[]): FeedItem[] => {
+    const items: FeedItem[] = [];
+    const timeSeen = new Set<number>();
+    for (const page of from) {
+      for (const entry of page.activity) {
+        entry.changes.forEach((c, index) => {
+          const key = `h${entry.changeSet}-${index}`;
+          const actor = entry.actor?.name ?? someone;
+          if (c.field === 'comment') {
+            // A comment shows while it is there; its deletion and deleted ones do not.
+            if (c.to.value !== null && entry.comment && entry.comment.excerpt !== null) {
+              items.push({ key, at: entry.at, actor, text: t('ticketView.all.comment') });
+            }
+            return;
+          }
+          // Time entries show as themselves, below.
+          if (c.field === 'timeEntry') return;
+          items.push({ key, at: entry.at, actor, text: text(c) });
+        });
+      }
+      for (const e of page.timeEntries) {
+        if (timeSeen.has(e.id)) continue;
+        timeSeen.add(e.id);
+        items.push({
+          key: `t${e.id}`,
+          at: e.startedAt,
+          actor: e.author.name,
+          text: t('ticketView.all.time', {
+            hours: intl.formatNumber(e.duration / 3600, { maximumFractionDigits: 2 }),
+          }),
+        });
+      }
+    }
+    return items.sort((a, b) => b.at.localeCompare(a.at));
+  };
+
+  const more = async () => {
+    // One page at a time, from where the pages shown now end.
+    const cursor = shown.current.next;
+    if (cursor === null || readingMore.current) return;
+    readingMore.current = true;
+    setReading(true);
+    setMoreFailed(false);
+    setFocusKey(null);
+    try {
+      const page = await client.activity(ticket.id, cursor);
+      // A fresh read replaced the pages meanwhile: this one goes on from a page no longer shown.
+      if (shown.current.next !== cursor || shown.current.ticket !== ticket.id) return;
+      const before = new Set(feed(shown.current.pages).map((item) => item.key));
+      const after = [...shown.current.pages, page];
+      show(after);
+      if (page.next === null) {
+        const items = feed(after);
+        setFocusKey((items.find((item) => !before.has(item.key)) ?? items.at(-1))?.key ?? null);
+      }
+    } catch {
+      if (shown.current.next === cursor) setMoreFailed(true);
+    } finally {
+      readingMore.current = false;
+      setReading(false);
+    }
+  };
+
+  const items = feed(pages ?? []);
+
+  if (failed) return <p className="page-note">{t('ticketView.all.failed')}</p>;
+  if (pages === null) return <p className="page-note">{t('ticketView.loading')}</p>;
+  if (items.length === 0 && next === null) {
+    return <EmptyState compact title={t('ticketView.history.empty')} />;
+  }
   return (
-    <ol className="ticket-feed">
-      {items.map((item) => (
-        <li key={item.key} className="ticket-feed-item">
-          <p className="ticket-feed-meta">
-            <span className="ticket-feed-actor">{item.actor}</span>
-            <span className="ticket-feed-date">{when(item.at)}</span>
-          </p>
-          <p className="ticket-feed-text">{item.text}</p>
-        </li>
-      ))}
-    </ol>
+    <>
+      {items.length > 0 && (
+        <ol ref={list} className="ticket-feed">
+          {items.map((item) => (
+            <li
+              key={item.key}
+              data-key={item.key}
+              className="ticket-feed-item"
+              tabIndex={item.key === focusKey ? -1 : undefined}
+            >
+              <p className="ticket-feed-meta">
+                <span className="ticket-feed-actor">{item.actor}</span>
+                <span className="ticket-feed-date">{when(item.at)}</span>
+              </p>
+              <p className="ticket-feed-text">{item.text}</p>
+            </li>
+          ))}
+        </ol>
+      )}
+      {moreFailed && (
+        <p role="alert" className="form-error">
+          {t('ticketView.all.failed')}
+        </p>
+      )}
+      {next !== null && (
+        <button
+          type="button"
+          className="button-secondary"
+          // Not disabled: the focus stays on it while the page loads.
+          aria-busy={reading}
+          aria-disabled={reading || undefined}
+          onClick={() => void more()}
+        >
+          {t('ticketView.all.more')}
+        </button>
+      )}
+    </>
   );
 }

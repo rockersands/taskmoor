@@ -645,6 +645,36 @@ describe('inbox, mentions and activity (M1-058)', () => {
     expect((await get('dave', `/api/v1/tickets/${t.id}/activity`)).statusCode).toBe(404);
   });
 
+  // The All feed words each change from the activity: a description's must say whether it was
+  // set, changed or cleared, by a line of its text and never the document.
+  it('[CORE-022] says how a description changed in the activity, by a line of its text', async () => {
+    const t = await ticket('alice', { description: doc('First draft') });
+    const twoParagraphs = {
+      type: 'doc',
+      content: ['Second', 'draft'].map((text) => ({
+        type: 'paragraph',
+        content: [{ type: 'text', text }],
+      })),
+    };
+    for (const description of [twoParagraphs, null]) {
+      const res = await patch('alice', `/api/v1/tickets/${t.id}`, { description });
+      expect(res.statusCode, res.body).toBe(200);
+    }
+    const res = await get('bob', `/api/v1/tickets/${t.id}/activity?kind=history`);
+    expect(res.statusCode, res.body).toBe(200);
+    type Side = { value: string | null; display: string | null };
+    const sides = (res.json().activity as { changes: { field: string; from: Side; to: Side }[] }[])
+      .flatMap((a) => a.changes)
+      .filter((c) => c.field === 'description')
+      .map((c) => [c.from, c.to]);
+    const shown = (display: string | null) => ({ value: null, display });
+    expect(sides).toEqual([
+      [shown('Second draft'), shown(null)],
+      [shown('First draft'), shown('Second draft')],
+      [shown(null), shown('First draft')],
+    ]);
+  });
+
   it("[CORE-022] gives a track's activity over the tickets the reader may see, newest first", async () => {
     const seen = await ticket('alice', { summary: 'Seen by Bob' });
     const hidden = await ticket('alice', { summary: 'Kept from Bob' });

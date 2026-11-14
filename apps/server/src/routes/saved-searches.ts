@@ -18,6 +18,7 @@ import {
   writeShares,
 } from '../sharing/shares';
 import { searchPerson, searchRefusal, searchScope } from './search';
+import { decodeSortCursor, encodeSortCursor, sortCursorParam } from './sort-cursor';
 
 /**
  * Saved searches (M1-063; QRY-011, QRY-012; ADR-053).
@@ -55,10 +56,18 @@ const subParam = z
     subscriptionId: z.coerce.number().int().positive().max(MAX_INT),
   })
   .strict();
+/**
+ * A page of saved searches by name, ignoring case, then id (T-310). The first page holds 500
+ * at most as the list always did; `cursor` (or `after`, as the web app sends it) is the `next`
+ * of the page before.
+ */
 export const listQuery = z
   .object({
     filter: z.enum(['visible', 'mine', 'starred']).default('visible'),
     q: z.string().max(255).optional(),
+    cursor: sortCursorParam.optional(),
+    after: sortCursorParam.meta({ description: 'The same as `cursor`.' }).optional(),
+    limit: z.coerce.number().int().min(1).max(500).default(500),
   })
   .strict();
 
@@ -276,8 +285,23 @@ export function registerSavedSearchRoutes(
     if (text) {
       q = q.where(sql<boolean>`strpos(lower(s.name), lower(${text})) > 0`);
     }
-    const list = await q.orderBy(sql`lower(s.name)`).orderBy('s.id').limit(500).execute();
-    return { savedSearches: await view(request, list) };
+    const { limit } = parsed.data;
+    const after = parsed.data.cursor ?? parsed.data.after;
+    const start = after === undefined ? null : decodeSortCursor(after);
+    if (start) {
+      q = q.where(sql<boolean>`(lower(s.name), s.id) > (${start[0]}::text, ${start[1]}::int)`);
+    }
+    const list = await q
+      .select(sql<string>`lower(s.name)`.as('sort_name'))
+      .orderBy(sql`lower(s.name)`)
+      .orderBy('s.id')
+      .limit(limit + 1)
+      .execute();
+    const more = list.length > limit;
+    if (more) list.length = limit;
+    const last = list[list.length - 1];
+    const next = more && last ? encodeSortCursor(last.sort_name, last.id) : null;
+    return { savedSearches: await view(request, list), next };
   });
 
   app.post('/api/v1/saved-searches', async (request, reply) => {

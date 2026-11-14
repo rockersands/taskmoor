@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
+import { localDate } from '@taskmoor/query';
 import type { FastifyInstance, InjectOptions } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
@@ -819,6 +820,90 @@ describe('releases across tracks (PLN-007)', () => {
       expect(
         group.releases.find((r: { track: { key: string } }) => r.track.key === 'XTB'),
       ).toMatchObject({ archived: true, overdue: false });
+    });
+
+    it('[PLN-007] [PLN-001] judges overdue on the viewer’s own day: the list, its page, its releases and a plan’s (T-287)', async () => {
+      // Kiritimati (UTC+14) is always a day or two ahead of Pago Pago (UTC-11), whatever the hour,
+      // so a day that is today in Pago Pago has gone by in Kiritimati; UTC's day agrees with one.
+      const ahead = 'Pacific/Kiritimati';
+      const behind = 'Pacific/Pago_Pago';
+      const day = localDate(new Date(), behind);
+      await database.db
+        .updateTable('cross_track_release')
+        .set({ release_date: day })
+        .where('id', '=', crossId)
+        .execute();
+      await database.db
+        .updateTable('release')
+        .set({ release_date: day })
+        .where('id', 'in', [releases['A 1.0'] as number, releases['B 1.0'] as number])
+        .execute();
+      // One of XTD's own, linked to no release across tracks, for the plan's rows by track.
+      const own = await addRelease('XTD', 'D 7.0', { releaseDate: day });
+      const plan = (
+        await post(
+          'admin',
+          '/api/v1/plans',
+          {
+            name: 'Zones',
+            sources: ['XTA', 'XTD'].map((k) => ({ kind: 'track', trackId: tracks[k] })),
+          },
+          201,
+        )
+      ).plan.id as number;
+      const seen = async (timeZone: string) => {
+        const headers = { 'taskmoor-time-zone': timeZone };
+        const read = (url: string) => call('admin', { method: 'GET', url, headers });
+        const list = await read('/api/v1/cross-track-releases');
+        const page = (await read(base())) as Answer;
+        const tab = await read(`/api/v1/plans/${plan}/releases`);
+        const group = tab.crossTrack.find((c: { id: number }) => c.id === crossId);
+        const rows = tab.tracks.flatMap((t: { releases: { id: number }[] }) => t.releases);
+        return {
+          listed: list.releases.find((r: { id: number }) => r.id === crossId)?.state,
+          state: page.state,
+          warned: page.warnings.some((w) => w.code === 'overdue'),
+          members: page.members
+            .filter((m) => m.track.key !== 'XTC')
+            .map((m) => [m.name, m.overdue]),
+          group: group.state,
+          grouped: group.releases
+            .filter((r: Member) => r.track.key !== 'XTC')
+            .map((r: Member) => [r.name, r.overdue]),
+          own: rows.find((r: { id: number }) => r.id === own)?.overdue,
+        };
+      };
+      expect(await seen(ahead)).toEqual({
+        listed: 'overdue',
+        state: 'overdue',
+        warned: true,
+        members: [
+          ['A 1.0', true],
+          ['B 1.0', true],
+        ],
+        group: 'overdue',
+        grouped: [
+          ['A 1.0', true],
+          ['B 1.0', true],
+        ],
+        own: true,
+      });
+      expect(await seen(behind)).toEqual({
+        listed: 'upcoming',
+        state: 'upcoming',
+        warned: false,
+        members: [
+          ['A 1.0', false],
+          ['B 1.0', false],
+        ],
+        group: 'upcoming',
+        grouped: [
+          ['A 1.0', false],
+          ['B 1.0', false],
+        ],
+        own: false,
+      });
+      await post('admin', `/api/v1/releases/${own}/archive`, {});
     });
 
     it('[PLN-007] drops an archived release from the state, and a track in the trash for everyone until restored', async () => {

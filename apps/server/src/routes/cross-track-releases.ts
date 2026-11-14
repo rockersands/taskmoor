@@ -27,6 +27,7 @@ import {
   updateBody,
 } from '../plans/cross-track';
 import { browsedTracks, planTickets, sourceRows } from '../plans/query';
+import { viewerDay } from '../reports/zone';
 import { type CrossTrackSight, requestSight, seenLinkedTracks } from '../search/cross-track';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
 import { planVisible } from './plans';
@@ -112,8 +113,6 @@ function shapeErrors(error: z.ZodError): Record<string, string> {
   return out;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
-
 const rowQuery = (db: Db, ws: number) =>
   db
     .selectFrom('cross_track_release as c')
@@ -184,11 +183,16 @@ interface Summary {
   progress: { tickets: number; closed: number; open: number };
 }
 
+/**
+ * `today` is the viewer's own day (`viewerDay`, T-287), as for a track's own releases (T-282): a
+ * fixed day that has passed where they are is overdue to them, whatever the day is in UTC.
+ */
 function summarize(
   row: Pick<Row, 'end_rule' | 'release_date'>,
   members: readonly MemberRow[],
   work: ReadonlyMap<number, Work>,
   sees: (trackId: number) => boolean,
+  today: string,
 ): Summary {
   // A track in the trash drops out for everyone until it is restored.
   const live = members.filter((m) => !m.track_deleted);
@@ -205,7 +209,7 @@ function summarize(
     state: crossTrackState({
       endRule: row.end_rule,
       date: row.release_date,
-      today: today(),
+      today,
       releases: counting.length,
       shipped: counting.filter((m) => m.shipped_at !== null).length,
       tickets: counting.reduce((n, m) => n + of(m).tickets, 0),
@@ -227,7 +231,13 @@ const outOfStep = (row: Pick<Row, 'end_rule' | 'release_date'>, m: MemberRow) =>
 
 const trackOf = (m: MemberRow) => ({ id: m.track_id, key: m.track_key, name: m.track_name });
 
-function memberView(row: Pick<Row, 'end_rule' | 'release_date'>, m: MemberRow, work?: Work) {
+/** A linked release as the viewer sees it, overdue against their own `today` (T-287). */
+function memberView(
+  row: Pick<Row, 'end_rule' | 'release_date'>,
+  m: MemberRow,
+  today: string,
+  work?: Work,
+) {
   const counts = work ?? NO_WORK;
   // A release of an archived track counts as archived, as it does for the state.
   const archived = m.archived_at !== null || m.track_archived;
@@ -241,7 +251,7 @@ function memberView(row: Pick<Row, 'end_rule' | 'release_date'>, m: MemberRow, w
     archived,
     trackArchived: m.track_archived,
     overdue:
-      !archived && m.shipped_at === null && m.release_date !== null && m.release_date < today(),
+      !archived && m.shipped_at === null && m.release_date !== null && m.release_date < today,
     outOfStep: outOfStep(row, m),
     // Only what this viewer may see counts here: the rest is the one hidden number.
     progress: {
@@ -367,7 +377,8 @@ export function registerCrossTrackReleaseRoutes(
       const scope = await boardScope(db, options.catalogs, request);
       const visible = await visibleFilter(request);
       const work = await readWork(db, [row.id], visible);
-      const summary = summarize(row, members, work, sees);
+      const today = viewerDay(request);
+      const summary = summarize(row, members, work, sees, today);
       const base = `crossTrackRelease = ${row.id}`;
       const q = `${base} AND stage != closed`;
       const count = (text: string) => countQuery(db, timeoutMs, request, scope, text);
@@ -407,7 +418,7 @@ export function registerCrossTrackReleaseRoutes(
         open: openCount,
         warnings,
         members: summary.seen.map((m) => ({
-          ...memberView(row, m, work.get(m.release_id)),
+          ...memberView(row, m, today, work.get(m.release_id)),
           // Unlinking: the track's administrators, or the owner and administrators.
           mayRemove: mayManage || yours.has(m.track_id),
         })),
@@ -474,11 +485,12 @@ export function registerCrossTrackReleaseRoutes(
     const members = await readMembers(db, ids);
     const work = await readWork(db, ids, await visibleFilter(request));
     const sees = (trackId: number) => tracks === 'all' || tracks.has(trackId);
+    const today = viewerDay(request);
     const last = page[page.length - 1];
     return {
       releases: page.map((row) => {
         const own = members.filter((m) => m.cross_track_release_id === row.id);
-        const summary = summarize(row, own, work, sees);
+        const summary = summarize(row, own, work, sees, today);
         return {
           id: row.id,
           name: row.name,
@@ -1102,6 +1114,8 @@ export function registerCrossTrackReleaseRoutes(
       const members = await readMembers(db, groupIds);
       const work = await readWork(db, groupIds, visible);
       const sees = await trackSight(request, requestSight(request));
+      // Overdue against the viewer's own day, as on a track's own release list (T-282, T-287).
+      const today = viewerDay(request);
       const byTrack = new Map<
         number,
         {
@@ -1115,13 +1129,13 @@ export function registerCrossTrackReleaseRoutes(
           track: { id: r.track_id, key: r.track_key, name: r.track_name },
           releases: [],
         };
-        entry.releases.push(releaseView(r));
+        entry.releases.push(releaseView(r, today));
         byTrack.set(r.track_id, entry);
       }
       return {
         crossTrack: groups.map((row) => {
           const own = members.filter((m) => m.cross_track_release_id === row.id);
-          const summary = summarize(row, own, work, sees);
+          const summary = summarize(row, own, work, sees, today);
           return {
             id: row.id,
             name: row.name,
@@ -1131,7 +1145,7 @@ export function registerCrossTrackReleaseRoutes(
             owner: { id: row.owner_id, name: row.owner_name },
             progress: summary.progress,
             hidden: summary.hidden,
-            releases: summary.seen.map((m) => memberView(row, m, work.get(m.release_id))),
+            releases: summary.seen.map((m) => memberView(row, m, today, work.get(m.release_id))),
           };
         }),
         tracks: [...byTrack.values()],

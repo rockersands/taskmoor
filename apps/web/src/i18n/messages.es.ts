@@ -2245,6 +2245,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.tokens.noneYetBody':
     'Los tokens aparecen aquí cuando una persona o una cuenta de servicio crea uno.',
   'admin.tokens.count': '{count, plural, one {# token} other {# tokens}}',
+  // Show more, for the rest of the inventory a page at a time (T-308).
+  'admin.tokens.more': 'Mostrar más',
   'admin.tokens.revokeNamed': 'Revocar {name} de {owner}',
   'admin.tokens.revoked': 'Se revocó {name} de {owner}.',
   'admin.tokens.bulk': 'Revocar en bloque',
@@ -2956,6 +2958,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.users.failed': 'No se pudieron leer las personas. Inténtalo de nuevo en un momento.',
   'admin.users.none': 'Nadie coincide.',
   'admin.users.count': '{count, plural, one {# persona} other {# personas}}',
+  // Show more, for the rest of the people a page at a time (T-307).
+  'admin.users.more': 'Mostrar más',
   'admin.users.search': 'Buscar por nombre o correo',
   'admin.users.show': 'Mostrar',
   'admin.users.status.active': 'Personas activas',
@@ -3799,6 +3803,8 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketView.history.rank': 'Orden',
   'ticketView.all.comment': 'Comentó',
   'ticketView.all.time': 'Registró {hours} h',
+  'ticketView.all.more': 'Mostrar actividad anterior',
+  'ticketView.all.failed': 'No se pudo leer la actividad. Inténtalo de nuevo en un momento.',
   'ticketView.time.hours': '{hours} h',
   'ticketView.time.failed':
     'No se pudieron leer los registros de tiempo. Inténtalo de nuevo en un momento.',

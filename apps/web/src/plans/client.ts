@@ -7,6 +7,7 @@ import type {
   HiddenWork,
   Progress,
 } from '../releases/crossTrackClient';
+import { everySavedSearch } from '../search/savedClient';
 import {
   type Timeline,
   type TimelineClient,
@@ -493,7 +494,8 @@ export const planClient: PlanClient = {
   reschedule: timelineClient.reschedule,
   move: calendarClient.move,
   sourceOptions: async () => {
-    const searches = api<{ savedSearches: { id: number; name: string }[] }>('/saved-searches');
+    // Every saved search the person sees, past the list's first page (T-310).
+    const searches = everySavedSearch<{ id: number; name: string }>();
     // Every track the person sees: a plan holds at most 500 sources, but any track may be one.
     const tracks = (await everyTrack<SourceOptions['tracks'][number]>()).map((t) => ({
       id: t.id,
@@ -502,7 +504,7 @@ export const planClient: PlanClient = {
     }));
     return {
       tracks,
-      savedSearches: (await searches).savedSearches.map((s) => ({ id: s.id, name: s.name })),
+      savedSearches: (await searches).map((s) => ({ id: s.id, name: s.name })),
     };
   },
 };

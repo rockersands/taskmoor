@@ -1,6 +1,7 @@
 import { fromMarkdown } from '@taskmoor/richtext';
 import { ApiError } from '../../api/client';
 import type {
+  ActivityEntry,
   HistoryEntry,
   Priority,
   TicketClient,
@@ -90,6 +91,23 @@ export const TIME: TimeEntry[] = [
     duration: 2 * 3600,
     description: 'Reproduced and traced',
     visibility: null,
+  },
+];
+
+/** SHOP-41's comments as its activity names them: Grace's question (T-309). */
+export const COMMENTED: ActivityEntry[] = [
+  {
+    changeSet: '9',
+    at: '2026-10-20T09:15:00Z',
+    actor: GRACE,
+    comment: { id: 101, excerpt: 'Reproduced with an expired Visa card.' },
+    changes: [
+      {
+        field: 'comment',
+        from: { value: null, display: null },
+        to: { value: '101', display: null },
+      },
+    ],
   },
 ];
 
@@ -218,6 +236,22 @@ export function fakeTicketClient(
       votes.mine = on;
     },
     history: async () => ({ changes: structuredClone(history), next: null }),
+    // Everything on one page, newest first, as the activity route answers a quiet ticket.
+    activity: async (_id, cursor) => {
+      calls.push({ action: 'activity', args: [cursor] });
+      const changes: ActivityEntry[] = history.map((h) => ({
+        changeSet: h.id,
+        at: h.at,
+        actor: h.actor,
+        comment: null,
+        changes: [{ field: h.field, from: h.from, to: h.to }],
+      }));
+      return structuredClone({
+        activity: [...changes, ...COMMENTED].sort((a, b) => b.at.localeCompare(a.at)),
+        timeEntries: [...time].sort((a, b) => b.startedAt.localeCompare(a.startedAt)),
+        next: null,
+      });
+    },
     timeEntries: async () => structuredClone(time),
     logTime: async (_id, entry) => {
       calls.push({ action: 'logTime', args: [entry] });

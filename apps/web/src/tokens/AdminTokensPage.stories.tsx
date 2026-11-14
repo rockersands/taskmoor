@@ -4,7 +4,7 @@ import { expect, userEvent, within } from 'storybook/test';
 import { ADMIN, MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
 import { AdminTokensPage } from './AdminTokensPage';
-import { fakeAdminTokensClient } from './fixtures';
+import { fakeAdminTokensClient, manyTokens } from './fixtures';
 
 /** Stories pass an in-memory inventory; nothing calls a server. */
 const meta = {
@@ -118,5 +118,29 @@ export const EmptyExplains: Story = {
     await expect(canvas.getByText(/^Tokens show here once/)).toBeVisible();
     // Nothing to revoke in bulk while there is no token at all (AD-31).
     await expect(canvas.queryByRole('heading', { name: 'Revoke in bulk' })).toBeNull();
+  },
+};
+
+/** More tokens than a page holds (T-308): the count says how many, Show more lists the rest. */
+const showsMore = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement);
+  await expect(await canvas.findByText('5 tokens')).toBeVisible();
+  await userEvent.click(canvas.getByRole('button', { name: 'Show more' }));
+  await expect(await canvas.findByText('Token 004')).toBeVisible();
+  return canvas;
+};
+
+export const ShowMoreTokens: Story = {
+  args: { client: fakeAdminTokensClient({}, { tokens: manyTokens(5), pageSize: 3 }) },
+  play: async ({ canvasElement }) => {
+    await showsMore(canvasElement);
+  },
+};
+
+export const ShowMoreTokensAtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  args: { client: fakeAdminTokensClient({}, { tokens: manyTokens(5), pageSize: 3 }) },
+  play: async ({ canvasElement }) => {
+    await fitsPhoneWidth(await showsMore(canvasElement));
   },
 };

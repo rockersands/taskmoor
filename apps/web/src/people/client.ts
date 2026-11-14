@@ -33,9 +33,20 @@ export interface GroupDetail {
   parents: { id: number; name: string }[];
 }
 
+/** People the People page asks for at a time; Show more reads the next page (T-307). */
+export const USERS_PAGE = 200;
+
 /** The endpoints the people pages use. Stories and tests pass their own. */
 export interface PeopleClient {
-  users: (query: string, status: UserStatus) => Promise<{ users: User[]; total: number }>;
+  /**
+   * One page of people, from `offset` (0, the first, when left out), and how many match in all
+   * (`total`): the People page shows the rest a page at a time (T-307).
+   */
+  users: (
+    query: string,
+    status: UserStatus,
+    offset?: number,
+  ) => Promise<{ users: User[]; total: number }>;
   createUser: (body: {
     name: string;
     email: string;
@@ -61,9 +72,11 @@ export interface PeopleClient {
 }
 
 export const peopleClient: PeopleClient = {
-  users: (query, status) =>
+  users: (query, status, offset = 0) =>
     api<{ users: User[]; total: number }>(
-      `/users?status=${status}&limit=200${query ? `&query=${encodeURIComponent(query)}` : ''}`,
+      `/users?status=${status}&limit=${USERS_PAGE}${offset ? `&offset=${offset}` : ''}${
+        query ? `&query=${encodeURIComponent(query)}` : ''
+      }`,
     ),
   createUser: async (body) => {
     const made = await api<{ user: User; activationLink?: string | null }>('/users', {

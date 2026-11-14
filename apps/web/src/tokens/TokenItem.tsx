@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { useT } from '../i18n/I18nProvider';
 import type { ApiToken } from './client';
 import { daysUntil, dueForRotation, useTokenText } from './format';
@@ -13,6 +13,8 @@ export interface TokenItemProps {
   showOwner?: boolean;
   /** Buttons for this token, such as Revoke. */
   actions?: ReactNode;
+  /** Takes the focus (the first token a list's last page brought, as its Show more goes). */
+  focused?: boolean;
 }
 
 /** One API token in a list: name, status, owner, scopes, dates and the actions offered. */
@@ -22,8 +24,13 @@ export function TokenItem({
   timeZone = null,
   showOwner = false,
   actions,
+  focused = false,
 }: TokenItemProps) {
   const t = useT();
+  const item = useRef<HTMLLIElement>(null);
+  useEffect(() => {
+    if (focused) item.current?.focus();
+  }, [focused]);
   const text = useTokenText(timeZone);
   const replaced = token.status === 'active' && token.replacedBy !== null;
   const status = replaced ? 'replaced' : token.status;
@@ -41,7 +48,7 @@ export function TokenItem({
   }
 
   return (
-    <li className="token-item" data-status={status}>
+    <li ref={item} className="token-item" data-status={status} tabIndex={focused ? -1 : undefined}>
       <div className="token-main">
         <p className="token-name">
           <span>{text.value(token.name)}</span>

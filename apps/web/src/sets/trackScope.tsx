@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAdminTrail } from '../admin/AdminLayout';
 import { useAdminAccess } from '../admin/access';
 import { ApiError, api } from '../api/client';
+import { everyManagedTrack } from '../api/managedTracks';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
@@ -29,13 +30,13 @@ export interface RunTrack {
 /** The reads that tell a page whose sets it shows. Stories and tests pass their own. */
 export interface TrackScopeClient {
   track: (id: number) => Promise<ScopeTrack>;
-  /** The tracks the person runs, archived ones aside. */
+  /** The tracks the person runs, archived ones aside: all of them, every page read (T-310). */
   managedTracks: () => Promise<RunTrack[]>;
 }
 
 export const trackScopeClient: TrackScopeClient = {
   track: async (id) => (await api<{ track: ScopeTrack }>(`/tracks/${id}`)).track,
-  managedTracks: async () => (await api<{ tracks: RunTrack[] }>('/me/managed-tracks')).tracks,
+  managedTracks: () => everyManagedTrack<RunTrack>(),
 };
 
 /** A track's own configuration pages, beside its Manage page (T-163a). */

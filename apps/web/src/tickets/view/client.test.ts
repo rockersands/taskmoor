@@ -31,3 +31,22 @@ describe('a ticket’s work log (T-305)', () => {
     ]);
   });
 });
+
+describe('a ticket’s whole activity (T-309)', () => {
+  it('[CORE-022] reads the All feed from the activity route, a page from a cursor', async () => {
+    const asked: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        asked.push(url.replace(/^\/api\/v1/, ''));
+        return jsonResponse(200, { activity: [], timeEntries: [entry(1)], next: '7' });
+      }),
+    );
+    expect((await ticketClient.activity(42)).next).toBe('7');
+    expect((await ticketClient.activity(42, '7')).timeEntries.map((e) => e.id)).toEqual([1]);
+    expect(asked).toEqual([
+      '/tickets/42/activity?kind=all&limit=50',
+      '/tickets/42/activity?kind=all&limit=50&cursor=7',
+    ]);
+  });
+});

@@ -18410,6 +18410,7 @@
     },
     "/api/v1/saved-searches": {
       "get": {
+        "description": "By name ignoring case, then id. A page holds `limit` of them, 500 at most and by default; `cursor` takes the `next` of the page before.",
         "operationId": "listSavedSearches",
         "parameters": [
           {
@@ -18434,6 +18435,41 @@
               "maxLength": 255,
               "type": "string"
             }
+          },
+          {
+            "description": "The `next` of the page before; the list starts after it.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "maxLength": 2000,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The same as `cursor`.",
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "maxLength": 2000,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "maximum": 500,
+              "minimum": 1,
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -18443,6 +18479,13 @@
                 "schema": {
                   "additionalProperties": {},
                   "properties": {
+                    "next": {
+                      "description": "The cursor of the next page; null on the last one.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "savedSearches": {
                       "items": {
                         "$ref": "#/components/schemas/SavedSearch"
@@ -18451,13 +18494,14 @@
                     }
                   },
                   "required": [
-                    "savedSearches"
+                    "savedSearches",
+                    "next"
                   ],
                   "type": "object"
                 }
               }
             },
-            "description": "The saved searches."
+            "description": "A page of saved searches."
           },
           "400": {
             "content": {
@@ -18500,11 +18544,12 @@
             ]
           }
         ],
-        "summary": "The saved searches the caller owns or that are shared with them",
+        "summary": "The saved searches the caller owns or that are shared with them, a page at a time",
         "tags": [
           "Search"
         ],
         "x-taskmoor-access": "read",
+        "x-taskmoor-paging": "cursor",
         "x-taskmoor-stability": "stable"
       },
       "post": {

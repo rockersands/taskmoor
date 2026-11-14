@@ -178,7 +178,7 @@ export function NewCrossTrackDialog({ client, onMade, onClose }: NewCrossTrackDi
                   onChange={(event) => setFilter(event.target.value)}
                 />
               </label>
-              {shown.length === 0 && <p className="board-hint">{t('crossTrack.new.noMatch')}</p>}
+              {shown.length === 0 && <EmptyState compact title={t('crossTrack.new.noMatch')} />}
               <ul className="cross-track-candidates">
                 {shown.map((c) => (
                   <li key={c.id}>

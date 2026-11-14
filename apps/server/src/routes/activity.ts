@@ -7,6 +7,7 @@ import type { FieldCatalogs } from '../fields/catalog';
 import { historyFieldOf } from '../fields/values';
 import { commentText, onceAudience, readsComment } from '../tickets/comments';
 import { loadTicket, resolveTicket, resolveTrack } from '../tickets/store';
+import { entryQuery, entryView, visibleTo } from './time';
 
 /**
  * Activity streams (M1-058; CORE-022, NTF-003; ADR-047): what happened, newest first, built
@@ -20,11 +21,20 @@ import { loadTicket, resolveTicket, resolveTrack } from '../tickets/store';
  *   track the reader may see now (the list predicate in the statement, outside the trash).
  *
  * Only what the reader may see: comment entries of comments they may not read are left out (a
- * readable one carries a short excerpt), as in the ticket history. Rich text values are not
- * repeated (the entry says the description changed). A custom field's change says the field's
+ * readable one carries a short excerpt), as in the ticket history. A rich text value is not
+ * repeated: its `display` is a line of its text, 80 characters at most. A custom field's change says the field's
  * name and how its values read, as the ticket history does (T-277, T-282): the name only while
  * the field applies to the ticket where it is now, so the reader sees the field on it. `limit` counts history rows; a change set
  * is never split across pages, so a page can hold a few more rows.
+ *
+ * A ticket's `kind=all` page also carries time entries (`timeEntries`, those the reader may see,
+ * as the time entries list shows them), newest first by when the work started, `limit` of them
+ * at most (T-309): those after the cursor's entry back to the start of the stretch of time the
+ * page's history rows cover (the last page: back to the start). A time entry may have no history
+ * row (an import writes none), and its row says neither whose work it was nor when it began. Its
+ * cursor names the history row and the time entry it stops at (`<row>.<µs>.<entry>`, row `0`
+ * once the history is read), so each time entry comes once across the pages, whatever order
+ * the history rows' times are in, and no page holds more than `limit` of either.
  */
 const MAX_INT = 2_147_483_647;
 const RICH_TEXT = new Set(['description', 'environment']);
@@ -34,10 +44,12 @@ const cursorParam = z
   .string()
   .regex(/^[1-9][0-9]{0,18}$/)
   .optional();
+/** A `kind=all` cursor: the history row, then the time entry (its start in µs, its id). */
+const ALL_CURSOR = /^(0|[1-9][0-9]{0,18})(?:\.(-?[0-9]{1,17})\.([1-9][0-9]{0,17}))?$/;
 const ticketQuery = z
   .object({
     kind: z.enum(KINDS).default('all'),
-    cursor: cursorParam,
+    cursor: z.string().regex(ALL_CURSOR).optional(),
     limit: z.coerce.number().int().min(1).max(200).default(50),
   })
   .strict();
@@ -45,6 +57,19 @@ const trackQuery = z
   .object({ cursor: cursorParam, limit: z.coerce.number().int().min(1).max(200).default(50) })
   .strict();
 const params = z.object({ id: z.string().min(1).max(300) });
+
+/**
+ * A rich text value as an entry shows it: a short line of its text (null with no document, `''`
+ * for one with no text), so the entry says whether it was set, changed or cleared (T-309).
+ */
+function excerpt(value: string | null): string | null {
+  if (value === null) return null;
+  try {
+    return commentText(JSON.parse(value) as JsonValue, 80).replace(/\s+/g, ' ');
+  } catch {
+    return '';
+  }
+}
 
 const invalid = (reply: FastifyReply) => reply.code(400).send({ error: 'invalid_request' });
 const notFound = (reply: FastifyReply) => reply.code(404).send({ error: 'not_found' });
@@ -182,8 +207,12 @@ export function registerActivityRoutes(
               row.field,
             )
           : null),
-        from: { value: rich ? null : row.from_value, display: rich ? null : row.from_display },
-        to: { value: rich ? null : row.to_value, display: rich ? null : row.to_display },
+        from: rich
+          ? { value: null, display: excerpt(row.from_value) }
+          : { value: row.from_value, display: row.from_display },
+        to: rich
+          ? { value: null, display: excerpt(row.to_value) }
+          : { value: row.to_value, display: row.to_display },
       };
       const last = out[out.length - 1];
       if (last && last.changeSet === row.change_set && last.ticket.id === row.ticket_id) {
@@ -234,7 +263,14 @@ export function registerActivityRoutes(
     if (ticket.deleted_at && !(await request.authz.canTicket('delete_tickets', ticket))) {
       return notFound(reply);
     }
-    const { kind, cursor, limit } = q.data;
+    const { kind, limit } = q.data;
+    const parts = q.data.cursor === undefined ? null : ALL_CURSOR.exec(q.data.cursor);
+    // Only an All page's cursor names a time entry (and the end of the history).
+    if (parts && kind !== 'all' && (parts[2] !== undefined || parts[1] === '0')) {
+      return invalid(reply);
+    }
+    const cursor = parts?.[1];
+    const afterEntry = parts?.[2] === undefined ? null : { us: parts[2], id: parts[3] as string };
     const select = (extra: RawBuilder<boolean>, max: number) =>
       sql<ChangeRow>`
         SELECT ${COLUMNS}
@@ -260,7 +296,42 @@ export function registerActivityRoutes(
           )
         ).rows,
     );
-    return { activity: await entries(request, result.rows), next: result.next };
+    const activity = await entries(request, result.rows);
+    if (kind !== 'all') return { activity, next: result.next };
+    // Time entries past the cursor's, back to the oldest row of this page (the last page: all),
+    // `limit` at most; the next page goes on from the last one looked at.
+    const oldest = result.next === null ? null : result.rows[result.rows.length - 1];
+    let query = entryQuery(db)
+      .select(
+        sql<string>`(extract(epoch FROM e.started_at) * 1000000)::bigint::text`.as('started_us'),
+      )
+      .where('e.ticket_id', '=', ticket.id);
+    if (afterEntry) {
+      query = query.where(
+        sql<boolean>`(e.started_at, e.id) < (TIMESTAMPTZ 'epoch' + ${afterEntry.us}::bigint * INTERVAL '1 microsecond', ${afterEntry.id}::bigint)`,
+      );
+    }
+    if (oldest) query = query.where('e.started_at', '>=', oldest.at);
+    const inStretch = await query
+      .orderBy('e.started_at', 'desc')
+      .orderBy('e.id', 'desc')
+      .limit(limit + 1)
+      .execute();
+    const looked = inStretch.slice(0, limit);
+    const sees = await visibleTo(request, ticket.track_id);
+    const timeEntries = [];
+    for (const e of looked) if (await sees(e)) timeEntries.push(entryView(e));
+    const last = looked[looked.length - 1];
+    const entryPart = last
+      ? `.${last.started_us}.${last.id}`
+      : afterEntry
+        ? `.${afterEntry.us}.${afterEntry.id}`
+        : '';
+    const next =
+      result.next === null && inStretch.length <= limit
+        ? null
+        : `${result.next ?? '0'}${entryPart}`;
+    return { activity, timeEntries, next };
   });
 
   app.get('/api/v1/tracks/:id/activity', async (request, reply) => {

@@ -2188,6 +2188,8 @@ export const messagesEn = {
   'admin.tokens.noneYet': 'No API tokens yet',
   'admin.tokens.noneYetBody': 'Tokens show here once a person or a service account creates one.',
   'admin.tokens.count': '{count, plural, one {# token} other {# tokens}}',
+  // Show more, for the rest of the inventory a page at a time (T-308).
+  'admin.tokens.more': 'Show more',
   'admin.tokens.revokeNamed': 'Revoke {name} of {owner}',
   'admin.tokens.revoked': 'Revoked {name} of {owner}.',
   'admin.tokens.bulk': 'Revoke in bulk',
@@ -2870,6 +2872,8 @@ export const messagesEn = {
   'admin.users.failed': 'The people could not be read. Try again in a moment.',
   'admin.users.none': 'Nobody matches.',
   'admin.users.count': '{count, plural, one {# person} other {# people}}',
+  // Show more, for the rest of the people a page at a time (T-307).
+  'admin.users.more': 'Show more',
   'admin.users.search': 'Find by name or email',
   'admin.users.show': 'Show',
   'admin.users.status.active': 'Active people',
@@ -3701,6 +3705,8 @@ export const messagesEn = {
   'ticketView.history.rank': 'Rank',
   'ticketView.all.comment': 'Commented',
   'ticketView.all.time': 'Logged {hours} h',
+  'ticketView.all.more': 'Show older activity',
+  'ticketView.all.failed': 'The activity could not be read. Try again in a moment.',
   'ticketView.time.hours': '{hours} h',
   'ticketView.time.failed': 'The time entries could not be read. Try again in a moment.',
   'ticketView.time.empty': 'No time logged yet.',

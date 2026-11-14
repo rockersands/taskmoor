@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { everyPage } from './pages';
+import { everyPage, pageAfter } from './pages';
 
 describe('reading a list a page at a time (T-305)', () => {
   it('[CORE-001] follows every page until the last says there is no next', async () => {
@@ -59,5 +59,30 @@ describe('reading a list a page at a time (T-305)', () => {
     }, 7);
     expect(all).toEqual([]);
     expect(calls).toBe(7);
+  });
+});
+
+describe('a list paged by offset that moves while it is read (T-307, T-308)', () => {
+  const list = (ids: number[]) => async (offset: number) => ({
+    rows: ids.slice(offset, offset + 3).map((id) => ({ id })),
+  });
+  const rowsOf = (page: { rows: { id: number }[] }) => page.rows;
+
+  it('[IAM-008] reads the next page from the last row read, and gives the rows after it', async () => {
+    const first = await pageAfter({ read: 0, lastId: null }, list([1, 2, 3, 4, 5]), rowsOf);
+    expect(first?.rows.map((r) => r.id)).toEqual([1, 2, 3]);
+    const next = await pageAfter({ read: 3, lastId: 3 }, list([1, 2, 3, 4, 5]), rowsOf);
+    expect(next?.rows.map((r) => r.id)).toEqual([4, 5]);
+  });
+
+  it('[IAM-008] says the list moved when a row ahead of the offset left it', async () => {
+    // Rows 1 to 3 were read, then 2 left: an offset of 3 would start at 5 and skip 4.
+    expect(await pageAfter({ read: 3, lastId: 3 }, list([1, 3, 4, 5, 6]), rowsOf)).toBeNull();
+    // One came ahead of it, or the last row read left: moved too.
+    expect(await pageAfter({ read: 3, lastId: 3 }, list([0, 1, 2, 3, 4]), rowsOf)).toBeNull();
+    expect(await pageAfter({ read: 3, lastId: 3 }, list([1, 2, 4, 5]), rowsOf)).toBeNull();
+    // Unchecked, the page is read from the offset as it is.
+    const as = await pageAfter({ read: 3, lastId: 3 }, list([1, 3, 4, 5, 6]), rowsOf, false);
+    expect(as?.rows.map((r) => r.id)).toEqual([5, 6]);
   });
 });

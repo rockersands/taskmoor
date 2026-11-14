@@ -114,6 +114,8 @@ export const ALLOWED = {
       'one answer of the permission explainer, beside the others it can give',
     'permissions/PermissionExplainerPage.tsx admin.explain.noLevel': ONE_READING,
     'plans/PlanCapacityPage.tsx plans.capacity.noPointsField': MISSING_SETUP,
+    'plans/PlanCapacityPage.tsx plans.capacity.noTeams': MISSING_SETUP,
+    'plans/PlanPage.tsx plans.notice.noSources': MISSING_SETUP,
     'plans/PlanListPage.tsx list.group.noValue': 'the heading of the group of rows with no value',
     'plans/PlanSettingsPage.tsx plans.settings.noLinkTypes': NO_CHOICE,
     'plans/ProgramBoardPage.tsx programBoard.noField': ONE_READING,
@@ -206,13 +208,7 @@ export const OFFENDERS = {
   /** `<fieldset>` classes that no stylesheet names. */
   fieldsetsWithoutRule: {} as Ratchet,
   /** "None" sentences outside an EmptyState; bodies are ready as `empty.*`. */
-  bareEmpties: {
-    // `noX` sentences the guard reads since T-222: empty lists, and filters that match nothing.
-    'plans/PlanCapacityPage.tsx': 1,
-    'plans/PlanPage.tsx': 1,
-    'releases/CrossTrackReleasePage.tsx': 1,
-    'releases/NewCrossTrackDialog.tsx': 1,
-  } as Ratchet,
+  bareEmpties: {} as Ratchet,
   /** Raw colours; there are none left to fix. */
   rawColours: {} as Ratchet,
   /**

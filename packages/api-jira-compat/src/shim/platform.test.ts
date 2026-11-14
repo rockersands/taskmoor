@@ -112,3 +112,56 @@ describe('projects of the Jira-compatible API read every track (T-305)', () => {
     expect(calls).toBe(2);
   });
 });
+
+describe('favourite filters of the Jira-compatible API read every page (T-310)', () => {
+  /** The native saved-search list as the server answers it: by name, `limit` at most 500. */
+  function nativeStarred(count: number, asked: string[]) {
+    const searches = Array.from({ length: count }, (_, i) => ({
+      id: i + 1,
+      name: `Search ${String(i + 1).padStart(4, '0')}`,
+      query: 'status = Open',
+      owner: { id: 1, name: 'Ada' },
+      starred: true,
+    }));
+    return async (_method: string, path: string): Promise<NativeAnswer> => {
+      asked.push(path);
+      const url = new URL(path, 'http://taskmoor.test');
+      if (
+        url.pathname !== '/api/v1/saved-searches' ||
+        url.searchParams.get('filter') !== 'starred'
+      ) {
+        return { status: 404, body: { error: 'not_found' } };
+      }
+      const limit = Math.min(500, Number(url.searchParams.get('limit') ?? 500));
+      const cursor = url.searchParams.get('cursor');
+      const from = cursor === null ? 0 : Number(cursor.slice(1));
+      const page = searches.slice(from, from + limit);
+      const next = from + limit < searches.length ? `c${from + limit}` : null;
+      return { status: 200, body: { savedSearches: page, next } };
+    };
+  }
+
+  it('[API-003] lists every starred saved search, past the first 500', async () => {
+    const asked: string[] = [];
+    const reply = await call('/rest/api/:v/filter/favourite', nativeStarred(1_100, asked));
+    const ids = (reply.body as { id: string; favourite: boolean }[]).map((f) => f.id);
+    expect(ids).toHaveLength(1_100);
+    expect(new Set(ids).size).toBe(1_100);
+    expect(ids.at(-1)).toBe('1100');
+    expect(asked).toEqual([
+      '/api/v1/saved-searches?filter=starred&limit=500',
+      '/api/v1/saved-searches?filter=starred&limit=500&cursor=c500',
+      '/api/v1/saved-searches?filter=starred&limit=500&cursor=c1000',
+    ]);
+  });
+
+  it('[API-003] stops reading favourite filters when the next page repeats', async () => {
+    let calls = 0;
+    const reply = await call('/rest/api/:v/filter/favourite', async () => {
+      calls += 1;
+      return { status: 200, body: { savedSearches: [], next: 'SAME' } };
+    });
+    expect(reply.body).toEqual([]);
+    expect(calls).toBe(2);
+  });
+});

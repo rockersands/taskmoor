@@ -54,6 +54,28 @@ async function everyTrack(ctx: ShimContext, q?: string): Promise<Any[]> {
   return all;
 }
 
+/** Saved searches read at most, against a list that never ends. */
+const MOST_SAVED_SEARCHES = 20_000;
+
+/**
+ * Every saved search the caller starred, a page of 500 at a time: the native list pages by
+ * `cursor` (T-310), so reading its first page alone left out every one past the first 500 by
+ * name. Stops at a repeated cursor.
+ */
+async function everyStarredSearch(ctx: ShimContext): Promise<Any[]> {
+  const all: Any[] = [];
+  let cursor: string | null = null;
+  do {
+    const params = new URLSearchParams({ filter: 'starred', limit: '500' });
+    if (cursor !== null) params.set('cursor', cursor);
+    const page = ok(await ctx.native('GET', `/api/v1/saved-searches?${params}`));
+    all.push(...((page.savedSearches ?? []) as Any[]));
+    const next: string | null = page.next ?? null;
+    cursor = next !== null && next !== cursor ? next : null;
+  } while (cursor !== null && all.length < MOST_SAVED_SEARCHES);
+  return all;
+}
+
 async function tokenSearch(ctx: ShimContext, input: Any) {
   const jql = String(input.jql ?? '');
   const max = Math.min(5000, Math.max(1, Number(input.maxResults ?? 50) || 50));
@@ -574,8 +596,7 @@ export const PLATFORM_ROUTES: readonly ShimRoute[] = [
     method: 'GET',
     path: `${API}/filter/favourite`,
     handle: async (ctx) => {
-      const list = ok(await ctx.native('GET', '/api/v1/saved-searches?filter=starred'))
-        .savedSearches as Any[];
+      const list = await everyStarredSearch(ctx);
       return {
         status: 200,
         body: list.filter((s) => s.starred !== false).map((s) => filter(s, ctx)),

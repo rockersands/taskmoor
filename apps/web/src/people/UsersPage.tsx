@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl';
 import { PersonalDataSection } from '../account/PersonalDataSection';
 import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
+import { pageAfter } from '../api/pages';
 import { useT } from '../i18n/I18nProvider';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
@@ -38,10 +39,13 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
   const [status, setStatus] = useState<UserStatus>('active');
   const [state, setState] = useState<
     | { status: 'loading' }
-    | { status: 'loaded'; users: User[]; total: number }
+    | ({ status: 'loaded' } & Listed)
     | { status: 'failed' }
     | { status: 'forbidden' }
   >(notAdmin ? { status: 'forbidden' } : { status: 'loading' });
+  // Each reading of the list from its start takes the next number; a page that arrives after a
+  // newer reading began (another search, another status, a change) is dropped (T-307).
+  const reading = useRef(0);
   const [message, setMessage] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [link, setLink] = useState<{ name: string; url: string } | null>(null);
@@ -51,16 +55,92 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
   // A deactivation takes the person's Deactivate away: the page's heading keeps the focus.
   const title = useRef<HTMLHeadingElement>(null);
 
-  const load = useCallback(async () => {
+  /** The person the focus goes to: the first one the last page brought, as Show more goes. */
+  const [focusId, setFocusId] = useState<number | null>(null);
+  const focusRow = useCallback((row: HTMLLIElement | null) => row?.focus(), []);
+
+  /**
+   * Reads the list from its start: one page after a search, or as many as were shown (`keep`)
+   * after a change, so Show more's pages stay open. Resolves to what it shows, or null.
+   */
+  const load = useCallback(
+    async (keep = 0): Promise<Listed | null> => {
+      const mine = ++reading.current;
+      const asked = { query: query.trim(), show: status };
+      const start: Listed = {
+        ...asked,
+        users: [],
+        total: 0,
+        read: 0,
+        lastId: null,
+        end: false,
+        more: false,
+      };
+      try {
+        let listed = start;
+        let moved = 0;
+        do {
+          const got = await pageAfter(
+            listed,
+            (offset) => client.users(asked.query, asked.show, offset),
+            (page) => page.users,
+            moved < MOST_MOVES,
+          );
+          if (mine !== reading.current) return null;
+          if (got === null) {
+            // The list moved while it was read: from its start again.
+            moved += 1;
+            listed = start;
+          } else {
+            listed = withPage(listed, got.rows, got.page.total);
+          }
+        } while (listed === start || (listed.read < Math.min(keep, listed.total) && !listed.end));
+        setState({ status: 'loaded', ...listed });
+        return listed;
+      } catch (error) {
+        if (mine !== reading.current || expired(error)) return null;
+        if (error instanceof ApiError && error.status === 403) setState({ status: 'forbidden' });
+        else setState({ status: 'failed' });
+        return null;
+      }
+    },
+    [client, query, status, expired],
+  );
+  const shown = state.status === 'loaded' ? state.read : 0;
+
+  /**
+   * Show more: the next page of the same search, after the rows already shown (T-307). When
+   * the list moved meanwhile (someone left it or came), it is read again from its start, one
+   * page further, so nobody is skipped. The last page puts the focus on the first person it
+   * brought.
+   */
+  const more = async () => {
+    if (state.status !== 'loaded' || state.more) return;
+    const mine = reading.current;
+    const from = state;
+    setState({ ...from, more: true });
+    setFocusId(null);
     try {
-      const found = await client.users(query.trim(), status);
-      setState({ status: 'loaded', ...found });
+      const got = await pageAfter(
+        from,
+        (offset) => client.users(from.query, from.show, offset),
+        (page) => page.users,
+      );
+      if (mine !== reading.current) return;
+      const after =
+        got === null ? await load(from.read + 1) : withPage(from, got.rows, got.page.total);
+      if (after === null) return;
+      if (got !== null) setState({ status: 'loaded', ...after, more: false });
+      if (after.end || after.read >= after.total) {
+        const before = new Set(from.users.map((u) => u.id));
+        setFocusId((after.users.find((u) => !before.has(u.id)) ?? after.users.at(-1))?.id ?? null);
+      }
     } catch (error) {
-      if (expired(error)) return;
-      if (error instanceof ApiError && error.status === 403) setState({ status: 'forbidden' });
-      else setState({ status: 'failed' });
+      if (mine !== reading.current || expired(error)) return;
+      setState((s) => (s.status === 'loaded' ? { ...s, more: false } : s));
+      setProblem(t('admin.users.failed'));
     }
-  }, [client, query, status, expired]);
+  };
 
   useEffect(() => {
     if (notAdmin) return;
@@ -93,7 +173,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
     try {
       await work();
       setMessage(said);
-      await load();
+      await load(shown);
     } catch (error) {
       if (!expired(error)) setProblem(refusal(error));
     }
@@ -136,7 +216,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                 setMessage(t('admin.users.added', { name: user.name }));
                 setProblem(null);
                 setLink(activation ? { name: user.name, url: activation } : null);
-                void load();
+                void load(shown);
               }}
               onCancel={adding.close}
               onProblem={(error) => setProblem(refusal(error))}
@@ -206,7 +286,12 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                 <p className="page-note">{t('admin.users.count', { count: state.total })}</p>
                 <ul className="people-list people-list-users">
                   {state.users.map((u) => (
-                    <li key={u.id} className="people-item">
+                    <li
+                      key={u.id}
+                      className="people-item"
+                      tabIndex={u.id === focusId ? -1 : undefined}
+                      ref={u.id === focusId ? focusRow : undefined}
+                    >
                       <div className="people-main">
                         <p className="people-name">
                           {u.name}
@@ -287,7 +372,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                                   }
                                   setMessage(t('admin.users.deactivatedSaid', { name: u.name }));
                                   title.current?.focus();
-                                  await load();
+                                  await load(shown);
                                 }}
                               />
                             ) : (
@@ -363,7 +448,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                                 const { label } = await client.erase(u.id, confirmEmail);
                                 setOpen(null);
                                 setMessage(t('admin.users.erasedSaid', { label }));
-                                await load();
+                                await load(shown);
                               } catch (error) {
                                 if (!expired(error)) setProblem(refusal(error));
                               }
@@ -374,12 +459,58 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                     </li>
                   ))}
                 </ul>
+                {!state.end && state.read < state.total && (
+                  <div className="form-actions">
+                    <button
+                      type="button"
+                      className="button-secondary"
+                      // Not disabled: the focus stays on it while the page loads.
+                      aria-disabled={state.more || undefined}
+                      onClick={() => void more()}
+                    >
+                      {t('admin.users.more')}
+                    </button>
+                  </div>
+                )}
               </>
             ))}
         </>
       )}
     </section>
   );
+}
+
+/** The people shown, the search they answer, and how far the server's list has been read. */
+interface Listed {
+  query: string;
+  /** Which people the list holds: active, deactivated or everyone. */
+  show: UserStatus;
+  users: User[];
+  total: number;
+  /** Rows read from the server so far: where the next page starts. */
+  read: number;
+  /** The id of the last row read, which the next page reads again (`pageAfter`). */
+  lastId: number | null;
+  /** A page brought nobody new before `total` was reached (people left the list meanwhile). */
+  end: boolean;
+  /** Show more is reading the next page. */
+  more: boolean;
+}
+
+/** Reads of a list that keeps moving before its pages are taken as they come. */
+const MOST_MOVES = 3;
+
+/** The list with a page's new rows after it; someone already shown is not shown twice. */
+function withPage<L extends Listed>(listed: L, rows: User[], total: number): L {
+  const known = new Set(listed.users.map((u) => u.id));
+  return {
+    ...listed,
+    users: [...listed.users, ...rows.filter((u) => !known.has(u.id))],
+    total,
+    read: listed.read + rows.length,
+    lastId: rows.at(-1)?.id ?? listed.lastId,
+    end: rows.length === 0,
+  };
 }
 
 function AddUser({

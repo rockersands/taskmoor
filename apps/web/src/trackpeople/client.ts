@@ -1,4 +1,5 @@
 import { api } from '../api/client';
+import { everyManagedTrack } from '../api/managedTracks';
 import { everyPage } from '../api/pages';
 import type { SessionUser } from '../session/SessionProvider';
 
@@ -109,7 +110,7 @@ export interface TrackPeopleClient {
 }
 
 export const trackPeopleClient: TrackPeopleClient = {
-  managedTracks: async () => (await api<{ tracks: ManagedTrack[] }>('/me/managed-tracks')).tracks,
+  managedTracks: () => everyManagedTrack<ManagedTrack>(),
   track: async (id) => (await api<{ track: ManagedTrack }>(`/tracks/${id}`)).track,
   roles: async (trackId) => (await api<{ roles: TrackRole[] }>(`/tracks/${trackId}/roles`)).roles,
   roleHolders: async (trackId) =>

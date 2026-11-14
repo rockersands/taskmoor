@@ -93,6 +93,29 @@ export interface HistoryEntry {
   transitionId: number | null;
 }
 
+/**
+ * One entry of a ticket's activity, as `GET /api/v1/tickets/:id/activity` answers it: a change
+ * set (who, when, the fields it changed), with the comment it added or deleted when the reader
+ * may read it (`excerpt` null once deleted).
+ */
+export interface ActivityEntry {
+  changeSet: string;
+  at: string;
+  actor: Person | null;
+  comment: { id: number; excerpt: string | null } | null;
+  changes: Pick<HistoryEntry, 'field' | 'fieldName' | 'valueType' | 'from' | 'to'>[];
+}
+
+/**
+ * A page of a ticket's whole activity, newest first (T-309): its change sets, the time entries
+ * that started in the stretch of time they cover, and where the next page starts.
+ */
+export interface ActivityPage {
+  activity: ActivityEntry[];
+  timeEntries: TimeEntry[];
+  next: string | null;
+}
+
 export interface TimeEntry {
   id: number;
   author: Person;
@@ -161,6 +184,8 @@ export interface TicketClient {
     id: number,
     before?: string,
   ) => Promise<{ changes: HistoryEntry[]; next: string | null }>;
+  /** A page of everything that happened on the ticket, newest first (CORE-022 "All"). */
+  activity: (id: number, cursor?: string) => Promise<ActivityPage>;
   timeEntries: (id: number) => Promise<TimeEntry[]>;
   logTime: (id: number, entry: { duration: string; description: string }) => Promise<TimeEntry>;
   links: (id: number) => Promise<{ links: TicketLink[]; webLinks: WebLink[] }>;
@@ -201,6 +226,10 @@ export const ticketClient: TicketClient = {
   history: (id, before) =>
     api<{ changes: HistoryEntry[]; next: string | null }>(
       `/tickets/${id}/history?limit=50${before === undefined ? '' : `&cursor=${before}`}`,
+    ),
+  activity: (id, cursor) =>
+    api<ActivityPage>(
+      `/tickets/${id}/activity?kind=all&limit=50${cursor === undefined ? '' : `&cursor=${cursor}`}`,
     ),
   // Every entry, oldest first: the route answers 100 a page by default, and the newest are last.
   timeEntries: (id) =>

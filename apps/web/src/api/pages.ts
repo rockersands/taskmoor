@@ -31,3 +31,31 @@ export async function everyPage<T, C>(
   } while (after !== null && all.length < most && asked.size < most);
   return all;
 }
+
+/** How far a list paged by offset has been read: the rows read and the id of the last one. */
+export interface OffsetRead {
+  read: number;
+  lastId: number | null;
+}
+
+/**
+ * The next page of a list paged by offset (People, API tokens; T-307, T-308), read from the last
+ * row already read, again. Such a list moves while it is read: when a row ahead of the offset
+ * leaves it (an expiry, another administrator, the directory), the next page starts a row late
+ * and one row is never shown; when one comes, a row is repeated. So the page starts at the last
+ * row read, and when that row is not its first the list moved: the answer is `null`, for the
+ * caller to read the list again from its start. Otherwise `rows` are the page's rows after it.
+ * With `check` false the page is read from the offset as it is, for a list that keeps moving.
+ */
+export async function pageAfter<P, T extends { id: number }>(
+  from: OffsetRead,
+  read: (offset: number) => Promise<P>,
+  rowsOf: (page: P) => readonly T[],
+  check = true,
+): Promise<{ page: P; rows: T[] } | null> {
+  const again = check && from.read > 0 && from.lastId !== null ? 1 : 0;
+  const page = await read(from.read - again);
+  const rows = rowsOf(page);
+  if (again === 1 && rows[0]?.id !== from.lastId) return null;
+  return { page, rows: rows.slice(again) };
+}
