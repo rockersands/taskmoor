@@ -224,7 +224,7 @@ it, hand it on or move it to another status, the controls follow at once.
 | **Start date**, **Due date** | Pick a date, or clear it |
 | **Original estimate**, **Time spent**, **Remaining estimate** | Read, in hours |
 | **Target releases**, **Areas** | Read |
-| **Visibility level** | Read; **Everyone who can browse the track** when none is set |
+| **Visibility level** | Read; **Everyone who can see the track** when none is set |
 | **Parent** | Follow the link to the parent ticket |
 | **Created**, **Updated** | Read |
 
@@ -357,7 +357,9 @@ because it will never be done: three done, one open and one rejected reads 75%.
 **Edit** changes an item's words or a checklist's name, **Move up** and **Move down** change the
 order, with the keyboard as with the pointer, and **Remove** takes it away. With a mouse or a
 finger you can also drag an item by its grip (the six dots among its controls) to another place in
-its checklist; a line shows where it will land, and Escape stops the drag with nothing moved. Every change shows in the
+its checklist; a line shows where it will land, and Escape stops the drag with nothing moved. On a
+phone an item keeps its name on one row and its grip, its state and **More** on the next: **More**
+holds an item's **Edit**, **Move up**, **Move down** and **Remove**. Every change shows in the
 ticket's [history](#history) and reaches others who have the ticket open. Changing a checklist needs
 the **Edit tickets** permission; a status that reserves editing to some people holds here too, and
 the section says so. Everyone who can see the ticket can read them.

@@ -16,6 +16,11 @@ const stageFill = (index: number): CSSProperties => ({
   background: `color-mix(in oklab, var(--color-flow-first) ${100 - index * 50}%, var(--color-flow-last))`,
 });
 
+/** Whether the stages count no ticket at all, for certain (S3-WK-5). */
+export function countsNone(stages: { new: Counted; active: Counted; closed: Counted }): boolean {
+  return STAGES.every((s) => stages[s].exact && stages[s].count === 0);
+}
+
 /**
  * Tickets by stage: one bar and a legend, each number linking to the search that finds them. A
  * release's page and a release across tracks' page both draw it.

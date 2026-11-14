@@ -795,6 +795,12 @@
   transition: transform var(--motion-base) var(--ease-settle);
 }
 
+/* Tiles in a row share its height: the extra room goes below, so every title starts at one line
+   whatever its hint's length (S3-WK-4). */
+.start-tile {
+  align-content: start;
+}
+
 .start-tile:hover,
 .track-tile:hover {
   box-shadow: var(--glass-highlight), var(--shadow-2);
@@ -824,10 +830,21 @@
   line-height: 1.45;
 }
 
+/* The key sits on one line in every tile of a row: a name that wraps grows upwards from it
+   (S3-WK-4), and the badge stays in the middle. */
 .track-tile {
   grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
   align-items: center;
   column-gap: var(--space-3);
+}
+
+.track-tile-name {
+  align-self: end;
+}
+
+.track-tile-key {
+  align-self: start;
 }
 
 .track-tile-badge {

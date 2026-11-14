@@ -29,7 +29,7 @@ import {
   UNREACHABLE,
 } from './crossTrackClient';
 import { ReleaseState } from './ReleaseState';
-import { StageProgress } from './StageProgress';
+import { countsNone, StageProgress } from './StageProgress';
 
 export interface ReleasePageProps {
   releaseId: number;
@@ -229,10 +229,13 @@ export function ReleasePage({
           {notice}
         </p>
 
-        <section className="glass-card release-section" aria-labelledby={`${id}-progress`}>
-          <h2 id={`${id}-progress`}>{t('release.progress')}</h2>
-          <StageProgress stages={overview.stages} />
-        </section>
+        {/* With no tickets there is no progress to draw: the Tickets card says so (S3-WK-5). */}
+        {!countsNone(overview.stages) && (
+          <section className="glass-card release-section" aria-labelledby={`${id}-progress`}>
+            <h2 id={`${id}-progress`}>{t('release.progress')}</h2>
+            <StageProgress stages={overview.stages} />
+          </section>
+        )}
 
         {overview.warnings.length > 0 && (
           <section className="glass-card release-section" aria-labelledby={`${id}-warnings`}>

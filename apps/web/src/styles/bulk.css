@@ -86,3 +86,15 @@
   background: var(--color-warning-soft);
   color: var(--color-text);
 }
+
+/* A finger reaches each ticket key alone on its line (S3-WK-7, ADR-033): the changed tickets and
+   the ones that were not changed are bare links, not words inside a sentence. */
+@media (pointer: coarse) {
+  .bulk-changed a,
+  .bulk-ticket a {
+    display: inline-flex;
+    align-items: center;
+    min-width: var(--hit-target-touch);
+    min-height: var(--hit-target-touch);
+  }
+}

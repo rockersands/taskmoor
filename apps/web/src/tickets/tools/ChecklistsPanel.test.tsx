@@ -406,6 +406,48 @@ describe('ChecklistsPanel', () => {
     expect(await screen.findByRole('checkbox', { name: 'Print it' })).toBeVisible();
   });
 
+  it('[CORE-033] puts an item’s Edit, moves and Remove behind More on a phone, the focus kept (PL-44)', async () => {
+    setViewportWidth(360);
+    const user = userEvent.setup();
+    const { client } = renderPanel();
+    const more = await screen.findByRole('button', { name: 'More options for Write the notes' });
+    // Two rows to an item: its name, then its grip, its state and More; no row of buttons.
+    expect(screen.queryByRole('button', { name: 'Move down Write the notes' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Edit Write the notes' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove Write the notes' })).toBeNull();
+    await user.click(more);
+    const menu = screen.getByRole('menu', { name: 'More options for Write the notes' });
+    // The first item cannot go up.
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Edit', 'Move down', 'Remove']);
+    await user.click(within(menu).getByRole('menuitem', { name: 'Move down' }));
+    await waitFor(() =>
+      expect(client.calls).toContainEqual({
+        action: 'orderItems',
+        args: [41, 30, [301, 300, 302, 303, 304]],
+      }),
+    );
+    await waitFor(() => expect(more).toHaveFocus());
+    // Edit opens the same form, and the focus comes back to More when it closes.
+    await user.click(more);
+    await user.click(screen.getByRole('menuitem', { name: 'Edit' }));
+    const field = screen.getByRole('textbox', { name: 'Item' });
+    await waitFor(() => expect(field).toHaveFocus());
+    await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'More options for Write the notes' }),
+      ).toHaveFocus(),
+    );
+    // A wider screen has the buttons back.
+    act(() => setViewportWidth(1440));
+    expect(screen.getByRole('button', { name: 'Move up Write the notes' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: /^More options/ })).toBeNull();
+  });
+
   it('[NFR-006] comes from the catalogue, in the pseudo-locale too', async () => {
     const { errors, container } = renderPanel(undefined, 'en-XA');
     await screen.findByRole('progressbar');

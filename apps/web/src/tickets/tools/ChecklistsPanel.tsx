@@ -11,6 +11,9 @@ import { ApiError } from '../../api/client';
 import { useT } from '../../i18n/I18nProvider';
 import { useLockText } from '../../locks/useLockText';
 import { EmptyState } from '../../shell/EmptyState';
+import { leaveMotion } from '../../shell/motion';
+import { useMediaQuery } from '../../shell/useMediaQuery';
+import { useMenuButton } from '../../shell/useMenuButton';
 import { ITEM_STATE_LABELS, ITEM_STATES, type ItemState } from './checklistStates';
 import type {
   Checklist,
@@ -669,6 +672,108 @@ function ChecklistBlock({
   );
 }
 
+/** Where an item's controls go under its name (ticket-tools.css): its other actions, in a menu. */
+const CHECKLIST_COMPACT = '(max-width: 40rem)';
+
+/**
+ * An item's actions on a phone (PL-44): Edit, the moves and Remove behind one More button, so an
+ * item takes two rows, its name and then its grip, its state and More. The same actions, in the
+ * same words, as the buttons beside it on a wider screen; after a move the focus is on More again.
+ */
+function ItemActions({
+  text,
+  opener,
+  busy,
+  canMoveUp,
+  canMoveDown,
+  focusMove,
+  onMoveFocused,
+  onEdit,
+  onMove,
+  onRemove,
+}: {
+  text: string;
+  /** Takes the More button too, for the focus to come back to it when the edit form closes. */
+  opener: RefObject<HTMLButtonElement | null>;
+  busy: boolean;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  focusMove: -1 | 1 | null;
+  onMoveFocused: () => void;
+  onEdit: () => void;
+  onMove: (step: -1 | 1) => void;
+  onRemove: () => void;
+}) {
+  const t = useT();
+  const { open, openMenu, close, container, button, menu, buttonId, menuId, ...keys } =
+    useMenuButton();
+  useEffect(() => {
+    if (focusMove === null) return;
+    button.current?.focus();
+    onMoveFocused();
+  }, [focusMove, onMoveFocused, button]);
+  const actions = [
+    { key: 'edit', label: t('ticketView.edit'), run: onEdit },
+    ...(canMoveUp ? [{ key: 'up', label: t('ticketTools.moveUp'), run: () => onMove(-1) }] : []),
+    ...(canMoveDown
+      ? [{ key: 'down', label: t('ticketTools.moveDown'), run: () => onMove(1) }]
+      : []),
+    { key: 'remove', label: t('ticketTools.remove'), run: onRemove },
+  ];
+  return (
+    <div className="user-menu checklist-item-menu" ref={container}>
+      <button
+        ref={(node) => {
+          button.current = node;
+          opener.current = node;
+        }}
+        id={buttonId}
+        type="button"
+        className="button-secondary ticket-action"
+        aria-label={t('ticketTools.checklists.moreOf', { text })}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        {...(open ? { 'aria-controls': menuId } : {})}
+        onClick={() => (open ? close(false) : openMenu(true))}
+        onKeyDown={keys.onButtonKeyDown}
+      >
+        {t('ticketTools.checklists.more')}
+      </button>
+      {open && (
+        <div ref={leaveMotion} className="user-menu-popup">
+          <div
+            ref={menu}
+            id={menuId}
+            role="menu"
+            aria-labelledby={buttonId}
+            className="user-menu-list"
+            onKeyDown={keys.onMenuKeyDown}
+          >
+            {actions.map((action) => (
+              <button
+                key={action.key}
+                role="menuitem"
+                tabIndex={-1}
+                type="button"
+                className="user-menu-item"
+                aria-disabled={busy || undefined}
+                onClick={() => {
+                  if (busy) return;
+                  // Edit and the moves put the focus where it belongs; Remove, on the new item's field.
+                  close(action.key !== 'remove');
+                  action.run();
+                }}
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ChecklistRow({
   item,
   canEdit,
@@ -706,7 +811,9 @@ function ChecklistRow({
 }) {
   const t = useT();
   const boxId = useId();
+  const compact = useMediaQuery(CHECKLIST_COMPACT);
   const [editing, setEditing] = useState(false);
+  // Edit, or on a phone the menu that holds it: where the focus goes back once the form closes.
   const editButton = useRef<HTMLButtonElement>(null);
   useFocusBack(editing, editButton);
   // What was just chosen, shown at once while the server answers. It goes when the list shows
@@ -802,32 +909,51 @@ function ChecklistRow({
               </option>
             ))}
           </select>
-          <button
-            ref={editButton}
-            type="button"
-            className="button-secondary ticket-action"
-            aria-label={t('ticketTools.checklists.edit', { text: item.text })}
-            onClick={() => setEditing(true)}
-          >
-            {t('ticketView.edit')}
-          </button>
-          <MoveButtons
-            up={canMoveUp ? t('ticketTools.checklists.moveUp', { text: item.text }) : null}
-            down={canMoveDown ? t('ticketTools.checklists.moveDown', { text: item.text }) : null}
-            busy={busy}
-            focus={focusMove}
-            onFocused={onMoveFocused}
-            onMove={onMove}
-          />
-          <button
-            type="button"
-            className="button-secondary ticket-action"
-            disabled={busy}
-            aria-label={t('ticketTools.checklists.removeItem', { text: item.text })}
-            onClick={onRemove}
-          >
-            {t('ticketTools.remove')}
-          </button>
+          {compact ? (
+            <ItemActions
+              text={item.text}
+              opener={editButton}
+              busy={busy}
+              canMoveUp={canMoveUp}
+              canMoveDown={canMoveDown}
+              focusMove={focusMove}
+              onMoveFocused={onMoveFocused}
+              onEdit={() => setEditing(true)}
+              onMove={onMove}
+              onRemove={onRemove}
+            />
+          ) : (
+            <>
+              <button
+                ref={editButton}
+                type="button"
+                className="button-secondary ticket-action"
+                aria-label={t('ticketTools.checklists.edit', { text: item.text })}
+                onClick={() => setEditing(true)}
+              >
+                {t('ticketView.edit')}
+              </button>
+              <MoveButtons
+                up={canMoveUp ? t('ticketTools.checklists.moveUp', { text: item.text }) : null}
+                down={
+                  canMoveDown ? t('ticketTools.checklists.moveDown', { text: item.text }) : null
+                }
+                busy={busy}
+                focus={focusMove}
+                onFocused={onMoveFocused}
+                onMove={onMove}
+              />
+              <button
+                type="button"
+                className="button-secondary ticket-action"
+                disabled={busy}
+                aria-label={t('ticketTools.checklists.removeItem', { text: item.text })}
+                onClick={onRemove}
+              >
+                {t('ticketTools.remove')}
+              </button>
+            </>
+          )}
         </span>
       ) : (
         <span className="checklist-item-state">{t(ITEM_STATE_LABELS[state])}</span>

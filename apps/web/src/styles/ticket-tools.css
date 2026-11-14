@@ -262,8 +262,13 @@
   gap: var(--space-1);
 }
 
+/*
+ * The items share one set of columns (S3-WK-2): each row is a subgrid of the list, so the names
+ * have one width and every row's grip and state start at one line, whichever moves a row offers.
+ */
 .checklist-items {
   display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: var(--space-2);
   margin: 0;
   padding: 0;
@@ -272,8 +277,9 @@
 
 .checklist-item {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: var(--space-2);
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  row-gap: var(--space-2);
   align-items: center;
 }
 
@@ -349,13 +355,18 @@
 }
 
 @media (max-width: 40rem) {
-  .checklist-item {
+  .checklist-items {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .checklist-item-controls,
   .checklist-item-state {
     grid-column: 2;
+  }
+
+  /* Grip, state and More (PL-44) on one row under the name, from the row's start: room for all
+     three on the narrowest phone. */
+  .checklist-item-controls {
+    grid-column: 1 / -1;
   }
 }
 

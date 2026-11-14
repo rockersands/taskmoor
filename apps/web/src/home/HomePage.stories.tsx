@@ -63,6 +63,47 @@ export const ManyTracks: Story = {
   },
 };
 
+/**
+ * Four tiles to a row (S3-WK-4): a start tile whose hint runs longer, and a track whose name wraps,
+ * still put every title on one line and every track key on one line.
+ */
+export const TilesInLine: Story = {
+  args: {
+    tracks: async () => [
+      { id: 1, key: 'MOB', name: 'Mobile apps', type: 'software' },
+      { id: 2, key: 'SWEEPL', name: 'Sweep local track for the long run', type: 'software' },
+      { id: 3, key: 'WEB', name: 'Web app', type: 'software' },
+      { id: 4, key: 'OPS', name: 'Operations', type: 'software' },
+    ],
+  },
+  render: (args) => (
+    <div style={{ width: 1000 }}>
+      <HomePage {...args} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText('Sweep local track for the long run');
+    const tops = (selector: string) =>
+      Array.from(canvasElement.querySelectorAll(selector), (e) =>
+        Math.round(e.getBoundingClientRect().top),
+      );
+    const heights = (selector: string) =>
+      Array.from(canvasElement.querySelectorAll(selector), (e) =>
+        Math.round(e.getBoundingClientRect().height),
+      );
+    // The case in hand: hints and names of different heights in one row.
+    await expect(new Set(heights('.start-tile-hint')).size).toBeGreaterThan(1);
+    await expect(new Set(heights('.track-tile-name')).size).toBeGreaterThan(1);
+    const titles = tops('.start-tile-title');
+    await expect(titles).toHaveLength(4);
+    await expect(new Set(titles).size, titles.join()).toBe(1);
+    const keys = tops('.track-tile-key');
+    await expect(keys).toHaveLength(4);
+    await expect(new Set(keys).size, keys.join()).toBe(1);
+  },
+};
+
 const followed = (
   id: number,
   summary: string,

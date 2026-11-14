@@ -341,6 +341,14 @@ describe('a release’s page (M1-050)', () => {
     zone.mockRestore();
   });
 
+  it('[CORE-016] draws no empty progress for a release with no tickets, and says why once (S3-WK-5)', async () => {
+    renderRelease(4);
+    const tickets = within(await screen.findByRole('region', { name: 'Tickets' }));
+    expect(tickets.getByText('No tickets target this release.')).toBeVisible();
+    expect(screen.queryByRole('region', { name: 'Progress' })).toBeNull();
+    expect(screen.queryByRole('link', { name: /^New 0/ })).toBeNull();
+  });
+
   it('[CORE-016] offers no Markdown to copy or download while the notes are empty (D27)', async () => {
     renderRelease(3);
     const notes = within(await screen.findByRole('region', { name: 'Release notes' }));
