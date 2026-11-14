@@ -1,4 +1,4 @@
-# Tickets: everything asked for in the local session
+# In progress | On Windows from 2026-11-14 (`wave14/windows-bugs`). In progress | On Windows from 2026-11-14 (`wave14/windows-bugs`). In progress | On Windows from 2026-11-14 (`wave14/windows-bugs`). In progress | On Windows from 2026-11-14 (`wave14/windows-bugs`). In progress | On Windows from 2026-11-14 (`wave14/windows-bugs`). In progress | On Windows from 2026-11-14 (`wave14/windows-bugs`). In progress | On Windows from 2026-11-14 (`wave14/windows-bugs`). In progress | On Windows from 2026-11-14 (`wave14/windows-bugs`). In progress | On Windows from 2026-11-14 (`wave14/windows-bugs`). In progress | On Windows from 2026-11-14 (`wave14/windows-bugs`). In progress | On Windows from 2026-11-14 (`wave14/windows-bugs`). Tickets: everything asked for in the local session
 
 Started 2026-11-03. One ticket per thing the user asked for or decided, so nothing from the
 conversation lives only in a chat. Bigger tasks are in `backlog.csv`, and each branch has its own

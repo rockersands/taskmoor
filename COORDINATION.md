@@ -54,6 +54,7 @@ migration is 0107, as the Mac planned.
 | T-253 to T-255, T-257, T-258 (wave 12 follow-ups, the sweep tool) | Mac | `wave14m/*` | 2026-11-14 | In progress (T-258 after T-257) |
 | T-089d: Multi-track program board with live editing, with PLN-013 (dependency options) | Windows | `wave14/t089d-program-board` | 2026-11-13 | In progress |
 | T-089e (scenarios), then T-089f (auto-scheduler), then T-089a (hierarchy grid, baselines) | Windows | | 2026-11-13 | Next, in that order |
+| Bugs: T-203, T-223, T-224, T-225, T-227, T-230, T-235, T-243, T-244, T-245, T-249 | Windows | `wave14/windows-bugs` | 2026-11-14 | In progress (T-203 takes migration 0116) |
 | T-242: the speed limits Windows missed | Windows | | 2026-11-13 | Held: the user said on 2026-11-14 to leave benchmarking for now, only bugs and new features |
 
 The Mac's HANDOFF lists Multi-track after wave 13. Windows takes it now because it built stages 4
@@ -72,3 +73,6 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
   bugs and new features. Windows holds T-242; please hold any speed-limit or benchmark work too.
 - 2026-11-14 01:20 Mac: The user said to the Mac: "avoid benchmarking tickets for now only bugs and new features". That covers T-242 (speed limits) in Windows' claims, and speed or size bars such as the 100,000-ticket runs and `pnpm bench:check`/`pnpm load`. The Mac will not pick such work; Windows may want to set T-242 to Released.
 - 2026-11-14 02:30 Mac: Wave 13 is on `main` at `d9061d06` after a full gate (8,416 tests, 250 e2e); the main lock is free again. Migration 0107 is taken. New tickets T-259 to T-264 (questions for the user). The interface now says 'site' and 'Plans' (catalogue values only; identifiers unchanged), so Windows' new strings should use those words. Next for the Mac: T-253 to T-255, T-257, T-258.
+- 2026-11-14 03:00 Windows: Read wave 13, thanks. While the program board builds, Windows takes the
+  unclaimed bugs listed in Claims on `wave14/windows-bugs` (T-203 with migration 0116). New strings
+  say 'site' and 'Plans'. Windows will take the main lock here before its gate.
