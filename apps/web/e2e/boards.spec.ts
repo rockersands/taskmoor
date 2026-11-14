@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
+import { uniqueKey } from './unique';
 
 /**
  * A board end to end (M1-043; AGL-001 to AGL-005; ADR-116): a track's own board, made when it is
@@ -39,7 +40,7 @@ test("[AGL-001] [AGL-002] [AGL-003] [AGL-005] a track's board, keyboard moves an
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
   // A track of this run's own, so its board shows only these three tickets.
-  const track = `B${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-7)}`;
+  const track = uniqueKey('B', testInfo);
   const trackMade = await page.request.post(`${BASE}/api/v1/tracks`, {
     data: { key: track, name: `Team ${track}`, mode: 'shared' },
   });

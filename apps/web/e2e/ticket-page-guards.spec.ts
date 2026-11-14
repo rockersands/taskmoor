@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
+import { uniqueKey } from './unique';
 
 /**
  * The full ticket page guards what people do (T-190, T-191), on tracks of their own: unsaved text
@@ -46,9 +47,6 @@ async function signedIn(page: Page) {
   };
 }
 
-const trackKey = (prefix: string, projectName: string) =>
-  `${prefix}${projectName.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-6)}`;
-
 const sidewaysScroll = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 
@@ -56,7 +54,7 @@ test('[NFR-005] the full ticket page asks before unsaved text goes: a link, Back
   page,
 }, testInfo) => {
   const api = await signedIn(page);
-  const key = trackKey('D', testInfo.project.name);
+  const key = uniqueKey('D', testInfo);
   await api('post', '/tracks', { key, name: `Drafts ${key}`, mode: 'shared' });
   const { ticket } = await api('post', '/tickets', { track: key, summary: 'Half done' });
   const { board } = await api('get', `/tracks/${key}/board`);
@@ -136,7 +134,7 @@ test('[IAM-010] [WF-007] the ticket page offers controls only for the fields the
   isMobile,
 }, testInfo) => {
   const api = await signedIn(page);
-  const key = trackKey('F', testInfo.project.name);
+  const key = uniqueKey('F', testInfo);
   const { track } = await api('post', '/tracks', { key, name: `Fields ${key}`, mode: 'shared' });
   const { group } = await api('post', '/groups', { name: `Approvers ${key}` });
   const { fieldRuleSet } = await api('post', '/field-rule-sets', {

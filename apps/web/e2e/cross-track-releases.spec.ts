@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
+import { uniqueRun } from './unique';
 
 /**
  * Releases across tracks end to end (T-089c; PLN-007; ADR-122 stage 4): Ori administers one track
@@ -63,7 +64,7 @@ test('[PLN-007] a release across tracks: made, linked, moved with one left out o
   test.setTimeout(120_000);
   const api = page.request;
   await signInAs(api, ADMIN.email, ADMIN.password);
-  const run = `${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-5)}`;
+  const run = uniqueRun(testInfo);
   const ori = { email: `ori-${run}@cross.test`.toLowerCase(), name: `Ori ${run}` };
   const person = (
     await ok<{ user: { id: number } }>(

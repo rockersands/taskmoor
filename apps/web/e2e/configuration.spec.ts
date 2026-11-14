@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
+import { uniqueKey } from './unique';
 
 /**
  * Administration journeys for tracks and workflow maps (M1-053): a site administrator adds a
@@ -43,11 +44,6 @@ async function signIn(page: Page) {
   expect(res.status()).toBe(200);
 }
 
-/** A track key of at most ten letters and digits, unique per project and run. */
-function trackKey(project: string, prefix: string): string {
-  return `${prefix}${project[0]?.toUpperCase()}${Date.now() % 10_000_000}`;
-}
-
 async function addTrack(page: Page, key: string, name: string) {
   await page.goto(`${BASE}/#/admin/tracks`);
   await expect(page.getByRole('heading', { level: 1, name: 'Tracks' })).toBeVisible();
@@ -63,7 +59,7 @@ test('[CORE-001] the administrator adds a track, gives a role, archives and rest
   page,
 }, testInfo) => {
   await signIn(page);
-  const key = trackKey(testInfo.project.name, 'T');
+  const key = uniqueKey('T', testInfo);
   await addTrack(page, key, `Payments ${testInfo.project.name}`);
 
   // The new track is open: rename it.
@@ -120,7 +116,7 @@ test('[WF-001] the administrator makes a workflow map, puts a track on it and de
   expect(await seriousAxeViolations(page)).toEqual([]);
 
   // A new track goes on the map; the map cannot go while the track uses it.
-  const key = trackKey(testInfo.project.name, 'M');
+  const key = uniqueKey('M', testInfo);
   await addTrack(page, key, `Mapped ${testInfo.project.name}`);
   await page.getByRole('combobox', { name: 'Workflow map' }).selectOption({ label: map });
   await expect(page.getByText(`Track ${key} uses ${map} now.`)).toBeVisible();

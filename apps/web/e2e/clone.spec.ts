@@ -1,4 +1,5 @@
 import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
+import { uniqueRun } from './unique';
 
 /**
  * Clone and deep clone end to end (M1-124, CORE-023): the Clone action on the ticket view starts
@@ -212,8 +213,7 @@ test('[CORE-023] (2) deep-clones an objective with its outcome, features and sub
       ).status,
   );
   // Two tracks of this run's own.
-  const stamp =
-    `${testInfo.project.name.slice(0, 1)}${Date.now().toString(36).slice(-5)}`.toUpperCase();
+  const stamp = uniqueRun(testInfo);
   const [from, to] = [`DF${stamp}`, `DT${stamp}`];
   for (const key of [from, to]) {
     const res = await call(request, 'post', '/tracks', {

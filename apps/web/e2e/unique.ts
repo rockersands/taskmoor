@@ -43,3 +43,12 @@ export function uniqueKey(prefix: string, testInfo: TestInfo): string {
 export function uniqueStamp(testInfo: TestInfo): string {
   return `${testInfo.project.name.replace(/\W/g, '')}${slot(testInfo)}${tick().toString(36)}`.toLowerCase();
 }
+
+/**
+ * A word of eight capitals and digits for one test's several track keys, each with a prefix of
+ * up to two letters, and for its names and addresses: the worker's slot, then the last six
+ * characters of this process's clock (T-244).
+ */
+export function uniqueRun(testInfo: TestInfo): string {
+  return `${slot(testInfo)}${tick().toString(36).toUpperCase().slice(-6)}`;
+}

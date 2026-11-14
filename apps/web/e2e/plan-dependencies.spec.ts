@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
+import { uniqueRun } from './unique';
 
 /**
  * Multi-track dependencies end to end (T-089; PLN-006; ADR-122): a plan over two tracks, where
@@ -42,7 +43,7 @@ test('[PLN-006] a plan’s dependencies: badges, late in words, the list and a b
 }, testInfo) => {
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
-  const stamp = `${testInfo.project.name.slice(0, 1).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-5)}`;
+  const stamp = uniqueRun(testInfo);
   const keys = [`DA${stamp}`, `DB${stamp}`, `DC${stamp}`];
   const ids: number[] = [];
   for (const key of keys) {
