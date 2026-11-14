@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   dashboardClient,
   type Layout,
@@ -16,6 +16,7 @@ import { defaultConfig, SETTINGS } from '../dashboards/WidgetSettings';
 import { WidgetView } from '../dashboards/WidgetView';
 import { useT } from '../i18n/I18nProvider';
 import { currentRoute, onRouteChange, replaceRoute, routeHref } from '../routing/router';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import { type TrackClient, type TrackSummaryLayout, trackClient } from './client';
@@ -61,7 +62,8 @@ const NUMBERS: Widget = {
 /**
  * A track's Summary (M1-064; RPT-006; ADR-116): its numbers until someone customizes it, then the
  * widgets its owner and administrators chose, which everyone else who sees the track reads as they
- * are, each through their own permission filter. "Back to the default" removes the customization.
+ * are, each through their own permission filter. "Back to the default" removes the customization
+ * for everyone, so it asks first and says so (D13, T-273); after it, focus goes to the heading.
  *
  * Everyone who reads it may also filter it for themselves (T-075a; RPT-006 "view and filter"): a
  * condition in the query language that every number and widget must also meet. It lives in the
@@ -76,6 +78,14 @@ export function TrackSummaryPage({
 }: TrackSummaryPageProps) {
   const t = useT();
   const titleId = useId();
+  const heading = useRef<HTMLHeadingElement>(null);
+  // After going back to the default its button is gone, so focus goes to the page's heading.
+  const [focusHeading, setFocusHeading] = useState(false);
+  useEffect(() => {
+    if (!focusHeading) return;
+    heading.current?.focus();
+    setFocusHeading(false);
+  }, [focusHeading]);
   const sections = useTrackSections();
   const [read, setRead] = useState<TrackSummaryLayout | null>(null);
   const [failed, setFailed] = useState(false);
@@ -195,18 +205,20 @@ export function TrackSummaryPage({
       );
     }
   };
+  // Asked and answered by DangerAction; a refusal keeps its question open, saying why here.
   const backToDefault = async () => {
-    if (!window.confirm(t('summary.confirmDefault'))) return;
+    setProblem(null);
     try {
       await client.resetSummaryLayout(trackKey);
-      setRead({ ...read, custom: null });
-      setDraft(null);
-      setSettingsOf(null);
-      setProblem(null);
-      setStatus(t('summary.backToDefaultDone'));
-    } catch {
+    } catch (error) {
       setProblem(t('summary.forbidden'));
+      throw error;
     }
+    setRead((r) => r && { ...r, custom: null });
+    setDraft(null);
+    setSettingsOf(null);
+    setStatus(t('summary.backToDefaultDone'));
+    setFocusHeading(true);
   };
 
   const showWidgets = draft !== null || custom !== null;
@@ -216,6 +228,7 @@ export function TrackSummaryPage({
     <section className="page track-summary" aria-labelledby={titleId}>
       <PageHeader
         titleId={titleId}
+        titleRef={heading}
         // Titled by its section, the track named above it, like the track's other pages (D26).
         title={t('track.section.summary')}
         eyebrow={read.track.name}
@@ -236,13 +249,12 @@ export function TrackSummaryPage({
                 </button>
               )}
               {read.mayCustomize && custom && (
-                <button
-                  type="button"
-                  className="button-secondary"
-                  onClick={() => void backToDefault()}
-                >
-                  {t('summary.backToDefault')}
-                </button>
+                <DangerAction
+                  label={t('summary.backToDefault')}
+                  outcome={t('summary.resetOutcome', { track: read.track.name })}
+                  confirmLabel={t('summary.resetOf', { track: read.track.name })}
+                  onConfirm={backToDefault}
+                />
               )}
             </>
           )
