@@ -380,7 +380,9 @@ fields a rule hides or the layout leaves out, stay off the ticket, and the form 
 template can name an assignee even if some of its users may not assign. A template is checked for
 what it refers to when you save it: an archived release or area, in its own field or a custom
 one, is refused as it would be on a new ticket, and so is a custom field's release or area of
-another track. Whether a value suits a type or a person is only known when a ticket is made. Each track or the every-track list holds at most 500 templates. Deleting a template
+another track. One the template already held before it was archived stays, so you can still edit
+the rest of the template after a release ships; a ticket made from it leaves that value out and
+says so. Whether a value suits a type or a person is only known when a ticket is made. Each track or the every-track list holds at most 500 templates. Deleting a template
 changes no ticket already made from it.
 
 Every ticket made records its template in its `ticket.created` event, as `templateId`, and adding,

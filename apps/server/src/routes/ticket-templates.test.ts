@@ -361,6 +361,68 @@ describe('ticket templates (CORE-029, CORE-030)', () => {
     ).toEqual({ [`defaults.fields.${shippedIn}`]: 'archived' });
   });
 
+  it('[CORE-029][CORE-015][CORE-016] keeps an archived release or area a template already holds when it is saved again, refusing only one named anew (T-287)', async () => {
+    const key = await track();
+    const made = async (path: string, name: string) =>
+      ok(await call('admin', 'POST', `/api/v1/tracks/${tracks[key]}/${path}`, { name }), 201);
+    const shipped = (await made('releases', 'R1')).release;
+    const later = (await made('releases', 'R2')).release;
+    const legacy = (await made('areas', 'Legacy')).area;
+    const field = async (name: string, type: string, multiple = false) =>
+      ok(
+        await call('admin', 'POST', '/api/v1/fields', {
+          name: `${name} ${key}`,
+          type,
+          ...(multiple ? { multiple } : {}),
+        }),
+        201,
+      ).field.id as number;
+    const shippedIn = await field('Shipped in', 'release');
+    const owners = await field('Owning areas', 'area', true);
+    const defaults = {
+      targetReleaseIds: [shipped.id],
+      areaIds: [legacy.id],
+      fields: { [shippedIn]: shipped.id, [owners]: [legacy.id] },
+    };
+    const saved = (await template('carol', { track: key, name: 'Release checklist', defaults }))
+      .template;
+    // R1 ships and is archived, and so is the area, after the template was saved.
+    ok(await call('admin', 'POST', `/api/v1/releases/${shipped.id}/archive`, {}));
+    ok(await call('admin', 'POST', `/api/v1/releases/${later.id}/archive`, {}));
+    ok(await call('admin', 'POST', `/api/v1/areas/${legacy.id}/archive`, {}));
+
+    // The form sends back every value it holds with a new name: the save goes through.
+    const renamed = ok(
+      await call('carol', 'PATCH', `/api/v1/ticket-templates/${saved.id}`, {
+        name: 'Release checklist (old)',
+        defaults,
+      }),
+    ).template;
+    expect(renamed.name).toBe('Release checklist (old)');
+    expect(renamed.defaults).toEqual(defaults);
+    // A ticket made from it leaves the archived values out and names them.
+    const fromIt = ok(await apply('alice', saved.id, { summary: 'After the release' }), 201);
+    expect([...fromIt.left].sort()).toEqual(
+      ['areaIds', 'targetReleaseIds', `fields.${shippedIn}`, `fields.${owners}`].sort(),
+    );
+    // An archived value the template did not hold is still refused, in its own field or a custom one.
+    expect(
+      ok(
+        await call('carol', 'PATCH', `/api/v1/ticket-templates/${saved.id}`, {
+          defaults: {
+            ...defaults,
+            targetReleaseIds: [shipped.id, later.id],
+            fields: { [shippedIn]: later.id, [owners]: [legacy.id] },
+          },
+        }),
+        400,
+      ).fields,
+    ).toEqual({
+      'defaults.targetReleaseIds.1': 'archived',
+      [`defaults.fields.${shippedIn}`]: 'archived',
+    });
+  });
+
   it('[CORE-030] (1) creates a ticket with the template’s values, the person’s edits winning, and its subtickets', async () => {
     const key = await track();
     const field = ok(

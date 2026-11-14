@@ -253,7 +253,10 @@ export function registerTicketTemplateRoutes(
   /**
    * What a template's values refer to, checked against the workspace and, for a track template,
    * the track: problems by body path. Values that depend on the person or the ticket type
-   * (assignability, field contexts, rules) are checked when a ticket is made.
+   * (assignability, field contexts, rules) are checked when a ticket is made. `stored` is what
+   * an edited template already holds: an archived release or area it names stays, as one stays
+   * on a ticket that has it, so archiving a release never stops a template's other edits; only
+   * one named anew is refused (T-287).
    */
   async function referenceProblems(
     workspaceId: number,
@@ -261,7 +264,14 @@ export function registerTicketTemplateRoutes(
     typeIds: readonly number[] | undefined,
     defaults: TemplateDefaults | undefined,
     subtickets: readonly TemplateSubticket[] | undefined,
+    stored?: JsonValue,
   ): Promise<Record<string, string>> {
+    const held = (stored ?? {}) as {
+      areaIds?: unknown;
+      targetReleaseIds?: unknown;
+      foundInReleaseIds?: unknown;
+      fields?: Record<string, unknown>;
+    };
     const problems: Record<string, string> = {};
     const allTypes = [
       ...(typeIds ?? []),
@@ -329,11 +339,14 @@ export function registerTicketTemplateRoutes(
             .execute()
         ).map((r) => [r.id, r.archived_at !== null]),
       );
-      // An archived one is refused with the create route's code (T-287), as a ticket would be.
+      // An archived one is refused with the create route's code (T-287), as a ticket would be,
+      // unless the template already holds it.
+      const had = held[key];
+      const kept = new Set(Array.isArray(had) ? had : []);
       list.forEach((v, i) => {
         const archived = found.get(v);
         if (archived === undefined) problems[`defaults.${key}.${i}`] = 'not_found';
-        else if (archived) problems[`defaults.${key}.${i}`] = 'archived';
+        else if (archived && !kept.has(v)) problems[`defaults.${key}.${i}`] = 'archived';
       });
     }
     if (defaults.fields) {
@@ -348,7 +361,8 @@ export function registerTicketTemplateRoutes(
         } else if (type === 'area' || type === 'release') {
           if (trackId === null) problems[`defaults.fields.${key}`] = 'track_only';
           else {
-            const problem = await trackValueProblem(workspaceId, trackId, field, raw);
+            const had = held.fields?.[key];
+            const problem = await trackValueProblem(workspaceId, trackId, field, raw, had);
             if (problem !== null) problems[`defaults.fields.${key}`] = problem;
           }
         }
@@ -360,18 +374,24 @@ export function registerTicketTemplateRoutes(
   /**
    * Why a custom release or area value cannot start a ticket in the track, with the create
    * route's codes (T-287): a value that does not read, one of another track ('not_in_track'),
-   * or an archived one ('archived'), which no ticket takes anew (CORE-015, CORE-016).
+   * or an archived one ('archived'), which no ticket takes anew (CORE-015, CORE-016), unless the
+   * template already holds it (`had`, its stored value for the field).
    */
   async function trackValueProblem(
     workspaceId: number,
     trackId: number,
     field: FieldShape,
     raw: unknown,
+    had: unknown,
   ): Promise<string | null> {
     const parsed = parseValue(field, raw);
     if (!parsed.ok) return parsed.problem;
     if (parsed.value === undefined) return null;
     const ids = [...new Set(referencedIds(field, parsed.value))];
+    const before = had === undefined || had === null ? undefined : parseValue(field, had);
+    const kept = new Set(
+      before?.ok && before.value !== undefined ? referencedIds(field, before.value) : [],
+    );
     if (ids.length === 0) return null;
     const table = field.type === 'area' ? 'area' : 'release';
     const rows = await db
@@ -382,7 +402,7 @@ export function registerTicketTemplateRoutes(
       .where('id', 'in', ids)
       .execute();
     if (rows.length !== ids.length) return 'not_in_track';
-    return rows.some((r) => r.archived_at !== null) ? 'archived' : null;
+    return rows.some((r) => r.archived_at !== null && !kept.has(r.id)) ? 'archived' : null;
   }
 
   /** A description outline in the request's format, as stored; a problem by name otherwise. */
@@ -636,6 +656,7 @@ export function registerTicketTemplateRoutes(
       body.ticketTypeIds,
       body.defaults,
       body.subtickets,
+      row.defaults,
     );
     if (Object.keys(problems).length > 0) return invalidFields(reply, problems);
     try {
