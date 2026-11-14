@@ -187,13 +187,12 @@ export const ALLOWED = {
     '.reports-check input': IN_ITS_LABEL,
     '.tutorial-card-pick input': IN_ITS_LABEL,
   },
-  /** `<file> <component>`: rendered in a `glass-card`, and draws one only where it is not nested. */
+  /**
+   * `<file> <component>`: rendered in a `glass-card`, and draws one only where it is not nested.
+   * Read per component (T-356), so a file's other components drawing one need no entry.
+   */
   glassInGlass: {
-    'admin/AdminOverviewPage.tsx AdminPageLinks':
-      'its file draws a glass card around the same links; the links themselves draw none',
     'tutorial/FirstRunOffer.tsx TutorialPicker': 'told it is `nested`, it draws wells',
-    'dashboards/DashboardPage.tsx WidgetEditorFields':
-      'its file draws glass cards in WidgetGrid, a class read beside a placeholder in a template (T-353); the fields draw none',
   },
 } satisfies Record<string, Record<string, string>>;
 

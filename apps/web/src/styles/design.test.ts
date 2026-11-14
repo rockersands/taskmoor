@@ -43,6 +43,13 @@ import { ALLOWED, OFFENDERS, type Ratchet } from './design-offenders';
  *   the files that draw it (T-353). An element whose className is built at runtime is held as one
  *   a short rule may size whenever the words of the scripts could make the class, so it is no cover
  *   for one it cannot see. A class that comes only from data, or one `classList` adds, it cannot see.
+ *   A later reset that takes a touch rule's finger's height away (`min-height: auto`) it sees on
+ *   the elements it may reach by what is written on them (T-356); one that meets a short rule only
+ *   on a class the runtime might build, a reset of the touch rule that answers a reset, and a
+ *   `max-height` that caps a finger's height, it does not: the touch stories and the probe.
+ * - A glass card in a component drawn inside one, through a component given the inner card as its
+ *   children or a helper imported from another file: the Chrome pass. It reads what each component
+ *   draws (T-356), and JSX outside every component as any of its file's.
  * - Whether a purpose line or an empty state says anything useful, spacing and hierarchy: a person.
  * - An empty message whose ID says neither "none" nor "empty", such as `noTickets`, or that is not
  *   the words of a `p`, `li`, `div`, `td` or `dd`; a list that stays quiet with no message at all; a
@@ -426,6 +433,8 @@ export interface JsxElementFact extends JsxNode {
    * between (T-353): where that component is drawn, so is it. Undefined when it is not one's.
    */
   root?: string | undefined;
+  /** The component it is drawn by, as `ownerIn` reads it (T-356). */
+  owner?: string | undefined;
   /**
    * The elements around each place its `root` is drawn, in the files that draw it, nearest first,
    * one list per place (`elementsInPlace`); a selector must reach it in every one. Unknown places
@@ -612,6 +621,28 @@ export function mayReach(part: string, element: JsxNode, carry: MayCarry = anyth
   return matchCompound(compounds.at(-1) ?? '', element, carry) !== false;
 }
 
+/** Whether a class could be on an element whose className is built at runtime: never. */
+const onlyWritten: MayCarry = () => false;
+
+/**
+ * Whether a selector may reach an element by what its source writes on it (T-356), for a rule that
+ * may take a finger's height away: its last compound does not surely miss it by its tag, its
+ * attributes and the classes written on it, surely or under a condition, and a parent it asks for
+ * with `>` is not surely another, where the element's parent is in its file. A class only the
+ * runtime could build is not counted: nearly any class could be, and no touch rule would stand.
+ */
+export function mayUndo(part: string, element: JsxElementFact): boolean {
+  const { compounds, combinators } = compoundsOf(part.replace(/::(?:before|after)$/, ''));
+  if (matchCompound(compounds.at(-1) ?? '', element, onlyWritten) === false) return false;
+  const parent = element.around[0];
+  return !(
+    combinators.at(-1) === '>' &&
+    parent !== undefined &&
+    !isBoundary(parent) &&
+    matchCompound(compounds.at(-2) ?? '', parent, onlyWritten) === false
+  );
+}
+
 /** A selector's specificity: ids, then classes, attributes and pseudo-classes, then tags. */
 export function specificity(part: string): [number, number, number] {
   const total: [number, number, number] = [0, 0, 0];
@@ -655,6 +686,15 @@ const beats = (a: string, b: string) => {
  * one kind the cascade: `!important`, then specificity, then the later rule, `sources` being in the
  * order the app loads them. So a short rule of equal weight after a touch rule undoes it.
  *
+ * Nor does a touch rule count where another rule that may hold on a touch screen (under no query
+ * for print or a fine pointer only) wins over it in the cascade and sets the same kind of height to
+ * anything short of a finger's (T-356): a reset such as `min-height: auto` or `min-height: 0` after
+ * a finger's floor, or `height: auto` after a finger's height over a short min-height, takes the
+ * finger's height away again, though it sizes nothing short itself. It counts where it reaches the
+ * same element: under the touch rule's own selector, or on an element the short rule may size that
+ * it may reach by what the source writes on it (`mayUndo`). A short rule is no reset, since it
+ * answers for itself, nor is one that a touch rule under its own selector answers.
+ *
  * A touch rule under another selector counts too when it reaches every element of `elements` (the
  * app's JSX, `jsxFacts`, placed by `elementsInPlace`) that the short selector may reach, and wins
  * there (T-298). One whose reach the source cannot tell (a state, a sibling, an ancestor past a
@@ -675,17 +715,21 @@ export function shortOnTouch(
   const sized = declarations
     .map((d, order) => ({ ...d, order, important: /!important\s*$/.test(d.value) }))
     .filter((d) => HEIGHT.test(d.property));
-  const fingerRules = sized
-    .filter(
-      (d) => isTouchRule(d) && (FINGER.test(d.value) || (pixels(d.value, sizes) ?? 0) >= FINGER_PX),
-    )
-    .flatMap((d) =>
-      selectorsOf(d.selector).map((part) => ({
+  const isFinger = (d: Declaration) =>
+    FINGER.test(d.value) || (pixels(d.value, sizes) ?? 0) >= FINGER_PX;
+  /** Each selector of a rule apart, with the press area it draws (`::before`, `::after`) aside. */
+  const apart = <D extends Declaration>(d: D) =>
+    selectorsOf(d.selector).map((part) => {
+      const pseudo = /::(?:before|after)$/.exec(part)?.[0] ?? '';
+      return {
         ...d,
-        part: part.replace(/::(?:before|after)$/, ''),
-        pressArea: /::(?:before|after)$/.test(part),
-      })),
-    );
+        written: part,
+        part: part.slice(0, part.length - pseudo.length),
+        pseudo,
+        pressArea: pseudo !== '',
+      };
+    });
+  const fingerRules = sized.filter((d) => isTouchRule(d) && isFinger(d)).flatMap(apart);
   const short = sized.flatMap((d) => {
     const parts = selectorsOf(d.selector);
     const found = (list: string[]) => list.map((part) => ({ ...d, part }));
@@ -695,36 +739,92 @@ export function shortOnTouch(
     return found(parts.filter(isTarget));
   });
   type Sized = { part: string; property: string; order: number; important: boolean };
+  type Apart = Sized & { pseudo: string; pressArea: boolean };
+  /** The cascade between two rules for one element: `!important`, specificity, then order. */
+  const wins = (a: Sized, b: Sized) => {
+    if (a.important !== b.important) return a.important;
+    const by = beats(a.part, b.part);
+    return by > 0 || (by === 0 && a.order > b.order);
+  };
   /**
    * Whether a finger's rule gives a finger's height where a short rule also applies (T-353): a
    * press area is drawn over the control whatever sizes it; a min-height is a floor under any
    * height, and a height of a finger's lifts a short min-height; between two of the same kind the
    * cascade decides: `!important`, then the more specific selector, then the later one.
    */
-  const outweighs = (f: Sized & { pressArea: boolean }, s: Sized) => {
-    if (f.pressArea || isMin(f.property) !== isMin(s.property)) return true;
-    if (f.important !== s.important) return f.important;
-    const by = beats(f.part, s.part);
-    return by > 0 || (by === 0 && f.order > s.order);
-  };
-  /** Whether touch rules under other selectors give every element this rule may size a finger's. */
-  const coveredElsewhere = (s: Sized) => {
+  const outweighs = (f: Apart, s: Sized) =>
+    f.pressArea || isMin(f.property) !== isMin(s.property) || wins(f, s);
+  // What may take a finger's height away again (T-356): anything short of one that may hold on a
+  // touch screen, but the short rules themselves, which answer for every element they may reach,
+  // and a reset that a touch rule under its own selector answers where it holds, with a floor
+  // under its height, a height over its floor, or the same kind that wins.
+  const shortOnes = new Set(short.map((s) => `${s.order} ${s.part}`));
+  const resets = sized
+    .filter((d) => !isFinger(d) && mayHoldOnTouch(d))
+    .flatMap(apart)
+    .filter((u) => !shortOnes.has(`${u.order} ${u.written}`))
+    .filter(
+      (u) =>
+        !fingerRules.some(
+          (g) =>
+            g.part === u.part &&
+            g.pseudo === u.pseudo &&
+            (isMin(g.property) !== isMin(u.property) || wins(g, u)),
+        ),
+    );
+  /** The resets that win over a finger's rule and set its kind of height on what it draws. */
+  const undoers = new Map<Apart, Apart[]>(
+    fingerRules.map((f) => [
+      f,
+      resets.filter(
+        (u) => u.pseudo === f.pseudo && isMin(u.property) === isMin(f.property) && wins(u, f),
+      ),
+    ]),
+  );
+  /**
+   * Whether a finger's rule still gives a finger's height where its own selector does and, when
+   * given, on `element`: one the short rule may size by what its source writes, since a reset that
+   * meets a short rule only on a class the runtime might build is guesswork twice over.
+   */
+  const stands = (f: Apart, element?: JsxElementFact) =>
+    !(undoers.get(f) ?? []).some(
+      (u) => u.part === f.part || (element !== undefined && mayUndo(u.part, element)),
+    );
+  /**
+   * Whether touch rules give every element this rule may size a finger's, under its own selector or
+   * another that surely reaches the element, and win there; with no such element in the source, its
+   * own selector only.
+   */
+  const covered = (s: Sized) => {
     const reached = elements.filter((element) => mayReach(s.part, element, carry));
-    return (
-      reached.length > 0 &&
-      reached.every((element) =>
-        fingerRules.some((f) => surelyReaches(f.part, element, carry) && outweighs(f, s)),
-      )
+    if (reached.length === 0) {
+      return fingerRules.some((f) => f.part === s.part && outweighs(f, s) && stands(f));
+    }
+    return reached.every((element) =>
+      fingerRules.some(
+        (f) =>
+          (f.part === s.part || surelyReaches(f.part, element, carry)) &&
+          outweighs(f, s) &&
+          stands(f, mayReach(s.part, element, onlyWritten) ? element : undefined),
+      ),
     );
   };
-  const left = short.filter(
-    (s) => !fingerRules.some((f) => f.part === s.part && outweighs(f, s)) && !coveredElsewhere(s),
-  );
+  const left = short.filter((s) => !covered(s));
   return [...new Set(left.map(({ part }) => part))].sort();
 }
 
 /** A floor (min-height, min-block-size) rather than a height. */
 const isMin = (property: string) => property.startsWith('min-');
+
+/** A media query that holds on no touch screen: each alternative asks for print or a mouse. */
+const neverOnTouch = (at: string) =>
+  at.startsWith('@media') &&
+  at
+    .slice('@media'.length)
+    .split(',')
+    .every((query) => /^\s*(?:only\s+)?print\b|pointer:\s*fine/.test(query));
+/** A rule that may hold on a touch screen: under no at-rule that rules every touch screen out. */
+const mayHoldOnTouch = (d: Declaration) => !d.atRules.some(neverOnTouch);
 
 /** A cursor that says "drag me": a grab, a grabbing hand or a move, whatever its fallbacks. */
 const GRAB_CURSOR = /^(?:-webkit-|-moz-)?(?:grab|grabbing|move)(?:\s*!important)?$/;
@@ -828,6 +928,16 @@ function attribute(node: ts.JsxOpeningLikeElement, wanted: string): ts.JsxAttrib
 
 const hasSpread = (node: ts.JsxOpeningLikeElement) =>
   node.attributes.properties.some(ts.isJsxSpreadAttribute);
+
+/**
+ * An attribute of a native element other than `children` (T-356): JSX in it (`onClick={() =>
+ * show(<b />)}`) is drawn wherever what takes it puts it, never inside that element, so neither the
+ * element nor anything around it is around that JSX.
+ */
+const drawnApart = (node: ts.Node): node is ts.JsxAttribute =>
+  ts.isJsxAttribute(node) &&
+  node.name.getText() !== 'children' &&
+  /^[a-z]/.test(tagName(node.parent.parent));
 
 /**
  * The class names written in a className, even in a conditional or a template, where a word glued
@@ -954,6 +1064,8 @@ export interface ComponentUse {
   tag: string;
   around: JsxNode[];
   root?: string | undefined;
+  /** The component it is drawn by, as `ownerIn` reads it (T-356). */
+  owner?: string | undefined;
 }
 
 /** The tag names of a control a finger presses; an `<input type="hidden">` is none. */
@@ -1108,6 +1220,9 @@ const componentNode = (tag: string): JsxNode => ({
   open: true,
 });
 
+/** What stands around JSX drawn in a place no one reads here: an ancestor no selector passes. */
+const ELSEWHERE = componentNode('Elsewhere');
+
 /**
  * A component of ours that puts the className it is given on a native control (T-298), such as a
  * link that takes a class: a class written on it is a class on that control.
@@ -1234,6 +1349,11 @@ function passerIn(
   let found: ClassPasser | undefined;
   const visit = (node: ts.Node, path: JsxNode[]) => {
     if (found) return;
+    // A control drawn by a native element's attribute lands where no one reads here (T-356).
+    if (drawnApart(node)) {
+      ts.forEachChild(node, (child) => visit(child, [ELSEWHERE]));
+      return;
+    }
     if (!ts.isJsxElement(node) && !ts.isJsxSelfClosingElement(node)) {
       ts.forEachChild(node, (child) => visit(child, path));
       return;
@@ -1531,8 +1651,9 @@ export function jsxFacts(
       const native = /^[a-z]/.test(tag);
       const passer = native ? undefined : passers(tag);
       const root = rootIn(node, components);
-      if (native) facts.elements.push({ ...written, around: path, root });
-      else facts.uses.push({ tag, around: path, root });
+      const owner = ownerIn(node, components);
+      if (native) facts.elements.push({ ...written, around: path, root, owner });
+      else facts.uses.push({ tag, around: path, root, owner });
       if (passer) {
         facts.elements.push({
           ...passer.control,
@@ -1544,6 +1665,7 @@ export function jsxFacts(
             : passer.control.attrs,
           around: [...passer.inner, ...path],
           root,
+          owner,
         });
       }
       within = [native ? written : componentNode(tag), ...path];
@@ -1585,8 +1707,8 @@ export function jsxFacts(
       }
     }
     // What a portal draws lands elsewhere (`document.body`): none of the elements around the call
-    // are around it (T-353).
-    if (isPortal(node)) {
+    // are around it (T-353); nor around JSX in a native element's attribute (T-356).
+    if (isPortal(node) || drawnApart(node)) {
       ts.forEachChild(node, (child) => visit(child, [], false, null, []));
       return;
     }
@@ -1649,16 +1771,32 @@ function isReference(node: ts.Identifier): boolean {
 }
 
 /**
+ * The component of a file that draws `node` (T-356): the one whose function it is written in,
+ * whatever stands between (a variable, a callback, a native element's attribute), so its `root`
+ * when it has one; `*` for JSX outside every component (a helper any of them may call); undefined
+ * for what a portal draws, which lands outside whatever the component is drawn in.
+ */
+function ownerIn(node: ts.Node, components: Map<ts.Node, string>): string | undefined {
+  for (let p = node.parent; p; p = p.parent) {
+    if (isPortal(p)) return undefined;
+    const component = components.get(p);
+    if (component) return component;
+  }
+  return '*';
+}
+
+/**
  * The component of a file whose returned JSX holds `node` with nothing between (T-353): the JSX
  * outermost around it is returned by that component (or is its arrow's body), through brackets, a
- * condition's branch or `&&`. JSX kept in a variable, made by another function, or put elsewhere by
- * a portal (`createPortal`, wherever the call stands in the returned JSX) has none: where it lands,
- * no one reads here.
+ * condition's branch or `&&`. JSX kept in a variable, made by another function, put elsewhere by a
+ * portal (`createPortal`, wherever the call stands in the returned JSX) or held in a native
+ * element's attribute (`onClick={() => show(<b />)}`, T-356) has none: where it lands, no one reads
+ * here.
  */
 function rootIn(node: ts.Node, components: Map<ts.Node, string>): string | undefined {
   let top = node;
   for (let p = node.parent; p; p = p.parent) {
-    if (isPortal(p)) return undefined;
+    if (isPortal(p) || drawnApart(p)) return undefined;
     if (ts.isJsxElement(p) || ts.isJsxSelfClosingElement(p) || ts.isJsxFragment(p)) top = p;
   }
   for (let at: ts.Node = top; ; ) {
@@ -1702,20 +1840,7 @@ export function elementsInPlace(
   sources: readonly (readonly [string, string])[],
   factsOf: (file: string) => JsxFacts,
 ): JsxElementFact[] {
-  const known = new Set(sources.map(([file]) => file));
-  const exists = (path: string) => known.has(path) || existsSync(path);
-  const declared = new Map<string, Set<string>>();
-  const imports = new Map<string, Map<string, { file: string; name: string }>>();
-  for (const [file, source] of sources) {
-    declared.set(file, new Set(componentsIn(parse(file, source)).map(([component]) => component)));
-    imports.set(file, importNames(file, source, exists));
-  }
-  /** The component a name stands for in a file, as `file#Name`. */
-  const resolve = (file: string, tag: string) => {
-    if (declared.get(file)?.has(tag)) return `${file}#${tag}`;
-    const from = imports.get(file)?.get(tag);
-    return from ? `${from.file}#${from.name}` : undefined;
-  };
+  const resolve = componentResolver(sources);
   const sites = new Map<string, { file: string; use: ComponentUse }[]>();
   const unknown = new Set<string>();
   const reexported = new Set<string>();
@@ -1769,6 +1894,71 @@ export function elementsInPlace(
 
 /** How many places a component may be drawn in before they count as unknown. */
 const MOST_PLACES = 64;
+
+/**
+ * The component a tag stands for in a file, as `file#Name`: one the file declares, or one it
+ * imports from another of `sources` (or of the disk), under another name too; else undefined.
+ */
+function componentResolver(
+  sources: readonly (readonly [string, string])[],
+): (file: string, tag: string) => string | undefined {
+  const known = new Set(sources.map(([file]) => file));
+  const exists = (path: string) => known.has(path) || existsSync(path);
+  const declared = new Map<string, Set<string>>();
+  const imports = new Map<string, Map<string, { file: string; name: string }>>();
+  for (const [file, source] of sources) {
+    declared.set(file, new Set(componentsIn(parse(file, source)).map(([component]) => component)));
+    imports.set(file, importNames(file, source, exists));
+  }
+  return (file, tag) => {
+    if (declared.get(file)?.has(tag)) return `${file}#${tag}`;
+    const from = imports.get(file)?.get(tag);
+    return from ? `${from.file}#${from.name}` : undefined;
+  };
+}
+
+/**
+ * Components drawn inside a glass card that draw one themselves (ADR-114), read per component
+ * (T-356): a file that draws a glass card in one component does not make its others draw one. A
+ * component draws one when an element it draws (`owner`) has the class, surely or only under a
+ * condition, or when it draws a component that does, in its own file or another. JSX outside every
+ * component (a helper) may be any of them's; what a portal draws lands outside the card.
+ */
+export function glassInGlass(
+  sources: readonly (readonly [string, string])[],
+  factsOf: (file: string) => JsxFacts,
+): { file: string; tag: string }[] {
+  const resolve = componentResolver(sources);
+  const memo = new Map<string, boolean>();
+  const draws = (id: string, seen: ReadonlySet<string>): boolean => {
+    const done = memo.get(id);
+    if (done !== undefined) return done;
+    if (seen.has(id)) return false;
+    const at = id.lastIndexOf('#');
+    const [file, component] = [id.slice(0, at), id.slice(at + 1)];
+    const facts = factsOf(file);
+    if (!facts) return false;
+    const its = (owner: string | undefined) => owner === component || owner === '*';
+    const deeper = new Set([...seen, id]);
+    const found =
+      facts.elements.some(
+        (e) => its(e.owner) && [...e.classes, ...e.maybe].includes('glass-card'),
+      ) ||
+      facts.uses.some((use) => {
+        const target = its(use.owner) ? resolve(file, use.tag) : undefined;
+        return target !== undefined && draws(target, deeper);
+      });
+    // A no reached while some components were left out on the way may be a yes from elsewhere.
+    if (found || seen.size === 0) memo.set(id, found);
+    return found;
+  };
+  return sources.flatMap(([file]) =>
+    [...factsOf(file).renderedInGlass].flatMap((tag) => {
+      const target = resolve(file, tag);
+      return target !== undefined && draws(target, new Set()) ? [{ file, tag }] : [];
+    }),
+  );
+}
 
 /** What draws a check box: its kind, its fill, its edge, its shadow, a mark over it. */
 const DRAWS_A_BOX =
@@ -2776,6 +2966,164 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
     }
   });
 
+  it('[NFR-005] credits no touch rule that a later reset takes away again (T-356)', () => {
+    const short = (...sheets: string[]) => shortOnTouch(sheets);
+    const mouse = '.a { min-height: var(--hit-target); }';
+    const floor = '@media (pointer: coarse) { .a { min-height: 44px; } }';
+    expect(short(`${mouse} ${floor}`)).toEqual([]);
+    // A floor taken away after it, in its sheet or a later one, by a rule that sizes nothing short.
+    for (const reset of [
+      '.a { min-height: auto; }',
+      '.a { min-height: 0; }',
+      '.a { min-block-size: initial; }',
+    ]) {
+      expect(short(`${mouse} ${floor} ${reset}`), reset).toEqual(['.a']);
+      expect(short(`${mouse} ${floor}`, reset), reset).toEqual(['.a']);
+      // Not before it, nor under a mouse or on paper only; on some touch screens is enough.
+      expect(short(`${mouse} ${reset} ${floor}`), reset).toEqual([]);
+      expect(short(`${mouse} ${floor} @media (pointer: fine) { ${reset} }`), reset).toEqual([]);
+      expect(short(`${mouse} ${floor} @media print { ${reset} }`), reset).toEqual([]);
+      expect(short(`${mouse} ${floor} @media (max-width: 767px) { ${reset} }`), reset).toEqual([
+        '.a',
+      ]);
+    }
+    // A finger's height over a short floor, put back to auto; a floor stands under any height.
+    const tall = '@media (pointer: coarse) { .a { height: 44px; } }';
+    expect(short(`${mouse} ${tall}`)).toEqual([]);
+    expect(short(`${mouse} ${tall} .a { height: auto; }`)).toEqual(['.a']);
+    expect(short(`${mouse} ${floor} .a { height: auto; }`)).toEqual([]);
+    expect(short(`${mouse} ${tall} .a { height: 44px; }`)).toEqual([]);
+
+    // On the elements of the app: a reset that reaches the same element, by the cascade.
+    const read = (code: string) => {
+      const facts = jsxFacts('x.tsx', code, none);
+      return { elements: facts.elements, carry: mayCarryFrom([facts.loose]) };
+    };
+    const inZoom = read(
+      '<div className="zoom"><button className="zoom-btn" type="button" /></div>',
+    );
+    const on = (css: string, { elements, carry } = inZoom) =>
+      shortOnTouch(
+        [css],
+        (part) => isTargetSelector(part, new Set(['zoom-btn']), new Set()),
+        elements,
+        carry,
+      );
+    const base = '.zoom-btn { height: 24px; }';
+    const touch = '@media (pointer: coarse) { .zoom-btn { min-height: 44px; } }';
+    expect(on(`${base} ${touch}`)).toEqual([]);
+    // More specific wins even before it; as specific wins after it; less specific or elsewhere not.
+    expect(on(`${base} .zoom .zoom-btn { min-height: 0; } ${touch}`)).toEqual(['.zoom-btn']);
+    expect(on(`${base} [type="button"] { min-height: auto; } ${touch}`)).toEqual([]);
+    expect(on(`${base} ${touch} [type="button"] { min-height: auto; }`)).toEqual(['.zoom-btn']);
+    expect(on(`${base} ${touch} button { min-height: 0; }`)).toEqual([]);
+    expect(on(`${base} ${touch} .other { min-height: 0; }`)).toEqual([]);
+    // A parent asked for by `>` that the element's parent in its file surely is not.
+    expect(on(`${base} ${touch} .menu > .zoom-btn { min-height: 0; }`)).toEqual([]);
+    expect(on(`${base} ${touch} .zoom > .zoom-btn { min-height: 0; }`)).toEqual(['.zoom-btn']);
+    // A reset that a touch rule under its own selector answers takes nothing away (the calendar's
+    // grip: `height: auto` in the month, and a finger's floor there on touch).
+    const tipped = read(
+      '<div className="zoom"><Tip><button className="zoom-btn" type="button" /></Tip></div>',
+    );
+    const height = `${base} @media (pointer: coarse) { .zoom-btn { height: 44px; } }`;
+    const auto = '.zoom .zoom-btn { height: auto; }';
+    const answered = '@media (pointer: coarse) { .zoom .zoom-btn { min-height: 44px; } }';
+    expect(on(height, tipped)).toEqual([]);
+    expect(on(`${height} ${auto}`, tipped)).toEqual(['.zoom-btn']);
+    expect(on(`${height} ${auto} ${answered}`, tipped)).toEqual([]);
+    // On an element whose class the runtime builds, only a reset under the touch rule's selector.
+    const built = read(
+      `<button className={cls} type="button" />; const cls = on ? 'zoom-btn' : 'other';`,
+    );
+    expect(on(`${base} ${touch}`, built)).toEqual([]);
+    expect(on(`${base} ${touch} .other { min-height: 0; }`, built)).toEqual([]);
+    expect(on(`${base} ${touch} .zoom-btn { min-height: 0; }`, built)).toEqual(['.zoom-btn']);
+  });
+
+  it('[NFR-005] reads a glass card inside a glass card per component, not per file (T-356)', () => {
+    const glass = (files: Record<string, string>) => {
+      const sources = Object.entries(files);
+      const facts = new Map(sources.map(([file, source]) => [file, jsxFacts(file, source, none)]));
+      return glassInGlass(sources, (file) => facts.get(file) as JsxFacts).map(
+        ({ file, tag }) => `${file} ${tag}`,
+      );
+    };
+    const cards = `
+      export function Card() { return <section className="glass-card" />; }
+      export function Fields() { return <label className="form-field" />; }
+      export function Maybe({ nested }: P) { return <li className={nested ? 'well' : 'glass-card'} />; }
+      export function Kept() { const card = <div className="glass-card" />; return <i>{card}</i>; }
+      export function Outer() { return <div><Card /></div>; }
+      export function Popped() { return createPortal(<div className="glass-card" />, document.body); }
+    `;
+    const page = (inner: string) =>
+      `import { Card, Fields, Maybe, Kept, Outer, Popped } from './cards';\nexport const Page = () => <div className="glass-card">${inner}</div>;`;
+    // A component of a file that draws glass elsewhere draws none itself; what a portal draws
+    // lands outside the card.
+    expect(glass({ 'a/cards.tsx': cards, 'a/page.tsx': page('<Fields /><Popped />') })).toEqual([]);
+    // One that draws one, under a condition, kept aside, or through another component, does.
+    for (const tag of ['Card', 'Maybe', 'Kept', 'Outer']) {
+      expect(glass({ 'a/cards.tsx': cards, 'a/page.tsx': page(`<${tag} />`) })).toEqual([
+        `a/page.tsx ${tag}`,
+      ]);
+    }
+    // JSX outside every component may be any of them's; a component of the same file counts too.
+    const helper = `const card = () => <div className="glass-card" />;\nexport function Fields() { return <label />; }`;
+    expect(glass({ 'a/cards.tsx': helper, 'a/page.tsx': page('<Fields />') })).toEqual([
+      'a/page.tsx Fields',
+    ]);
+    expect(
+      glass({
+        'a/page.tsx': `function Inner() { return <section className="glass-card" />; }\nexport const Page = () => <div className="glass-card"><Inner /></div>;`,
+      }),
+    ).toEqual(['a/page.tsx Inner']);
+  });
+
+  it("[NFR-005] puts JSX held in a native element's attribute inside nothing of that element (T-356)", () => {
+    const see = (code: string) => jsxFacts('x.tsx', code, none);
+    const buttons = (code: string) => see(code).elements.filter((e) => e.tag === 'button');
+    const [held] = buttons(
+      '<div className="zoom" onClick={() => show(<span><button className="zoom-btn" /></span>)} />',
+    );
+    expect(held?.around.map((n) => n.tag)).toEqual(['span']);
+    expect(surelyReaches('.zoom button', held as JsxElementFact)).toBe(false);
+    // Its `children` is drawn inside it; a component's attribute is behind the component.
+    const [child] = buttons('<div className="zoom" children={<button className="zoom-btn" />} />');
+    expect(child?.around.map((n) => n.classes)).toEqual([['zoom']]);
+    const [given] = buttons('<div className="zoom"><Tip body={<button />} /></div>');
+    expect(given?.around.map((n) => n.tag)).toEqual(['Tip', 'div']);
+    // Nor in a glass card around it, nor its component's, so not where that component is drawn.
+    expect([
+      ...see('<div className="glass-card" onClick={() => open(<Panel />)} />').renderedInGlass,
+    ]).toEqual([]);
+    const placed = (body: string) => {
+      const sources = Object.entries({
+        'a/child.tsx': `export function Zoomed() { return ${body}; }`,
+        'a/bar.tsx':
+          'import { Zoomed } from \'./child\';\nexport const Bar = () => <div className="zoom"><Zoomed /></div>;',
+      });
+      const facts = new Map(sources.map(([file, source]) => [file, jsxFacts(file, source, none)]));
+      return shortOnTouch(
+        [
+          '.zoom-btn { height: 24px; } @media (pointer: coarse) { .zoom button { min-height: 44px; } }',
+        ],
+        (part) => isTargetSelector(part, new Set(['zoom-btn']), new Set()),
+        elementsInPlace(sources, (file) => facts.get(file) as JsxFacts),
+      );
+    };
+    expect(placed('<i><button className="zoom-btn" /></i>')).toEqual([]);
+    expect(placed('<i onClick={() => show(<button className="zoom-btn" />)} />')).toEqual([
+      '.zoom-btn',
+    ]);
+    // Nor around a control a component draws so with the className it is given.
+    const pop = classPassers(
+      'a/pop.tsx',
+      'export function Pop({ className }: P) { return <div className="menu" onClick={() => show(<button className={className} />)} />; }',
+    ).get('Pop');
+    expect(pop?.inner.map((n) => n.tag)).toEqual(['Elsewhere']);
+  });
+
   it('[NFR-007] finds a grip that no touch check knows of (T-290)', () => {
     const grips = (css: string, listed: string[] = []) => unlistedGrips([css], listed);
     expect(grips('.a { cursor: grab; touch-action: none; }')).toEqual(['.a']);
@@ -2978,27 +3326,13 @@ describe('the app reads as one design (ADR-114, T-144)', () => {
   });
 
   it('[NFR-005] keeps a glass card out of a glass card (ADR-114)', () => {
-    const inside = (file: string, seen = new Set<string>()): boolean => {
-      if (seen.has(file) || !facts.has(file)) return false;
-      seen.add(file);
-      if (factsOf(file).allClasses.has('glass-card')) return true;
-      const imports = importsOf(file, readFileSync(file, 'utf8'));
-      return [...factsOf(file).rendered].some((tag) => {
-        const target = imports.get(tag);
-        return target !== undefined && inside(target, seen);
-      });
-    };
     const found = fromScripts((f) => f.nestedGlass.map((tag) => `<${tag}> in a glass-card`));
     expect(ratchet(found, {})).toEqual([]);
-    const across = scripts.flatMap((file) => {
-      const imports = importsOf(file, readFileSync(file, 'utf8'));
-      return [...factsOf(file).renderedInGlass]
-        .filter((tag) => {
-          const target = imports.get(tag);
-          return target !== undefined && inside(target);
-        })
-        .map((tag) => `${name(file)} ${tag}`);
-    });
+    // Per component (T-356): what is let through for good is still there, each with its reason.
+    const across = glassInGlass(scriptSources, factsOf).map(
+      ({ file, tag }) => `${name(file)} ${tag}`,
+    );
+    for (const item of Object.keys(ALLOWED.glassInGlass)) expect(across).toContain(item);
     expect(across.filter((item) => !(item in ALLOWED.glassInGlass))).toEqual([]);
   });
 
