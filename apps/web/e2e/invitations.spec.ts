@@ -232,4 +232,12 @@ test('[IAM-027] a manager invites a new person, who lands in that track with tha
   expect(await noSidewaysScroll(page)).toBe(true);
   await emailOnly.getByRole('button', { name: 'Cancel' }).click();
   await page.unroute(`**/api/v1/tracks/${made.track.id}/invitations`);
+
+  // In Spanish, whose words run longer, the dialog still fits the screen (ADR-033; T-249).
+  await page.goto(`${BASE}/?locale=es${new URL(page.url()).hash}`);
+  await page.getByRole('button', { name: 'Invitar personas' }).click();
+  const spanish = page.getByRole('dialog', { name: `Invitar personas a ${key}` });
+  await spanish.getByLabel('Rol').selectOption({ label: 'Viewers' });
+  await expect(spanish.getByRole('button', { name: 'Crear enlaces' })).toBeVisible();
+  expect(await noSidewaysScroll(page)).toBe(true);
 });

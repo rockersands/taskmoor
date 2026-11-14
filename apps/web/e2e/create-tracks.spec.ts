@@ -161,4 +161,20 @@ test('[IAM-033] the box given with the managing role lets a person create tracks
     data: { key: `${key}X`, name: 'Not allowed', mode: 'local' },
   });
   expect(refused.status()).toBe(403);
+
+  // In Spanish, whose words run longer, the box and the invite dialog that offers it still fit
+  // the screen (ADR-033; T-249).
+  await signInAs(api, ADMIN.email, ADMIN.password as string);
+  await visit(page, `?locale=es#/manage/tracks/${made.track.id}`);
+  await expect(page.getByRole('heading', { level: 1, name: new RegExp(key) })).toBeVisible();
+  await page.getByLabel('Rol', { exact: true }).selectOption({ label: 'Administrators' });
+  await expect(page.getByRole('checkbox', { name: 'Permitir también crear tracks' })).toBeChecked();
+  expect(await noSidewaysScroll(page)).toBe(true);
+  await page.getByRole('button', { name: 'Invitar personas' }).click();
+  const dialog = page.getByRole('dialog', { name: `Invitar personas a ${key}` });
+  await dialog.getByLabel('Rol').selectOption({ label: 'Administrators' });
+  await expect(
+    dialog.getByRole('checkbox', { name: 'Permitir también crear tracks' }),
+  ).toBeChecked();
+  expect(await noSidewaysScroll(page)).toBe(true);
 });
