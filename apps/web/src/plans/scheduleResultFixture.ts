@@ -216,6 +216,7 @@ export function evenOutRunFixture(overrides: Partial<ScheduleResult> = {}): Held
         ...base.counts,
         placed: 3,
         already: 1,
+        moved: 2,
         withdrawn: 0,
         notShown: 0,
         kept: { ...base.counts.kept, person_draft: 0, in_progress: 1 },

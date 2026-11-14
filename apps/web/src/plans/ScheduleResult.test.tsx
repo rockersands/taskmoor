@@ -189,6 +189,24 @@ describe('the result of a run that evened out load (PLN-011)', () => {
     ]);
   });
 
+  it('[PLN-011] counts what moved from the run’s counts when the list is cut before the moved tickets', () => {
+    const run = evenOutRunFixture();
+    const cut = run.result.tickets.filter((x) => x.outcome !== 'placed');
+    show(
+      evenOutRunFixture({
+        tickets: cut,
+        more: 2300,
+        counts: { ...run.result.counts, placed: 301, moved: 300 },
+      }),
+    );
+    expect(
+      screen.getByText(
+        '300 tickets moved later, 1 kept, 2 not moved, 0 earlier proposals removed.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Moved (300)' })).toBeVisible();
+  });
+
   it('[PLN-011] says when every team and person is within capacity after the run', () => {
     show(evenOutRunFixture({ overLeft: [] }));
     const over = screen.getByRole('region', { name: 'Still over capacity' });

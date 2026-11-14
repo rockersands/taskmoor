@@ -355,6 +355,11 @@ export interface ScheduleCounts {
   placed: number;
   /** Placed where they already are: nothing drafted. */
   already?: number;
+  /**
+   * Evening out only: the tickets moved later (or pushed) whose proposal stands. The list of
+   * tickets is cut at 2,000, with those moved after those not moved, so it cannot be counted.
+   */
+  moved?: number;
   /** Proposals already drafted as they are now. */
   unchanged: number;
   /** Earlier proposals removed. */

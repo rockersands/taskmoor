@@ -1714,7 +1714,8 @@ describe('the auto-scheduler (PLN-004)', () => {
       ).toBe(true);
       expect(await days(even, e.e3 as Ticket)).toEqual(['2027-03-04', '2027-03-08']);
       expect(await days(even, e.e5 as Ticket)).toEqual(['2027-03-09', '2027-03-10']);
-      expect(run.counts).toMatchObject({ placed: 4, withdrawn: 0 });
+      // The moved and the pushed ticket, counted apart from those left where they are.
+      expect(run.counts).toMatchObject({ placed: 4, withdrawn: 0, moved: 2 });
       // After the run, every cell over capacity in the scenario is one the answer reported.
       const echo = (await subjectCells(even)).find((x) => x.id === team());
       const over = echo?.cells.flatMap((c, i) => (c.over ? [i] : []));

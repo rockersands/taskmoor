@@ -652,6 +652,15 @@ export function registerPlanScheduleRoutes(
               : { error: outcome.refused },
           );
       }
+      // Evening out places every ticket it leaves where it is, so the answer counts the tickets it
+      // moved later whose proposal stands: the list is cut at MAX_LISTED, the moved ones last.
+      const moved =
+        mode === 'even_out'
+          ? output.tickets.filter(
+              (t) =>
+                t.outcome === 'placed' && t.reason !== 'already' && !outcome.meanwhile.has(t.id),
+            ).length
+          : undefined;
       const listed: (ScheduleEntry & { changedMeanwhile?: true })[] = output.tickets
         .slice(0, MAX_LISTED)
         .map((t) => (outcome.meanwhile.has(t.id) ? { ...t, changedMeanwhile: true } : t));
@@ -661,7 +670,7 @@ export function registerPlanScheduleRoutes(
         mode,
         from,
         periods,
-        counts: outcome.counts,
+        counts: moved === undefined ? outcome.counts : { ...outcome.counts, moved },
         tickets: listed,
         more: Math.max(0, output.tickets.length - MAX_LISTED),
         ...(mode === 'even_out' ? { overLeft } : {}),

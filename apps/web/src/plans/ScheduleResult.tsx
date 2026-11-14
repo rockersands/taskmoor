@@ -102,7 +102,8 @@ export function ScheduleResult({
     );
   const meanwhile = result.tickets.filter((x) => x.changedMeanwhile);
   const sizes: Record<ScheduleOutcome, number> = {
-    placed: evenOut ? listed('placed').length : counts.placed,
+    // Evening out: the server's count, since the list may be cut before the moved tickets.
+    placed: evenOut ? (counts.moved ?? listed('placed').length) : counts.placed,
     not_placed: total(counts.notPlaced),
     kept: total(counts.kept),
   };
