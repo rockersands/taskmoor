@@ -225,8 +225,9 @@ reach with Tab and scroll with the arrow keys.
 ### Rescheduling on the timeline
 
 - Drag a bar to move it, or drag one of its ends to change only the start or the due day. On a
-  touch screen a bar narrower than a finger still takes one: press just past its ends to move it
-  whole.
+  touch screen a bar looks as it does with a mouse but takes a finger: a press anywhere in its row
+  just over or under it, or just past the ends of a bar narrower than a finger, moves it whole,
+  and a tap there opens its days.
 - With the keyboard, focus a bar and press Alt with the left or right arrow to move it a day, or
   with Shift as well to move it a week.
 - Press Enter on a bar, or choose **No dates** on a ticket without any, to open the panel

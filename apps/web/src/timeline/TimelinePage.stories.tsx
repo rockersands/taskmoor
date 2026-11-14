@@ -289,8 +289,11 @@ export const ReachesTheEdge: Story = {
 };
 
 /**
- * TR-21: on a touch screen a one-day bar still takes a finger: a finger's height, and past its own
- * ends. The grip check cannot see the ends (`DRAGGED_WHOLE` in test/grips.ts), so this story does.
+ * TR-21, T-293 (ADR-033): on a touch screen a bar takes a finger without looking any taller. It is
+ * drawn as under a mouse, 24 px in the middle of its row, and its press area is a finger's height
+ * (44 px), the row's own, over and under it and past the ends of a one-day bar, but no further: the
+ * next row's presses stay that row's. A tap at the press area's edge opens the bar's days. The grip
+ * check cannot see a press area (`DRAGGED_WHOLE` in test/grips.ts), so this story does.
  */
 export const ThinBarOnATouchScreen: Story = {
   args: { client: fakeTimelineClient({ data: crowded }) },
@@ -299,12 +302,29 @@ export const ThinBarOnATouchScreen: Story = {
     const bar = await within(canvasElement).findByRole('button', { name: /^LCH-7: / });
     bar.scrollIntoView({ block: 'center', inline: 'center' });
     const box = bar.getBoundingClientRect();
+    const row = bar.closest('.timeline-row')?.getBoundingClientRect();
+    if (!row) throw new Error('a bar sits in its row');
+    // It looks as it does under a mouse: thinner and shorter than a finger.
     await expect(box.width).toBeLessThan(44);
-    await expect(box.height).toBeGreaterThanOrEqual(44);
-    const y = box.top + box.height / 2;
-    for (const x of [box.left - 6, box.right + 6]) {
-      await expect(document.elementFromPoint(x, y)?.closest('.timeline-bar')).toBe(bar);
-    }
+    await expect(box.height).toBe(24);
+    const area = getComputedStyle(bar, '::after');
+    await expect(Number.parseFloat(area.height)).toBeGreaterThanOrEqual(44);
+    await expect(Number.parseFloat(area.width)).toBeGreaterThanOrEqual(44);
+    const at = (x: number, y: number) => document.elementFromPoint(x, y)?.closest('.timeline-bar');
+    const middle = box.top + box.height / 2;
+    const centre = box.left + box.width / 2;
+    // A finger's height, half above and half below the bar's middle, and past its ends.
+    for (const y of [middle - 21.5, middle + 21.5]) await expect(at(centre, y)).toBe(bar);
+    for (const x of [box.left - 6, box.right + 6]) await expect(at(x, middle)).toBe(bar);
+    // Inside its own row: a press just over or under the row is not on this bar.
+    for (const y of [row.top - 1, row.bottom + 1]) await expect(at(centre, y)).not.toBe(bar);
+    // A tap at the top of the press area, over the bar, opens its days.
+    const tapped = document.elementFromPoint(centre, middle - 20);
+    await expect(tapped?.closest('.timeline-bar')).toBe(bar);
+    (tapped as HTMLElement).click();
+    await expect(
+      await within(canvasElement).findByRole('complementary', { name: 'Days of LCH-7' }),
+    ).toBeVisible();
   },
 };
 
