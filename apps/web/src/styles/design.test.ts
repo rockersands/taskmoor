@@ -32,12 +32,15 @@ import { ALLOWED, OFFENDERS, type Ratchet } from './design-offenders';
  *   `board-problem`: a person. It reads the returns of the page's own function.
  * - A control whose height comes from its words, padding or place rather than a fixed height, a
  *   class put on a control built at runtime, a touch rule under another selector whose reach the
- *   source cannot tell (a state, a sibling, an element around it in another file) or that two rules
- *   of equal weight settle by their order, a press area drawn by `::after` that is placed elsewhere:
- *   the touch stories, which measure what they cover, and the sweep's probe (T-296). A class put on
- *   a control through a component of ours that passes its className on (`<Link className>`), and a
- *   touch rule under another selector that surely reaches every element a short rule may size, it
- *   does see (T-298).
+ *   source cannot tell (a state, a sibling, an element around it in another file or past a
+ *   component, which may draw it elsewhere) or that two rules of equal weight settle by their order,
+ *   a press area drawn by `::after` that is placed elsewhere: the touch stories, which measure what
+ *   they cover, and the sweep's probe (T-296). A class put on a control through a component of ours
+ *   that passes its className on (`<Link className>`), and a touch rule under another selector that
+ *   surely reaches every element a short rule may size, it does see (T-298); an element whose
+ *   className is built at runtime is held as one a short rule may size whenever the words of the
+ *   scripts could make the class, so it is no cover for one it cannot see. A class that comes only
+ *   from data, or one `classList` adds, it cannot see.
  * - Whether a purpose line or an empty state says anything useful, spacing and hierarchy: a person.
  * - An empty message whose ID says neither "none" nor "empty", such as `noTickets`, or that is not
  *   the words of a `p`, `li`, `div`, `td` or `dd`; a list that stays quiet with no message at all; a
@@ -369,13 +372,49 @@ export function isTargetSelector(
 /** An element as a component's JSX writes it: what a selector can be held against (T-298). */
 export interface JsxNode {
   tag: string;
-  /** The classes written as literals; one built at runtime is unknown, and taken as absent. */
+  /** The classes surely on it: written whole as literals, outside any condition. */
   classes: string[];
+  /** Classes written as literals that only a condition puts on it (`on ? 'is-on' : ''`). */
+  maybe: string[];
+  /**
+   * Its className has a part built at runtime (a name, a call, a word glued to `${}`) or a spread
+   * may set it: it may hold classes no one can read here (`mayCarry`).
+   */
+  built: boolean;
   /** Attributes written as a string literal; null for one whose value is an expression. */
   attrs: Record<string, string | null>;
   /** A spread may add attributes no one can read here. */
   open: boolean;
 }
+
+/**
+ * The words of the app's scripts a class built at runtime could be made of (T-298): every word of
+ * a string outside a native element's own className (a variable, a prop, a component's className),
+ * and the pieces of a template glued to a `${}`, as the start or end of a class.
+ */
+export interface LooseClasses {
+  whole: Set<string>;
+  prefixes: Set<string>;
+  suffixes: Set<string>;
+}
+
+/** Whether a class could be on an element whose className is built at runtime. */
+export type MayCarry = (cls: string) => boolean;
+const anything: MayCarry = () => true;
+
+/** `MayCarry` from the loose words of every script; without any, every class may be carried. */
+export function mayCarryFrom(loose: readonly LooseClasses[]): MayCarry {
+  const whole = new Set(loose.flatMap((l) => [...l.whole]));
+  const prefixes = [...new Set(loose.flatMap((l) => [...l.prefixes]))];
+  const suffixes = [...new Set(loose.flatMap((l) => [...l.suffixes]))];
+  return (cls) =>
+    whole.has(cls) ||
+    prefixes.some((p) => cls.startsWith(p)) ||
+    suffixes.some((s) => cls.endsWith(s));
+}
+
+/** A component's place among the elements around one: what it draws, and where, is unknown. */
+const isBoundary = (node: JsxNode) => /^[A-Z]/.test(node.tag) || node.tag.includes('.');
 
 /** An element drawn by the app's JSX, with the elements around it in its file, nearest first. */
 export interface JsxElementFact extends JsxNode {
@@ -451,11 +490,16 @@ function compoundsOf(part: string): { compounds: string[]; combinators: string[]
  * Whether `node` matches a simple selector, as far as its source can tell: a state (`:hover`,
  * `:checked`), a place among siblings (`:first-child`) or what is inside (`:has()`) it cannot.
  */
-function matchSimple(simple: string, node: JsxNode): Maybe {
+function matchSimple(simple: string, node: JsxNode, carry: MayCarry = anything): Maybe {
   if (simple === '*') return true;
   if (/^[a-zA-Z]/.test(simple)) return node.tag.toLowerCase() === simple.toLowerCase();
-  if (simple.startsWith('.')) return node.classes.includes(simple.slice(1));
-  if (simple.startsWith('#')) return matchSimple(`[id="${simple.slice(1)}"]`, node);
+  if (simple.startsWith('.')) {
+    const cls = simple.slice(1);
+    if (node.classes.includes(cls)) return true;
+    if (node.maybe.includes(cls) || (node.built && carry(cls))) return undefined;
+    return false;
+  }
+  if (simple.startsWith('#')) return matchSimple(`[id="${simple.slice(1)}"]`, node, carry);
   if (simple.startsWith('[')) {
     const m =
       /^\[\s*([\w-]+)\s*(?:([~|^$*]?=)\s*(?:"([^"]*)"|'([^']*)'|([^\s\]]+))\s*(i)?)?\s*\]$/.exec(
@@ -482,7 +526,7 @@ function matchSimple(simple: string, node: JsxNode): Maybe {
     const [, name, args = ''] = fn;
     // An argument with a combinator asks about other elements: the source cannot tell.
     const each = selectorsOf(args).map((arg) =>
-      compoundsOf(arg).compounds.length === 1 ? matchCompound(arg, node) : undefined,
+      compoundsOf(arg).compounds.length === 1 ? matchCompound(arg, node, carry) : undefined,
     );
     if (name === 'not') {
       const hit = any(each);
@@ -496,38 +540,42 @@ function matchSimple(simple: string, node: JsxNode): Maybe {
   return undefined;
 }
 
-function matchCompound(compound: string, node: JsxNode): Maybe {
-  return all(simplesOf(compound).map((simple) => matchSimple(simple, node)));
+function matchCompound(compound: string, node: JsxNode, carry: MayCarry = anything): Maybe {
+  return all(simplesOf(compound).map((simple) => matchSimple(simple, node, carry)));
 }
 
 /**
  * Whether a selector surely reaches an element of the app's JSX (T-298): its last compound matches
- * the element and the others the elements around it in its file, by their literal classes and
- * attributes. What the source cannot tell (a state such as `:hover`, a sibling, an ancestor in
- * another file) is taken as not reached, so a touch rule is only credited where it surely applies.
- * A trailing `::before` or `::after` reaches the element it is drawn on.
+ * the element and the others the elements around it in its file, by the classes surely on them and
+ * their literal attributes. What the source cannot tell (a state such as `:hover`, a sibling, a
+ * class only a condition or the runtime puts there, an ancestor in another file) is taken as not
+ * reached, so a touch rule is only credited where it surely applies. A component between them is
+ * an ancestor no one knows: it may draw its children anywhere, even elsewhere in the page (a
+ * portal, as OverlayLayer does), so a selector reaches past one to nothing. A trailing `::before`
+ * or `::after` reaches the element it is drawn on.
  */
-export function surelyReaches(part: string, element: JsxElementFact): boolean {
+export function surelyReaches(
+  part: string,
+  element: JsxElementFact,
+  carry: MayCarry = anything,
+): boolean {
   const { compounds, combinators } = compoundsOf(part.replace(/::(?:before|after)$/, ''));
   if (compounds.some((c) => c.includes('::'))) return false;
   const last = compounds.length - 1;
-  if (matchCompound(compounds[last] as string, element) !== true) return false;
+  if (matchCompound(compounds[last] as string, element, carry) !== true) return false;
+  const matches = (i: number, node: JsxNode | undefined) =>
+    node !== undefined &&
+    !isBoundary(node) &&
+    matchCompound(compounds[i] as string, node, carry) === true;
   // Compound i at element `at` of `around`, and the ones before it further out.
   const from = (i: number, at: number): boolean => {
     if (i < 0) return true;
     const combinator = combinators[i];
-    if (combinator === '>') {
-      const node = element.around[at];
-      return (
-        node !== undefined &&
-        matchCompound(compounds[i] as string, node) === true &&
-        from(i - 1, at + 1)
-      );
-    }
+    if (combinator === '>') return matches(i, element.around[at]) && from(i - 1, at + 1);
     if (combinator !== ' ') return false;
     for (let j = at; j < element.around.length; j++) {
-      const node = element.around[j] as JsxNode;
-      if (matchCompound(compounds[i] as string, node) === true && from(i - 1, j + 1)) return true;
+      if (isBoundary(element.around[j] as JsxNode)) return false;
+      if (matches(i, element.around[j]) && from(i - 1, j + 1)) return true;
     }
     return false;
   };
@@ -537,11 +585,12 @@ export function surelyReaches(part: string, element: JsxElementFact): boolean {
 /**
  * Whether a selector may reach an element: its last compound does not surely miss it. What is
  * around it is not asked, since a component may be drawn inside anything; so this errs towards
- * reaching, as the elements a short rule sizes should.
+ * reaching, as the elements a short rule sizes should. An element whose className is built at
+ * runtime may hold any class `carry` allows.
  */
-export function mayReach(part: string, element: JsxNode): boolean {
+export function mayReach(part: string, element: JsxNode, carry: MayCarry = anything): boolean {
   const { compounds } = compoundsOf(part);
-  return matchCompound(compounds.at(-1) ?? '', element) !== false;
+  return matchCompound(compounds.at(-1) ?? '', element, carry) !== false;
 }
 
 /** A selector's specificity: ids, then classes, attributes and pseudo-classes, then tags. */
@@ -587,12 +636,16 @@ const beats = (a: string, b: string) => {
  * A touch rule under another selector counts too when it reaches every element of `elements` (the
  * app's JSX, `jsxFacts`) that the short selector may reach, and wins there (T-298): a press area, a
  * min-height, a height over a min-height, or a height under a selector more specific than the short
- * one. One whose reach the source cannot tell (a state, an ancestor in another file) is no cover.
+ * one. One whose reach the source cannot tell (a state, an ancestor in another file or past a
+ * component) is no cover. An element whose className is built at runtime may hold any class that
+ * `carry` allows (`mayCarryFrom`, every class without it), so a short rule may size it too, and
+ * the cover must surely reach it as well.
  */
 export function shortOnTouch(
   sources: string[],
   isTarget: (selector: string) => boolean = () => false,
   elements: readonly JsxElementFact[] = [],
+  carry: MayCarry = anything,
 ): string[] {
   const declarations = sources.flatMap(cssDeclarations);
   const sizes = fixedSizes(declarations);
@@ -619,13 +672,13 @@ export function shortOnTouch(
   });
   /** Whether touch rules under other selectors give every element this rule may size a finger's. */
   const coveredElsewhere = (part: string, property: string) => {
-    const reached = elements.filter((element) => mayReach(part, element));
+    const reached = elements.filter((element) => mayReach(part, element, carry));
     return (
       reached.length > 0 &&
       reached.every((element) =>
         fingerRules.some(
           (f) =>
-            surelyReaches(f.part, element) &&
+            surelyReaches(f.part, element, carry) &&
             (f.pressArea ||
               f.property.startsWith('min-') ||
               property.startsWith('min-') ||
@@ -792,6 +845,8 @@ export interface JsxFacts {
    * drawn by a component that passes its className on (`ClassPasser`) as the control it draws.
    */
   elements: JsxElementFact[];
+  /** The words a class built at runtime here could be made of (`looseClasses`). */
+  loose: LooseClasses;
 }
 
 /** The tag names of a control a finger presses; an `<input type="hidden">` is none. */
@@ -805,8 +860,114 @@ const isControl = (node: ts.JsxOpeningLikeElement) => {
   return CONTROL_ROLE.test(literal('role'));
 };
 
-/** An element's tag, literal classes and attributes (`htmlFor` as `for`, names in lower case). */
-function nodeOf(node: ts.JsxOpeningLikeElement): JsxNode {
+/** What a className says of an element's classes: sure, only under a condition, or built. */
+interface ClassReading {
+  sure: string[];
+  maybe: string[];
+  built: boolean;
+}
+
+const wordsOf = (text: string) => text.split(/\s+/).filter(Boolean);
+
+/**
+ * How a className expression puts classes on an element (T-298). A literal's words are sure; a
+ * condition's branches are sure only where both say so; `cond && 'x'` and fallbacks only maybe. A
+ * template's whole words are sure and its `${}` read the same way, but a word glued to a `${}`
+ * (`timeline-bar${x}`) is built, and so is anything else: a name, a call, a property. `known` is an
+ * expression whose classes are counted elsewhere (the className a component is given).
+ */
+function readClasses(
+  expression: ts.Expression,
+  known: (e: ts.Expression) => boolean = () => false,
+): ClassReading {
+  const none: ClassReading = { sure: [], maybe: [], built: false };
+  const loosely = (r: ClassReading): ClassReading => ({
+    sure: [],
+    maybe: [...r.sure, ...r.maybe],
+    built: r.built,
+  });
+  const read = (e: ts.Expression): ClassReading => {
+    if (known(e)) return none;
+    if (ts.isStringLiteralLike(e)) return { sure: wordsOf(e.text), maybe: [], built: false };
+    if (ts.isParenthesizedExpression(e) || ts.isAsExpression(e)) return read(e.expression);
+    if (ts.isConditionalExpression(e)) {
+      const [a, b] = [read(e.whenTrue), read(e.whenFalse)];
+      const sure = a.sure.filter((c) => b.sure.includes(c));
+      return {
+        sure,
+        maybe: [...a.sure, ...a.maybe, ...b.sure, ...b.maybe].filter((c) => !sure.includes(c)),
+        built: a.built || b.built,
+      };
+    }
+    if (ts.isBinaryExpression(e)) {
+      const op = e.operatorToken.kind;
+      if (op === ts.SyntaxKind.AmpersandAmpersandToken) return loosely(read(e.right));
+      if (op === ts.SyntaxKind.BarBarToken || op === ts.SyntaxKind.QuestionQuestionToken) {
+        const [a, b] = [read(e.left), read(e.right)];
+        return loosely({
+          sure: [...a.sure, ...b.sure],
+          maybe: [...a.maybe, ...b.maybe],
+          built: a.built || b.built,
+        });
+      }
+    }
+    if (ts.isTemplateExpression(e)) {
+      const out: ClassReading = { sure: [], maybe: [], built: false };
+      const texts = [e.head.text, ...e.templateSpans.map((s) => s.literal.text)];
+      texts.forEach((text, i) => {
+        const words = wordsOf(text);
+        // A word that touches a `${}` is only part of a class.
+        const glued = (at: number) => {
+          if (at === 0 && i > 0 && !/^\s/.test(text)) return true;
+          return at === words.length - 1 && i < texts.length - 1 && !/\s$/.test(text);
+        };
+        words.forEach((w, at) => {
+          if (glued(at)) out.built = true;
+          else out.sure.push(w);
+        });
+        const span = e.templateSpans[i];
+        if (!span) return;
+        const next = texts[i + 1] ?? '';
+        const apart =
+          (text === '' ? i === 0 : /\s$/.test(text)) &&
+          (next === '' ? i + 1 === texts.length - 1 : /^\s/.test(next));
+        if (!apart) {
+          out.built = true;
+          return;
+        }
+        const inner = read(span.expression);
+        out.sure.push(...inner.sure);
+        out.maybe.push(...inner.maybe);
+        out.built ||= inner.built;
+      });
+      return out;
+    }
+    return { sure: [], maybe: literalsIn(e).flatMap(wordsOf), built: true };
+  };
+  return read(expression);
+}
+
+/** The classes of an element's className attribute, read as `readClasses` does. */
+function classReadingOf(
+  node: ts.JsxOpeningLikeElement,
+  known?: (e: ts.Expression) => boolean,
+): ClassReading {
+  const init = attribute(node, 'className')?.initializer;
+  if (!init) return { sure: [], maybe: [], built: false };
+  if (ts.isStringLiteral(init)) return { sure: wordsOf(init.text), maybe: [], built: false };
+  if (ts.isJsxExpression(init) && init.expression) return readClasses(init.expression, known);
+  return { sure: [], maybe: [], built: true };
+}
+
+/**
+ * An element's tag, classes and literal attributes (`htmlFor` as `for`, names in lower case).
+ * `known` is what carries the className a component is given (`passerIn`): its classes are the
+ * caller's, and a spread of it sets no class of its own.
+ */
+function nodeOf(
+  node: ts.JsxOpeningLikeElement,
+  known: (e: ts.Expression) => boolean = () => false,
+): JsxNode {
   const attrs: Record<string, string | null> = {};
   for (const p of node.attributes.properties) {
     if (!ts.isJsxAttribute(p)) continue;
@@ -823,11 +984,27 @@ function nodeOf(node: ts.JsxOpeningLikeElement): JsxNode {
         ? init.text
         : literal;
   }
-  return { tag: tagName(node), classes: classesOf(node), attrs, open: hasSpread(node) };
+  const reading = classReadingOf(node, known);
+  const spreads = node.attributes.properties.filter(ts.isJsxSpreadAttribute);
+  return {
+    tag: tagName(node),
+    classes: [...new Set(reading.sure)],
+    maybe: [...new Set(reading.maybe)].filter((c) => !reading.sure.includes(c)),
+    built: reading.built || spreads.some((s) => !known(s.expression)),
+    attrs,
+    open: spreads.length > 0,
+  };
 }
 
 /** What stands for a component in the elements around its children: nothing a selector names. */
-const componentNode = (tag: string): JsxNode => ({ tag, classes: [], attrs: {}, open: true });
+const componentNode = (tag: string): JsxNode => ({
+  tag,
+  classes: [],
+  maybe: [],
+  built: true,
+  attrs: {},
+  open: true,
+});
 
 /**
  * A component of ours that puts the className it is given on a native control (T-298), such as a
@@ -945,6 +1122,13 @@ function passerIn(
     }
     return ts.forEachChild(node, carries) ?? false;
   };
+  /** The className it is given itself, or every prop spread: the caller's classes, not built. */
+  const given = (e: ts.Expression) =>
+    (ts.isIdentifier(e) && (named.has(e.text) || whole.has(e.text))) ||
+    (ts.isPropertyAccessExpression(e) &&
+      e.name.text === 'className' &&
+      ts.isIdentifier(e.expression) &&
+      whole.has(e.expression.text));
   let found: ClassPasser | undefined;
   const visit = (node: ts.Node, path: JsxNode[]) => {
     if (found) return;
@@ -954,7 +1138,7 @@ function passerIn(
     }
     const opening = ts.isJsxElement(node) ? node.openingElement : node;
     const tag = tagName(opening);
-    const own = nodeOf(opening);
+    const own = nodeOf(opening, given);
     const native = /^[a-z]/.test(tag);
     const spreads = opening.attributes.properties.some(
       (p) =>
@@ -965,7 +1149,12 @@ function passerIn(
     const through = native ? undefined : scope(tag);
     if (passes && through) {
       found = {
-        control: { ...through.control, classes: [...through.control.classes, ...own.classes] },
+        control: {
+          ...through.control,
+          classes: [...through.control.classes, ...own.classes],
+          maybe: [...through.control.maybe, ...own.maybe],
+          built: through.control.built || own.built,
+        },
         inner: [...through.inner, ...path],
         spreads: spreads && through.spreads,
       };
@@ -1104,6 +1293,44 @@ export function styledBy(css: string[]): StyledBy {
 }
 
 /**
+ * The words of a script a class built at runtime could be made of (`LooseClasses`, T-298): every
+ * string's words but those of a native element's own className, which the guard reads where they
+ * are written, and every piece of a template glued to a `${}`, wherever it is.
+ */
+export function looseClasses(file: string, source: string): LooseClasses {
+  const loose: LooseClasses = { whole: new Set(), prefixes: new Set(), suffixes: new Set() };
+  const visit = (node: ts.Node, ownClass: boolean): void => {
+    if (
+      ts.isJsxAttribute(node) &&
+      node.name.getText() === 'className' &&
+      /^[a-z]/.test(tagName(node.parent.parent as ts.JsxOpeningLikeElement))
+    ) {
+      ts.forEachChild(node, (child) => visit(child, true));
+      return;
+    }
+    if (ts.isStringLiteralLike(node) && !ownClass) {
+      for (const w of wordsOf(node.text)) loose.whole.add(w);
+    }
+    if (ts.isTemplateExpression(node)) {
+      const texts = [node.head.text, ...node.templateSpans.map((s) => s.literal.text)];
+      texts.forEach((text, i) => {
+        const words = wordsOf(text);
+        words.forEach((w, at) => {
+          const start = at === 0 && i > 0 && !/^\s/.test(text);
+          const end = at === words.length - 1 && i < texts.length - 1 && !/\s$/.test(text);
+          if (start) loose.suffixes.add(w);
+          if (end) loose.prefixes.add(w);
+          if (!start && !end && !ownClass) loose.whole.add(w);
+        });
+      });
+    }
+    ts.forEachChild(node, (child) => visit(child, ownClass));
+  };
+  visit(parse(file, source), false);
+  return loose;
+}
+
+/**
  * What the design guard reads in a script. `passers` names the components in its scope that pass a
  * className on to a control (`ClassPasser`, T-298): a class written on one is a control's.
  */
@@ -1132,6 +1359,7 @@ export function jsxFacts(
     controls: new Set(),
     inlineGrips: [],
     elements: [],
+    loose: looseClasses(file, source),
   };
   const visit = (
     node: ts.Node,
@@ -1192,7 +1420,9 @@ export function jsxFacts(
       if (passer) {
         facts.elements.push({
           ...passer.control,
-          classes: [...passer.control.classes, ...own],
+          classes: [...passer.control.classes, ...written.classes],
+          maybe: [...passer.control.maybe, ...written.maybe],
+          built: passer.control.built || written.built,
           attrs: passer.spreads
             ? { ...passer.control.attrs, ...written.attrs }
             : passer.control.attrs,
@@ -1878,8 +2108,15 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
     const found = classPassers('a/link.tsx', library);
     expect([...found.keys()]).toEqual(['Link', 'Field', 'Rest', 'Unpacked', 'Item', 'Nav']);
     expect(found.get('Nav')).toEqual({
-      control: { tag: 'a', classes: ['go'], attrs: { href: null }, open: false },
-      inner: [{ tag: 'nav', classes: [], attrs: {}, open: false }],
+      control: {
+        tag: 'a',
+        classes: ['go'],
+        maybe: [],
+        built: false,
+        attrs: { href: null },
+        open: false,
+      },
+      inner: [{ tag: 'nav', classes: [], maybe: [], built: false, attrs: {}, open: false }],
       spreads: false,
     });
     expect(found.get('Field')?.inner.map((n) => n.classes)).toEqual([['wrap']]);
@@ -1917,13 +2154,14 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
     const see = (code: string) => jsxFacts('x.tsx', code, none).elements;
     const page = see(`<>
       <div className="zoom"><button className="zoom-btn" /></div>
-      <div className="zoom"><span><Tip><button className="zoom-btn" type="button" /></Tip></span></div>
+      <div className="zoom"><span><button className="zoom-btn" type="button" /></span></div>
     </>`);
-    const short = (css: string, elements = page) =>
+    const short = (css: string, elements = page, carry?: MayCarry) =>
       shortOnTouch(
         [css],
         (part) => isTargetSelector(part, new Set(['zoom-btn']), new Set()),
         elements,
+        carry,
       );
     const base = '.zoom-btn { height: 24px; }';
     const touch = (rule: string) => `${base} @media (pointer: coarse) { ${rule} }`;
@@ -1962,11 +2200,68 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
 
     expect(specificity('.a :is(#b, c) > d:where(.e)::after')).toEqual([1, 1, 2]);
     const [first, second] = page.filter((e) => e.tag === 'button') as JsxElementFact[];
-    expect(second?.around.map((n) => n.tag)).toEqual(['Tip', 'span', 'div']);
+    expect(second?.around.map((n) => n.tag)).toEqual(['span', 'div']);
     expect(surelyReaches('.zoom > .zoom-btn', first as JsxElementFact)).toBe(true);
     expect(surelyReaches('.zoom > .zoom-btn', second as JsxElementFact)).toBe(false);
     expect(mayReach('.elsewhere .zoom-btn:focus-visible', second as JsxElementFact)).toBe(true);
     expect(mayReach('.zoom-btn[type="submit"]', second as JsxElementFact)).toBe(false);
+  });
+
+  it("[NFR-005] credits no finger's height under another selector to an element it cannot see whole (T-298)", () => {
+    const read = (code: string) => {
+      const facts = jsxFacts('x.tsx', code, none);
+      return { elements: facts.elements, carry: mayCarryFrom([facts.loose]) };
+    };
+    const covered =
+      '.zoom-btn { height: 24px; } @media (pointer: coarse) { .zoom button { min-height: 44px; } }';
+    const short = (code: string) => {
+      const { elements, carry } = read(code);
+      return shortOnTouch(
+        [covered],
+        (part) => isTargetSelector(part, new Set(['zoom-btn']), new Set()),
+        elements,
+        carry,
+      );
+    };
+    const inZoom = '<div className="zoom"><button className="zoom-btn" /></div>';
+    expect(short(`<>${inZoom}</>`)).toEqual([]);
+    // A class written in a template, beside a condition's: the element is seen, outside the cover.
+    expect(short(`<>${inZoom}<button className={\`zoom-btn \${on ? 'on' : ''}\`} /></>`)).toEqual([
+      '.zoom-btn',
+    ]);
+    // A class built at runtime from words the scripts hold, whole or glued to a `${}`.
+    expect(short(`<>${inZoom}<button className={cls} /></>; const cls = 'zoom-btn';`)).toEqual([
+      '.zoom-btn',
+    ]);
+    expect(short(`<>${inZoom}<button className={\`zoom-\${size}\`} /></>`)).toEqual(['.zoom-btn']);
+    expect(short(`<>${inZoom}<button {...props} /></>; use('zoom-btn');`)).toEqual(['.zoom-btn']);
+    // A class given to a component that is not seen to pass it on may end up on anything built.
+    expect(short(`<>${inZoom}<Chip className="zoom-btn" /><a className={own} /></>`)).toEqual([
+      '.zoom-btn',
+    ]);
+    // Built from words that cannot make the class: no element of it is hidden from the guard.
+    expect(short(`<>${inZoom}<button className={\`tag-\${size}\`} /></>`)).toEqual([]);
+    // Past a component, an element is in no known place: it may draw it anywhere (a portal).
+    expect(
+      short(
+        `<>${inZoom}<div className="zoom"><OverlayLayer><button className="zoom-btn" /></OverlayLayer></div></>`,
+      ),
+    ).toEqual(['.zoom-btn']);
+    const { elements } = read(
+      '<div className="zoom"><span><Tip><button className="zoom-btn" /></Tip></span></div>',
+    );
+    const [tipped] = elements.filter((e) => e.tag === 'button');
+    expect(tipped?.around.map((n) => n.tag)).toEqual(['Tip', 'span', 'div']);
+    expect(surelyReaches('.zoom button', tipped as JsxElementFact)).toBe(false);
+    expect(surelyReaches('button', tipped as JsxElementFact)).toBe(true);
+
+    // What a className says: sure, only under a condition, or built at runtime.
+    const [one] = read(
+      `<button className={\`a \${on ? 'b c' : 'b'} \${off && 'd'} e\${x} f\`} />`,
+    ).elements;
+    expect([one?.classes, one?.maybe, one?.built]).toEqual([['a', 'b', 'f'], ['c', 'd'], true]);
+    const [two] = read("<a className={on ? 'x y' : 'y'} />").elements;
+    expect([two?.classes, two?.maybe, two?.built]).toEqual([['y'], ['x'], false]);
   });
 
   it('[NFR-007] finds a grip that no touch check knows of (T-290)', () => {
@@ -2075,6 +2370,7 @@ describe('the app reads as one design (ADR-114, T-144)', () => {
       sources,
       (part) => isTargetSelector(part, controls, grips),
       elements,
+      mayCarryFrom(scripts.map((file) => factsOf(file).loose)),
     );
     // What is let through for good is still there to let through, each with its reason.
     for (const selector of Object.keys(ALLOWED.shortTargets)) expect(short).toContain(selector);
