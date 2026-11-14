@@ -33,8 +33,10 @@ then **Tracks you run** (`#/manage/tracks`), and **Manage** a track. Its page sh
   and no item (see [Checklist changes](../use/notifications.md#checklist-changes)). Through the
   API it is `checklistNotices` on `PATCH /api/v1/tracks/:id`.
 
-What an action did, or why it was refused, is said at the foot of the part of the page you used it
-in, and read out by a screen reader.
+What an action did, or why it was refused, shows right beside the row you pressed it on, however
+long the list: under that person, group or invitation, or under the box. When the action takes the
+row away (a role removed, an invitation withdrawn, a person given a role from the search), the
+answer takes the row's place in the list. A screen reader reads it out.
 
 Finding people by name uses **See people and groups**. If that permission has been taken away, a
 person can still be invited by address. Managers give roles to people; giving a role to a group
@@ -148,7 +150,8 @@ else: no role, no email. You may notice a name appear under **Who holds which ro
 
 ### Waiting invitations
 
-**Send again** and **New link** make a new link and end the old one. **Withdraw** ends the invitation.
+**Send again** and **New link** make a new link and end the old one. **New link** shows the link to
+copy inside that invitation's row. **Withdraw** ends the invitation.
 **Email not sent** means the mail server refused it; try **Send again**.
 
 ## What the invited person sees

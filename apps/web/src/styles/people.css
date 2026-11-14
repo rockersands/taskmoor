@@ -19,6 +19,24 @@
   margin-block-start: calc(-1 * var(--space-3));
 }
 
+/*
+ * What an action did, beside the row pressed (T-248): a line of its own under the row's name and
+ * buttons, and in the row's place when the action took the row away.
+ */
+.people-answer {
+  flex: 1 1 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.people-answer-row {
+  min-width: 0;
+}
+
+.people-item > .people-link {
+  flex: 1 1 100%;
+}
+
 .people-form,
 .people-inline {
   display: grid;
