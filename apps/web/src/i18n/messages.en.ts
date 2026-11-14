@@ -2465,8 +2465,9 @@ export const messagesEn = {
   'admin.sso.form.removeMapping': 'Remove',
   'admin.sso.form.removeMappingNamed': 'Remove mapping {number}',
   'admin.sso.form.noMappings': 'No mappings.',
-  'admin.sso.form.noGroups':
-    'There are no groups yet. Create groups first to map claim values to them.',
+  'admin.sso.form.noGroups': 'No groups yet',
+  'admin.sso.form.noGroupsBody':
+    'A claim value maps to a group, so the groups come first: create them under Groups in Administration.',
   'admin.sso.form.groupsFailed':
     'The groups could not be read, so the mapping cannot be changed now.',
   'admin.sso.form.create': 'Add provider',

@@ -2537,8 +2537,9 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.sso.form.removeMapping': 'Quitar',
   'admin.sso.form.removeMappingNamed': 'Quitar la asignación {number}',
   'admin.sso.form.noMappings': 'Sin asignaciones.',
-  'admin.sso.form.noGroups':
-    'Aún no hay grupos. Crea grupos primero para asignarles valores del claim.',
+  'admin.sso.form.noGroups': 'Aún no hay grupos',
+  'admin.sso.form.noGroupsBody':
+    'Un valor del claim se asigna a un grupo, así que primero van los grupos: créalos en Grupos, dentro de Administración.',
   'admin.sso.form.groupsFailed':
     'No se pudieron leer los grupos, así que ahora no se puede cambiar la asignación.',
   'admin.sso.form.create': 'Añadir el proveedor',
