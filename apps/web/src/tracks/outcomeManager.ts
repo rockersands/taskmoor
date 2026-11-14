@@ -25,6 +25,8 @@ export interface OutcomeManager {
   /** For a closing transition that asks for a close reason or a priority. */
   closeReasons: TicketClient['closeReasons'];
   priorities: TicketClient['priorities'];
+  /** The track's custom fields from the field catalogue, to name a refused one (T-297). */
+  fieldNames?: TicketClient['fieldNames'];
 }
 
 export const outcomeManager: OutcomeManager = {
@@ -47,4 +49,5 @@ export const outcomeManager: OutcomeManager = {
   },
   closeReasons: ticketClient.closeReasons,
   priorities: ticketClient.priorities,
+  fieldNames: ticketClient.fieldNames,
 };

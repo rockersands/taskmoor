@@ -1,7 +1,7 @@
 ---
 title: "Tracks"
 audience: admins
-sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/client.ts, apps/web/src/configuration/NewTrackForm.tsx, apps/web/src/tracks/TracksPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/web/src/tickets/templates/draft.ts, apps/web/src/tickets/templates/client.ts, apps/web/src/tickets/form.ts, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md, apps/server/src/sprints/lifecycle.ts, apps/server/src/tracks/membership.ts, apps/server/src/routes/track-groups.ts, apps/server/src/trackgroups/access.ts, apps/web/src/trackgroups/TrackArrangement.tsx, apps/web/src/trackgroups/ShareGroupDialog.tsx, packages/db/src/migrations/0100_track_groups.ts, docs/adr/0121-personal-track-groups.md, apps/server/src/notifications/track-groups.ts, apps/server/src/trackgroups/privacy.ts, packages/db/src/migrations/0103_checklist_notices.ts, apps/server/src/notifications/checklists.ts, apps/web/src/tracks/NewTrackDialog.tsx, apps/web/src/shell/ModalDialog.tsx, apps/server/src/api/operations.ts, apps/web/src/admin/NewButton.tsx
+sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/client.ts, apps/web/src/configuration/NewTrackForm.tsx, apps/web/src/tracks/TracksPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/web/src/tickets/templates/draft.ts, apps/web/src/tickets/templates/client.ts, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/form.ts, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md, apps/server/src/sprints/lifecycle.ts, apps/server/src/tracks/membership.ts, apps/server/src/routes/track-groups.ts, apps/server/src/trackgroups/access.ts, apps/web/src/trackgroups/TrackArrangement.tsx, apps/web/src/trackgroups/ShareGroupDialog.tsx, packages/db/src/migrations/0100_track_groups.ts, docs/adr/0121-personal-track-groups.md, apps/server/src/notifications/track-groups.ts, apps/server/src/trackgroups/privacy.ts, packages/db/src/migrations/0103_checklist_notices.ts, apps/server/src/notifications/checklists.ts, apps/web/src/tracks/NewTrackDialog.tsx, apps/web/src/shell/ModalDialog.tsx, apps/server/src/api/operations.ts, apps/web/src/admin/NewButton.tsx, apps/web/src/tickets/pickerSources.ts, apps/web/src/tickets/PersonPicker.tsx, apps/server/src/routes/fields.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/users.ts, apps/server/src/routes/teams.ts
 accessed: 2026-11-14
 attestation: own-words
 ---
@@ -369,22 +369,48 @@ there while a template is being changed. It asks for:
 | **Priority**, **Labels** | Default values |
 | **Start date** and **Due date**, **in days from today** | Counted from the day the ticket is made; negative numbers count back |
 | **Assignee**, **Areas**, **Target releases**, **Found in releases** | Default values; track templates only |
-| **Custom fields** | Add a value for a field; text, number, date, URL, choice and label fields |
+| **Custom fields** | Add a value for a field; text, number, date, URL, choice, label, person, group and team fields, and on a track's template release and area fields |
 | **Subtickets** | Up to 50, each a summary pattern and, when the track has several subticket types, a type; otherwise the track's first subticket type |
 
-Custom fields of other types, and an assignee on a template for every track, can be set through the
-API. A custom release or area field set that way shows under **Custom fields** with its values by
-name, an archived one marked **(archived)** and one the track does not have named by its number,
-each with **Remove**; the form adds none. An archived release or area the template already holds
-also stays chosen, marked, in **Areas**, **Target releases** and **Found in releases**. For the
-other types, and for a release or area value it cannot read as ids, the form says how many values
-it cannot show, and saving keeps them as they are.
+A custom release or area field shows under **Custom fields** with its values by name, an archived
+one marked **(archived)** and one the track does not have named by its number, each with
+**Remove**. Below them, **Release to add to** (or **Area to add to**) and the field's name lists the
+track's releases or areas that are not archived and not yet chosen, as the create form offers
+them; choose one and press **Add**. A field that holds a single value offers this list once its
+value is removed. When the track has none that are not archived, the form says so instead. On a
+template for every track there are no releases or areas to choose, so these fields are not
+offered.
+
+A custom person, group or team field shows under **Custom fields** with its values by name, as the
+create form's pickers name them, each with **Remove**. Below them, **Person to add to** (or
+**Group to add to**, **Team to add to**) and the field's name is the create form's search: type a
+name and press the one you want. It never offers a value the field already holds, and a field that
+holds a single value offers it once its value is removed. It looks where the create form looks:
+
+- On a track's template, people who can be found in the track. When the field allows only some
+  people (it is limited to a group or a role), only the people it allows are offered, for every
+  ticket type the template fits (all of the track's types when it names none), so someone a Bug
+  allows but a Chore does not is left out of a template for both.
+- On a template for every track, anyone active on the site, as configuration administrators find
+  people when they give a track's roles. A person field that allows only some people anywhere has
+  no search there, since who it allows is only known for a track and a ticket type, and the form
+  says so: set it on a track's template, or through the API.
+- Groups and teams are the site's, wherever the template is.
+
+One you may not see (people and groups need "Browse users and groups"), or one that is gone, is
+named by its number, for example "Group 52, hidden from you or gone", and saving keeps it unless
+you remove it. Other custom field types, and an assignee on a template for every track, are set
+through the API. An archived release or area the template already holds also stays chosen,
+marked, in **Areas**, **Target releases** and **Found in releases**. For the other types, and for
+a value it cannot read as ids, the form says how many values it cannot show, and saving keeps them
+as they are.
 
 When a save is refused over a value, the reason shows under that value, in the words the create
 form uses (for example "This release or area is archived. Choose another." or "This track does not
 offer this choice. Choose one of its own."), and the line above **Save the template** says to look
-under each value. A refused value the form does not show keeps the general line, which says to
-check the days, the fields and the subtickets.
+under each value. A reason goes as soon as you change its value, and the line goes with the last
+one. A refused value the form does not show keeps the general line, which says to check the days,
+the fields and the subtickets.
 
 Applying a template checks everything as the person making the ticket. Values they may not set, and
 fields a rule hides or the layout leaves out, stay off the ticket, and the form names them, so a
@@ -398,7 +424,9 @@ changes no ticket already made from it.
 
 Every ticket made records its template in its `ticket.created` event, as `templateId`, and adding,
 changing or deleting a template is in the audit log. The API is `/api/v1/ticket-templates`, with
-`POST /api/v1/ticket-templates/:id/tickets` to make a ticket from one.
+`POST /api/v1/ticket-templates/:id/tickets` to make a ticket from one. Reading one,
+`GET /api/v1/ticket-templates/:id` also gives `names`: the names of the people, groups and teams its
+custom values name, by body key (`fields.12`), as far as the reader may see them.
 
 ### Categories
 

@@ -7,7 +7,7 @@ import { untranslated, visibleTexts } from '../../test/backend';
 import { setViewportWidth } from '../../test/viewport';
 import { CloneDialog, type CloneSource } from './CloneDialog';
 import type { CloneClient } from './client';
-import { copied, fakeCloneClient, OUTCOME, SUBTICKET, TOO_MANY } from './fixtures';
+import { copied, FIELDS, fakeCloneClient, OUTCOME, SUBTICKET, TOO_MANY } from './fixtures';
 
 function open(options: { ticket?: CloneSource; client?: CloneClient; locale?: Locale } = {}): {
   onCloned: ReturnType<typeof vi.fn>;
@@ -125,6 +125,64 @@ describe('the clone dialog (M1-124)', () => {
           'Estimación restante, Motivo de cierre, un campo personalizado, Adjuntos, otro valor.',
       ),
     ).toBeVisible();
+  });
+
+  it('[CORE-023] names a custom field left out of a copy into another track, from that track’s catalogue or the original’s (T-352)', async () => {
+    const user = userEvent.setup();
+    const fake = fakeCloneClient({
+      total: 1,
+      fields: FIELDS,
+      first: copied(['assigneeId', 'fields.12', 'fields.14']),
+    });
+    open({ client: fake.client });
+    const box = await dialog();
+    const track = within(box).getByRole('combobox', { name: 'Track' });
+    await waitFor(() => expect(track).toBeEnabled());
+    await user.click(track);
+    await user.click(within(box).getByRole('option', { name: 'PAY: Payments' }));
+    expect(fake.fieldReads).toEqual([]);
+    await user.click(within(box).getByRole('button', { name: 'Clone' }));
+    // Risk does not apply to PAY, so PAY's catalogue does not list it: the original's names it.
+    expect(
+      await within(box).findByText(
+        'The copy is without what you may not set there or its track does not take: Assignee, Story size, Risk.',
+      ),
+    ).toBeVisible();
+    expect(fake.fieldReads).toEqual([2, 1]);
+    expect(within(box).queryByText(/a custom field/)).toBeNull();
+  });
+
+  it('[CORE-023] reads one catalogue for a copy in the same track, a seeded field in the person’s language (T-352)', async () => {
+    const user = userEvent.setup();
+    const fake = fakeCloneClient({
+      total: 1,
+      fields: FIELDS,
+      first: copied(['fields.15', 'fields.99']),
+    });
+    open({ client: fake.client, locale: 'es' });
+    const box = await screen.findByRole('dialog', { name: 'Clonar SHOP-7' });
+    await user.click(within(box).getByRole('button', { name: 'Clonar' }));
+    // A field neither catalogue lists (deleted since, say) is still said as a custom field.
+    expect(
+      await within(box).findByText(
+        'La copia no tiene lo que no puedes poner ahí o lo que su track no acepta: Puntos, un campo personalizado.',
+      ),
+    ).toBeVisible();
+    expect(fake.fieldReads).toEqual([1]);
+  });
+
+  it('[CORE-023] says a custom field it may not read the catalogue for as a custom field (T-352)', async () => {
+    const user = userEvent.setup();
+    const fake = fakeCloneClient({ total: 1, fields: 'refuse', first: copied(['fields.12']) });
+    open({ client: fake.client });
+    const box = await dialog();
+    await user.click(within(box).getByRole('button', { name: 'Clone' }));
+    expect(
+      await within(box).findByText(
+        'The copy is without what you may not set there or its track does not take: a custom field.',
+      ),
+    ).toBeVisible();
+    expect(fake.fieldReads).toEqual([1]);
   });
 
   it('[CORE-023] says why the ticket itself was not copied', async () => {

@@ -22,7 +22,79 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: T-287's Mac parts, T-289 outside releases and Plans, T-290 (2026-11-14, the Mac)
+### Latest: T-350 to T-353 (2026-11-14, the Mac)
+
+On `main` at `d0795328` after a full gate (9,249 tests, 266 e2e; the local-embedding speed limit
+missed on this Mac, not enforced, benchmarking set aside).
+
+- T-350: the template form adds person, group and team values with the create form's searches.
+  A restricted person field in a template for every track says to set it on a track's template;
+  whether to add a site-level search is the user's question T-354 (decisions.csv).
+- T-351: release notes' headings and the release's Type column read through typeName.
+- T-352: the clone dialog names a left-out custom field (target track's catalogue, then the
+  original's).
+- T-353: the design guard reads template-literal classes, respects the cascade for touch rules
+  and follows a parent's wrapper across files. The phone sweep of the timeline confirms T-296:
+  the bar is no longer listed.
+- Next on the Mac: T-355 and T-356 (the sweep's partly covered press areas; the guard's glass
+  per component and resets).
+
+### Earlier: T-296 to T-299 (2026-11-14, the Mac)
+
+On `main` at `e9adbd70` after a full gate (9,226 tests, 264 e2e), with Windows' T-287 part,
+T-289's last four and T-307 to T-311 already there.
+
+- T-296: the sweep's probe counts a positioned ::before or ::after as part of a press area (the
+  timeline bar on touch). A phone sweep of the timeline on the demo has not confirmed it yet.
+- T-297: refusals name custom fields from the field catalogue on the ticket page and the
+  Outcomes panel (`useCustomFieldNames`).
+- T-298: the design guard learns which of our components pass className to a native control,
+  and matches coarse overrides by the element they reach.
+- T-299: the template form picks custom release and area values, names person, group and team
+  values, and clears a kept reason when its field is edited; release notes name their 'left
+  out' reasons in words. Spanish drafts for the seeded close reasons: Completado, No
+  planificado, Duplicado, No reproducible.
+- Next on the Mac: T-350 to T-353.
+
+### Earlier: lists that stop early, releases on your own day (2026-11-14, Windows)
+
+On `main` at `68a5d2d3` after a full gate (9,192 tests, 262 e2e). No migration; the next is 0111.
+
+- T-287 (Windows' part): releases across tracks, their linked releases and a plan's Releases tab
+  turn overdue at the viewer's midnight (`viewerDay`); `releaseView(r, today)` needs the day.
+- T-307 and T-308: Administration > People and API tokens have Show more. `pageAfter()` in
+  `apps/web/src/api/pages.ts` starts each page at the last row read and reads again if it moved,
+  so a row is never skipped when an earlier one leaves the list.
+- T-309: a ticket's All feed reads `GET /tickets/:id/activity?kind=all` page by page; a page holds
+  at most `limit` time entries and its cursor is `<row>.<microseconds>.<entryId>` (ADR-047). Opened
+  pages stay when the ticket changes. A description or environment change quotes one line of text.
+- T-310: `GET /saved-searches` and `GET /me/managed-tracks` page by cursor; every reader follows
+  them, the Jira-compatible favourite filters too.
+- T-311: the History tab keeps its opened pages when the ticket changes.
+- T-289: `bareEmpties` in design-offenders.ts is empty.
+- A new check, `packages/testkit/src/sources.test.ts`, fails on a NUL byte in any source file.
+- Next on Windows: T-089f (the auto-scheduler), then T-089a. T-306's 18 questions wait on the user.
+
+### Earlier: T-291 to T-295 (2026-11-14, the Mac)
+
+On `main` at `ee89136d` after a full gate (9,138 tests, 262 e2e).
+
+- T-291: the ticket template form shows the server's reason under the field it belongs to and
+  shows custom release and area values by name, with a way to remove one. Its "None: saving
+  leaves this field empty." line is allowed by the empty-state guard as a field's value.
+- T-292: refused fields are named by their labels (a shared helper) on the ticket page and the
+  Outcomes panel; no raw API key shows.
+- T-293: on touch the timeline bar keeps its 24 px look with a 44 px press area (`::after`);
+  the Plans timeline shares it.
+- T-294: the finger-height guard catches fixed heights under 44 px on interactive selectors, and
+  a check over .tsx files catches grips styled inline.
+- T-295: the SSO group mapping says "No groups yet" with a body.
+- Small calls made without the user (not product decisions): the bar keeps its 24 px look on
+  phones; refusals keep the "Check these values." lead-in; no link from the SSO empty state.
+- The Mac's tickets T-259 to T-299 are used up; T-350 to T-399 are reserved in COORDINATION.md.
+- Next on the Mac: T-296 to T-299.
+
+### Earlier: T-287's Mac parts, T-289 outside releases and Plans, T-290 (2026-11-14, the Mac)
 
 On `main` at `0f1a4e11` after a full gate (9,107 tests, 262 e2e; one speed limit missed on this
 Mac, not enforced, and benchmarking is set aside for now).

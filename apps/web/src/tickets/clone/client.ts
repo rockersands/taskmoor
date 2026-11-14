@@ -1,6 +1,8 @@
 import { api } from '../../api/client';
 import { everyTrack } from '../../api/tracks';
 import type { BulkItem, BulkOperation } from '../../bulk/client';
+import type { ReadFieldNames } from '../customFieldNames';
+import { ticketClient } from '../view/client';
 
 /** A track the copies may go to, as `GET /api/v1/tracks` lists it. */
 export interface CloneTrack {
@@ -29,6 +31,11 @@ export interface CloneClient {
   progress(operationId: number): Promise<BulkOperation>;
   /** The result for the ticket asked for: the first item, with its copy. */
   first(operationId: number): Promise<BulkItem | null>;
+  /**
+   * The custom fields of a track (by its id), from the field catalogue, to name a field the copy
+   * was made without (T-352). Without it such a field reads 'a custom field'.
+   */
+  fieldNames?: ReadFieldNames | undefined;
 }
 
 export const cloneClient: CloneClient = {
@@ -45,4 +52,5 @@ export const cloneClient: CloneClient = {
     (await api<{ bulkOperation: BulkOperation }>(`/bulk-operations/${id}`)).bulkOperation,
   first: async (id) =>
     (await api<{ items: BulkItem[] }>(`/bulk-operations/${id}/items?limit=1`)).items[0] ?? null,
+  fieldNames: ticketClient.fieldNames,
 };

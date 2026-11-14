@@ -5,10 +5,10 @@ import { useT } from '../../i18n/I18nProvider';
 import { navigate, openOverlay, overlayRoute, routeHref } from '../../routing/router';
 import { EmptyState } from '../../shell/EmptyState';
 import { IconSelect } from '../../shell/IconSelect';
-import { fieldName as seededFieldName, typeName } from '../../shell/seededNames';
+import { typeName } from '../../shell/seededNames';
 import { TypeGlyph } from '../../shell/TicketIcons';
 import { refusalMessage, type TransitionRefusal } from '../../workflow/refusal';
-import { customId, fieldErrors, SYSTEM_FIELDS } from '../form';
+import { type CustomFieldNames, refusedFieldLabel } from '../refusedFields';
 import type { Transition } from '../view/client';
 import { FILLABLE_FIELDS, TransitionForm } from '../view/TransitionForm';
 import { ChildStatusMenu } from './ChildStatusMenu';
@@ -17,7 +17,7 @@ import { ticketToolsClient } from './client';
 import { ProgressBar, percentOf } from './Progress';
 
 /** Custom field names by id, as a type's create form gives them. */
-type FieldNames = ReadonlyMap<number, string>;
+type FieldNames = CustomFieldNames;
 const NO_NAMES: FieldNames = new Map();
 
 export interface SubticketsPanelProps {
@@ -168,27 +168,15 @@ export function SubticketsPanel({
 
   if (!hasChildren) return null;
 
-  /**
-   * A field by the name the person knows it by, a custom one as its type's create form names it
-   * (a seeded one in their language); null for one this panel cannot name.
-   */
-  const fieldName = (key: string, known: FieldNames): string | null => {
-    const system = SYSTEM_FIELDS[key];
-    if (system) return t(system.label);
-    const id = customId(key);
-    if (id === null) return null;
-    const name = known.get(id);
-    return name === undefined
-      ? t('tickets.templates.fieldNumber', { id })
-      : seededFieldName(t, name);
-  };
   /** A field refusal: where the ticket cannot go, else the fields by name and what was wrong. */
   const fieldRefusal = (fields: Record<string, string>, known: FieldNames) => {
     if (fields.parent === 'not_found') return t('ticketTools.subtickets.parentGone');
     if (fields.parent !== undefined) return t('ticketTools.subtickets.wrongPlace');
     if (fields.ticketTypeId !== undefined) return t('ticketTools.subtickets.typeGone');
-    const named = Object.entries(fieldErrors(fields)).map(([key, why]) => ({
-      name: fieldName(key, known),
+    // Each field by the label its control has (T-292, T-299), a custom one as its type's create
+    // form names it, or by its number when that form could not be read; null for no field.
+    const named = Object.entries(fields).map(([key, why]) => ({
+      name: refusedFieldLabel(t, key, known, 'tickets.templates.fieldNumber'),
       why,
     }));
     if (named.length === 0 || named.some((field) => field.name === null)) {

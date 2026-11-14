@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/client';
 import { I18nProvider } from '../i18n/I18nProvider';
+import type { Locale } from '../i18n/locale';
 import { useTimeZone } from '../test/timeZone';
 import { setViewportWidth } from '../test/viewport';
 import { fakeTrackClient } from '../tracks/fixtures';
@@ -10,9 +11,13 @@ import { fakeCrossTrackClient } from './crossTrackFixtures';
 import { fakeReleaseClient } from './fixtures';
 import { ReleasePage } from './ReleasePage';
 
-function renderRelease(releaseId = 2, client = fakeReleaseClient({ approver: true })) {
+function renderRelease(
+  releaseId = 2,
+  client = fakeReleaseClient({ approver: true }),
+  locale: Locale = 'en',
+) {
   render(
-    <I18nProvider locale="en">
+    <I18nProvider locale={locale}>
       <ReleasePage
         releaseId={releaseId}
         client={client}
@@ -235,6 +240,64 @@ describe('a release’s page (M1-050)', () => {
     expect(screen.queryByRole('button', { name: 'Ship this release…' })).toBeNull();
   });
 
+  it('[CORE-016] names each left-out reason in words, a seeded one in the person’s language (T-299)', async () => {
+    const client = fakeReleaseClient();
+    const notes = client.notes.bind(client);
+    client.notes = async (id) => ({
+      ...(await notes(id)),
+      leftOut: [
+        { reason: 'Not planned', count: 1 },
+        { reason: 'Superseded', count: 3 },
+        { reason: '', count: 1 },
+      ],
+    });
+    renderRelease(1, client, 'es');
+    const section = within(await screen.findByRole('region', { name: 'Notas de la versión' }));
+    // A reason someone named shows as they wrote it; one since deleted is said so.
+    expect(
+      await section.findByText(
+        'Excluidos (cerrados sin estar hechos): 1 ticket como No planificado, 3 tickets como Superseded y 1 ticket con un motivo de cierre ya borrado.',
+      ),
+    ).toBeVisible();
+  });
+
+  it('[CORE-016] heads the notes and names the tickets’ types in the person’s language, a type someone named as written (T-351)', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const client = fakeReleaseClient();
+    const notes = client.notes.bind(client);
+    client.notes = async (id) => {
+      const read = await notes(id);
+      return {
+        ...read,
+        sections: [
+          ...read.sections,
+          { type: 'Spike', tickets: [{ id: 27, key: 'CHK-27', summary: 'Try a wallet' }] },
+        ],
+      };
+    };
+    renderRelease(1, client, 'es');
+    const section = within(await screen.findByRole('region', { name: 'Notas de la versión' }));
+    const headings = await section.findAllByRole('heading', { level: 3 });
+    expect(headings.map((h) => h.textContent)).toEqual(['Funcionalidad', 'Error', 'Spike']);
+    expect(section.getByRole('link', { name: 'CHK-26' }).closest('section')).toHaveAccessibleName(
+      'Error',
+    );
+    // The Markdown keeps the stored names, in English as the manual says.
+    await user.click(section.getByRole('button', { name: 'Copiar como Markdown' }));
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('## Feature\n'));
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('## Bug\n'));
+  });
+
+  it('[CORE-016] gives each ticket’s type in the person’s language in the release’s tickets (T-351)', async () => {
+    renderRelease(2, fakeReleaseClient({ approver: true }), 'es');
+    const tickets = within(await screen.findByRole('region', { name: 'Tickets' }));
+    const row = (key: string) => tickets.getByRole('link', { name: key }).closest('tr');
+    expect(within(row('CHK-21') as HTMLElement).getByText('Funcionalidad')).toBeVisible();
+    expect(within(row('CHK-24') as HTMLElement).getByText('Tarea')).toBeVisible();
+  });
+
   it('[CORE-016] gives focus back to Ship when the shipping step is cancelled', async () => {
     const user = userEvent.setup();
     renderRelease();
@@ -259,7 +322,11 @@ describe('a release’s page (M1-050)', () => {
     expect(notes.getByRole('link', { name: 'CHK-26' }).closest('li')).toHaveTextContent(
       'CHK-26 Totals off by a cent',
     );
-    expect(notes.getByText('Left out (closed without being done): Duplicate (1).')).toBeVisible();
+    expect(
+      notes.getByText(
+        'Left out (closed without being done): 1 ticket as Duplicate and 2 tickets as Not planned.',
+      ),
+    ).toBeVisible();
     await user.click(notes.getByRole('button', { name: 'Copy as Markdown' }));
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining('## Bug\n\n- CHK-26'));
     expect(await screen.findByText('Release notes copied.')).toBeVisible();

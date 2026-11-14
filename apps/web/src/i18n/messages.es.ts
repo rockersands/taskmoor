@@ -3684,6 +3684,10 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketType.name.toDo': 'Pendiente',
   'ticketType.name.idea': 'Idea',
   'ticketType.name.subticket': 'Subticket',
+  'closeReason.name.completed': 'Completado',
+  'closeReason.name.notPlanned': 'No planificado',
+  'closeReason.name.duplicate': 'Duplicado',
+  'closeReason.name.notReproducible': 'No reproducible',
   'ticketView.editLabels': 'Editar las etiquetas',
   'ticketView.save': 'Guardar',
   'ticketView.cancel': 'Cancelar',
@@ -5884,6 +5888,9 @@ export const messagesEs: Record<MessageId, string> = {
   'release.notes.empty':
     'Aún no hay tickets cerrados: las notas se rellenan a medida que se cierran.',
   'release.notes.leftOut': 'Excluidos (cerrados sin estar hechos): {list}.',
+  'release.notes.leftOutReason': '{count, plural, one {# ticket} other {# tickets}} como {reason}',
+  'release.notes.leftOutNoReason':
+    '{count, plural, one {# ticket} other {# tickets}} con un motivo de cierre ya borrado',
   'release.notes.truncated': 'Solo los primeros 5000 tickets cerrados están en las notas.',
   'release.notes.copy': 'Copiar como Markdown',
   'release.notes.download': 'Descargar en Markdown',
@@ -6792,8 +6799,23 @@ export const messagesEs: Record<MessageId, string> = {
     '{type, select, area {Área {id}, no está en este track} other {Versión {id}, no está en este track}}',
   'tickets.templates.removeValue': 'Quitar {value} de {field}',
   'tickets.templates.trackValuesHint':
+    'Añade uno de los abiertos del track, o quita uno para que los tickets creados con esta plantilla no lo lleven.',
+  'tickets.templates.apiValuesHint':
     'Se pone a través de la API. Si quitas uno, los tickets creados con esta plantilla no lo llevan.',
+  'tickets.templates.loadingNames': 'Leyendo los nombres…',
+  'tickets.templates.unnamedValue':
+    '{type, select, user {Persona {id}, oculta para ti o que ya no está} group {Grupo {id}, oculto para ti o que ya no existe} other {Equipo {id}, que ya no existe}}',
+  'tickets.templates.addTrackValueLabel':
+    '{type, select, area {Área para añadir a {field}} other {Versión para añadir a {field}}}',
+  'tickets.templates.addValue': 'Añadir',
+  'tickets.templates.addValueTo': 'Añadir a {field}',
   'tickets.templates.noTrackValues': 'Ninguno: al guardar, este campo queda vacío.',
+  'tickets.templates.addNamedValueLabel':
+    '{type, select, user {Persona para añadir a {field}} group {Grupo para añadir a {field}} other {Equipo para añadir a {field}}}',
+  'tickets.templates.namedValuesHint':
+    'Busca uno para añadirlo, o quita uno para que los tickets creados con esta plantilla no lo lleven.',
+  'tickets.templates.restrictedEveryTrack':
+    'Este campo solo permite a algunas personas, y cuáles depende del track: ponlo en la plantilla de un track o a través de la API. Si quitas una, los tickets creados con esta plantilla no la llevan.',
   'tickets.templates.pick': 'Empezar desde una plantilla',
   'tickets.templates.pickNone': 'Sin plantilla',
   'tickets.templates.pickFailed':

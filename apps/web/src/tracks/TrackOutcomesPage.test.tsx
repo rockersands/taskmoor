@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/client';
@@ -6,6 +6,7 @@ import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
 import { untranslated, visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
+import type { NamedField } from '../tickets/customFieldNames';
 import type { OutcomeRights, TrackOutcome } from './client';
 import {
   fakeTrackClient,
@@ -370,11 +371,93 @@ describe("managing a track's outcomes from the Outcomes tab (AGL-024; T-082)", (
     expect(alert).toHaveTextContent(
       'Check these values. Due date: This value is not valid here. ' +
         'Close reason: This choice is not available. ' +
-        'A custom field: This field is required.',
+        'Customer tier: This field is required.',
     );
     for (const key of ['dueDate', 'close-reason', 'fields.12']) {
       expect(alert).not.toHaveTextContent(key);
     }
+  });
+
+  it("[AGL-024][CORE-008] reads the custom fields' names from the track's catalogue once, when a refusal first needs one (T-297)", async () => {
+    const { user, calls } = await managing({
+      refuse: new ApiError(400, {
+        error: 'invalid_fields',
+        fields: { 'fields.12': 'required', 'fields.99': 'invalid' },
+      }),
+    });
+    // Nothing is read until a refusal names a custom field.
+    expect(calls.filter(([what]) => what === 'fieldNames')).toEqual([]);
+    await user.click(within(tools('SHOP-51')).getByRole('button', { name: 'Edit' }));
+    const form = screen.getByRole('form', { name: 'Edit SHOP-51' });
+    fireEvent.change(within(form).getByLabelText('Due date'), {
+      target: { value: '2027-02-26' },
+    });
+    await user.click(within(form).getByRole('button', { name: 'Save' }));
+    // A field the catalogue does not give keeps the general name.
+    const said =
+      'Check these values. Customer tier: This field is required. ' +
+      'A custom field: This value is not valid here.';
+    expect(await screen.findByRole('alert')).toHaveTextContent(said);
+    // Refused again: named at once from what was read.
+    await user.click(within(form).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(calls.filter(([what]) => what === 'edit')).toHaveLength(2));
+    expect(screen.getByRole('alert')).toHaveTextContent(said);
+    // The track's catalogue (by its id), read once for the page.
+    expect(calls.filter(([what]) => what === 'fieldNames')).toEqual([['fieldNames', 1]]);
+  });
+
+  it('[AGL-024][CORE-008] drops a refusal still waiting on the catalogue once a later save goes through (T-297)', async () => {
+    const options: Parameters<typeof managedOutcomes>[1] = {
+      refuse: new ApiError(400, { error: 'invalid_fields', fields: { 'fields.12': 'required' } }),
+    };
+    const { user, calls, manager } = await managing(options);
+    // A large catalogue: the read is still under way when the second save is made.
+    let answer: (fields: NamedField[]) => void = () => {};
+    manager.fieldNames = (trackId) => {
+      calls.push(['fieldNames', trackId]);
+      return new Promise((resolve) => {
+        answer = resolve;
+      });
+    };
+    await user.click(within(tools('SHOP-51')).getByRole('button', { name: 'Edit' }));
+    const form = screen.getByRole('form', { name: 'Edit SHOP-51' });
+    fireEvent.change(within(form).getByLabelText('Due date'), {
+      target: { value: '2027-02-26' },
+    });
+    await user.click(within(form).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(calls.filter(([what]) => what === 'fieldNames')).toHaveLength(1));
+    // Filled in, the second save goes through before the catalogue answers.
+    delete options.refuse;
+    await user.click(within(form).getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Saved SHOP-51.')).toBeVisible();
+    await act(async () => {
+      answer([{ id: 12, name: 'Customer tier' }]);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    // The old refusal is not put back beside the success.
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByText('Saved SHOP-51.')).toBeVisible();
+  });
+
+  it("[AGL-024][CORE-008] says 'A custom field' when the catalogue cannot be read (T-297)", async () => {
+    const { user, container } = await managing(
+      {
+        refuse: new ApiError(400, { error: 'invalid_fields', fields: { 'fields.12': 'required' } }),
+        fields: new ApiError(404, { error: 'not_found' }),
+      },
+      'es',
+    );
+    await user.click(
+      container.querySelector('[data-outcome="51"] [data-tool="edit"]') as HTMLElement,
+    );
+    const form = screen.getByRole('form', { name: 'Editar SHOP-51' });
+    fireEvent.change(within(form).getByLabelText('Fecha de inicio'), {
+      target: { value: '2027-01-04' },
+    });
+    await user.click(within(form).getByRole('button', { name: 'Guardar' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Revisa estos valores. Un campo personalizado: Este campo es obligatorio.',
+    );
   });
 
   it('[AGL-024][CORE-008] names the refused values by their labels in Spanish too (T-292)', async () => {

@@ -1,5 +1,6 @@
 import { BOARD } from '../boards/fixtures';
 import type { Widget } from '../dashboards/client';
+import type { NamedField } from '../tickets/customFieldNames';
 import type { Transition } from '../tickets/view/client';
 import type {
   OutcomeRights,
@@ -297,7 +298,13 @@ export const OUTCOME_WAYS: Transition[] = [
  */
 export function managedOutcomes(
   start: TrackOutcome[] = SHOP_OUTCOMES,
-  options: { rights?: OutcomeRights; ways?: Transition[]; refuse?: Error } = {},
+  options: {
+    rights?: OutcomeRights;
+    ways?: Transition[];
+    refuse?: Error;
+    /** The track's custom fields in the field catalogue, or the error reading them answers. */
+    fields?: NamedField[] | Error;
+  } = {},
 ) {
   const list = start.map((o) => ({ ...o }));
   const calls: unknown[][] = [];
@@ -355,6 +362,12 @@ export function managedOutcomes(
       { id: 2, name: "Won't do" },
     ],
     priorities: async () => [],
+    fieldNames: async (trackId) => {
+      calls.push(['fieldNames', trackId]);
+      const fields = options.fields ?? [{ id: 12, name: 'Customer tier' }];
+      if (fields instanceof Error) throw fields;
+      return fields.map((f) => ({ ...f }));
+    },
   };
   return {
     calls,

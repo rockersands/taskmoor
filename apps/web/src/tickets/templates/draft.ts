@@ -4,6 +4,7 @@ import type { MessageId } from '../../i18n/messages.en';
 import { errorMessage, splitLabels } from '../form';
 import type {
   FieldChoice,
+  FieldRule,
   Named,
   SavedTemplate,
   TemplateBody,
@@ -23,9 +24,80 @@ export const FORM_FIELD_TYPES: ReadonlySet<string> = new Set([
 
 /**
  * Custom field types whose values are the track's releases or areas: the form names them from the
- * track's lists and lets a person remove one, but offers none to add (T-291).
+ * track's lists, lets a person remove one (T-291) and add one of the track's open ones (T-299).
  */
 export const TRACK_VALUE_TYPES: ReadonlySet<string> = new Set(['release', 'area']);
+
+/**
+ * Custom field types whose values are people, groups or teams: the form names them as the create
+ * form's pickers do, lets a person remove one (T-299) and find one to add with the create form's
+ * searches (T-350).
+ */
+export const NAMED_VALUE_TYPES: ReadonlySet<string> = new Set(['user', 'group', 'team']);
+
+/** Custom field types the form lists by id: the track's lists, and the named ones. */
+const LISTED_TYPES: ReadonlySet<string> = new Set([...TRACK_VALUE_TYPES, ...NAMED_VALUE_TYPES]);
+
+/**
+ * The context a field takes for a ticket of a type in a track, as the server picks it: the one
+ * that names both, then the track's for every type, then the type's in every track, then the one
+ * for everything (CORE-009).
+ */
+function ruleFor(rules: readonly FieldRule[], trackId: number, typeId: number): FieldRule | null {
+  const covers = (list: number[] | null, id: number, named: boolean) =>
+    named ? list?.includes(id) === true : list === null;
+  for (const [track, type] of [
+    [true, true],
+    [true, false],
+    [false, true],
+    [false, false],
+  ] as const) {
+    const found = rules.find(
+      (r) => covers(r.trackIds, trackId, track) && covers(r.ticketTypeIds, typeId, type),
+    );
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * Where a template's custom person field finds people to add (T-350):
+ * - `anyone`: the track's people, as the create form's person picker finds them, or, on a
+ *   template for every track, anyone active in the site;
+ * - `allowed`: only those the field allows (CORE-009 (2)), asked for with one ticket type per
+ *   context that limits it among the types the template fits; a person must be allowed by each,
+ *   since the ticket can be of any of them;
+ * - `none`: no search can say, because the field allows only some people in a context and the
+ *   template is for every track, whose people the server finds per track only.
+ */
+export type PersonSearch =
+  | { kind: 'anyone' }
+  | { kind: 'allowed'; typeIds: number[] }
+  | { kind: 'none' };
+
+export function personSearchOf(
+  rules: readonly FieldRule[],
+  trackId: number | null,
+  typeIds: readonly number[],
+): PersonSearch {
+  if (trackId === null) {
+    return rules.some((r) => r.restricted) ? { kind: 'none' } : { kind: 'anyone' };
+  }
+  const byRule = new Map<number, number>();
+  for (const typeId of typeIds) {
+    const rule = ruleFor(rules, trackId, typeId);
+    if (rule?.restricted && !byRule.has(rule.id)) byRule.set(rule.id, typeId);
+  }
+  return byRule.size === 0
+    ? { kind: 'anyone' }
+    : { kind: 'allowed', typeIds: [...byRule.values()] };
+}
+
+/** Those found by every one of several searches, in the first one's order. */
+export function foundByEach(lists: readonly Named[][]): Named[] {
+  const [first = [], ...rest] = lists;
+  return first.filter((n) => rest.every((list) => list.some((m) => m.id === n.id)));
+}
 
 /** A subticket-level type's rank (spec 01a section 1.2). */
 export const SUBTICKET_RANK = -1;
@@ -49,6 +121,8 @@ export interface TemplateDraft {
   fields: Record<string, string | string[]>;
   /** The releases or areas a custom release or area field holds, as ids by field id. */
   trackValues: Record<string, number[]>;
+  /** The people, groups or teams a custom person, group or team field holds, as ids by field id. */
+  namedValues: Record<string, number[]>;
   subtickets: { summary: string; ticketTypeId: string }[];
 }
 
@@ -102,13 +176,15 @@ export function draftOf(
   const defaults = saved?.defaults ?? {};
   const values: TemplateDraft['fields'] = {};
   const trackValues: TemplateDraft['trackValues'] = {};
+  const namedValues: TemplateDraft['namedValues'] = {};
   for (const [id, value] of Object.entries(defaults.fields ?? {})) {
     const field = fields.find((f) => String(f.id) === id);
     if (field && FORM_FIELD_TYPES.has(field.type) && value != null) {
       values[id] = fieldText(field, value);
-    } else if (field && TRACK_VALUE_TYPES.has(field.type)) {
+    } else if (field && LISTED_TYPES.has(field.type)) {
       const ids = idsOf(value);
-      if (ids && ids.length > 0) trackValues[id] = ids;
+      const into = TRACK_VALUE_TYPES.has(field.type) ? trackValues : namedValues;
+      if (ids && ids.length > 0) into[id] = ids;
     }
   }
   return {
@@ -127,6 +203,7 @@ export function draftOf(
     foundInReleaseIds: defaults.foundInReleaseIds ?? [],
     fields: values,
     trackValues,
+    namedValues,
     subtickets: (saved?.subtickets ?? []).map((s) => ({
       summary: s.summary,
       ticketTypeId: s.ticketTypeId == null ? '' : String(s.ticketTypeId),
@@ -143,19 +220,20 @@ function fieldValue(field: FieldChoice, raw: string | string[]): unknown {
 }
 
 /**
- * Whether the form shows a saved custom field value: a control for it, or its releases or areas
- * when it can read each of their ids.
+ * Whether the form shows a saved custom field value: a control for it, or its releases, areas,
+ * people, groups or teams when it can read each of their ids.
  */
 function shown(field: FieldChoice | undefined, value: unknown): boolean {
   if (field === undefined) return false;
   if (FORM_FIELD_TYPES.has(field.type)) return true;
-  return TRACK_VALUE_TYPES.has(field.type) && (value == null || idsOf(value) !== null);
+  return LISTED_TYPES.has(field.type) && (value == null || idsOf(value) !== null);
 }
 
 /**
  * The defaults a draft makes. What the form does not show stays as saved: custom fields of types
- * it has no control for, and an assignee on a template for every track. A custom release or area
- * field keeps the values the form still lists, as an id or ids as the field takes them.
+ * it has no control for, and an assignee on a template for every track. A custom release, area,
+ * person, group or team field keeps the values the form still lists, as an id or ids as the field
+ * takes them.
  */
 function defaultsOf(
   draft: TemplateDraft,
@@ -183,7 +261,7 @@ function defaultsOf(
     const field = fields.find((f) => String(f.id) === id);
     if (!shown(field, value)) custom[id] = value;
   }
-  for (const [id, ids] of Object.entries(draft.trackValues)) {
+  for (const [id, ids] of Object.entries({ ...draft.trackValues, ...draft.namedValues })) {
     const field = fields.find((f) => String(f.id) === id);
     if (!field || ids.length === 0) continue;
     custom[id] = field.multiple ? ids : ids[0];
@@ -330,4 +408,75 @@ export function saveRefusalOf(error: unknown, draft: TemplateDraft): Refusal {
         : 'tickets.templates.problem.marked',
     at,
   };
+}
+
+/** The draft's own values by the spot that shows their problems. */
+const DRAFT_SPOTS: Partial<Record<keyof TemplateDraft, ProblemSpot>> = {
+  name: 'name',
+  purpose: 'purpose',
+  ticketTypeIds: 'ticketTypeIds',
+  summary: 'summary',
+  description: 'description',
+  priorityId: 'priority',
+  labels: 'labels',
+  startInDays: 'startInDays',
+  dueInDays: 'dueInDays',
+  assignee: 'assignee',
+  areaIds: 'areaIds',
+  targetReleaseIds: 'targetReleaseIds',
+  foundInReleaseIds: 'foundInReleaseIds',
+};
+
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+/** The ids of a record's entries that differ between two drafts. */
+function changedIds(before: Record<string, unknown>, after: Record<string, unknown>): string[] {
+  const ids = new Set([...Object.keys(before), ...Object.keys(after)]);
+  return [...ids].filter((id) => !same(before[id], after[id]));
+}
+
+/**
+ * The spots whose values an edit changed (T-299): a control's own, a custom field's
+ * `field:<id>`, a subticket row's summary or type.
+ */
+export function editedSpots(before: TemplateDraft, after: TemplateDraft): ProblemSpot[] {
+  const out: ProblemSpot[] = [];
+  for (const [key, spot] of Object.entries(DRAFT_SPOTS) as [keyof TemplateDraft, ProblemSpot][]) {
+    if (!same(before[key], after[key])) out.push(spot);
+  }
+  for (const id of [
+    ...changedIds(before.fields, after.fields),
+    ...changedIds(before.trackValues, after.trackValues),
+    ...changedIds(before.namedValues, after.namedValues),
+  ]) {
+    out.push(`field:${id}`);
+  }
+  const rows = Math.max(before.subtickets.length, after.subtickets.length);
+  for (let i = 0; i < rows; i++) {
+    const was = before.subtickets[i];
+    const now = after.subtickets[i];
+    if (was?.summary !== now?.summary) out.push(`subticket:${i}`);
+    if (was?.ticketTypeId !== now?.ticketTypeId) out.push(`subticket:${i}:type`);
+  }
+  return out;
+}
+
+/**
+ * A refusal once some values were edited (T-299): their reasons go, as the person is changing
+ * what was refused. The line for the whole form goes with the last reason it pointed to, and a
+ * name in use goes once the name changes; a problem the form could not place keeps its line.
+ */
+export function clearedRefusal(refusal: Refusal | null, edited: ProblemSpot[]): Refusal | null {
+  if (refusal === null || edited.length === 0) return refusal;
+  if (refusal.message === 'tickets.templates.problem.nameTaken' && edited.includes('name')) {
+    return null;
+  }
+  const at = Object.fromEntries(
+    Object.entries(refusal.at).filter(([spot]) => !edited.includes(spot)),
+  );
+  if (Object.keys(at).length === Object.keys(refusal.at).length) return refusal;
+  if (Object.keys(at).length === 0 && refusal.message === 'tickets.templates.problem.marked') {
+    return null;
+  }
+  return { ...refusal, at };
 }

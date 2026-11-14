@@ -652,9 +652,33 @@ describe('ticket templates (CORE-029, CORE-030)', () => {
         .values({ workspace_id: 1, permission: 'browse_users', grantee: 'any_user' })
         .execute();
     }
-    // Read without a track, the template has no start and no names.
+    // Read without a track, to edit it (T-299): no start, and the names of its own values.
     const plain = ok(await call('alice', 'GET', `/api/v1/ticket-templates/${tpl.id}`));
-    expect(plain.names).toBeUndefined();
+    expect(plain.start).toBeUndefined();
+    expect(plain.names).toEqual(read.names);
+  });
+
+  it('[CORE-029] names the people, groups and teams a template for every track holds, to edit it (T-299)', async () => {
+    const reviewer = ok(
+      await call('admin', 'POST', '/api/v1/fields', { name: 'Reviewer T-299', type: 'user' }),
+      201,
+    ).field as { id: number };
+    const tpl = (
+      await template('admin', {
+        track: null,
+        name: 'Every track, named',
+        summary: 'Named',
+        defaults: { fields: { [reviewer.id]: users.carol.id } },
+      })
+    ).template;
+    const read = ok(await call('dave', 'GET', `/api/v1/ticket-templates/${tpl.id}`));
+    expect(read.names).toEqual({
+      [`fields.${reviewer.id}`]: [{ id: users.carol.id, name: 'Carol' }],
+    });
+    // A template with no such values names none.
+    const plain = (await template('admin', { track: null, name: 'Plain', summary: 'Plain' }))
+      .template;
+    expect(ok(await call('dave', 'GET', `/api/v1/ticket-templates/${plain.id}`)).names).toEqual({});
   });
 
   it('[CORE-030] (2) leaves out an assignee who cannot be assigned here', async () => {

@@ -44,7 +44,8 @@ import { ticketRoutes } from './tickets';
  *   it starts a ticket there with for this person (`start`): the summary pattern filled in, the
  *   dates counted from today in their time zone. `names` gives the names of the people, groups
  *   and teams its custom values name, by body key (`fields.12`), so a form can show them in its
- *   pickers (T-276): only those the reader may see, as the pickers would offer them. People and
+ *   pickers (T-276) and the template form by name (T-299, also without a track): only those the
+ *   reader may see, as the pickers would offer them. People and
  *   groups need "Browse users and groups" and people must be active; teams are seen by everyone
  *   signed in. A value the reader may not see has no name there.
  * - Track templates are seen by those who browse the track and changed by its administrators
@@ -454,7 +455,11 @@ export function registerTicketTemplateRoutes(
     const row = await findTemplate(request, p.data.id);
     if (!row) return notFound(reply);
     const [view] = await views(request, [row], format);
-    if (q.data.track === undefined) return { template: view };
+    if (q.data.track === undefined) {
+      // Read to edit (T-299): the names of the people, groups and teams its own values name.
+      const own = (row.defaults as { fields?: Record<string, unknown> } | null)?.fields;
+      return { template: view, names: await startNames(request, { fields: own ?? {} }) };
+    }
     const trackId = await resolveTrack(db, request.workspaceId, q.data.track);
     if (
       trackId === null ||

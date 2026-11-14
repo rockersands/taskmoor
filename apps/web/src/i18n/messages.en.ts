@@ -3586,6 +3586,10 @@ export const messagesEn = {
   'ticketType.name.toDo': 'To-do',
   'ticketType.name.idea': 'Idea',
   'ticketType.name.subticket': 'Subticket',
+  'closeReason.name.completed': 'Completed',
+  'closeReason.name.notPlanned': 'Not planned',
+  'closeReason.name.duplicate': 'Duplicate',
+  'closeReason.name.notReproducible': 'Not reproducible',
   'ticketView.editLabels': 'Edit labels',
   'ticketView.save': 'Save',
   'ticketView.cancel': 'Cancel',
@@ -5748,6 +5752,9 @@ export const messagesEn = {
   'release.notes.title': 'Release notes',
   'release.notes.empty': 'No closed tickets yet: the notes fill in as tickets close.',
   'release.notes.leftOut': 'Left out (closed without being done): {list}.',
+  'release.notes.leftOutReason': '{count, plural, one {# ticket} other {# tickets}} as {reason}',
+  'release.notes.leftOutNoReason':
+    '{count, plural, one {# ticket} other {# tickets}} with a close reason since deleted',
   'release.notes.truncated': 'Only the first 5,000 closed tickets are in the notes.',
   'release.notes.copy': 'Copy as Markdown',
   'release.notes.download': 'Download Markdown',
@@ -6638,8 +6645,23 @@ export const messagesEn = {
     '{type, select, area {Area {id}, not in this track} other {Release {id}, not in this track}}',
   'tickets.templates.removeValue': 'Remove {value} from {field}',
   'tickets.templates.trackValuesHint':
+    'Add one of the track’s open ones, or remove one to leave it off the tickets made from this template.',
+  'tickets.templates.apiValuesHint':
     'Set through the API. Removing one leaves it off the tickets made from this template.',
+  'tickets.templates.loadingNames': 'Reading the names…',
+  'tickets.templates.unnamedValue':
+    '{type, select, user {Person {id}, hidden from you or gone} group {Group {id}, hidden from you or gone} other {Team {id}, gone}}',
+  'tickets.templates.addTrackValueLabel':
+    '{type, select, area {Area to add to {field}} other {Release to add to {field}}}',
+  'tickets.templates.addValue': 'Add',
+  'tickets.templates.addValueTo': 'Add to {field}',
   'tickets.templates.noTrackValues': 'None: saving leaves this field empty.',
+  'tickets.templates.addNamedValueLabel':
+    '{type, select, user {Person to add to {field}} group {Group to add to {field}} other {Team to add to {field}}}',
+  'tickets.templates.namedValuesHint':
+    'Find one to add, or remove one to leave it off the tickets made from this template.',
+  'tickets.templates.restrictedEveryTrack':
+    'This field allows only some people, and who depends on the track: set it on a track’s template, or through the API. Removing one leaves it off the tickets made from this template.',
   'tickets.templates.pick': 'Start from a template',
   'tickets.templates.pickNone': 'No template',
   'tickets.templates.pickFailed': 'That template could not be loaded. Try again in a moment.',

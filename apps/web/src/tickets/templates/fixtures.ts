@@ -1,6 +1,7 @@
 import { ApiError } from '../../api/client';
 import type {
   AppliedTemplate,
+  FieldRule,
   FieldValueOption,
   Named,
   PickerClient,
@@ -65,10 +66,12 @@ export const TEMPLATE_OPTIONS: TemplateOptions = {
   areas: [
     { id: 31, name: 'Checkout' },
     { id: 32, name: 'Old storefront', archived: true },
+    { id: 33, name: 'Payments' },
   ],
   releases: [
     { id: 41, name: '1.0' },
     { id: 42, name: '0.9', archived: true },
+    { id: 43, name: '1.1' },
   ],
   fields: [
     { id: 7, name: 'Severity', type: 'select', multiple: false },
@@ -76,6 +79,9 @@ export const TEMPLATE_OPTIONS: TemplateOptions = {
     { id: 99, name: 'Secret formula', type: 'formula', multiple: false },
     { id: 12, name: 'Fixed in', type: 'release', multiple: true },
     { id: 13, name: 'Owning area', type: 'area', multiple: false },
+    { id: 14, name: 'Reviewer', type: 'user', multiple: false },
+    { id: 15, name: 'Owners', type: 'group', multiple: true },
+    { id: 16, name: 'Squad', type: 'team', multiple: false },
   ],
 };
 
@@ -94,6 +100,26 @@ export const HOTFIX_TEMPLATE: SavedTemplate = {
   },
 };
 
+/**
+ * A track template whose custom person, group and team fields were set through the API (T-299):
+ * a group the reader may not see or that is gone (52) among them.
+ */
+export const PEOPLE_TEMPLATE: SavedTemplate = {
+  ...base(14, 'Review'),
+  purpose: 'A change someone reviews',
+  track: { id: 1, key: 'SHOP', name: 'Shop' },
+  defaults: { fields: { '14': 21, '15': [51, 52], '16': 61 } },
+};
+
+/** The names the API gives for each template's people, groups and teams, by template id. */
+export const TEMPLATE_NAMES: Record<number, Record<string, Named[]>> = {
+  14: {
+    'fields.14': [{ id: 21, name: 'Sam Rivera' }],
+    'fields.15': [{ id: 51, name: 'Support' }],
+    'fields.16': [{ id: 61, name: 'Checkout squad' }],
+  },
+};
+
 export const EVERY_TRACK_OPTIONS: TemplateOptions = {
   ...TEMPLATE_OPTIONS,
   track: null,
@@ -104,7 +130,44 @@ export const EVERY_TRACK_OPTIONS: TemplateOptions = {
 export interface FakeTemplateClient extends TemplateClient {
   saved: { id: number | null; body: TemplateBody }[];
   removed: number[];
+  /** The searches asked for, as `source:args:typed` (T-350). */
+  searched: string[];
 }
+
+/** People to find: those of the track Shop, and one only the site's search finds (T-350). */
+export const TRACK_PEOPLE: Named[] = [
+  { id: 21, name: 'Sam Rivera' },
+  { id: 22, name: 'Ana Ortiz' },
+  { id: 23, name: 'Lee Park' },
+];
+const SITE_PEOPLE: Named[] = [...TRACK_PEOPLE, { id: 24, name: 'Kim Alvarez' }];
+/** Whom a restricted person field allows, by ticket type: Bugs and Chores share Ana (T-350). */
+const ALLOWED_BY_TYPE: Record<number, number[]> = { 3: [21, 22], 4: [22, 23] };
+const GROUPS: Named[] = [
+  { id: 51, name: 'Support' },
+  { id: 53, name: 'Design' },
+  { id: 54, name: 'Sales' },
+];
+const TEAMS: Named[] = [
+  { id: 61, name: 'Checkout squad' },
+  { id: 62, name: 'Search squad' },
+];
+
+/** A person field's contexts: one for everything that allows anyone. */
+const ANYONE: FieldRule[] = [{ id: 140, trackIds: null, ticketTypeIds: null, restricted: false }];
+
+/**
+ * A person field that allows only some people for each type in Shop (T-350): a context for Bugs
+ * and one for Chores, each limited to a group, and one for everything else that allows anyone.
+ */
+export const RESTRICTED_RULES: FieldRule[] = [
+  { id: 141, trackIds: [1], ticketTypeIds: [3], restricted: true },
+  { id: 142, trackIds: [1], ticketTypeIds: [4], restricted: true },
+  { id: 143, trackIds: null, ticketTypeIds: null, restricted: false },
+];
+
+const matching = (list: Named[], typed: string) =>
+  list.filter((n) => n.name.toLowerCase().includes(typed.toLowerCase()));
 
 const OPTIONS: Record<string, FieldValueOption[]> = {
   '7': [
@@ -124,8 +187,10 @@ export function fakeTemplateClient(
     mayCreate = true,
     options = TEMPLATE_OPTIONS,
     refuse = null as Record<string, string> | null,
+    rules = {} as Record<string, FieldRule[]>,
   } = {},
 ): FakeTemplateClient {
+  const searched: string[] = [];
   let rows = structuredClone(start);
   let next = 100;
   const saved: FakeTemplateClient['saved'] = [];
@@ -139,13 +204,33 @@ export function fakeTemplateClient(
   return {
     saved,
     removed,
+    searched,
     list: async () => ({ templates: structuredClone(rows), mayCreate }),
     options: async () => options,
     fieldOptions: async (fieldId) => OPTIONS[String(fieldId)] ?? [],
-    people: async (_track, query) =>
-      [{ id: 21, name: 'Sam Rivera' }].filter((p) =>
-        p.name.toLowerCase().includes(query.toLowerCase()),
-      ),
+    people: async (track, query) => {
+      searched.push(`people:${track}:${query}`);
+      return matching(TRACK_PEOPLE, query);
+    },
+    sitePeople: async (query) => {
+      searched.push(`sitePeople:${query}`);
+      return matching(SITE_PEOPLE, query);
+    },
+    fieldPeople: async (fieldId, track, ticketTypeId, query) => {
+      searched.push(`fieldPeople:${fieldId}:${track}:${ticketTypeId}:${query}`);
+      const allowed = ALLOWED_BY_TYPE[ticketTypeId] ?? [];
+      return matching(TRACK_PEOPLE, query).filter((p) => allowed.includes(p.id));
+    },
+    groups: async (fieldId, query) => {
+      searched.push(`groups:${fieldId}:${query}`);
+      return matching(GROUPS, query);
+    },
+    teams: async (query) => {
+      searched.push(`teams:${query}`);
+      return matching(TEAMS, query);
+    },
+    fieldRules: async (fieldId) => structuredClone(rules[String(fieldId)] ?? ANYONE),
+    names: async (id) => structuredClone(TEMPLATE_NAMES[id] ?? {}),
     create: async (body) => {
       refuseTaken(body, null);
       saved.push({ id: null, body });

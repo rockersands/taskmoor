@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { CloneDialog } from './CloneDialog';
-import { copied, FORBIDDEN, fakeCloneClient, OUTCOME, SUBTICKET } from './fixtures';
+import { copied, FIELDS, FORBIDDEN, fakeCloneClient, OUTCOME, SUBTICKET } from './fixtures';
 
 const meta = {
   title: 'Tickets/CloneDialog',
@@ -56,17 +56,26 @@ export const Copying: Story = {
   },
 };
 
-/** Done, with tickets not copied and values the copy is without. */
+/** Done, with tickets not copied and values the copy is without, a custom field by its name. */
 export const PartlyCopied: Story = {
   args: {
-    client: fakeCloneClient({ total: 5, failed: 2, first: copied(['assigneeId', 'fields.12']) })
-      .client,
+    client: fakeCloneClient({
+      total: 5,
+      failed: 2,
+      fields: FIELDS,
+      first: copied(['assigneeId', 'fields.12']),
+    }).client,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body);
     await userEvent.click(await canvas.findByRole('button', { name: 'Clone' }));
     await expect(await canvas.findByText('Copied 3 of 5 tickets.')).toBeVisible();
     await expect(await canvas.findByRole('link', { name: 'Open PAY-40' })).toBeVisible();
+    await expect(
+      await canvas.findByText(
+        'The copy is without what you may not set there or its track does not take: Assignee, Story size.',
+      ),
+    ).toBeVisible();
   },
 };
 
