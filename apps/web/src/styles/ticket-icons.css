@@ -37,10 +37,10 @@
  */
 .board-card:has(:focus-visible) .ticket-icon-word,
 .sprint-ticket:has(:focus-visible) .ticket-icon-word,
-.search-table tr:has(:focus-visible):not(:has(.search-cell-form)) .ticket-icon-word,
 .home-ticket:has(:focus-visible) .ticket-icon-word,
 .inbox-item:has(:focus-visible) .ticket-icon-word,
-.widget-tickets li:has(:focus-visible) .ticket-icon-word {
+.widget-tickets li:has(:focus-visible) .ticket-icon-word,
+.search-table tr:has(:focus-visible):not(:has(.search-cell-form)) .ticket-icon-word {
   display: inline;
 }
 

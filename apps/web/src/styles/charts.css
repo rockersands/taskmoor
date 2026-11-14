@@ -362,10 +362,6 @@
   font-weight: var(--font-weight-strong);
 }
 
-.reports-choices .report-note {
-  flex-basis: 100%;
-}
-
 .reports-check {
   display: inline-flex;
   align-items: center;
@@ -395,6 +391,10 @@
 
 .report-note {
   font-size: var(--font-size-200);
+}
+
+.reports-choices .report-note {
+  flex-basis: 100%;
 }
 
 .report-stats {
