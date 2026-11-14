@@ -7752,6 +7752,46 @@ export const messagesEn = {
     'A condition does not read as a query, so nothing was written. Check its words and run again.',
   'schedule.dialog.refused.invalid': 'Some choices are not valid. Check them and run again.',
   'schedule.dialog.refused.other': 'The run could not finish. Try again in a moment.',
+  // Evening out load: a mode of the auto-scheduler's run (T-089a; ADR-122 stage 9).
+  'schedule.evenOut.mode': 'What the run does',
+  'schedule.evenOut.mode.fill': 'Place work in rank order',
+  'schedule.evenOut.mode.fillHint':
+    'Places every ticket it may move, from the first day, in rank order with blockers first.',
+  'schedule.evenOut.mode.evenOut': 'Even out load',
+  'schedule.evenOut.mode.evenOutHint':
+    'Moves only work that puts someone over capacity, later, by as little as it can, keeping each ticket’s length.',
+  'schedule.evenOut.kept': 'Kept tickets never move (fixed dates)',
+  'schedule.evenOut.overCells':
+    '{count, plural, one {# period of a team or person is} other {# periods of teams and people are}} over capacity now.',
+  'schedule.evenOut.nothingOver':
+    'No team or person is over capacity now, so evening out would move nothing.',
+  'schedule.evenOut.replaces':
+    'A run that evens out load and one in rank order replace each other’s proposals; both start from the tickets’ days and people’s drafts.',
+  'schedule.evenOut.title': 'Even out load',
+  'schedule.evenOut.counts':
+    '{moved, plural, one {# ticket} other {# tickets}} moved later, {kept} kept, {notMoved} not moved, {withdrawn, plural, one {# earlier proposal} other {# earlier proposals}} removed.',
+  'schedule.evenOut.moved': 'Moved ({count})',
+  'schedule.evenOut.notMoved': 'Not moved ({count})',
+  'schedule.evenOut.overLeft': 'Still over capacity',
+  'schedule.evenOut.allWithin':
+    'Every team and person is within capacity in the run’s periods now.',
+  'schedule.evenOut.overLeftOnlyFixed':
+    '{subject} is {over} over in {span}: only tickets that do not move are there.',
+  'schedule.evenOut.overLeftNoRoom':
+    '{subject} is {over} over in {span}: no later period of the run has room.',
+  'schedule.evenOut.span': '{start}–{end}',
+  'schedule.evenOut.daysLater': '{count, plural, one {# day} other {# days}} later',
+  'schedule.evenOut.weeksLater': '{count, plural, one {# week} other {# weeks}} later',
+  'schedule.evenOut.reason.movedOffOver':
+    'Moved {later}, from {from} to {to}: {subject} was {over} over.',
+  'schedule.evenOut.reason.pushedByMove': 'Moved {later} after {blocker}, which was moved.',
+  'schedule.evenOut.reason.stillOver': 'Still over: no room for {subject} up to {until}.',
+  'schedule.evenOut.reason.wouldMakeLate':
+    'Not moved: moving it would make {ticket} late, and this run does not move that ticket.',
+  'schedule.evenOut.reason.wouldMakeKeptLate':
+    'Not moved: moving it would make kept {ticket} late.',
+  'schedule.evenOut.reason.wouldPassEnd':
+    'Not moved: moving it would push {ticket} past {until}, the run’s last day.',
   'scenario.notShown':
     '{count, plural, one {# more change is on a ticket this plan does not show you.} other {# more changes are on tickets this plan does not show you.}}',
   'scenario.listFailed':

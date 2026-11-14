@@ -3,7 +3,7 @@ import type { ReactElement } from 'react';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { ScheduleResult } from './ScheduleResult';
-import { scheduleRunFixture } from './scheduleResultFixture';
+import { evenOutRunFixture, scheduleRunFixture } from './scheduleResultFixture';
 import { scheduleLookup } from './scheduleWords';
 
 const RUN = scheduleRunFixture();
@@ -81,6 +81,47 @@ export const OnAPhone: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Placed (2)' }));
+    const box = canvas.getByTestId('phone-width');
+    await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+    await expect(
+      tooSmallForAFinger(canvasElement, [
+        '.filter-chip',
+        '.scenario-differing li > a',
+        '.scenario-item-actions a',
+        '.scenario-item-actions button',
+      ]),
+    ).toEqual([]);
+  },
+};
+
+/** After evening out load (PLN-011): what moved later and why, and the cells still over. */
+export const EvenedOut: Story = {
+  args: { run: evenOutRunFixture(), onRunAgain: fn() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('heading', { name: 'Even out load' })).toHaveFocus();
+    await expect(
+      canvas.getByText('Not moved: moving it would make kept OPS-4 late.'),
+    ).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: 'Moved (2)' }));
+    await expect(
+      canvas.getByText(
+        'Moved 2 weeks later, from Nov 9–Nov 22 to Nov 23–Dec 6: Atlas was 6 points over.',
+      ),
+    ).toBeVisible();
+    const over = canvas.getByRole('region', { name: 'Still over capacity' });
+    await expect(within(over).getAllByRole('listitem')).toHaveLength(2);
+  },
+};
+
+/** Evening out on a phone's touch screen: finger-sized targets, nothing out sideways. */
+export const EvenedOutOnAPhone: Story = {
+  args: { run: evenOutRunFixture(), onRunAgain: fn() },
+  decorators: [atPhoneWidth],
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'Moved (2)' }));
     const box = canvas.getByTestId('phone-width');
     await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
     await expect(

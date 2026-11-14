@@ -50,6 +50,12 @@ const FILTERS: { id: ScheduleOutcome; label: MessageId }[] = [
   { id: 'not_placed', label: 'schedule.result.notPlaced' },
   { id: 'kept', label: 'schedule.result.kept' },
 ];
+/** An even-out run's filters (ADR-122 stage 9): what it moved, did not move, and kept. */
+const EVEN_OUT_FILTERS: { id: ScheduleOutcome; label: MessageId }[] = [
+  { id: 'placed', label: 'schedule.evenOut.moved' },
+  { id: 'not_placed', label: 'schedule.evenOut.notMoved' },
+  { id: 'kept', label: 'schedule.result.kept' },
+];
 
 /** Runs whose panel has had the focus once, so going back to the tab does not take it again. */
 const focused = new WeakSet<RunAnswer>();
@@ -62,7 +68,10 @@ const total = (counts: Record<string, number>) => Object.values(counts).reduce((
  * 22 earlier proposals removed."), filters for Placed, Not placed and Kept with each ticket's key
  * and summary as a link and its reason in words, a link comparing the scenario with main (or with
  * Live), Run again for the plan's editors, and the run's choices in sentences. It takes the focus
- * once, when the run has answered.
+ * once, when the run has answered. After a run that evened out load (ADR-122 stage 9) it says what
+ * moved later ("3 tickets moved later, 1 kept, 2 not moved, …"), lists only the tickets moved,
+ * not moved and kept, never those left where they are, and lists every cell still over capacity
+ * with why.
  */
 export function ScheduleResult({
   run,
@@ -79,18 +88,25 @@ export function ScheduleResult({
   const words = useScheduleWords(unit, names);
   const { result, choices } = run;
   const { counts } = result;
+  const evenOut = result.mode === 'even_out';
+  const filters = evenOut ? EVEN_OUT_FILTERS : FILTERS;
   // A proposal left out of the write because it changed meanwhile stands nowhere: it is listed
-  // apart, never among the placed, whose count leaves it out too.
+  // apart, never among the placed, whose count leaves it out too. Evening out "places" every
+  // ticket it leaves where it is: only those it moved are listed.
   const listed = (outcome: ScheduleOutcome) =>
     result.tickets.filter(
-      (x) => x.outcome === outcome && !(outcome === 'placed' && x.changedMeanwhile),
+      (x) =>
+        x.outcome === outcome &&
+        !(outcome === 'placed' && x.changedMeanwhile) &&
+        !(evenOut && x.reason === 'already'),
     );
   const meanwhile = result.tickets.filter((x) => x.changedMeanwhile);
   const sizes: Record<ScheduleOutcome, number> = {
-    placed: counts.placed,
+    placed: evenOut ? listed('placed').length : counts.placed,
     not_placed: total(counts.notPlaced),
     kept: total(counts.kept),
   };
+  const overLeft = result.overLeft ?? [];
   // The first filter with something in it, the tickets not placed first: they need a person.
   const [shown, setShown] = useState<ScheduleOutcome>(() =>
     sizes.not_placed > 0 ? 'not_placed' : sizes.placed > 0 || sizes.kept === 0 ? 'placed' : 'kept',
@@ -115,7 +131,7 @@ export function ScheduleResult({
     });
   const list = (items: string[]) => intl.formatList(items, { type: 'conjunction' });
   const filterLabel = (f: (typeof FILTERS)[number]) => t(f.label, { count: sizes[f.id] });
-  const current = FILTERS.find((f) => f.id === shown) ?? (FILTERS[0] as (typeof FILTERS)[number]);
+  const current = filters.find((f) => f.id === shown) ?? (filters[0] as (typeof FILTERS)[number]);
 
   const chosen = choices
     ? [
@@ -158,15 +174,22 @@ export function ScheduleResult({
   return (
     <section className="glass-card scenario-item schedule-result" aria-labelledby={`${id}-title`}>
       <h2 id={`${id}-title`} ref={heading} tabIndex={-1}>
-        {t('schedule.result.title')}
+        {t(evenOut ? 'schedule.evenOut.title' : 'schedule.result.title')}
       </h2>
       <p>
-        {t('schedule.result.counts', {
-          placed: counts.placed,
-          kept: sizes.kept,
-          notPlaced: sizes.not_placed,
-          withdrawn: counts.withdrawn,
-        })}
+        {evenOut
+          ? t('schedule.evenOut.counts', {
+              moved: sizes.placed,
+              kept: sizes.kept,
+              notMoved: sizes.not_placed,
+              withdrawn: counts.withdrawn,
+            })
+          : t('schedule.result.counts', {
+              placed: counts.placed,
+              kept: sizes.kept,
+              notPlaced: sizes.not_placed,
+              withdrawn: counts.withdrawn,
+            })}
         {peoples > 0 && ` ${t('schedule.result.peopleDrafts', { count: peoples })}`}
       </p>
       <p className="scenario-meta">
@@ -190,7 +213,7 @@ export function ScheduleResult({
       )}
       <fieldset className="filter-chips">
         <legend className="visually-hidden">{t('schedule.result.show')}</legend>
-        {FILTERS.map((f) => (
+        {filters.map((f) => (
           <button
             key={f.id}
             type="button"
@@ -214,6 +237,22 @@ export function ScheduleResult({
       )}
       {result.more > 0 && (
         <p className="scenario-meta">{t('schedule.result.more', { count: result.more })}</p>
+      )}
+      {evenOut && (
+        <section aria-labelledby={`${id}-over`}>
+          <h3 id={`${id}-over`}>{t('schedule.evenOut.overLeft')}</h3>
+          {overLeft.length > 0 ? (
+            <ul className="scenario-differing">
+              {overLeft.map((cell) => (
+                <li key={`${cell.teamId ?? ''}:${cell.userId ?? ''}:${cell.periodStart}`}>
+                  <span className="scenario-state is-changed">{words.overLeft(cell)}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="scenario-meta">{t('schedule.evenOut.allWithin')}</p>
+          )}
+        </section>
       )}
       <div className="scenario-item-actions">
         <a className="button-secondary" href={routeHref(compareHref)}>

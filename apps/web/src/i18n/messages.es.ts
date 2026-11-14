@@ -7939,6 +7939,47 @@ export const messagesEs: Record<MessageId, string> = {
     'Algunas opciones no son válidas. Revísalas y vuelve a ejecutarla.',
   'schedule.dialog.refused.other':
     'La ejecución no pudo terminar. Vuelve a intentarlo en un momento.',
+  // Repartir la carga: un modo de la ejecución del planificador automático (T-089a; ADR-122, etapa 9).
+  'schedule.evenOut.mode': 'Qué hace la ejecución',
+  'schedule.evenOut.mode.fill': 'Colocar el trabajo por rango',
+  'schedule.evenOut.mode.fillHint':
+    'Coloca cada ticket que puede mover, desde el primer día, por rango y con los bloqueadores primero.',
+  'schedule.evenOut.mode.evenOut': 'Repartir la carga',
+  'schedule.evenOut.mode.evenOutHint':
+    'Mueve solo el trabajo que pone a alguien por encima de su capacidad, más tarde y lo menos posible, manteniendo la duración de cada ticket.',
+  'schedule.evenOut.kept': 'Los tickets que se mantienen nunca se mueven (fechas fijas)',
+  'schedule.evenOut.overCells':
+    '{count, plural, one {# periodo de un equipo o persona está} other {# periodos de equipos y personas están}} por encima de la capacidad ahora.',
+  'schedule.evenOut.nothingOver':
+    'Ningún equipo ni persona supera ahora su capacidad, así que repartir la carga no movería nada.',
+  'schedule.evenOut.replaces':
+    'Una ejecución que reparte la carga y una por rango reemplazan las propuestas de la otra; las dos parten de las fechas de los tickets y de los borradores de las personas.',
+  'schedule.evenOut.title': 'Repartir la carga',
+  'schedule.evenOut.counts':
+    '{moved, plural, one {# ticket movido} other {# tickets movidos}} más tarde, {kept} mantenidos, {notMoved} sin mover, {withdrawn, plural, one {# propuesta anterior eliminada} other {# propuestas anteriores eliminadas}}.',
+  'schedule.evenOut.moved': 'Movidos ({count})',
+  'schedule.evenOut.notMoved': 'Sin mover ({count})',
+  'schedule.evenOut.overLeft': 'Aún por encima de la capacidad',
+  'schedule.evenOut.allWithin':
+    'Cada equipo y persona está ahora dentro de su capacidad en los periodos de la ejecución.',
+  'schedule.evenOut.overLeftOnlyFixed':
+    '{subject} supera su capacidad en {over} en {span}: allí solo hay tickets que no se mueven.',
+  'schedule.evenOut.overLeftNoRoom':
+    '{subject} supera su capacidad en {over} en {span}: ningún periodo posterior de la ejecución tiene hueco.',
+  'schedule.evenOut.span': '{start}–{end}',
+  'schedule.evenOut.daysLater': '{count, plural, one {# día} other {# días}} más tarde',
+  'schedule.evenOut.weeksLater': '{count, plural, one {# semana} other {# semanas}} más tarde',
+  'schedule.evenOut.reason.movedOffOver':
+    'Movido {later}, de {from} a {to}: {subject} superaba su capacidad en {over}.',
+  'schedule.evenOut.reason.pushedByMove': 'Movido {later} después de {blocker}, que se movió.',
+  'schedule.evenOut.reason.stillOver':
+    'Aún por encima: no hay hueco para {subject} hasta el {until}.',
+  'schedule.evenOut.reason.wouldMakeLate':
+    'Sin mover: moverlo retrasaría {ticket}, y esta ejecución no mueve ese ticket.',
+  'schedule.evenOut.reason.wouldMakeKeptLate':
+    'Sin mover: moverlo retrasaría {ticket}, que se mantiene.',
+  'schedule.evenOut.reason.wouldPassEnd':
+    'Sin mover: moverlo empujaría {ticket} más allá del {until}, el último día de la ejecución.',
   'scenario.notShown':
     '{count, plural, one {# cambio más está en un ticket que este plan no te muestra.} other {# cambios más están en tickets que este plan no te muestra.}}',
   'scenario.listFailed':
