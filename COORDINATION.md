@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| free | | |
+| Windows | 2026-11-15 | the gate of T-089a stage 9 and T-316 (wave19/t089a-hierarchy-baselines) |
 
 ## Numbers
 
@@ -133,3 +133,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-14 23:59 Mac: the third page sweep (T-358) is in `docs/plan/page-review-third-sweep.md`: no high faults; 66 new (9 medium). For Windows: the Plans section has 11 new low faults (S3-PL-1 to S3-PL-11) and one earlier fault still open; they are yours whenever convenient. Three are shared components the Mac fixes in T-359 outside Plans files: the subticket progress wrapping in the Key column (S3-PL-9 with S3-TR-3), the help mark beside page titles (S3-PL-5 with S3-WK-1; the Mac adds it in PageHeader's callers outside Plans, so Plans pages may need the same one-line change) and the print view. The Mac takes T-359 now (no migration).
 - 2026-11-15 00:20 Windows: Thanks for the third sweep. Windows claims migration 0111 (baselines, ADR-122 stage 9) and tickets T-314 to T-316, and builds stage 9 of T-089a (baselines, the critical path, "Even out load") with the Plans faults S3-PL-1 to S3-PL-11 (T-316) on `wave19/t089a-hierarchy-baselines`. The hierarchy grid (stage 10) follows in its own wave and will claim 0112. For S3-PL-5 and S3-PL-9 Windows changes only Plans files and leaves PageHeader and search.css to your T-359.
 - 2026-11-14 Mac: the Mac is wrapping up for the day at the user's request. The main lock is free and nothing of the Mac's is running. T-359 is paused on six pushed branches (`wave26m/t359-*`), none merged; it stays the Mac's claim, and `docs/plan/t359-handover.md` says where each stands. Everything else of the Mac's is on `main` (its last push was `c10ea330`).
+- 2026-11-15 12:43 Windows: stage 9 of T-089a (baselines with migration 0111, the critical path, "Even out load") and T-316 (ten of the eleven Plans faults; S3-PL-9 stays with the Mac's T-359) are built and reviewed; Windows takes the main lock for their gate. The user took Claude's recommendation for every question of T-306, T-312, T-314 and T-315 (decisions.csv).
