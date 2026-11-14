@@ -892,6 +892,76 @@ describe('the auto-scheduler (PLN-004)', () => {
     expect(timeline.links).toHaveLength(1);
   });
 
+  it('[PLN-004] [PLN-002] [PLN-006] a person who moves one end of a proposed bar takes over both its days, and a re-run plans after both', async () => {
+    const run = await schedule(
+      'owner',
+      'Fill',
+      { into: { newScenario: { name: 'Fill moved' } }, from: FROM, periods: 6 },
+      201,
+    );
+    const sid = run.scenario.id;
+    expect(await days(sid, t.c4 as Ticket)).toEqual(['2027-03-01', '2027-03-07']);
+    // Only c4's left edge moves: its due day is not sent, as the Calendar's start chip sends it.
+    await call('owner', {
+      method: 'PUT',
+      url: `/api/v1/plans/${plans.Fill}/scenarios/${sid}/drafts`,
+      payload: { changes: [{ ticketId: t.c4?.id, startDate: '2027-02-26' }] },
+    });
+    const c4 = (await drafts(sid)).get(t.c4?.id as number);
+    expect(c4?.startDate).toMatchObject({ to: '2027-02-26', origin: 'person' });
+    expect(c4?.dueDate).toMatchObject({ to: '2027-03-07', origin: 'person' });
+    const changes = await call('owner', {
+      method: 'GET',
+      url: `/api/v1/plans/${plans.Fill}/scenarios/${sid}/changes`,
+    });
+    expect(
+      (changes.changes as { ticketId: number; origin: string }[]).find(
+        (c) => c.ticketId === t.c4?.id,
+      )?.origin,
+    ).toBe('person');
+    // A Timeline resize resends the other day unchanged: that one becomes the person's too.
+    await call('owner', {
+      method: 'PUT',
+      url: `/api/v1/plans/${plans.Fill}/scenarios/${sid}/drafts`,
+      payload: {
+        changes: [{ ticketId: t.c2?.id, startDate: '2027-03-16', dueDate: '2027-03-21' }],
+      },
+    });
+    expect((await drafts(sid)).get(t.c2?.id as number)?.dueDate).toMatchObject({
+      to: '2027-03-21',
+      origin: 'person',
+    });
+    // The re-run keeps c4 from 26 Feb to 7 Mar, so c1, which it blocks, starts after 7 Mar.
+    const again = await schedule('owner', 'Fill', { into: { scenarioId: sid }, from: FROM });
+    expect(entry(again, t.c4 as Ticket)).toMatchObject({ outcome: 'kept', reason: 'person_draft' });
+    expect(entry(again, t.c1 as Ticket)?.outcome).toBe('placed');
+    const timeline = await call('owner', {
+      method: 'GET',
+      url: `/api/v1/plans/${plans.Fill}/timeline?scenario=${sid}`,
+    });
+    const items = new Map(
+      (
+        timeline.items as {
+          id: number;
+          start: string | null;
+          due: string | null;
+          draft?: { origin: string };
+        }[]
+      ).map((i) => [i.id, i]),
+    );
+    expect(items.get(t.c4?.id as number)).toMatchObject({
+      start: '2027-02-26',
+      due: '2027-03-07',
+      draft: { origin: 'person' },
+    });
+    expect(timeline.links).toHaveLength(1);
+    for (const l of timeline.links as { from: number; to: number }[]) {
+      const blocker = items.get(l.from);
+      const blocked = items.get(l.to);
+      expect((blocked?.start ?? '') > (blocker?.due ?? '')).toBe(true);
+    }
+  });
+
   let priv = 0;
 
   it('[PLN-004] [PLN-006] (2) (3) (4) keeps, leaves out and does not place by rule, and never names a hidden blocker', async () => {

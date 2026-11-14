@@ -276,7 +276,8 @@ export interface WrittenDrafts {
  * live one removes the field's draft; a new value is stored with the live value as its value when
  * drafted. A field's drafted value sent again is left as it was, its value when drafted included,
  * unless `keep` is set (Keep my draft): then it too takes the live value. A ticket with a field
- * written or removed loses its refusal. The last write wins.
+ * written or removed loses its refusal. The last write wins. A person who drafts a day takes over
+ * the auto-scheduler's drafts of that ticket's days.
  */
 export async function writeDrafts(
   trx: Transaction<Database>,
@@ -364,6 +365,31 @@ export async function writeDrafts(
         })),
       )
       .execute();
+  }
+  // A person who drafts a day of a ticket takes over the auto-scheduler's draft of its other day
+  // too (one end of a proposed bar moved, the other resent unchanged or not sent at all). The
+  // ticket's days are then all theirs: a run keeps it where both drafted days put it, and no view
+  // says "auto-scheduled" beside "Your draft now" (ADR-122 stage 7).
+  if (options.origin === 'person') {
+    const adopt = [
+      ...new Set(
+        options.changes
+          .filter(
+            (c) => (c.field === 'startDate' || c.field === 'dueDate') && !sameValue(c.value, c.live),
+          )
+          .map((c) => c.ticketId),
+      ),
+    ];
+    if (adopt.length > 0) {
+      await trx
+        .updateTable('plan_draft')
+        .set({ origin: 'person', updated_by: options.updatedBy, updated_at: new Date() })
+        .where('scenario_id', '=', options.scenarioId)
+        .where('ticket_id', 'in', adopt)
+        .where('field', 'in', ['startDate', 'dueDate'])
+        .where('origin', '=', 'scheduler')
+        .execute();
+    }
   }
   // A ticket whose drafts changed is no longer refused: its next apply says again.
   const touched = [...new Set([...out.set, ...out.removed].map((c) => c.ticketId))];
