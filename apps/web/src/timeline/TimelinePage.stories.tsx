@@ -288,7 +288,10 @@ export const ReachesTheEdge: Story = {
   },
 };
 
-/** TR-21: on a touch screen a one-day bar still takes a finger, past its own ends. */
+/**
+ * TR-21: on a touch screen a one-day bar still takes a finger: a finger's height, and past its own
+ * ends. The grip check cannot see the ends (`DRAGGED_WHOLE` in test/grips.ts), so this story does.
+ */
 export const ThinBarOnATouchScreen: Story = {
   args: { client: fakeTimelineClient({ data: crowded }) },
   beforeEach: onARealTouchScreen,
@@ -297,6 +300,7 @@ export const ThinBarOnATouchScreen: Story = {
     bar.scrollIntoView({ block: 'center', inline: 'center' });
     const box = bar.getBoundingClientRect();
     await expect(box.width).toBeLessThan(44);
+    await expect(box.height).toBeGreaterThanOrEqual(44);
     const y = box.top + box.height / 2;
     for (const x of [box.left - 6, box.right + 6]) {
       await expect(document.elementFromPoint(x, y)?.closest('.timeline-bar')).toBe(bar);
