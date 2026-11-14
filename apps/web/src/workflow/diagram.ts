@@ -16,6 +16,10 @@ import { reachableStatuses } from './lint';
  *   layer curve below the boxes; transitions within a layer curve to the right; a self-loop
  *   hangs off a box's lower right corner. Global transitions show as a labelled tab above
  *   their target, so "from any status" never draws a line from every box.
+ * - Two or more tabs on one status run side by side from its box's left edge; the gap after a
+ *   column widens until its widest row of tabs ends before the next column. A lone tab is
+ *   centred over its box with the free room around it, short of any neighbour's tabs, so tabs in
+ *   one row never overlap (T-255).
  */
 export const NODE_WIDTH = 156;
 export const NODE_HEIGHT = 52;
@@ -28,7 +32,12 @@ export const TAB_WIDTH = 140;
 /** A lone tab's room: its box and half of the gap on each side, less a margin. */
 export const LONE_TAB_WIDTH = NODE_WIDTH + COLUMN_GAP - 24;
 const TAB_HEIGHT = 28;
+/** Between two tabs side by side, and between one status's tabs and the next one's. */
+const TAB_SPACE = 8;
 const PARALLEL = 14;
+
+/** How wide a status's row of `count` tabs is when it has two or more. */
+const tabRow = (count: number) => count * TAB_WIDTH + (count - 1) * TAB_SPACE;
 
 export interface DiagramNode {
   statusId: number;
@@ -121,6 +130,23 @@ export function layoutDiagram(definition: WorkflowDefinition): Diagram {
     });
   }
 
+  // A status with one global transition gives its tab the room above the box and half of each
+  // gap beside it, so "Done (from any status)" is not cut while space is free (AD-5).
+  const tabsOn = new Map<number, number>();
+  for (const t of definition.transitions) {
+    if (t.from === 'any') tabsOn.set(t.to, (tabsOn.get(t.to) ?? 0) + 1);
+  }
+
+  // Columns: the gap after one is wide enough for its widest row of tabs to end before the next.
+  const columnX: number[] = [];
+  for (let l = 0, x = MARGIN_X; l < columns; l++) {
+    columnX.push(x);
+    const past = ids
+      .filter((id) => layers.get(id) === l && (tabsOn.get(id) ?? 0) >= 2)
+      .map((id) => tabRow(tabsOn.get(id) ?? 0) - NODE_WIDTH);
+    x += NODE_WIDTH + Math.max(COLUMN_GAP, ...past.map((p) => p + 2 * TAB_SPACE));
+  }
+
   const nodes: DiagramNode[] = ids.map((statusId) => {
     const layer = layers.get(statusId) ?? 0;
     const row = rows.get(statusId) ?? 0;
@@ -128,7 +154,7 @@ export function layoutDiagram(definition: WorkflowDefinition): Diagram {
       statusId,
       layer,
       row,
-      x: MARGIN_X + layer * (NODE_WIDTH + COLUMN_GAP),
+      x: columnX[layer] ?? MARGIN_X,
       y: MARGIN_TOP + row * (NODE_HEIGHT + ROW_GAP),
       reachable: reached.has(statusId),
       initial: statusId === definition.initialStatusId,
@@ -151,12 +177,20 @@ export function layoutDiagram(definition: WorkflowDefinition): Diagram {
   let bottom = 0;
   let right = 0;
 
-  // A status with one global transition gives its tab the room above the box and half of each
-  // gap beside it, so "Done (from any status)" is not cut while space is free (AD-5).
-  const tabsOn = new Map<number, number>();
-  for (const t of definition.transitions) {
-    if (t.from === 'any') tabsOn.set(t.to, (tabsOn.get(t.to) ?? 0) + 1);
-  }
+  // The rows of two or more tabs, which a lone tab in the same row of boxes must stay clear of.
+  const tabRows = nodes
+    .filter((n) => (tabsOn.get(n.statusId) ?? 0) >= 2)
+    .map((n) => ({ y: n.y, left: n.x, right: n.x + tabRow(tabsOn.get(n.statusId) ?? 0) }));
+  /** Half the width a lone tab centred at `x` may take: the free room, short of the rows. */
+  const loneHalf = (x: number, y: number) => {
+    let half = Math.min(LONE_TAB_WIDTH / 2, x - 4);
+    for (const row of tabRows) {
+      if (row.y !== y) continue;
+      if (row.right <= x) half = Math.min(half, x - row.right - TAB_SPACE);
+      else if (row.left >= x) half = Math.min(half, row.left - x - TAB_SPACE);
+    }
+    return Math.max(TAB_WIDTH / 2, half);
+  };
 
   for (const t of definition.transitions) {
     const target = at.get(t.to);
@@ -165,12 +199,12 @@ export function layoutDiagram(definition: WorkflowDefinition): Diagram {
       const index = tabs.get(t.to) ?? 0;
       tabs.set(t.to, index + 1);
       const alone = tabsOn.get(t.to) === 1;
-      // Never past the drawing's left edge in the first column.
-      const width = alone
-        ? Math.min(LONE_TAB_WIDTH, 2 * (target.x + NODE_WIDTH / 2) - 8)
-        : TAB_WIDTH;
+      // Never past the drawing's left edge in the first column, nor into a neighbour's tabs.
+      const width = alone ? 2 * loneHalf(target.x + NODE_WIDTH / 2, target.y) : TAB_WIDTH;
       const tab = {
-        x: alone ? target.x + NODE_WIDTH / 2 - width / 2 : target.x + index * (TAB_WIDTH + 8),
+        x: alone
+          ? target.x + NODE_WIDTH / 2 - width / 2
+          : target.x + index * (TAB_WIDTH + TAB_SPACE),
         y: target.y - TAB_HEIGHT - 18,
       };
       const centre = { x: tab.x + width / 2, y: tab.y + TAB_HEIGHT / 2 };

@@ -78,10 +78,12 @@
   font-weight: var(--font-weight-strong);
 }
 
-/* Administration (ADR-114): its own navigation beside the page, folded above it when narrow. */
+/* Administration (ADR-114): its own navigation beside the page, folded above it when narrow.
+   Wide enough for the longest group heading on one line, in Spanish "Inicio de sesión y
+   seguridad", with its chevron and some room for a wider font (AD-45, T-255). */
 .admin-section {
   display: grid;
-  grid-template-columns: 16.5rem minmax(0, 1fr);
+  grid-template-columns: 18.5rem minmax(0, 1fr);
   align-items: start;
   gap: var(--space-5);
 }
@@ -162,7 +164,7 @@ details[open] > summary.admin-disclosure::after,
 }
 
 /* A group's heading opens its pages. Quieter tracking than the main navigation's headings, so
-   the longest Spanish heading stays on one line (AD-45). */
+   the longest Spanish heading stays on one line (AD-45; the story Admin/AdminLayout measures it). */
 .admin-nav-group-title {
   width: 100%;
   min-height: var(--hit-target);

@@ -61,8 +61,9 @@ async function vitestVite(): Promise<{ vite: typeof import('vite'); vitestDir: s
 // (@vitest/browser's config hook): its runtime as scan entries, the packages it serves itself
 // unbundled, and three it pins. Storybook's plugin adds its own entries and pins in the config.
 const VITEST_ENTRIES = ['browser', 'index', 'runners'].map((f) => `dist/${f}.js`);
+// `vitest/browser` among them: the setup file reaches the browser's touch emulation through it.
 const SERVED_BY_VITEST =
-  /^(vitest|@vitest\/.*|vite\/module-runner|std-env|tinybench|tinyspy|tinyrainbow|pathe|msw)$/;
+  /^(vitest(\/browser|\/internal\/browser)?|@vitest\/.*|vite\/module-runner|std-env|tinybench|tinyspy|tinyrainbow|pathe|msw(\/browser)?)$/;
 const PINNED_BY_VITEST = [
   'vitest > expect-type',
   'vitest > @vitest/snapshot > magic-string',

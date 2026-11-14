@@ -91,10 +91,13 @@ export async function enforceLimit(
   if (over) throw new GuardrailExceeded(over);
 }
 
-/** Where a guardrail is used most: the largest count and what holds it. */
+/**
+ * Where a guardrail is used most: the largest count and what holds it. For grants per permission
+ * the holder is an access policy and `permission` the key whose grants are counted (T-255).
+ */
 export interface Usage {
   value: number;
-  where: { kind: string; id: number; name: string } | null;
+  where: { kind: string; id: number; name: string; permission?: string } | null;
 }
 
 /** The custom fields a track would see with `fieldId` added to `trackIds` (null: every track). */
@@ -123,14 +126,18 @@ export async function guardrailUsage(
   workspaceId: number,
 ): Promise<Record<GuardrailName, Usage>> {
   const top = async (
-    query: ReturnType<typeof sql<{ id: number; name: string; n: number }>>,
+    query: ReturnType<typeof sql<{ id: number; name: string; n: number; permission?: string }>>,
     kind: string,
   ): Promise<Usage> => {
     const { rows } = await query.execute(db);
     const row = rows[0];
-    return row
-      ? { value: Number(row.n), where: { kind, id: row.id, name: row.name } }
-      : { value: 0, where: null };
+    if (!row) return { value: 0, where: null };
+    // A bulk operation's id is a bigint, which the driver reads as a string.
+    const where = { kind, id: Number(row.id), name: row.name };
+    return {
+      value: Number(row.n),
+      where: row.permission === undefined ? where : { ...where, permission: row.permission },
+    };
   };
   const ws = workspaceId;
   const [
@@ -172,7 +179,7 @@ export async function guardrailUsage(
       'visibility_policy',
     ),
     top(
-      sql`SELECT p.id, p.name || ': ' || g.permission AS name, count(*)::int AS n
+      sql`SELECT p.id, p.name, g.permission, count(*)::int AS n
               FROM access_policy p JOIN access_grant g ON g.policy_id = p.id
              WHERE p.workspace_id = ${ws} GROUP BY p.id, g.permission
              ORDER BY n DESC, p.id LIMIT 1`,

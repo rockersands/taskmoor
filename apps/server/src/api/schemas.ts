@@ -627,3 +627,34 @@ export const bulkItem = z
   })
   .loose()
   .meta({ id: 'BulkItem' });
+
+/** A configuration limit (M1-055; CORE-026), its default and where it is used most. */
+export const guardrail = z
+  .object({
+    name: z.string().meta({ description: 'The guardrail, such as `fields_per_track`.' }),
+    limit: z.number().int().meta({ description: 'The limit in force on this site.' }),
+    default: z.number().int().meta({ description: 'The limit a site starts with.' }),
+    usage: z
+      .object({
+        value: z.number().int().meta({ description: 'The largest count on the site.' }),
+        where: nullable(
+          z
+            .object({
+              kind: z.string().meta({
+                description:
+                  'What holds that count, such as `track`, `field`, `workflow` or `access_policy`.',
+              }),
+              id,
+              name: z.string().meta({ description: 'Its name; a track by its key.' }),
+              permission: z.string().optional().meta({
+                description:
+                  'For grants per permission: the permission whose grants the access policy counts, by key, such as `browse_track`.',
+              }),
+            })
+            .loose(),
+        ).meta({ description: 'What holds the largest count; null while nothing does.' }),
+      })
+      .loose(),
+  })
+  .loose()
+  .meta({ id: 'Guardrail' });

@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { SessionProvider } from '../session/SessionProvider';
+import { notSized, onARealTouchScreen } from '../test/touch';
 import { fakeAlertsClient } from './alertsFixtures';
 import { ADMIN, MEMBER } from './fixtures';
 import { type SecurityClient, SecurityPage, type TwoFactorPolicy } from './SecurityPage';
@@ -153,6 +154,24 @@ export const AtPhoneWidth: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('form', { name: 'Sign-in sessions' })).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/**
+ * On a phone (a real touch screen at a phone's width) every choice's box and round button is 28 px, the touch size of a box
+ * beside its label (ADR-033, AD-22): who must use two-step sign-in, the groups and the alerts.
+ */
+export const ChoicesOnAPhone: Story = {
+  decorators: [atPhoneWidth],
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('checkbox', { name: 'Finance' });
+    await canvas.findAllByRole('checkbox', { name: 'Alert on this' });
+    await expect(
+      notSized(canvasElement, '.form-field-inline input:is([type="checkbox"], [type="radio"])', 28),
+    ).toEqual([]);
     await fitsPhoneWidth(canvas);
   },
 };

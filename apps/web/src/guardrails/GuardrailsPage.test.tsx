@@ -144,7 +144,7 @@ describe('guardrails (M1-055)', () => {
     expect(parseLimit('20,5', 'fr')).toBeNull();
   });
 
-  it('[CORE-026] names a permission and a bulk change by their words, not their codes (AD-32)', async () => {
+  it('[CORE-026] names a permission, from its own field, and a bulk change by their words, not their codes (AD-32, T-255)', async () => {
     const client = fakeGuardrailsClient();
     const list = client.list;
     client.list = async () => {
@@ -158,9 +158,16 @@ describe('guardrails (M1-055)', () => {
             default: 50,
             usage: {
               value: 4,
-              where: { kind: 'access_policy', id: 1, name: 'Default access policy: browse_track' },
+              // A colon in the policy's own name is part of the name (T-255).
+              where: {
+                kind: 'access_policy',
+                id: 1,
+                name: 'Default: staff',
+                permission: 'browse_track',
+              },
             },
           },
+
           {
             name: 'tickets_per_bulk_operation',
             limit: 10_000,
@@ -178,9 +185,37 @@ describe('guardrails (M1-055)', () => {
       </I18nProvider>,
     );
     expect(
-      await screen.findByText('Most used: 4 of 50 in Default access policy, for “See the track”'),
+      await screen.findByText('Most used: 4 of 50 in Default: staff, for “See the track”'),
     ).toBeVisible();
     expect(screen.getByText('Most used: 2 of 10,000 tickets in one bulk edit')).toBeVisible();
+  });
+
+  it('[CORE-026] shows a permission this app has no words for by its key (T-255)', async () => {
+    const client = fakeGuardrailsClient();
+    client.list = async () => ({
+      ceiling: 1_000_000,
+      guardrails: [
+        {
+          name: 'grants_per_permission',
+          limit: 50,
+          default: 50,
+          usage: {
+            value: 3,
+            where: { kind: 'access_policy', id: 2, name: 'Later', permission: 'not_yet_known' },
+          },
+        },
+      ],
+    });
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={ADMIN}>
+          <GuardrailsPage client={client} storage={fakeStorageClient()} />
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    expect(
+      await screen.findByText('Most used: 3 of 50 in Later, for “not_yet_known”'),
+    ).toBeVisible();
   });
 
   it('fits a small phone', async () => {

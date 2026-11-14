@@ -4,7 +4,11 @@ export interface Guardrail {
   name: string;
   limit: number;
   default: number;
-  usage: { value: number; where: { kind: string; id: number; name: string } | null };
+  usage: {
+    value: number;
+    /** What holds the largest count; for grants per permission, `permission` is the key. */
+    where: { kind: string; id: number; name: string; permission?: string } | null;
+  };
 }
 
 /** The endpoints the guardrails page uses. Stories and tests pass their own. */

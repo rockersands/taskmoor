@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, within } from 'storybook/test';
 import { SessionProvider } from '../session/SessionProvider';
+import { notSized, onARealTouchScreen } from '../test/touch';
 import { AiSettingsPage } from './AiSettingsPage';
 import { aiView, fakeAiClient } from './aiFixtures';
 import { MEMBER } from './fixtures';
@@ -93,4 +94,22 @@ export const NotAnAdministrator: Story = {
       </SessionProvider>
     ),
   ],
+};
+
+/**
+ * On a phone (a real touch screen at a phone's width) every check box is 28 px, the touch size of a box beside its label
+ * (ADR-033, AD-22): the site switch, strict mode, each feature and each track.
+ */
+export const CheckBoxesOnAPhone: Story = {
+  args: { client: fakeAiClient(aiView({ strict: true, tracks: { '1': true } })) },
+  decorators: [atPhoneWidth],
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('checkbox', { name: 'Use AI on this site' });
+    await expect(notSized(canvasElement, '.form-field-inline input[type="checkbox"]', 28)).toEqual(
+      [],
+    );
+    await fitsPhoneWidth(canvas);
+  },
 };

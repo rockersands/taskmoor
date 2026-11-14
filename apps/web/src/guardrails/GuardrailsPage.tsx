@@ -240,18 +240,16 @@ function usageText(t: Translate, guardrail: Guardrail): string {
   const { value, where } = guardrail.usage;
   const { limit } = guardrail;
   if (!where) return t('guardrails.unused', { limit });
-  if (where.kind === 'access_policy') {
-    // The server names it "<policy>: <permission key>"; the key reads as its label (AD-32).
-    const cut = where.name.lastIndexOf(': ');
-    const key = cut < 0 ? '' : where.name.slice(cut + 2);
-    if (`permission.${key}` in messagesEn) {
-      return t('guardrails.usagePermission', {
-        value,
-        limit,
-        policy: where.name.slice(0, cut),
-        permission: t(`permission.${key}` as MessageId),
-      });
-    }
+  if (where.kind === 'access_policy' && where.permission) {
+    // The policy by its name, the permission by its label (AD-32); a key this app does not
+    // know yet is shown as it is (T-255).
+    const key = where.permission;
+    return t('guardrails.usagePermission', {
+      value,
+      limit,
+      policy: where.name,
+      permission: `permission.${key}` in messagesEn ? t(`permission.${key}` as MessageId) : key,
+    });
   }
   if (where.kind === 'bulk_operation' && BULK_ACTIONS.includes(where.name)) {
     return t('guardrails.usageBulk', {

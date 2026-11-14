@@ -164,25 +164,12 @@
   gap: var(--space-2);
 }
 
-.form-field-inline input[type="radio"] {
-  width: 20px;
-  height: 20px;
-  margin: 0;
-}
-
 .service-account-tokens {
   display: grid;
   gap: var(--space-3);
   min-width: 0;
   padding-top: var(--space-3);
   border-top: 1px solid var(--glass-edge);
-}
-
-@media (pointer: coarse) {
-  .form-field-inline input[type="radio"] {
-    width: 28px;
-    height: 28px;
-  }
 }
 
 /* How to connect an MCP client (M1-072): the address and command, scrolling inside if long. */
