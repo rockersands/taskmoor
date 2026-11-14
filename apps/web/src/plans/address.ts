@@ -6,6 +6,7 @@ export const PLAN_SECTIONS = [
   { id: 'summary', path: '', labelId: 'plans.section.summary' },
   { id: 'timeline', path: '/timeline', labelId: 'plans.section.timeline' },
   { id: 'list', path: '/list', labelId: 'plans.section.list' },
+  { id: 'grid', path: '/grid', labelId: 'plans.section.grid' },
   { id: 'calendar', path: '/calendar', labelId: 'plans.section.calendar' },
   { id: 'capacity', path: '/capacity', labelId: 'plans.section.capacity' },
   { id: 'releases', path: '/releases', labelId: 'plans.section.releases' },
@@ -64,11 +65,13 @@ export interface PlanView {
   compare?: { a?: string | undefined; b?: string | undefined } | undefined;
   /** The baseline the Baselines tab compares with (ADR-122 stage 9). */
   baseline?: number | undefined;
+  /** The structure the Grid shows (ADR-122 stage 10); none is the plan's first, or the default. */
+  structure?: number | undefined;
 }
 
 /** `#/plans/12`, `#/plans/12/timeline` and the like, with or without a query. */
 export const PLAN_ROUTE =
-  /^#\/plans\/(\d{1,10})(?:\/(timeline|list|calendar|capacity|releases|boards|changes|scenarios|baselines|settings))?(?:[/?]|$)/;
+  /^#\/plans\/(\d{1,10})(?:\/(timeline|list|grid|calendar|capacity|releases|boards|changes|scenarios|baselines|settings))?(?:[/?]|$)/;
 
 /** One program board of a plan (PLN-008): `#/plans/12/boards/5`, with or without a query. */
 export const PLAN_BOARD_ROUTE = /^#\/plans\/(\d{1,10})\/boards\/(\d{1,10})(?:[/?]|$)/;
@@ -140,6 +143,10 @@ export function readView(route: string): PlanView {
   if (baseline && /^[1-9]\d{0,9}$/.test(baseline) && Number(baseline) <= MAX_ID) {
     view.baseline = Number(baseline);
   }
+  const structure = params.get('structure');
+  if (structure && /^[1-9]\d{0,9}$/.test(structure) && Number(structure) <= MAX_ID) {
+    view.structure = Number(structure);
+  }
   return view;
 }
 
@@ -165,6 +172,8 @@ export function planHref(id: number, section: PlanSection = 'summary', view?: Pl
   }
   // Only the Baselines tab compares with a baseline.
   if (section === 'baselines' && view.baseline) params.set('baseline', String(view.baseline));
+  // Only the Grid shows a structure.
+  if (section === 'grid' && view.structure) params.set('structure', String(view.structure));
   const text = params.toString();
   return text ? `${path}?${text}` : path;
 }

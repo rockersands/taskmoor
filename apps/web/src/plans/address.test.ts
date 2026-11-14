@@ -104,3 +104,24 @@ describe('a baseline in the address (ADR-122 stage 9)', () => {
     expect(planViewKey(12, view)).toBe(planViewKey(12, { ...view, baseline: undefined }));
   });
 });
+
+describe('a structure in the address (ADR-122 stage 10)', () => {
+  it('[PLN-010] routes the Grid tab and keeps the structure shown there only', () => {
+    expect(PLAN_ROUTE.exec('#/plans/12/grid?structure=3')?.[2]).toBe('grid');
+    const route = '#/plans/12/grid?track=SHOP&scenario=4&structure=3';
+    const view = readView(route);
+    expect(view.structure).toBe(3);
+    expect(planHref(12, 'grid', view)).toBe(route);
+    expect(planHref(12, 'list', view)).toBe('#/plans/12/list?track=SHOP&scenario=4');
+    for (const bad of [
+      'structure=0',
+      'structure=x',
+      'structure=99999999999',
+      'structure=default',
+    ]) {
+      expect(readView(`#/plans/12/grid?${bad}`).structure, bad).toBeUndefined();
+    }
+    // Choosing a structure reads nothing more of the plan.
+    expect(planViewKey(12, view)).toBe(planViewKey(12, { ...view, structure: undefined }));
+  });
+});

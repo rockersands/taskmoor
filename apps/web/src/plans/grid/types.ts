@@ -62,8 +62,11 @@ export interface StructureSummary {
 
 /** `GET /api/v1/plans/:id/structures`. */
 export interface StructureList {
+  plan: { id: number; name: string };
   structures: StructureSummary[];
   editable: boolean;
+  /** The unsaved structure a plan shows with none saved (question 21). */
+  default: StructureSpec;
   limits: GridLimits;
 }
 
@@ -115,11 +118,15 @@ export interface GridField {
   type: FieldValueType;
 }
 
-/** One group row: its field and its label ("No value" for the empty group). */
+/**
+ * One group row: its field, the value it groups (an id as the field stores it) and that value's
+ * name; both are null for the group of tickets with no value, which the page calls "No value".
+ */
 export interface GridGroup {
   row: number;
   field: string;
-  label: string;
+  value: string | null;
+  label: string | null;
 }
 
 /**

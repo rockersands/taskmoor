@@ -36,6 +36,7 @@ import './styles/ticket-templates.css';
 import './styles/timeline.css';
 import './styles/views.css';
 import './styles/plans.css';
+import './styles/grid.css';
 import './styles/ai.css';
 import './styles/surfaces.css';
 import './styles/track-groups.css';

@@ -7,7 +7,10 @@ export interface FixtureRow {
   /** Parent row index, -1 at the top; rows come in preorder. */
   parent: number;
   key?: string;
-  label?: string;
+  /** A group row's name; null for "No value". */
+  label?: string | null;
+  /** A group row's value; its label unless given. */
+  value?: string | null;
   level?: number;
   track?: number;
   inPlan?: boolean;
@@ -51,7 +54,16 @@ export function skeletonOf(
       elsewhere: rows.map((r) => r.elsewhere ?? 0),
     },
     groups: rows.flatMap((r, i) =>
-      r.ticket > 0 ? [] : [{ row: i, field: 'status', label: r.label ?? `Group ${i}` }],
+      r.ticket > 0
+        ? []
+        : [
+            {
+              row: i,
+              field: 'status',
+              value: r.value !== undefined ? r.value : (r.label ?? `Group ${i}`),
+              label: r.label !== undefined ? r.label : `Group ${i}`,
+            },
+          ],
     ),
     values,
   };

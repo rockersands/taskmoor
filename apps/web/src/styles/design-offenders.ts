@@ -74,6 +74,10 @@ export const ALLOWED = {
     '.capacity-table tbody td:last-child': STICKY,
     '.capacity-row.is-team td:last-child': STICKY,
     '.program-board tbody th': STICKY,
+    '.plan-grid-table thead th': STICKY,
+    '.plan-grid-table tbody th': STICKY,
+    '.plan-grid-table tfoot th': STICKY,
+    '.plan-grid-table tfoot td': STICKY,
     '.scenario-action-bar':
       'the change list’s actions stuck to the foot of a phone’s page: the cards scroll under it, so glass would show them through its buttons',
     '.create-dialog .create-form > .form-actions':
@@ -125,6 +129,7 @@ export const ALLOWED = {
     'plans/PlanPage.tsx plans.notice.noSources': MISSING_SETUP,
     'plans/PlanListPage.tsx list.group.noValue': 'the heading of the group of rows with no value',
     'plans/PlanSettingsPage.tsx plans.settings.noLinkTypes': NO_CHOICE,
+    'plans/StructureDialog.tsx grid.dialog.links.none': NO_CHOICE,
     'plans/ProgramBoardPage.tsx programBoard.noField': ONE_READING,
     'plans/ProgramBoardsPage.tsx programBoard.noField': ONE_READING,
     'plans/ProgramBoardsPage.tsx programBoards.noField': MISSING_SETUP,

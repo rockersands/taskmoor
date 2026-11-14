@@ -128,7 +128,8 @@ export function allCollapsible(tree: GridTree): Set<number> {
 /**
  * A row's name that survives a reload, for the collapsed rows kept in this browser
  * (`taskmoor.grid.<planId>.<structureId>`): `t<ticket>` for a ticket row (a ticket appears once),
- * and the group path for a group row (`g<field>=<label>` under its groups).
+ * and the group path for a group row (`g<field>=<value>`, or `g<field>!` for no value, under its
+ * groups).
  */
 export function rowKeys(skeleton: GridSkeleton, tree: GridTree): string[] {
   const groupOf = new Map(skeleton.groups.map((g) => [g.row, g]));
@@ -140,7 +141,9 @@ export function rowKeys(skeleton: GridSkeleton, tree: GridTree): string[] {
       continue;
     }
     const g = groupOf.get(i);
-    const own = `g${encodeURIComponent(g?.field ?? '')}=${encodeURIComponent(g?.label ?? String(i))}`;
+    // A group is named by the value it groups; the group of no value by `!`.
+    const value = g ? g.value : String(i);
+    const own = `g${encodeURIComponent(g?.field ?? '')}${value === null ? '!' : `=${encodeURIComponent(value)}`}`;
     const p = tree.parent[i] as number;
     keys[i] = p < tree.n ? `${keys[p]}/${own}` : own;
   }
