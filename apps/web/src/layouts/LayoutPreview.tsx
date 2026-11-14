@@ -214,7 +214,7 @@ export function LayoutPreview({
         </p>
       )}
       {typeId === null ? (
-        <p className="page-note">{t('layouts.preview.noTypes')}</p>
+        <EmptyState compact title={t('layouts.preview.noTypes')} />
       ) : (
         <>
           <p role="status" className="form-status">

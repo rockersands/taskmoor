@@ -494,6 +494,16 @@ describe('the layout editor (UI-T15)', () => {
     await waitFor(() => expect(client.previews.at(-1)).toMatchObject({ trackId: 4 }));
   });
 
+  it('[CORE-008] with no ticket type to preview, the preview says so as an empty state', async () => {
+    const client = fakeLayoutsClient();
+    client.ticketTypes = async () => [];
+    renderPage(CONFIG_ADMIN, { client });
+    await editor();
+    const none = within(preview()).getByText('There are no ticket types to preview.');
+    expect(none).toHaveClass('empty-state-title');
+    expect(client.previews).toEqual([]);
+  });
+
   it('links to the field rules and says how the two combine', async () => {
     renderPage();
     await editor();

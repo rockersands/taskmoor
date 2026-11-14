@@ -472,7 +472,10 @@ describe('the board page (M1-043)', () => {
         'Person 11',
       ]);
       await user.type(board.getByRole('searchbox', { name: 'Find a person' }), 'zzz');
-      expect(board.getByText('Nobody by that name is assigned here.')).toBeVisible();
+      // A find that matches nobody is an empty state, not a bare note (T-289).
+      const nobody = board.getByText('Nobody by that name is assigned here.');
+      expect(nobody).toBeVisible();
+      expect(nobody).toHaveClass('empty-state-title');
     });
 
     it('[AGL-005] speaks Spanish and fits a small phone', async () => {

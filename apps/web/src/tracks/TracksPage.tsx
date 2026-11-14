@@ -165,7 +165,7 @@ export function TracksPage({
             />
           ) : (
             <>
-              {shown?.length === 0 && <p className="page-note">{t('tracks.noMatch')}</p>}
+              {shown?.length === 0 && <EmptyState compact title={t('tracks.noMatch')} />}
               <ul className="tracks-list">
                 {shown?.map((track) => (
                   <li key={track.key} className="glass-card tracks-item">

@@ -183,16 +183,10 @@ export const OFFENDERS = {
   /** "None" sentences outside an EmptyState; bodies are ready as `empty.*`. */
   bareEmpties: {
     // `noX` sentences the guard reads since T-222: empty lists, and filters that match nothing.
-    'boards/BoardPeopleFilter.tsx': 1,
-    'layouts/LayoutPreview.tsx': 1,
-    'permissions/VisibilityPage.tsx': 1,
     'plans/PlanCapacityPage.tsx': 1,
     'plans/PlanPage.tsx': 1,
     'releases/CrossTrackReleasePage.tsx': 1,
     'releases/NewCrossTrackDialog.tsx': 1,
-    'sso/DomainListField.tsx': 1,
-    'sso/GroupMapField.tsx': 2,
-    'tracks/TracksPage.tsx': 1,
   } as Ratchet,
   /** Raw colours; there are none left to fix. */
   rawColours: {} as Ratchet,
