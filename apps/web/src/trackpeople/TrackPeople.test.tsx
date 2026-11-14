@@ -228,7 +228,8 @@ describe('the invite dialog (IAM-027)', () => {
 
   it('[IAM-027] invitations waiting can be sent again, relinked and withdrawn', async () => {
     const user = userEvent.setup();
-    const client = renderPeople();
+    // A site administrator, who may copy links where the site sends email too (T-053).
+    const client = renderPeople({ canCopyLinks: true }, ADMIN);
     await user.click(
       await screen.findByRole('button', { name: 'Send the invitation to nia@example.com again' }),
     );
@@ -243,6 +244,71 @@ describe('the invite dialog (IAM-027)', () => {
     );
     expect(await screen.findByText('No invitations are waiting.')).toBeInTheDocument();
     expect(client.calls.map((c) => c.action)).toEqual(['resend', 'resend', 'revoke']);
+  });
+
+  it('[IAM-027] where the site sends email a manager sends invitations by email, with no link to copy (T-053)', async () => {
+    const user = userEvent.setup();
+    const client = renderPeople({ emailAvailable: true, canCopyLinks: false });
+    await screen.findByRole('button', { name: 'Send the invitation to nia@example.com again' });
+    const note =
+      'Your invitations go by email: on a site that sends email, only site administrators copy links.';
+    expect(screen.getByText(note)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Make a new link for nia@example.com' })).toBe(
+      null,
+    );
+    await user.click(screen.getByRole('button', { name: 'Invite people' }));
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText(note)).toBeInTheDocument();
+    expect(within(dialog).queryByRole('radio')).toBe(null);
+    await user.type(within(dialog).getByLabelText('Email addresses'), 'nia3@example.com');
+    await user.click(within(dialog).getByRole('button', { name: 'Send invitations' }));
+    expect(await within(dialog).findByText('nia3@example.com: invited.')).toBeInTheDocument();
+    expect(within(dialog).queryByRole('textbox', { name: /Link for/ })).toBe(null);
+    expect(client.calls.find((c) => c.action === 'invite')?.args[1]).toMatchObject({
+      delivery: 'email',
+    });
+  });
+
+  it('[IAM-027] a site administrator still chooses between email and a link where email works (T-053)', async () => {
+    const user = userEvent.setup();
+    renderPeople({ emailAvailable: true, canCopyLinks: true }, ADMIN);
+    await user.click(await screen.findByRole('button', { name: 'Invite people' }));
+    const dialog = screen.getByRole('dialog');
+    expect(
+      within(dialog).getByRole('radio', { name: 'I copy a link and pass it on' }),
+    ).toBeVisible();
+    expect(screen.queryByText(/only site administrators copy links/)).toBe(null);
+    expect(
+      screen.getByRole('button', { name: 'Make a new link for nia@example.com' }),
+    ).toBeInTheDocument();
+  });
+
+  it('[IAM-027] a refused link is explained in the same words (T-053)', async () => {
+    const user = userEvent.setup();
+    // The page still offered links when the site's mail came on meanwhile: the server refuses.
+    const client = fakeTrackPeopleClient({ emailAvailable: true, canCopyLinks: false });
+    const offered = {
+      ...client,
+      invitations: async (trackId: number) => ({
+        ...(await client.invitations(trackId)),
+        canCopyLinks: true,
+      }),
+    };
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={MEMBER}>
+          <main>
+            <TrackPeoplePage trackId={3} client={offered} />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    await user.click(
+      await screen.findByRole('button', { name: 'Make a new link for nia@example.com' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Your invitations go by email: on a site that sends email, only site administrators copy links.',
+    );
   });
 
   it('[IAM-027] fits a phone, in Spanish too', async () => {

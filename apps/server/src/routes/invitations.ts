@@ -215,6 +215,19 @@ export function registerInvitationRoutes(
     }
   }
 
+  /**
+   * Whether the person may have an invitation's link in hand (T-053, IAM-027): where the site
+   * sends email only a site administrator may, since a copied link skips the mailbox check;
+   * everyone else's invitations go by email. Without email a link is the only way, for anyone
+   * who may invite.
+   */
+  async function mayCopyLinks(request: FastifyRequest, emailAvailable: boolean) {
+    return !emailAvailable || (await request.authz.isSiteAdmin());
+  }
+
+  const refuseLink = (reply: FastifyReply) =>
+    reply.code(403).send({ error: 'email_invitations_only' });
+
   app.get('/api/v1/tracks/:id/invitations', async (request, reply) => {
     const params = z.object({ id }).safeParse(request.params);
     if (!params.success) return invalid(reply);
@@ -279,11 +292,13 @@ export function registerInvitationRoutes(
       .where('g.permission', '=', 'invite_people')
       .limit(1)
       .executeTakeFirst();
+    const emailAvailable = (await mailReady()) !== null;
     return {
       invitations,
       canInvite: await request.authz.can('invite_people', trackId),
       invitingGiven: given !== undefined,
-      emailAvailable: (await mailReady()) !== null,
+      emailAvailable,
+      canCopyLinks: await mayCopyLinks(request, emailAvailable),
     };
   });
 
@@ -424,6 +439,9 @@ export function registerInvitationRoutes(
     const mail = await mailReady();
     if (body.delivery === 'email' && !mail) {
       return reply.code(409).send({ error: 'email_not_set_up' });
+    }
+    if (body.delivery === 'link' && !(await mayCopyLinks(request, mail !== null))) {
+      return refuseLink(reply);
     }
 
     const seen = new Set<string>();
@@ -636,6 +654,9 @@ export function registerInvitationRoutes(
     const mail = await mailReady();
     if (parsed.data.delivery === 'email' && !mail) {
       return reply.code(409).send({ error: 'email_not_set_up' });
+    }
+    if (parsed.data.delivery === 'link' && !(await mayCopyLinks(request, mail !== null))) {
+      return refuseLink(reply);
     }
     const wait = inviterWait(user.id, 1);
     if (wait !== null) return tooMany(reply, wait);

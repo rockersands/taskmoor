@@ -9,6 +9,10 @@ import { type APIRequestContext, expect, type Page, test } from '@playwright/tes
  * invited person chooses a password, lands in that track with that role and sees no other. They
  * use the attachments database (preview 4174), whose site administrator the API server made, on
  * a policy of their own, so no other test sees the permission.
+ *
+ * Where a site sends email only site administrators copy links (T-053). This backend sends none,
+ * so the server's own rule is proven in invitations.test.ts; here the list's answer is changed to
+ * that of a site with email, to see what the manager's page does with it.
  */
 const BASE = 'http://localhost:4174';
 const ADMIN = { email: 'ada@attach.test', password: process.env.TASKMOOR_E2E_ATTACH_PASSWORD };
@@ -184,4 +188,41 @@ test('[IAM-027] a manager invites a new person, who lands in that track with tha
   await expect(page.getByText('Guest Person no longer holds Viewers.')).toBeVisible();
   await expect(page.getByText('No invitations are waiting.')).toBeVisible();
   expect(await noSidewaysScroll(page)).toBe(true);
+
+  // With no mail server anyone who invites may copy links: the answer says so (T-053).
+  const list = await (await api.get(`${BASE}/api/v1/tracks/${made.track.id}/invitations`)).json();
+  expect(list).toMatchObject({ emailAvailable: false, canCopyLinks: true });
+
+  // Where the site sends email, a manager's invitations go by email: no link to copy.
+  const later = `later.${stamp}@invite.test`.toLowerCase();
+  await ok(
+    api.post(`${BASE}/api/v1/tracks/${made.track.id}/invitations`, {
+      data: { addresses: [later], roleId: roleId('Viewers'), delivery: 'link' },
+    }),
+  );
+  await page.route(`**/api/v1/tracks/${made.track.id}/invitations`, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const answer = await route.fetch();
+    await route.fulfill({
+      response: answer,
+      json: { ...(await answer.json()), emailAvailable: true, canCopyLinks: false },
+    });
+  });
+  await page.reload();
+  const byEmail =
+    'Your invitations go by email: on a site that sends email, only site administrators copy links.';
+  await expect(page.getByText(byEmail)).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: `Send the invitation to ${later} again` }),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: `Make a new link for ${later}` })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Invite people' }).click();
+  const emailOnly = page.getByRole('dialog', { name: `Invite people to ${key}` });
+  await expect(emailOnly.getByText(byEmail)).toBeVisible();
+  await expect(emailOnly.getByRole('radio')).toHaveCount(0);
+  await expect(emailOnly.getByRole('button', { name: 'Send invitations' })).toBeVisible();
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  expect(await noSidewaysScroll(page)).toBe(true);
+  await emailOnly.getByRole('button', { name: 'Cancel' }).click();
+  await page.unroute(`**/api/v1/tracks/${made.track.id}/invitations`);
 });

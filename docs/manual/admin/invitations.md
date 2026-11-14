@@ -1,7 +1,7 @@
 ---
 title: "Inviting people and running a track"
 audience: admins
-sources: apps/server/src/routes/invitations.ts, apps/server/src/authz/track-admins.ts, apps/server/src/authz/permissions.ts, apps/server/src/routes/authz.ts, apps/server/src/email/invitation.ts, apps/server/src/sso/sign-in.ts, packages/db/src/migrations/0087_track_invitations.ts, apps/web/src/trackpeople/ManagedTracksPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/web/src/trackpeople/InviteDialog.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/trackpeople/CreateTracksBox.tsx, apps/server/src/authz/create-tracks.ts, packages/db/src/migrations/0097_invitation_create_tracks.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0118-track-invitations.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/trackpeople/ChecklistNoticesBox.tsx, apps/server/src/routes/tracks.ts, packages/db/src/migrations/0103_checklist_notices.ts, docs/adr/0120-ticket-tools.md, apps/web/src/sets/trackScope.tsx, apps/web/src/shell/StandaloneFrame.tsx
+sources: apps/server/src/routes/invitations.ts, apps/server/src/authz/track-admins.ts, apps/server/src/authz/permissions.ts, apps/server/src/routes/authz.ts, apps/server/src/email/invitation.ts, apps/server/src/sso/sign-in.ts, packages/db/src/migrations/0087_track_invitations.ts, apps/web/src/trackpeople/ManagedTracksPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/web/src/trackpeople/InviteDialog.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/trackpeople/CreateTracksBox.tsx, apps/server/src/authz/create-tracks.ts, packages/db/src/migrations/0097_invitation_create_tracks.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0118-track-invitations.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/trackpeople/ChecklistNoticesBox.tsx, apps/server/src/routes/tracks.ts, packages/db/src/migrations/0103_checklist_notices.ts, docs/adr/0120-ticket-tools.md, apps/web/src/sets/trackScope.tsx, apps/web/src/shell/StandaloneFrame.tsx, docs/plan/decisions.csv
 accessed: 2026-11-13
 attestation: own-words
 ---
@@ -121,7 +121,9 @@ deactivating a person is not stopped.
 2. Choose a **Role**. Only the roles you may give are offered. With the role that runs the track,
    **Also let them create tracks** may appear, ticked
    ([Letting a manager create tracks](#letting-a-manager-create-tracks)).
-3. Choose how it travels: **Taskmoor sends an email**, or **I copy a link and pass it on**.
+3. Choose how it travels: **Taskmoor sends an email**, or **I copy a link and pass it on**. Where
+   the site sends email, only site administrators see this choice: see
+   [Who may copy a link](#who-may-copy-a-link).
 
 Up to 50 addresses go at once. One inviter sends up to 100 an hour, and one address gets at most 5
 an hour, per server process.
@@ -129,10 +131,23 @@ an hour, per server process.
 A link works once and for seven days. It is shown only at that moment, and the server keeps only a
 hash of it. Each email or link carries one track and one role. It gives nothing else.
 
+### Who may copy a link
+
+A copied link lets whoever holds it take up the invitation without showing that the mailbox is
+theirs. So where the site sends email, **only site administrators copy links**. A track's
+administrators who are not site administrators send every invitation by email: the dialog offers
+no choice, **New link** is not shown on waiting invitations, and one line on the page and in the
+dialog says "Your invitations go by email: on a site that sends email, only site administrators
+copy links." The server refuses such a link from anyone else with `403 email_invitations_only`, also
+through the API, and the list's `canCopyLinks` says whether the person asking may.
+
+A site administrator may still make a link, for their own invitations or someone else's, with
+**New link** or **I copy a link and pass it on**.
+
 ### Without a mail server
 
 A site with no mail server cannot send anything, and the dialog says so: "Email is not set up on
-this site". Links are then the only way. See [the configuration reference](configuration.md) for
+this site". Links are then the only way, for everyone who may invite. See [the configuration reference](configuration.md) for
 setting up mail. Pass a link only to the person it is for: whoever holds it can take up the
 invitation, and for a new address that means making the account.
 
@@ -148,7 +163,8 @@ else: no role, no email. You may notice a name appear under **Who holds which ro
 
 ### Waiting invitations
 
-**Send again** and **New link** make a new link and end the old one. **Withdraw** ends the invitation.
+**Send again** and **New link** make a new link and end the old one. **New link** is there for those
+who may copy links ([Who may copy a link](#who-may-copy-a-link)). **Withdraw** ends the invitation.
 **Email not sent** means the mail server refused it; try **Send again**.
 
 ## What the invited person sees
@@ -195,9 +211,9 @@ own checks replace Taskmoor's second factor there. For invitations to Gmail addr
 |---|---|
 | `GET /api/v1/me/managed-tracks` | The tracks the person runs |
 | `GET /api/v1/tracks/:id/roles` | The roles, with `runsTrack` and `givable` |
-| `GET`, `POST /api/v1/tracks/:id/invitations` | Waiting invitations; invite (`addresses`, `userIds`, `roleId`, `delivery`, and `createTracks`) |
+| `GET`, `POST /api/v1/tracks/:id/invitations` | Waiting invitations, with `emailAvailable` and `canCopyLinks`; invite (`addresses`, `userIds`, `roleId`, `delivery`, and `createTracks`) |
 | `PUT /api/v1/tracks/:id/roles/:roleId/users/:userId` | Give a person a role; `{"createTracks": true}` with a role that runs the track |
-| `POST /api/v1/tracks/:id/invitations/:invitationId/resend` | A new link (`delivery`) |
+| `POST /api/v1/tracks/:id/invitations/:invitationId/resend` | A new link (`delivery`); `"link"` only for those who may copy links |
 | `DELETE /api/v1/tracks/:id/invitations/:invitationId` | Withdraw |
 | `POST /api/v1/invitations/inspect`, `redeem`, `accept` | The invited person's side: the token in the body, `accept` with a session |
 

@@ -128,20 +128,38 @@ describe('invitations and the people of a track (IAM-027 to IAM-030)', () => {
     return async () => expect((await grant(permission, role)).statusCode).toBe(201);
   }
 
+  /**
+   * Runs `request` on a site with no mail server: where mail works only a site administrator
+   * may have a link (T-053), so the tests that need a manager's link to follow make it there.
+   */
+  async function withoutMail<T>(request: () => Promise<T>): Promise<T> {
+    const was = mailOn;
+    mailOn = false;
+    try {
+      return await request();
+    } finally {
+      mailOn = was;
+    }
+  }
+
+  /** A link from a manager comes from a site with no mail server (T-053); email as it is. */
   const invite = (
     who: string,
     addresses: string[],
     options: { role?: string; delivery?: 'email' | 'link'; trackId?: number } = {},
-  ) =>
-    as(who, {
-      method: 'POST',
-      url: `/api/v1/tracks/${options.trackId ?? track}/invitations`,
-      payload: {
-        addresses,
-        roleId: roles[options.role ?? 'Members'],
-        delivery: options.delivery ?? 'email',
-      },
-    });
+  ) => {
+    const send = () =>
+      as(who, {
+        method: 'POST',
+        url: `/api/v1/tracks/${options.trackId ?? track}/invitations`,
+        payload: {
+          addresses,
+          roleId: roles[options.role ?? 'Members'],
+          delivery: options.delivery ?? 'email',
+        },
+      });
+    return options.delivery === 'link' && who !== 'admin' ? withoutMail(send) : send();
+  };
 
   const inspect = (token: string) =>
     as(undefined, { method: 'POST', url: '/api/v1/invitations/inspect', payload: { token } });
@@ -579,6 +597,7 @@ describe('invitations and the people of a track (IAM-027 to IAM-030)', () => {
           url: `/api/v1/tracks/${track}/invitations`,
         });
         expect(list.json().emailAvailable).toBe(false);
+        expect(list.json().canCopyLinks).toBe(true);
         const refused = await invite('manager', ['nomail@example.net']);
         expect(refused.statusCode).toBe(409);
         expect(refused.json()).toEqual({ error: 'email_not_set_up' });
@@ -590,14 +609,68 @@ describe('invitations and the people of a track (IAM-027 to IAM-030)', () => {
       }
     });
 
+    it('[IAM-027] where mail works only a site administrator copies a link; a manager sends email (T-053)', async () => {
+      const managerList = await as('manager', {
+        method: 'GET',
+        url: `/api/v1/tracks/${track}/invitations`,
+      });
+      expect(managerList.json()).toMatchObject({ emailAvailable: true, canCopyLinks: false });
+      const adminList = await as('admin', {
+        method: 'GET',
+        url: `/api/v1/tracks/${track}/invitations`,
+      });
+      expect(adminList.json()).toMatchObject({ emailAvailable: true, canCopyLinks: true });
+
+      const before = await database.db
+        .selectFrom('track_invitation')
+        .select(({ fn }) => fn.countAll<string>().as('n'))
+        .executeTakeFirstOrThrow();
+      const refused = await as('manager', {
+        method: 'POST',
+        url: `/api/v1/tracks/${track}/invitations`,
+        payload: { addresses: ['copy@example.net'], roleId: roles.Members, delivery: 'link' },
+      });
+      expect(refused.statusCode).toBe(403);
+      expect(refused.json()).toEqual({ error: 'email_invitations_only' });
+      const after = await database.db
+        .selectFrom('track_invitation')
+        .select(({ fn }) => fn.countAll<string>().as('n'))
+        .executeTakeFirstOrThrow();
+      expect(after.n).toBe(before.n);
+
+      const sent = await invite('manager', ['copy@example.net']);
+      expect(sent.statusCode, sent.body).toBe(201);
+      const row = sent.json().results[0];
+      expect(row.link).toBeUndefined();
+      const resend = (who: string) =>
+        as(who, {
+          method: 'POST',
+          url: `/api/v1/tracks/${track}/invitations/${row.invitationId}/resend`,
+          payload: { delivery: 'link' },
+        });
+      const notResent = await resend('manager');
+      expect(notResent.statusCode).toBe(403);
+      expect(notResent.json()).toEqual({ error: 'email_invitations_only' });
+
+      // A site administrator still may, for an invitation of their own or a manager's.
+      const byAdmin = await resend('admin');
+      expect(byAdmin.statusCode, byAdmin.body).toBe(200);
+      expect(byAdmin.json().link).toContain('/#/invite?token=');
+      const own = await invite('admin', ['adminlink@example.net'], { delivery: 'link' });
+      expect(own.statusCode).toBe(201);
+      expect(own.json().results[0].link).toContain('/#/invite?token=');
+    });
+
     it('[IAM-027] resending makes a new link and ends the old one', async () => {
       const made = await invite('manager', ['again@example.net'], { delivery: 'link' });
       const first = made.json().results[0];
-      const resent = await as('manager', {
-        method: 'POST',
-        url: `/api/v1/tracks/${track}/invitations/${first.invitationId}/resend`,
-        payload: { delivery: 'link' },
-      });
+      const resent = await withoutMail(() =>
+        as('manager', {
+          method: 'POST',
+          url: `/api/v1/tracks/${track}/invitations/${first.invitationId}/resend`,
+          payload: { delivery: 'link' },
+        }),
+      );
       expect(resent.statusCode, resent.body).toBe(200);
       expect((await inspect(tokenOf(first.link))).statusCode).toBe(404);
       expect((await inspect(tokenOf(resent.json().link))).statusCode).toBe(200);
@@ -685,11 +758,13 @@ describe('invitations and the people of a track (IAM-027 to IAM-030)', () => {
       });
       const row = made.json().results[0];
       const resend = () =>
-        as('busy', {
-          method: 'POST',
-          url: `/api/v1/tracks/${busyTrack}/invitations/${row.invitationId}/resend`,
-          payload: { delivery: 'link' },
-        });
+        withoutMail(() =>
+          as('busy', {
+            method: 'POST',
+            url: `/api/v1/tracks/${busyTrack}/invitations/${row.invitationId}/resend`,
+            payload: { delivery: 'link' },
+          }),
+        );
       for (let i = 0; i < 4; i++) expect((await resend()).statusCode).toBe(200);
       const stopped = await resend();
       expect(stopped.statusCode).toBe(429);

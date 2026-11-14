@@ -2982,6 +2982,8 @@ export const messagesEn = {
   'trackPeople.openPermissions': 'Open Permissions',
   'trackPeople.emailOff':
     'Email is not set up on this site, so Taskmoor cannot send anything. Make a link and pass it on yourself.',
+  'trackPeople.linksByEmail':
+    'Your invitations go by email: on a site that sends email, only site administrators copy links.',
   'trackPeople.holders': 'Who holds which role',
   'trackPeople.noHolders': 'Nobody holds a role in this track yet.',
   'trackPeople.appointLocked':

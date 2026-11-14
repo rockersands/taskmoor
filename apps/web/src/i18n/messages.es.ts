@@ -3065,6 +3065,8 @@ export const messagesEs: Record<MessageId, string> = {
   'trackPeople.openPermissions': 'Abrir Permisos',
   'trackPeople.emailOff':
     'El correo no está configurado en este sitio, así que Taskmoor no puede enviar nada. Crea un enlace y pásalo tú.',
+  'trackPeople.linksByEmail':
+    'Tus invitaciones van por correo: en un sitio que envía correo, solo los administradores del sitio copian enlaces.',
   'trackPeople.holders': 'Quién tiene cada rol',
   'trackPeople.noHolders': 'Nadie tiene un rol en este track todavía.',
   'trackPeople.appointLocked':
