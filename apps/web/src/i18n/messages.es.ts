@@ -7580,6 +7580,112 @@ export const messagesEs: Record<MessageId, string> = {
   'scenario.bar.missing': 'Ese escenario ya no existe, así que esto es el plan en vivo.',
   'scenario.bar.nowIn': 'Ahora se muestra {name}: borradores, sin aplicar.',
   'scenario.bar.nowLive': 'Ahora se muestra el plan en vivo.',
+  // The auto-scheduler's dialog and its action (T-089f; ADR-122 stage 7).
+  'schedule.bar.run': 'Programar automáticamente…',
+  'schedule.dialog.title': 'Programar automáticamente',
+  'schedule.dialog.intro':
+    'Propone días de inicio y de vencimiento para los tickets abiertos del plan: por rango y con los bloqueadores primero, dentro de la capacidad fijada para cada equipo y persona.',
+  'schedule.dialog.readiness': 'Lo que usará la ejecución',
+  'schedule.dialog.reading': 'Revisando el plan…',
+  'schedule.dialog.readinessFailed':
+    'No se pudo leer lo que usaría la ejecución. Puedes ejecutarla igualmente o volver a intentarlo en un momento.',
+  'schedule.dialog.teams.with': '{teams} {count, plural, one {tiene} other {tienen}} capacidad.',
+  'schedule.dialog.teams.without':
+    '{teams} {count, plural, one {no tiene, así que sus tickets no se colocarán.} other {no tienen, así que sus tickets no se colocarán.}}',
+  'schedule.dialog.teams.noCapacity':
+    '{count, plural, one {El equipo del plan no tiene capacidad fijada, así que no se puede colocar ningún ticket.} other {Ninguno de los # equipos del plan tiene capacidad fijada, así que no se puede colocar ningún ticket.}}',
+  'schedule.dialog.teams.none':
+    'El plan no tiene equipos, así que no se puede colocar ningún ticket. Añade equipos en la configuración del plan.',
+  'schedule.dialog.capacityLink': 'Fijar la capacidad en la pestaña Capacidad',
+  'schedule.dialog.unit.points': 'La capacidad es en puntos, del campo {field}.',
+  'schedule.dialog.unit.hours':
+    'La capacidad es en horas, de la estimación original de cada ticket.',
+  'schedule.dialog.unit.noPoints':
+    'No existe un campo Puntos, así que los tickets no se pueden dimensionar. Cambia el plan a horas o añade un campo numérico compartido llamado Points.',
+  'schedule.dialog.tickets':
+    '{count, plural, =0 {El plan no te muestra tickets abiertos.} one {El plan te muestra # ticket abierto.} other {El plan te muestra # tickets abiertos.}}',
+  'schedule.dialog.people':
+    '{count, plural, =0 {Nadie en sus equipos tiene capacidad propia} one {# persona de sus equipos tiene capacidad propia} other {# personas de sus equipos tienen capacidad propia}}{without, plural, =0 {.} one {; # otra no limita nada.} other {; # otras no limitan nada.}}',
+  'schedule.dialog.notPlacedAhead': 'Estos no se colocarán: {list}.',
+  'schedule.dialog.unestimated': '{count, plural, other {# sin estimación}}',
+  'schedule.dialog.unassigned': '{count, plural, other {# sin responsable}}',
+  'schedule.dialog.noTeam':
+    '{count, plural, one {# cuyo responsable no está en ningún equipo del plan} other {# cuyos responsables no están en ningún equipo del plan}}',
+  'schedule.dialog.where': 'Dónde va el resultado',
+  'schedule.dialog.new': 'Un escenario nuevo',
+  'schedule.dialog.newFull': 'El plan tiene {count} escenarios, el máximo posible.',
+  'schedule.dialog.becomesMain':
+    'El plan aún no tiene escenarios, así que este será su escenario principal.',
+  'schedule.dialog.this': 'Este escenario: {name}',
+  'schedule.dialog.thisApplying': '{name} se está aplicando.',
+  'schedule.dialog.defaultName': 'Programación automática {day}',
+  'schedule.dialog.nameError': 'Ese nombre no se puede usar. Dale otro al escenario.',
+  'schedule.dialog.what': 'Qué puede mover',
+  'schedule.dialog.closedNever': 'Los tickets cerrados nunca se mueven.',
+  'schedule.dialog.keepInProgress': 'Conservar los tickets en curso',
+  'schedule.dialog.keepInSprint': 'Conservar los tickets de un sprint activo',
+  'schedule.dialog.keepQuery': 'Conservar también los tickets que coincidan con',
+  'schedule.dialog.keepQueryHint':
+    'Una consulta, como en la búsqueda. Los tickets que encuentra conservan sus días.',
+  'schedule.dialog.leaveTypes': 'Dejar fuera tipos de ticket',
+  'schedule.dialog.leaveTypesNone': 'No hay tipos de ticket que dejar fuera.',
+  'schedule.dialog.leaveReleases': 'Dejar fuera versiones',
+  'schedule.dialog.leaveReleasesNone':
+    'Los tickets abiertos del plan no apuntan a ninguna versión.',
+  'schedule.dialog.releaseOn': '{name} ({day})',
+  'schedule.dialog.leaveMax': 'Se pueden dejar fuera {count} como máximo.',
+  'schedule.dialog.leaveQuery': 'Dejar fuera también los tickets que coincidan con',
+  'schedule.dialog.leaveQueryHint':
+    'Una consulta, como en la búsqueda. Los tickets que encuentra no se programan.',
+  'schedule.dialog.queryError': 'Esto no se lee como una consulta. Revisa sus palabras y comillas.',
+  'schedule.dialog.when': 'Cuándo',
+  'schedule.dialog.from': 'Programar desde',
+  'schedule.dialog.lookAhead': 'Mirar hacia adelante',
+  'schedule.dialog.periods': '{count, plural, one {# periodo} other {# periodos}}',
+  'schedule.dialog.months': '{count, plural, one {# mes} other {# meses}}',
+  'schedule.dialog.spanWeeks':
+    '{count, plural, one {# periodo} other {# periodos}} de {weeks, plural, one {# semana} other {# semanas}}: del {start} al {end}.',
+  'schedule.dialog.spanMonths':
+    '{count, plural, one {# mes} other {# meses}}: del {start} al {end}.',
+  'schedule.dialog.rerun':
+    'Volver a ejecutarla reemplaza {count, plural, one {la # propuesta} other {las # propuestas}} de la programación automática aquí.{drafts, plural, =0 {} one { El # borrador que hizo una persona se queda, y se planifica a su alrededor.} other { Los # borradores que hicieron personas se quedan, y se planifica a su alrededor.}}',
+  'schedule.dialog.changesNothing':
+    'No cambia ningún ticket: escribe borradores que puedes revisar, comparar y aplicar.',
+  'schedule.dialog.run': 'Ejecutar',
+  'schedule.dialog.runningButton': 'Programando…',
+  'schedule.dialog.running':
+    '{count, plural, one {Programando # ticket.} other {Programando # tickets.}}',
+  'schedule.dialog.runningAll': 'Programando los tickets del plan.',
+  'schedule.dialog.off.notEditor':
+    'Solo el propietario del plan y los administradores del sitio pueden programarlo automáticamente.',
+  'schedule.dialog.off.nowhere':
+    'No hay dónde escribir el resultado: elimina un escenario o espera a que termine la aplicación.',
+  'schedule.dialog.off.noTeams': 'Ejecutar no está disponible: el plan no tiene equipos.',
+  'schedule.dialog.off.noCapacity':
+    'Ejecutar no está disponible: ningún equipo tiene capacidad fijada.',
+  'schedule.dialog.off.noSizes':
+    'Ejecutar no está disponible: los tickets no se pueden dimensionar en puntos.',
+  'schedule.dialog.refused.tooManyScenarios':
+    'El plan ya tiene todos los escenarios que puede. Ejecútala en el escenario abierto o elimina uno antes.',
+  'schedule.dialog.refused.applying':
+    'Ese escenario se está aplicando. Vuelve a ejecutarla cuando termine la aplicación.',
+  'schedule.dialog.refused.tooManyToSchedule':
+    'Esta ejecución colocaría {count, number} tickets, y una ejecución coloca como máximo {limit, number}. Deja algunos fuera y vuelve a ejecutarla.',
+  'schedule.dialog.refused.planTooLarge':
+    'El plan tiene más de {limit, number} tickets abiertos, demasiados para una ejecución.',
+  'schedule.dialog.refused.tooManyDrafts':
+    'El escenario tendría borradores en más de {limit, number} tickets, así que no se escribió nada.',
+  'schedule.dialog.refused.forbidden':
+    'Solo el propietario del plan y los administradores del sitio pueden programarlo automáticamente.',
+  'schedule.dialog.refused.gone': 'El plan o el escenario ya no existe.',
+  'schedule.dialog.refused.timeout':
+    'Una condición tardó demasiado en buscar, así que no se escribió nada. Acótala y vuelve a ejecutarla.',
+  'schedule.dialog.refused.query':
+    'Una condición no se lee como una consulta, así que no se escribió nada. Revisa sus palabras y vuelve a ejecutarla.',
+  'schedule.dialog.refused.invalid':
+    'Algunas opciones no son válidas. Revísalas y vuelve a ejecutarla.',
+  'schedule.dialog.refused.other':
+    'La ejecución no pudo terminar. Vuelve a intentarlo en un momento.',
   'scenario.notShown':
     '{count, plural, one {# cambio más está en un ticket que este plan no te muestra.} other {# cambios más están en tickets que este plan no te muestra.}}',
   'scenario.listFailed':

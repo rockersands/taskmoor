@@ -43,6 +43,7 @@ const meta = {
     changesHref: '#/plans/12/changes?scenario=2',
     onChoose: fn(),
     onNew: fn(),
+    onAutoSchedule: fn(),
   },
 } satisfies Meta<typeof ScenarioBar>;
 
@@ -59,12 +60,13 @@ export const Live: Story = {
   },
 };
 
-/** An editor drafting in Faster, with drafts on hidden tickets only counted. */
+/** An editor drafting in Faster, with drafts on hidden tickets only counted, and Auto-schedule. */
 export const Drafting: Story = {
   args: { active: FASTER },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByRole('link', { name: 'Review 12 changes' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Auto-schedule…' })).toBeVisible();
     await expect(
       canvas.getByText(/^Drafting in Faster: 12 changes\. .* 3 more changes are on tickets/),
     ).toBeVisible();
@@ -78,6 +80,9 @@ export const Viewing: Story = {
     await expect(
       within(canvasElement).getByText(/^Viewing Faster\. Only the plan’s owner/),
     ).toBeVisible();
+    await expect(
+      within(canvasElement).queryByRole('button', { name: 'Auto-schedule…' }),
+    ).toBeNull();
   },
 };
 
@@ -100,7 +105,11 @@ export const OnAPhone: Story = {
     const box = within(canvasElement).getByTestId('phone-width');
     await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
     await expect(
-      tooSmallForAFinger(canvasElement, ['.scenario-bar select', '.scenario-bar-review']),
+      tooSmallForAFinger(canvasElement, [
+        '.scenario-bar select',
+        '.scenario-bar-review',
+        '.scenario-bar-schedule',
+      ]),
     ).toEqual([]);
   },
 };

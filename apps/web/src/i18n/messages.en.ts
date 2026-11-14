@@ -7410,6 +7410,104 @@ export const messagesEn = {
   'scenario.bar.missing': 'That scenario no longer exists, so this is the plan live.',
   'scenario.bar.nowIn': 'Now showing {name}: drafts, not applied.',
   'scenario.bar.nowLive': 'Now showing the plan live.',
+  // The auto-scheduler's dialog and its action (T-089f; ADR-122 stage 7).
+  'schedule.bar.run': 'Auto-schedule…',
+  'schedule.dialog.title': 'Auto-schedule',
+  'schedule.dialog.intro':
+    'Proposes start and due days for the plan’s open tickets: in rank order with blockers first, within the capacity set for each team and person.',
+  'schedule.dialog.readiness': 'What the run will use',
+  'schedule.dialog.reading': 'Checking the plan…',
+  'schedule.dialog.readinessFailed':
+    'What the run would use could not be read. You can still run it, or try again in a moment.',
+  'schedule.dialog.teams.with': '{teams} {count, plural, one {has} other {have}} capacity.',
+  'schedule.dialog.teams.without':
+    '{teams} {count, plural, one {has none, so its tickets will not be placed.} other {have none, so their tickets will not be placed.}}',
+  'schedule.dialog.teams.noCapacity':
+    '{count, plural, one {The plan’s team has no capacity set, so no ticket can be placed.} other {None of the plan’s # teams has capacity set, so no ticket can be placed.}}',
+  'schedule.dialog.teams.none':
+    'The plan has no teams, so no ticket can be placed. Add teams in the plan’s settings.',
+  'schedule.dialog.capacityLink': 'Set capacity on the Capacity tab',
+  'schedule.dialog.unit.points': 'Capacity is in points, from the field {field}.',
+  'schedule.dialog.unit.hours': 'Capacity is in hours, from each ticket’s original estimate.',
+  'schedule.dialog.unit.noPoints':
+    'No Points field exists, so tickets cannot be sized. Switch the plan to hours or add a shared number field named Points.',
+  'schedule.dialog.tickets':
+    '{count, plural, =0 {The plan shows you no open tickets.} one {The plan shows you # open ticket.} other {The plan shows you # open tickets.}}',
+  'schedule.dialog.people':
+    '{count, plural, =0 {Nobody in its teams has capacity of their own} one {# person in its teams has capacity of their own} other {# people in its teams have capacity of their own}}{without, plural, =0 {.} one {; # other limits nothing.} other {; # others limit nothing.}}',
+  'schedule.dialog.notPlacedAhead': 'These will not be placed: {list}.',
+  'schedule.dialog.unestimated': '{count, plural, other {# without an estimate}}',
+  'schedule.dialog.unassigned': '{count, plural, other {# with nobody assigned}}',
+  'schedule.dialog.noTeam':
+    '{count, plural, one {# whose assignee is in none of the plan’s teams} other {# whose assignees are in none of the plan’s teams}}',
+  'schedule.dialog.where': 'Where the result goes',
+  'schedule.dialog.new': 'A new scenario',
+  'schedule.dialog.newFull': 'The plan holds {count} scenarios, the most it can.',
+  'schedule.dialog.becomesMain':
+    'The plan has no scenario yet, so this one becomes its main scenario.',
+  'schedule.dialog.this': 'This scenario: {name}',
+  'schedule.dialog.thisApplying': '{name} is being applied.',
+  'schedule.dialog.defaultName': 'Auto-schedule {day}',
+  'schedule.dialog.nameError': 'That name cannot be used. Give the scenario another.',
+  'schedule.dialog.what': 'What it may move',
+  'schedule.dialog.closedNever': 'Closed tickets never move.',
+  'schedule.dialog.keepInProgress': 'Keep tickets in progress',
+  'schedule.dialog.keepInSprint': 'Keep tickets in an active sprint',
+  'schedule.dialog.keepQuery': 'Also keep tickets matching',
+  'schedule.dialog.keepQueryHint': 'A query, as in search. Tickets it finds keep their days.',
+  'schedule.dialog.leaveTypes': 'Leave out ticket types',
+  'schedule.dialog.leaveTypesNone': 'No ticket types to leave out.',
+  'schedule.dialog.leaveReleases': 'Leave out releases',
+  'schedule.dialog.leaveReleasesNone': 'The plan’s open tickets target no release.',
+  'schedule.dialog.releaseOn': '{name} ({day})',
+  'schedule.dialog.leaveMax': 'At most {count} can be left out.',
+  'schedule.dialog.leaveQuery': 'Also leave out tickets matching',
+  'schedule.dialog.leaveQueryHint': 'A query, as in search. Tickets it finds are not scheduled.',
+  'schedule.dialog.queryError': 'This does not read as a query. Check its words and quotes.',
+  'schedule.dialog.when': 'When',
+  'schedule.dialog.from': 'Schedule from',
+  'schedule.dialog.lookAhead': 'Look ahead',
+  'schedule.dialog.periods': '{count, plural, one {# period} other {# periods}}',
+  'schedule.dialog.months': '{count, plural, one {# month} other {# months}}',
+  'schedule.dialog.spanWeeks':
+    '{count, plural, one {# period} other {# periods}} of {weeks, plural, one {# week} other {# weeks}}: {start} to {end}.',
+  'schedule.dialog.spanMonths':
+    '{count, plural, one {# month} other {# months}}: {start} to {end}.',
+  'schedule.dialog.rerun':
+    'Re-running replaces the auto-scheduler’s {count, plural, one {# proposal} other {# proposals}} here.{drafts, plural, =0 {} one { The # draft a person made stays, and it plans around it.} other { The # drafts people made stay, and it plans around them.}}',
+  'schedule.dialog.changesNothing':
+    'It changes no ticket: it writes draft changes you can review, compare and apply.',
+  'schedule.dialog.run': 'Run',
+  'schedule.dialog.runningButton': 'Scheduling…',
+  'schedule.dialog.running':
+    '{count, plural, one {Scheduling # ticket.} other {Scheduling # tickets.}}',
+  'schedule.dialog.runningAll': 'Scheduling the plan’s tickets.',
+  'schedule.dialog.off.notEditor':
+    'Only the plan’s owner and site administrators can auto-schedule it.',
+  'schedule.dialog.off.nowhere':
+    'There is nowhere to write the result: delete a scenario, or wait until the apply finishes.',
+  'schedule.dialog.off.noTeams': 'Run is off: the plan has no teams.',
+  'schedule.dialog.off.noCapacity': 'Run is off: no team has capacity set.',
+  'schedule.dialog.off.noSizes': 'Run is off: tickets cannot be sized in points.',
+  'schedule.dialog.refused.tooManyScenarios':
+    'The plan already holds as many scenarios as it may. Run into the scenario open, or delete one first.',
+  'schedule.dialog.refused.applying':
+    'That scenario is being applied. Run again once the apply finishes.',
+  'schedule.dialog.refused.tooManyToSchedule':
+    'This run would place {count, number} tickets, and one run places at most {limit, number}. Leave some out and run again.',
+  'schedule.dialog.refused.planTooLarge':
+    'The plan has more than {limit, number} open tickets, too many for one run.',
+  'schedule.dialog.refused.tooManyDrafts':
+    'The scenario would hold drafts on more than {limit, number} tickets, so nothing was written.',
+  'schedule.dialog.refused.forbidden':
+    'Only the plan’s owner and site administrators can auto-schedule it.',
+  'schedule.dialog.refused.gone': 'The plan or the scenario no longer exists.',
+  'schedule.dialog.refused.timeout':
+    'A condition took too long to search, so nothing was written. Narrow it and run again.',
+  'schedule.dialog.refused.query':
+    'A condition does not read as a query, so nothing was written. Check its words and run again.',
+  'schedule.dialog.refused.invalid': 'Some choices are not valid. Check them and run again.',
+  'schedule.dialog.refused.other': 'The run could not finish. Try again in a moment.',
   'scenario.notShown':
     '{count, plural, one {# more change is on a ticket this plan does not show you.} other {# more changes are on tickets this plan does not show you.}}',
   'scenario.listFailed':

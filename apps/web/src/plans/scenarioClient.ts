@@ -1,5 +1,5 @@
 import { ApiError, api } from '../api/client';
-import { filterParams, type PlanFilters, type ScenarioInView } from './client';
+import { type CapacityUnit, filterParams, type PlanFilters, type ScenarioInView } from './client';
 
 export type { ScenarioInView };
 
@@ -177,6 +177,195 @@ export type Outcome<T> =
   | { ok: true; value: T }
   | { ok: false; code: string; fields: Record<string, string>; permission?: string };
 
+/*
+ * The auto-scheduler (T-089f; PLN-004; ADR-122 stage 7). A run proposes start and due days for the
+ * plan's open level-0 tickets the runner is shown, as drafts of origin `scheduler` in a scenario,
+ * and says of each ticket why it was placed, kept or not placed. Reasons and warnings are codes
+ * with ids, days and amounts; `scheduleWords.ts` says them in words.
+ */
+
+export const PLACED_REASONS = [
+  'fits',
+  'after_blocker',
+  'after_higher_ranked',
+  'first_for_blocked',
+  'already',
+] as const;
+export const KEPT_REASONS = [
+  'person_draft',
+  'may_not_schedule',
+  'kept_by_query',
+  'in_progress',
+  'in_sprint',
+] as const;
+export const NOT_PLACED_REASONS = [
+  'no_estimate',
+  'no_assignee',
+  'no_team',
+  'no_capacity',
+  'too_big',
+  'cycle',
+  'hidden_blocker',
+  'blocker_undated',
+  'blocker_not_placed',
+  'no_room',
+] as const;
+export const LEFT_OUT_REASONS = ['level', 'type', 'release', 'query'] as const;
+export const SCHEDULE_WARNINGS = ['after_release', 'late_against_kept', 'over_where_kept'] as const;
+export type PlacedReason = (typeof PLACED_REASONS)[number];
+export type KeptReason = (typeof KEPT_REASONS)[number];
+export type NotPlacedReason = (typeof NOT_PLACED_REASONS)[number];
+export type LeftOutReason = (typeof LEFT_OUT_REASONS)[number];
+export type ScheduleWarningKind = (typeof SCHEDULE_WARNINGS)[number];
+export type ScheduleReason = PlacedReason | KeptReason | NotPlacedReason;
+export type ScheduleOutcome = 'placed' | 'kept' | 'not_placed';
+
+/**
+ * What a reason or warning names: ids, days (`YYYY-MM-DD`) and amounts in the plan's unit only.
+ * A subject is `teamId` or `userId`. Keys by reason, as the engine gives them
+ * (`apps/server/src/plans/scheduler.ts`): `fits` subject, `periodStart`, `periodEnd`, `free`,
+ * `capacity`, `before`; `after_blocker` `blockerId`, `blockerEnd`; `after_higher_ranked` subject,
+ * `periodStart`; `first_for_blocked` `ticketId`; `no_team` `userId`; `no_capacity` `teamIds`;
+ * `too_big` subject, `capacity`; `cycle` `ticketIds`, `size`; `blocker_undated` and
+ * `blocker_not_placed` `blockerId`; `no_room` subject (when one has capacity), `until`. Warnings:
+ * `after_release` `releaseId`, `releaseDate`, `days`; `late_against_kept` `ticketIds`, `count`;
+ * `over_where_kept` subject, `periodStart`.
+ */
+export type ScheduleArgs = Record<string, number | string | number[]>;
+
+export interface ScheduleWarning {
+  kind: ScheduleWarningKind;
+  args: ScheduleArgs;
+}
+
+/** One ticket of a run's answer. */
+export interface ScheduleEntry {
+  id: number;
+  key: string;
+  /** Its summary, for the result's rows. */
+  summary?: string;
+  outcome: ScheduleOutcome;
+  reason: ScheduleReason;
+  args: ScheduleArgs;
+  warnings: ScheduleWarning[];
+  /** It changed while the run worked, so nothing was written for it: run again. */
+  changedMeanwhile?: true;
+}
+
+/** The names the answer's ids stand for, as far as the reader is shown them. */
+export interface ScheduleNames {
+  teams: { id: number; name: string }[];
+  people: { id: number; name: string }[];
+  releases: { id: number; name: string }[];
+  /** Tickets named by a reason that are not among the listed ones (a left-out blocker). */
+  tickets: { id: number; key: string }[];
+}
+
+export interface ScheduleLimits {
+  /** Periods a run looks ahead at most (12). */
+  periods: number;
+  /** Movable tickets one run places at most (10,000). */
+  toSchedule: number;
+  /** Ticket types, and releases, one run leaves out at most (20). */
+  leftOut: number;
+  /** The longest condition, in characters (2,000). */
+  query: number;
+  /** Periods a run looks ahead when the request names none (6). */
+  defaultPeriods?: number;
+  /** Tickets an answer lists (2,000); `more` counts the rest. */
+  listed?: number;
+}
+
+/**
+ * `GET /plans/:id/schedule?scenario=&from=&periods=`: whether a run can place anything, counted
+ * over the tickets the reader is shown; no ticket is named.
+ */
+export interface ScheduleReadiness {
+  unit: CapacityUnit;
+  /** The Points field sizing tickets in points; null when none exists. */
+  pointsField: { id: number; name: string } | null;
+  /** The run's periods for `from` and `periods`. */
+  periods: { start: string; end: string }[];
+  /** The plan's teams, in its order, and whether each has capacity in any of those periods. */
+  teams: { id: number; name: string; withCapacity: boolean }[];
+  people: { withCapacity: number; without: number };
+  tickets: { open: number; unestimated: number; unassigned: number; noTeam: number };
+  /** Whether the reader may run it: the plan's editors, its owner and site administrators. */
+  editable: boolean;
+  limits: ScheduleLimits;
+  /** The ticket types among the reader's open tickets, for Leave out ticket types. */
+  types?: { id: number; name: string }[];
+  /** The releases those tickets target, neither shipped nor archived, for Leave out releases. */
+  releases?: { id: number; name: string; date: string | null }[];
+  /**
+   * In `scenario`: the auto-scheduler's drafted tickets the reader is shown, people's, and drafted
+   * tickets the reader is not shown.
+   */
+  scenario?: { proposals: number; drafts: number; notShown?: number } | null;
+  /** How many scenarios the plan has. */
+  scenarios?: number;
+}
+
+/** The body of `POST /plans/:id/schedule`. */
+export interface ScheduleRequest {
+  /** The open scenario, or a new one (a copy of `from`'s drafts when given). */
+  into: { scenarioId: number } | { newScenario: { name: string; from?: number } };
+  /** The first day, the person's own today by default. */
+  from?: string;
+  /** 1 to 12, 6 by default. */
+  periods?: number;
+  leaveOut?: { typeIds?: number[]; releaseIds?: number[]; query?: string };
+  /** The two flags are on by default. */
+  keep?: { inProgress?: boolean; inActiveSprint?: boolean; query?: string };
+}
+
+/** A run's counts: tickets by outcome and reason, and what the write did. */
+export interface ScheduleCounts {
+  /** Placed tickets, those already where proposed included. */
+  placed: number;
+  /** Placed where they already are: nothing drafted. */
+  already?: number;
+  /** Proposals already drafted as they are now. */
+  unchanged: number;
+  /** Earlier proposals removed. */
+  withdrawn: number;
+  /** Tickets that changed while the run worked, left out of the write. */
+  changedMeanwhile: number;
+  kept: Record<KeptReason, number>;
+  notPlaced: Record<NotPlacedReason, number>;
+  leftOut: Record<LeftOutReason, number>;
+  /** Tickets carrying each warning. */
+  warnings: Record<ScheduleWarningKind, number>;
+  /** Earlier proposals on tickets the runner is not shown, left as they were. */
+  notShown: number;
+}
+
+/** `POST /plans/:id/schedule`'s answer: 200, or 201 when the run made the scenario. */
+export interface ScheduleResult {
+  scenario: { id: number; name: string; main: boolean; version: number };
+  created: boolean;
+  from: string;
+  periods: { start: string; end: string }[];
+  counts: ScheduleCounts;
+  /** At most 2,000: not placed, placed with a warning, kept, placed; then by rank. */
+  tickets: ScheduleEntry[];
+  /** Tickets not listed. */
+  more: number;
+  names?: ScheduleNames;
+}
+
+/** A run's answer, or its refusal with the limit and count it names. */
+export type ScheduleRun =
+  | { ok: true; value: ScheduleResult }
+  | {
+      ok: false;
+      code: string;
+      fields: Record<string, string>;
+      permission?: string;
+      limit?: number;
+      count?: number;
+    };
+
 export interface ScenarioClient {
   list(planId: number): Promise<ScenarioList>;
   /** A new scenario, empty or a copy of `from`'s drafts the maker is shown; the first is main. */
@@ -226,6 +415,13 @@ export interface ScenarioClient {
     filters: PlanFilters,
     teamField?: number,
   ): Promise<Comparison>;
+  /** Readiness for an auto-schedule run (ADR-122 stage 7), for anyone who sees the plan. */
+  readiness(
+    planId: number,
+    at?: { scenario?: number; from?: string; periods?: number },
+  ): Promise<ScheduleReadiness>;
+  /** Runs the auto-scheduler: drafts only, into the scenario chosen or a new one. */
+  schedule(planId: number, body: ScheduleRequest): Promise<ScheduleRun>;
 }
 
 const of = (planId: number) => `/plans/${planId}/scenarios`;
@@ -309,6 +505,38 @@ export const scenarioClient: ScenarioClient = {
     params.set('b', b);
     if (teamField !== undefined) params.set('teamField', String(teamField));
     return api<Comparison>(`/plans/${planId}/compare?${params}`);
+  },
+  readiness: (planId, at = {}) => {
+    const params = new URLSearchParams();
+    if (at.scenario !== undefined) params.set('scenario', String(at.scenario));
+    if (at.from) params.set('from', at.from);
+    if (at.periods !== undefined) params.set('periods', String(at.periods));
+    const text = params.toString();
+    return api<ScheduleReadiness>(`/plans/${planId}/schedule${text ? `?${text}` : ''}`);
+  },
+  schedule: async (planId, body) => {
+    try {
+      return {
+        ok: true,
+        value: await api<ScheduleResult>(`/plans/${planId}/schedule`, { method: 'POST', body }),
+      };
+    } catch (error) {
+      if (!(error instanceof ApiError)) throw error;
+      const said = error.body as {
+        fields?: Record<string, string>;
+        permission?: unknown;
+        limit?: unknown;
+        count?: unknown;
+      } | null;
+      return {
+        ok: false,
+        code: error.code ?? String(error.status),
+        fields: said?.fields ?? {},
+        ...(typeof said?.permission === 'string' ? { permission: said.permission } : {}),
+        ...(typeof said?.limit === 'number' ? { limit: said.limit } : {}),
+        ...(typeof said?.count === 'number' ? { count: said.count } : {}),
+      };
+    }
   },
 };
 
