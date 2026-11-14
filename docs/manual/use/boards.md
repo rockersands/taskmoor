@@ -17,10 +17,11 @@ all, and changing the board's kind brings it back or takes it away at once.
 Every page of a track sits under the track's tab bar, titled by its section with the track's name
 above it: **Board** under the track's name, **Board settings**, **Releases**, a release's own
 name. The release pages and the track's **Ticket templates** keep the tab bar too, with **Releases**
-marked on a release. On a phone the tab bar scrolls sideways inside itself: the current tab is
+marked on a release and **Summary**, which leads to them, on the ticket templates. On a phone the tab bar scrolls sideways inside itself: the current tab is
 brought into view, and the edge past which more tabs wait fades. A track that does not exist, or
 that you may not see, shows a **Track not found** page with no tabs and the way to **Home** and to
-**Search**; so does a board, a release or a dashboard that is not there. A board you administer on
+**Search**; so does a board (**Board not found**, naming the board's number), a release or a
+dashboard that is not there. A board you administer on
 a track you may not see still opens, without the track's tabs.
 
 Open a track and choose **Board** in its tab bar. There is no list of boards and no form to make

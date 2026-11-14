@@ -649,6 +649,9 @@ describe('the board page (M1-043)', () => {
     renderBoard(client);
     expect(await screen.findByRole('heading', { level: 1, name: 'Board not found' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Go to Home' })).toBeVisible();
+    // Worded as a track's not-found page, naming the board asked for (S3-TR-10).
+    expect(screen.getByText('No board has the number 7, or you cannot see it.')).toBeVisible();
+    expect(screen.queryByText(/could not be loaded/)).toBeNull();
   });
 
   it('[AGL-013] keeps its columns in a scrolling region on a phone', async () => {

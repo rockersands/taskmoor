@@ -224,7 +224,7 @@
   background: var(--glass-surface-sunken);
 }
 
-.track-tabs a[aria-current="page"] {
+.track-tabs a[aria-current] {
   background: var(--glass-fill-strong);
   box-shadow: var(--glass-highlight-flat);
   font-weight: var(--font-weight-strong);

@@ -498,7 +498,12 @@ export function BoardPage({
     );
   }
   if (state === 'missing') {
-    return <NotFoundPage title={t('notFound.board')}>{t('boards.failed')}</NotFoundPage>;
+    // Worded as a track's not-found page is, naming what was asked for (D4, S3-TR-10).
+    return (
+      <NotFoundPage title={t('notFound.board')}>
+        {t('boards.notFound', { id: boardId })}
+      </NotFoundPage>
+    );
   }
   if (state === 'failed' || !board || !data) {
     return (

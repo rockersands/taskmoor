@@ -7,6 +7,7 @@ import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import { DangerAction } from '../shell/DangerAction';
+import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import {
   FIXED_FIELDS,
@@ -551,7 +552,9 @@ function RuleSetsSection({
         )}
       </p>
       {track && sets.length === 0 && (
-        <p className="page-note">{t('admin.sets.trackNoRuleSets', { key: track.key })}</p>
+        <EmptyState compact title={t('admin.sets.noOwnRuleSet', { key: track.key })}>
+          {t('admin.sets.noOwnRuleSetBody', { key: track.key })}
+        </EmptyState>
       )}
       {creating.open && (
         <form

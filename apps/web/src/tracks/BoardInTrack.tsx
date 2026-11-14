@@ -59,7 +59,11 @@ export function BoardInTrack({
   }, [boardId]);
   if (known?.boardId !== boardId) return <p className="page-note">{t('boards.loading')}</p>;
   if (known.missing)
-    return <NotFoundPage title={t('notFound.board')}>{t('boards.failed')}</NotFoundPage>;
+    return (
+      <NotFoundPage title={t('notFound.board')}>
+        {t('boards.notFound', { id: boardId })}
+      </NotFoundPage>
+    );
   // The board was read: one its administrator may see without seeing its track still shows,
   // without the track's tabs (D4).
   return known.key ? (

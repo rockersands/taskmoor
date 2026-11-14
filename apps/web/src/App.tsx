@@ -893,9 +893,9 @@ function Pages() {
     active = 'tracks';
     guarded = true;
     const key = TRACK_TEMPLATES.exec(hash)?.[1] ?? '';
-    // Under the track's tab bar, with no tab of its own (T-215).
+    // Under the track's tab bar, within its Summary, which leads there (T-215, TR-27).
     content = (
-      <TrackLayout trackKey={key} section={null}>
+      <TrackLayout trackKey={key} section="summary" within>
         <TicketTemplatesPage key={key} trackKey={key} />
       </TrackLayout>
     );
