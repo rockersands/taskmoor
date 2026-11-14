@@ -5,7 +5,8 @@ import { type APIRequestContext, expect, type Page, test } from '@playwright/tes
 /**
  * A track's Outcomes section end to end (AGL-024), on tracks of this run's own: outcomes with their
  * progress, status and dates, one opened over the list in the ticket pop-up, a Kanban track listing
- * them too, and an empty track explaining what an outcome is. No serious axe issue and no sideways
+ * them too, an empty track explaining what an outcome is, and a Kanban track creating, reordering,
+ * editing and closing its outcomes from the manage panel (T-082). No serious axe issue and no sideways
  * scroll, on a desktop and a phone. It uses the attachments database (preview 4174), whose
  * administrator (Ada Attach) the API server made.
  */
@@ -152,8 +153,11 @@ test('[AGL-024] a Kanban track lists its outcomes too, and an empty one explains
   await expect(tabs.getByRole('link', { name: 'Board' })).toBeVisible();
   await expect(tabs.getByRole('link', { name: 'Backlog' })).toHaveCount(0);
   await expect(page.getByText('No outcomes yet')).toBeVisible();
-  await expect(page.getByText(/create a ticket of the type Outcome/)).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Create a ticket' })).toBeVisible();
+  // Someone who may create one is offered the manage panel rather than the Create page (T-082).
+  await expect(
+    page.getByText(/Choose New outcome to create one of the type Outcome/),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'New outcome' })).toBeVisible();
   await noSidewaysScroll(page);
   expect(await seriousAxeViolations(page)).toEqual([]);
 
@@ -168,4 +172,72 @@ test('[AGL-024] a Kanban track lists its outcomes too, and an empty one explains
       .getByRole('list', { name: 'Outcomes' })
       .getByRole('link', { name: `${goal.key} Steady flow` }),
   ).toBeVisible();
+});
+
+test('[AGL-024] a Kanban track manages its outcomes from the Outcomes tab (T-082)', async ({
+  page,
+}, testInfo) => {
+  const { key, id } = await newTrack(page.request, 'M', testInfo.project.name);
+  const board = await page.request.post(`${BASE}/api/v1/boards`, {
+    data: { name: `Flow ${key}`, kind: 'kanban', trackId: id, source: { query: `track = ${key}` } },
+  });
+  expect(board.status(), await board.text()).toBe(201);
+
+  await page.goto(`${BASE}/#/tracks/${key}/outcomes`);
+  await expect(page.getByText('No outcomes yet')).toBeVisible();
+  await page.getByRole('button', { name: 'New outcome' }).click();
+  const panel = page.getByRole('region', { name: 'Manage outcomes' });
+  const summary = panel.getByRole('textbox', { name: 'Summary' });
+  await expect(summary).toBeFocused();
+  await summary.fill('Steady flow');
+  await summary.press('Enter');
+  await expect(page.getByText(`Created ${key}-1.`)).toBeVisible();
+  await summary.fill('Fewer handoffs');
+  await panel.getByRole('button', { name: 'Create outcome' }).click();
+  await expect(page.getByText(`Created ${key}-2.`)).toBeVisible();
+
+  const list = page.getByRole('list', { name: 'Outcomes' });
+  const keys = async () =>
+    (await list.getByRole('link').allTextContents()).map((text) => text.split(' ')[0]);
+  await expect.poll(keys).toEqual([`${key}-1`, `${key}-2`]);
+  await noSidewaysScroll(page);
+  expect(await seriousAxeViolations(page)).toEqual([]);
+
+  // Reordered: the second goes first.
+  const tools = (n: number) => page.getByRole('group', { name: `Manage ${key}-${n}` });
+  await tools(2).getByRole('button', { name: 'Move up' }).click();
+  await expect(page.getByText(`Moved ${key}-2 up.`)).toBeVisible();
+  await expect.poll(keys).toEqual([`${key}-2`, `${key}-1`]);
+
+  // Edited: a new summary and a due date.
+  await tools(1).getByRole('button', { name: 'Edit' }).click();
+  const edit = page.getByRole('form', { name: `Edit ${key}-1` });
+  await edit.getByRole('textbox', { name: 'Summary' }).fill('Steadier flow');
+  await edit.getByLabel('Due date').fill('2026-12-11');
+  await noSidewaysScroll(page);
+  await edit.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText(`Saved ${key}-1.`)).toBeVisible();
+  const first = list.getByRole('listitem').filter({ hasText: `${key}-1` });
+  await expect(first.getByRole('link')).toHaveText(`${key}-1 Steadier flow`);
+  await expect(first.getByText('Due Dec 11, 2026')).toBeVisible();
+
+  // Closed: through the workflow's way into the closed stage, asking which when there are several.
+  await tools(2).getByRole('button', { name: 'Close' }).click();
+  const how = page.getByRole('group', { name: `How to close ${key}-2` });
+  const closedAlready = page.getByText(`Closed ${key}-2.`);
+  await expect(how.or(closedAlready)).toBeVisible();
+  if (await how.isVisible()) await how.getByRole('button').first().click();
+  await expect(closedAlready).toBeVisible();
+  await expect.poll(keys).toEqual([`${key}-1`, `${key}-2`]);
+
+  // It holds after a reload: the server ordered, edited and closed them.
+  await page.reload();
+  await expect.poll(keys).toEqual([`${key}-1`, `${key}-2`]);
+  await expect(
+    list
+      .getByRole('listitem')
+      .filter({ hasText: `${key}-2` })
+      .locator('.stage-closed'),
+  ).toBeVisible();
+  await expect(list.getByRole('link', { name: `${key}-1 Steadier flow` })).toBeVisible();
 });
