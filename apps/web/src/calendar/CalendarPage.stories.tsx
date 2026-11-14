@@ -214,11 +214,14 @@ export const DayListOnATouchPhone: Story = {
   },
 };
 
+/** The least height of a chip with a mouse: its grip's, the least target WCAG 2.5.8 allows. */
+const GRIP = 24;
+
 /**
  * Every chip that is not as it should be, as `name: what`: a chip a finger tall on a touch screen
- * (never taller), as tall as its one line of words with a mouse (the grip beside it does not
- * stretch it), and its words in the middle of its height either way. Nothing, on a calendar that
- * keeps its promise; no chips at all is named too.
+ * (never taller), as tall as its one line of words with a mouse, or its grip's 24 px where the
+ * line is shorter (the grip beside it stretches it no further), and its words in the middle of its
+ * height either way. Nothing, on a calendar that keeps its promise; no chips at all is named too.
  */
 function chipsOff(root: HTMLElement): string[] {
   const chips = Array.from(root.querySelectorAll<HTMLElement>('.calendar-entry .calendar-chip'));
@@ -238,7 +241,7 @@ function chipsOff(root: HTMLElement): string[] {
       Number.parseFloat(style.borderBottomWidth);
     const off: string[] = [];
     if (touch && Math.abs(box.height - 44) > 0.5) off.push(`${Math.round(box.height)} px tall`);
-    if (!touch && box.height > text.height + frame + 0.5) {
+    if (!touch && box.height > Math.max(text.height + frame, GRIP) + 0.5) {
       off.push(`${Math.round(box.height)} px tall for a ${Math.round(text.height)} px line`);
     }
     const by = (text.top + text.bottom) / 2 - (box.top + box.bottom) / 2;
@@ -259,6 +262,54 @@ export const ChipsHoldTheirLine: Story = {
 };
 
 /**
+ * Every entry whose grip is not inside its chip's height, as `name: what`, with the grip's and the
+ * chip's heights: each is at least the grip's 24 px with a mouse and a finger's 44 px on a touch
+ * screen. No entries at all is named too.
+ */
+function gripsOff(root: HTMLElement): string[] {
+  const entries = Array.from(root.querySelectorAll<HTMLElement>('.calendar-entry'));
+  if (entries.length === 0) return ['no entries'];
+  const least = matchMedia('(pointer: coarse)').matches ? 44 : GRIP;
+  return entries.flatMap((entry) => {
+    const chip = entry.querySelector('.calendar-chip')?.getBoundingClientRect();
+    const grip = entry.querySelector('.calendar-grip button')?.getBoundingClientRect();
+    const name = entry.textContent?.trim().slice(0, 24) ?? '';
+    if (!chip || !grip) return [`${name}: no chip or no grip`];
+    const off: string[] = [];
+    if (chip.height < least - 0.5) off.push(`a ${Math.round(chip.height)} px chip`);
+    if (grip.height < least - 0.5) off.push(`a ${Math.round(grip.height)} px grip`);
+    // On a touch screen with no room beside the name, the grip has a row of its own under it.
+    const below = grip.top >= chip.bottom - 0.5;
+    if (!below && (grip.top < chip.top - 0.5 || grip.bottom > chip.bottom + 0.5)) {
+      off.push(
+        `the grip at ${Math.round(grip.top - chip.top)} to ${Math.round(grip.bottom - chip.top)} px of a ${Math.round(chip.height)} px chip`,
+      );
+    }
+    return off.map((what) => `${name}: ${what}`);
+  });
+}
+
+/**
+ * AGL-017 (T-285): with a mouse each entry's grip fits its chip's height, never a pixel out of it,
+ * and neither is under 24 px. A font whose line is short (a 15 px line here, as macOS draws some)
+ * makes the chip its grip's height rather than the grip stick out of it.
+ */
+export const GripsFitTheirChips: Story = {
+  play: async ({ canvasElement }) => {
+    await within(canvasElement).findByRole('link', { name: 'CAL-2 Press kit, due this day' });
+    await expect(gripsOff(canvasElement)).toEqual([]);
+    const chips = canvasElement.querySelectorAll<HTMLElement>('.calendar-entry .calendar-chip');
+    for (const chip of chips) chip.style.lineHeight = '15px';
+    try {
+      await expect(gripsOff(canvasElement)).toEqual([]);
+      await expect(chipsOff(canvasElement)).toEqual([]);
+    } finally {
+      for (const chip of chips) chip.style.lineHeight = '';
+    }
+  },
+};
+
+/**
  * AGL-017, ADR-033: the month at a desktop's width on a touch screen. Each chip is a finger tall
  * beside its finger-sized grip, no taller, with its one line of words in its middle, not at its
  * top (T-274).
@@ -269,6 +320,7 @@ export const ChipsOnATouchScreen: Story = {
     await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
     await within(canvasElement).findByRole('link', { name: 'CAL-2 Press kit, due this day' });
     await expect(chipsOff(canvasElement)).toEqual([]);
+    await expect(gripsOff(canvasElement)).toEqual([]);
   },
 };
 
