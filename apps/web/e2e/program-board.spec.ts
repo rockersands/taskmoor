@@ -210,7 +210,10 @@ test('[PLN-008] two people on one program board see each other’s moves within 
       .waitFor({ state: 'visible', timeout: 10_000 });
     const seen = Date.now() - dropped;
     expectWithinBudget(testInfo, seen, 1000, 'program board: a move seen in another browser (ms)');
-    await expect(a.getByRole('status')).toContainText(`${f.keys.login} moved to`);
+    // The scenario bar has a status line of its own, so the board's is found by its words.
+    await expect(
+      a.getByRole('status').filter({ hasText: `${f.keys.login} moved to` }),
+    ).toBeVisible();
     await expect(cell(b, f.red, 1).locator(`[data-card="${f.keys.login}"]`)).toHaveCount(0);
 
     // Vera moves it back with its Move button; Ori sees that too.
@@ -233,9 +236,9 @@ test('[PLN-008] two people on one program board see each other’s moves within 
     });
     await stale.getByRole('combobox', { name: 'Team' }).selectOption({ label: f.names.blue });
     await stale.getByRole('button', { name: 'Move' }).click();
-    await expect(b.getByRole('status')).toContainText(
-      `${f.keys.search} changed while you moved it`,
-    );
+    await expect(
+      b.getByRole('status').filter({ hasText: `${f.keys.search} changed while you moved it` }),
+    ).toBeVisible();
     await expect(cell(b, f.red, 3).locator(`[data-card="${f.keys.search}"]`)).toBeVisible();
     // The ticket kept Ori's move: the server's board, read afresh, has Search in Red's third week.
     // Vera's stale move asked for Blue in the week her dialog showed; applied, it would be there.
@@ -276,7 +279,9 @@ test('[PLN-008] on a phone a card moves through its Move dialog, one team at a t
     const dialog = a.getByRole('dialog', { name: `Move ${f.keys.login}` });
     await dialog.getByRole('combobox', { name: 'Team' }).selectOption({ label: f.names.blue });
     await dialog.getByRole('button', { name: 'Move' }).click();
-    await expect(a.getByRole('status')).toContainText(`${f.keys.login} moved to`);
+    await expect(
+      a.getByRole('status').filter({ hasText: `${f.keys.login} moved to` }),
+    ).toBeVisible();
     // Blue's work now holds it.
     await picker.selectOption({ label: f.names.blue });
     await expect(card(a, f.keys.login)).toBeVisible();

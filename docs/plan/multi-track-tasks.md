@@ -83,8 +83,8 @@ MT-08 (T-089c to T-089g) have not started.
 - **Half-done:** nothing.
 - **Not measured:** PLN-001 (1), 300 tracks and 50,000 tickets in under 3 s. The 20-track
   measurement above suggests it holds; `plans.large.test.ts` takes the size as constants.
-- **Still M2 in the spec:** PLN-002 to PLN-004, PLN-008 and PLN-013 (PLN-006 moved with
-  MT-02, PLN-005 and PLN-009 with MT-03, PLN-007 with MT-04). Each moves to M1 with its stage, so nothing lists them for 1.0 before they exist.
+- **Still M2 in the spec:** PLN-004, PLN-008 and PLN-013 (PLN-006 moved with MT-02, PLN-005 and
+  PLN-009 with MT-03, PLN-007 with MT-04, PLN-002 and PLN-003 with MT-06). Each moves to M1 with its stage, so nothing lists them for 1.0 before they exist.
 
 ### Open question for the user (not blocking)
 
@@ -126,7 +126,7 @@ room: our own spec only, no Atlassian site, product or connection. A plan gives 
 | MT-03 | T-089b | Teams and capacity, individual capacity: a Capacity view per team, person and period, capacity per team and person for every period or one, over capacity in red and in words, hidden work only counted | PLN-005, PLN-009 | 0102 | Built on `wave5/t089b-plan-capacity`, waiting for the gate |
 | MT-04 | T-089c | Releases across tracks | PLN-007 | 0106 | Built on `wave8/multi-track-stages`, waiting for the coordinator's gate and merge |
 | MT-05 | T-089d | Program board, edited in real time with the existing sync and Yjs tools where they fit | PLN-008 | next free | To do |
-| MT-06 | T-089e | Draft changes and scenarios | PLN-002, PLN-003 | next free | To do |
+| MT-06 | T-089e | Draft changes and scenarios | PLN-002, PLN-003 | 0110 | Built on `wave15/t089e-scenarios`, waiting for the gate and merge |
 | MT-07 | T-089f | Auto-scheduler, previewed as draft changes | PLN-004 | none expected | To do |
 | MT-08 | T-089g | Duplicate a plan, a link to any view, CSV and image export | PLN-014 | none | Built on `wave8/multi-track-stages`, waiting for the coordinator's gate and merge |
 

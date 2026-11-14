@@ -14,6 +14,7 @@ import type { PlanGroup, PlanZoom } from './address';
 import type { PlanTimeline, PlanTimelineItem } from './client';
 import { DownloadMenu } from './DownloadMenu';
 import { csvBlob, fileName, saveBlob } from './download';
+import { draftCalls } from './drafting';
 import type { PlanSectionProps } from './PlanSummaryPage';
 import { timelineCsv } from './planExport';
 import { IMAGE_ROWS, imageRows, svgToPng, timelineSvg, viewWords } from './planImage';
@@ -40,6 +41,9 @@ export function PlanTimelinePage({
   group,
   position,
   onPosition,
+  scenario,
+  scenarios,
+  onDrafted,
 }: PlanSectionProps & { group: PlanGroup | null }) {
   const t = useT();
   const intl = useIntl();
@@ -53,7 +57,7 @@ export function PlanTimelinePage({
   // biome-ignore lint/correctness/useExhaustiveDependencies: filters change by their values
   const load = useCallback(() => {
     const asked = ++latest.current;
-    client.timeline(id, filters).then(
+    client.timeline(id, filters, false, scenario?.id).then(
       (d) => {
         if (asked !== latest.current) return;
         setData(d);
@@ -63,7 +67,7 @@ export function PlanTimelinePage({
         if (asked === latest.current) setFailed(true);
       },
     );
-  }, [client, id, filterKey]);
+  }, [client, id, filterKey, scenario?.id]);
   useEffect(load, [load]);
   useTicketChanges(load);
 
@@ -137,7 +141,7 @@ export function PlanTimelinePage({
           key: 'csv',
           label: t('plans.download.csv'),
           make: async () => {
-            const fresh = await client.timeline(id, filters, true);
+            const fresh = await client.timeline(id, filters, true, scenario?.id);
             const name = dated('timeline', 'csv');
             saveBlob(name, csvBlob(timelineCsv(t, fresh)));
             return name;
@@ -148,10 +152,13 @@ export function PlanTimelinePage({
           label: t('plans.download.image'),
           failed: t('plans.download.imageFailed'),
           make: async () => {
-            const fresh = await client.timeline(id, filters, true);
+            const fresh = await client.timeline(id, filters, true, scenario?.id);
             const image = timelineSvg({
               t,
-              plan: plan.name,
+              // An image made in a scenario says so in its title (ADR-122 stage 6).
+              plan: scenario
+                ? t('plans.image.inScenario', { plan: plan.name, scenario: scenario.name })
+                : plan.name,
               view: viewWords(t, filters, group, fresh.items),
               madeOn: t('plans.image.made', { day: dayText(intl, today) }),
               today: dayNumber(today),
@@ -175,9 +182,22 @@ export function PlanTimelinePage({
     />
   );
 
+  // In a scenario a change is a draft in it (ADR-122 stage 6), never the ticket's own.
+  const drafts =
+    scenario && scenarios
+      ? draftCalls(
+          id,
+          scenario,
+          scenarios,
+          (key) => data.items.find((i) => i.key === key)?.id,
+          onDrafted,
+        )
+      : null;
+
   return (
     <div className="timeline-page plan-timeline">
       <TimelineView
+        {...(drafts && scenario ? { draft: { scenario: scenario.name, undo: drafts.undo } } : {})}
         {...(onPosition
           ? {
               zoom: position?.zoom ?? 'weeks',
@@ -185,7 +205,7 @@ export function PlanTimelinePage({
             }
           : {})}
         data={data}
-        reschedule={client.reschedule}
+        reschedule={drafts?.reschedule ?? client.reschedule}
         reload={load}
         now={now}
         {...(groupOf ? { groupOf } : {})}

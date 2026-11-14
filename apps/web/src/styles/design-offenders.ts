@@ -68,6 +68,8 @@ export const ALLOWED = {
     '.capacity-table tbody td:last-child': STICKY,
     '.capacity-row.is-team td:last-child': STICKY,
     '.program-board tbody th': STICKY,
+    '.scenario-action-bar':
+      'the change list’s actions stuck to the foot of a phone’s page: the cards scroll under it, so glass would show them through its buttons',
     '.create-dialog .create-form > .form-actions':
       "the create dialog's sticky foot (D3): the form scrolls under Create, so glass would show it through",
     '.plan-timeline .timeline-edge':

@@ -5,6 +5,7 @@ import type { z } from 'zod';
 import { requireUser } from '../auth';
 import { emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
+import { draftOverlay } from '../plans/drafts';
 import { type CapacityEntry, capacityBody, capacityQuery, idParam } from '../plans/model';
 import {
   dayNumber,
@@ -19,6 +20,7 @@ import {
 } from '../plans/periods';
 import { planTickets, sourceRows } from '../plans/query';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
+import { viewScenario } from './plan-scenarios';
 import { periodOf, planTeams, planVisible } from './plans';
 import { searchRefusal } from './search';
 
@@ -42,6 +44,11 @@ import { searchRefusal } from './search';
  * - `PUT /api/v1/plans/:id/capacity` sets, changes or removes capacities (a team's or a
  *   member's, for every period or one), for those who may change the plan; one
  *   `plan.capacity_set` event lists every change.
+ *
+ * With `scenario=<id>` (ADR-122 stage 6) the plan's work counts in the period of its drafted due
+ * day; work elsewhere stays live. A cell a draft moves a ticket into or out of says how many
+ * (`drafts`) and has no search (`clause: null`), since a search finds live values; every other
+ * count still equals its search.
  *
  * A team's capacity in a period is its own (that period's, else every period's); without one,
  * the sum of its members' when any has one. Over capacity: what the row's people have due in the
@@ -183,7 +190,7 @@ export function registerPlanCapacityRoutes(
     const q = capacityQuery.safeParse(request.query ?? {});
     if (!q.success)
       return reply.code(400).send({ error: 'invalid_fields', fields: shapeErrors(q.error) });
-    const { from, periods: count, ...filters } = q.data;
+    const { from, periods: count, scenario: scenarioParam, ...filters } = q.data;
     const ws = request.workspaceId;
     const plan = await visiblePlan(request, p.data.id);
     if (!plan) return reply.code(404).send({ error: 'not_found' });
@@ -195,6 +202,11 @@ export function registerPlanCapacityRoutes(
         await sourceRows(db, [plan.id]),
         filters,
       );
+      const scenario = await viewScenario(db, ws, plan.id, scenarioParam, tickets.unfiltered);
+      if (scenario === 'not_found') {
+        return reply.code(400).send({ error: 'invalid_fields', fields: { scenario: 'not_found' } });
+      }
+      const over = draftOverlay(scenario?.id ?? null, tickets.unfiltered);
       const setting: PeriodSetting = periodOf(plan);
       const first = from ?? new Date().toISOString().slice(0, 10);
       const periods = periodsFrom(setting, first, count ?? DEFAULT_PERIODS);
@@ -230,16 +242,35 @@ export function registerPlanCapacityRoutes(
                 amount: number;
                 unestimated: number;
               }>`
-                SELECT k.assignee_id, k.due_date::text AS due, count(*)::int AS n,
+                SELECT k.assignee_id, ${over.due}::text AS due, count(*)::int AS n,
                        COALESCE(sum(${value}), 0)::float8 AS amount,
                        count(*) FILTER (WHERE ${value} IS NULL)::int AS unestimated
                   FROM ticket k JOIN status s ON s.id = k.status_id
+                  ${over.join}
                  WHERE ${where}
-                   AND (k.due_date BETWEEN ${windowStart}::date AND ${windowEnd}::date
-                        OR (k.due_date IS NULL AND s.stage <> 'closed'))
-                 GROUP BY k.assignee_id, k.due_date`.execute(trx)
+                   AND (${over.due} BETWEEN ${windowStart}::date AND ${windowEnd}::date
+                        OR (${over.due} IS NULL AND s.stage <> 'closed'))
+                 GROUP BY k.assignee_id, ${over.due}`.execute(trx)
             ).rows
           : [];
+        // Tickets a draft moves from one period to another: their cells count what no search finds.
+        const moved =
+          where && scenario
+            ? (
+                await sql<{
+                  assignee_id: number | null;
+                  live: string | null;
+                  drafted: string | null;
+                  open: boolean;
+                }>`
+                  SELECT k.assignee_id, k.due_date::text AS live, ${over.due}::text AS drafted,
+                         s.stage <> 'closed' AS open
+                    FROM ticket k JOIN status s ON s.id = k.status_id
+                    ${over.join}
+                   WHERE ${where} AND ${over.drafted}
+                     AND ${over.due} IS DISTINCT FROM k.due_date`.execute(trx)
+              ).rows
+            : [];
         // The rest of the members' work due in the weeks in view: outside the plan, filtered out
         // or hidden from the viewer. Counted, never named. The trash and archived tracks hold none.
         const elsewhere =
@@ -256,7 +287,7 @@ export function registerPlanCapacityRoutes(
                      ${where ? sql`AND (${where}) IS NOT TRUE` : sql``}
                    GROUP BY k.assignee_id, k.due_date`.execute(trx)
               ).rows;
-        return { planned, elsewhere };
+        return { planned, elsewhere, moved };
       });
 
       const capacityRows = await db
@@ -297,6 +328,28 @@ export function registerPlanCapacityRoutes(
         away.set(r.assignee_id, list);
       }
 
+      // Per person (null: unassigned), how many drafted tickets move into or out of each cell
+      // (index -1: open work without a due day).
+      const touched = new Map<number | null, Map<number, number>>();
+      const cellAt = (due: string | null, open: boolean): number | null => {
+        if (due === null) return open ? -1 : null;
+        const at = periodAt(due);
+        return at >= 0 ? at : null;
+      };
+      for (const m of counted.moved) {
+        const from = cellAt(m.live, m.open);
+        const to = cellAt(m.drafted, m.open);
+        if (from === to) continue;
+        const cells = touched.get(m.assignee_id) ?? new Map<number, number>();
+        for (const at of [from, to]) if (at !== null) cells.set(at, (cells.get(at) ?? 0) + 1);
+        touched.set(m.assignee_id, cells);
+      }
+      /** The drafts that touch a cell of these people, or nothing when none does. */
+      const draftsIn = (people: readonly (number | null)[], at: number) => {
+        const n = people.reduce<number>((sum, p) => sum + (touched.get(p)?.get(at) ?? 0), 0);
+        return n === 0 ? {} : { drafts: n, clause: null };
+      };
+
       /** The capacity set for a subject: every period's, and each period's own. */
       const capacityOf = (subject: { teamId?: number; userId?: number }) => {
         const rows = capacityRows.filter((c) =>
@@ -322,6 +375,7 @@ export function registerPlanCapacityRoutes(
         work: Work[],
         elsewhere: Elsewhere[],
         capacity: { amount: number | null }[],
+        people: readonly (number | null)[],
       ) =>
         work.map((w, i) => {
           const other = elsewhere[i] ?? { count: 0, amount: 0 };
@@ -332,6 +386,7 @@ export function registerPlanCapacityRoutes(
             elsewhere: { count: other.count, amount: round(other.amount) },
             load,
             over: limit !== null && load > limit,
+            ...draftsIn(people, i),
           };
         });
 
@@ -344,8 +399,8 @@ export function registerPlanCapacityRoutes(
           active: m.active,
           clause: `assignee = ${m.id}`,
           capacity,
-          cells: cellsOf(work.cells, away.get(m.id) ?? [], capacity.periods),
-          unscheduled: rounded(work.unscheduled),
+          cells: cellsOf(work.cells, away.get(m.id) ?? [], capacity.periods, [m.id]),
+          unscheduled: { ...rounded(work.unscheduled), ...draftsIn([m.id], -1) },
           work,
         };
       };
@@ -387,8 +442,19 @@ export function registerPlanCapacityRoutes(
           name: team.name,
           clause: teamClause(team.id),
           capacity,
-          cells: cellsOf(work, elsewhere, capacity.periods),
-          unscheduled: rounded(people.reduce((sum, m) => add(sum, m.work.unscheduled), none())),
+          cells: cellsOf(
+            work,
+            elsewhere,
+            capacity.periods,
+            people.map((m) => m.id),
+          ),
+          unscheduled: {
+            ...rounded(people.reduce((sum, m) => add(sum, m.work.unscheduled), none())),
+            ...draftsIn(
+              people.map((m) => m.id),
+              -1,
+            ),
+          },
           members: people.map(({ work: _work, ...m }) => m),
         };
       });
@@ -397,6 +463,9 @@ export function registerPlanCapacityRoutes(
       const inTeams = new Set(people);
       const unassigned = byPerson.get(null) ?? { cells: periods.map(none), unscheduled: none() };
       const others = { cells: periods.map(none), unscheduled: none() };
+      const outsiders = [...new Set([...byPerson.keys(), ...touched.keys()])].filter(
+        (id): id is number => id !== null && !inTeams.has(id),
+      );
       for (const [id, row] of byPerson) {
         if (id === null || inTeams.has(id)) continue;
         others.cells = others.cells.map((c, i) => add(c, row.cells[i] as Work));
@@ -404,6 +473,7 @@ export function registerPlanCapacityRoutes(
       }
       return {
         plan: { id: plan.id, name: plan.name },
+        ...(scenario ? { scenario } : {}),
         query: tickets.query,
         editable: plan.editable,
         unit: plan.capacity_unit,
@@ -416,8 +486,8 @@ export function registerPlanCapacityRoutes(
         teams: teamRows,
         unassigned: {
           clause: 'assignee IS EMPTY',
-          cells: unassigned.cells.map(rounded),
-          unscheduled: rounded(unassigned.unscheduled),
+          cells: unassigned.cells.map((c, i) => ({ ...rounded(c), ...draftsIn([null], i) })),
+          unscheduled: { ...rounded(unassigned.unscheduled), ...draftsIn([null], -1) },
         },
         others: {
           clause:
@@ -426,8 +496,8 @@ export function registerPlanCapacityRoutes(
               : teams
                   .map((t) => `assignee NOT IN membersOf(${quoted(`id:${t.id}`)})`)
                   .join(' AND '),
-          cells: others.cells.map(rounded),
-          unscheduled: rounded(others.unscheduled),
+          cells: others.cells.map((c, i) => ({ ...rounded(c), ...draftsIn(outsiders, i) })),
+          unscheduled: { ...rounded(others.unscheduled), ...draftsIn(outsiders, -1) },
         },
       };
     } catch (error) {

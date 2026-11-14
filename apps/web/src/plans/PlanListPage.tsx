@@ -45,6 +45,7 @@ export function PlanListPage({
   list,
   position,
   onPosition,
+  scenario,
 }: PlanSectionProps & { group: PlanGroup | null; search: SearchClient; list: ListClient }) {
   const t = useT();
   const store = `plan-${id}`;
@@ -118,11 +119,14 @@ export function PlanListPage({
       onTickets={onTickets}
       cap={cap}
       emptyBody={t('empty.planTickets.body')}
+      // In a scenario no edit here may change a ticket (ADR-122 stage 6): the List stays live.
+      readOnly={scenario !== undefined}
     />
   );
 
   return (
     <div className="list-page plan-list">
+      {scenario && <p className="board-hint scenario-live-note">{t('plans.list.live')}</p>}
       <div className="list-tools">
         <label className="form-field">
           <span className="form-label">{t('list.sortBy')}</span>

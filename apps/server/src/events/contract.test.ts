@@ -3657,6 +3657,121 @@ describe('every mutation emits exactly one event (M1-005)', () => {
           url: `/api/v1/plans/${state.plan}/program-boards/${state.programBoard}`,
         }),
     },
+    // Scenarios and draft changes (PLN-002, PLN-003; ADR-122 stage 6), over a dated ticket.
+    {
+      route: 'POST /api/v1/plans/:id/scenarios',
+      expect: 'plan.scenario_created',
+      prepare: async () => {
+        const ticket = await admin({ method: 'GET', url: `/api/v1/tickets/${state.ticket}` });
+        const track = ticket.json().ticket.track as { id: number; key: string };
+        const made = await admin({
+          method: 'POST',
+          url: '/api/v1/tickets',
+          payload: { track: track.key, summary: 'Contract drafted', dueDate: '2027-06-01' },
+        });
+        state.draftTicket = made.json().ticket?.id;
+        await admin({
+          method: 'PATCH',
+          url: `/api/v1/plans/${state.plan}`,
+          payload: {
+            sources: [
+              { kind: 'track', trackId: state.track },
+              { kind: 'track', trackId: track.id },
+            ],
+          },
+        });
+      },
+      run: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/plans/${state.plan}/scenarios`,
+          payload: { name: 'Contract scenario' },
+        });
+        state.scenario = res.json().scenario?.id;
+        return res;
+      },
+    },
+    {
+      route: 'PATCH /api/v1/plans/:id/scenarios/:sid',
+      expect: 'plan.scenario_updated',
+      run: () =>
+        admin({
+          method: 'PATCH',
+          url: `/api/v1/plans/${state.plan}/scenarios/${state.scenario}`,
+          payload: { name: 'Contract scenario, renamed', version: 1 },
+        }),
+    },
+    {
+      route: 'PUT /api/v1/plans/:id/scenarios/:sid/drafts',
+      expect: 'plan.drafts_set',
+      run: () =>
+        admin({
+          method: 'PUT',
+          url: `/api/v1/plans/${state.plan}/scenarios/${state.scenario}/drafts`,
+          payload: { changes: [{ ticketId: state.draftTicket, dueDate: '2027-06-08' }] },
+        }),
+    },
+    {
+      route: 'POST /api/v1/plans/:id/scenarios/:sid/discard',
+      expect: 'plan.drafts_discarded',
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/plans/${state.plan}/scenarios/${state.scenario}/discard`,
+          payload: { all: true },
+        }),
+    },
+    {
+      route: 'POST /api/v1/plans/:id/scenarios/:sid/apply',
+      expect: 'plan.drafts_committed',
+      // Applying is each ticket's own change: its `ticket.updated` comes with it.
+      also: ['ticket.updated'],
+      prepare: async () => {
+        await admin({
+          method: 'PUT',
+          url: `/api/v1/plans/${state.plan}/scenarios/${state.scenario}/drafts`,
+          payload: { changes: [{ ticketId: state.draftTicket, dueDate: '2027-06-15' }] },
+        });
+      },
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/plans/${state.plan}/scenarios/${state.scenario}/apply`,
+          payload: { all: true },
+        }),
+    },
+    {
+      route: 'POST /api/v1/plans/:id/scenarios/:sid/promote',
+      expect: 'plan.scenario_promoted',
+      prepare: async () => {
+        const res = await admin({
+          method: 'POST',
+          url: `/api/v1/plans/${state.plan}/scenarios`,
+          payload: { name: 'Contract idea' },
+        });
+        state.idea = res.json().scenario?.id;
+      },
+      run: () =>
+        admin({
+          method: 'POST',
+          url: `/api/v1/plans/${state.plan}/scenarios/${state.idea}/promote`,
+          payload: { version: 1 },
+        }),
+    },
+    {
+      route: 'DELETE /api/v1/plans/:id/scenarios/:sid',
+      expect: 'plan.scenario_deleted',
+      run: async () => {
+        const list = await admin({ method: 'GET', url: `/api/v1/plans/${state.plan}/scenarios` });
+        const former = (list.json().scenarios as { id: number; version: number }[]).find(
+          (x) => x.id === state.scenario,
+        );
+        return admin({
+          method: 'DELETE',
+          url: `/api/v1/plans/${state.plan}/scenarios/${state.scenario}?version=${former?.version}`,
+        });
+      },
+    },
     // Releases across tracks (PLN-007; ADR-122 stage 4).
     {
       route: 'POST /api/v1/cross-track-releases',

@@ -11,7 +11,7 @@ import type { FormField, TicketForm } from './form';
 
 function openCreate(handlers: Record<string, Handler> = {}, locale?: 'en-XA') {
   const calls = stubBackend({
-    'GET /tracks': () => jsonResponse(200, { tracks: TRACKS }),
+    'GET /tracks?limit=500': () => jsonResponse(200, { tracks: TRACKS }),
     'GET /priorities': () => jsonResponse(200, { priorities: PRIORITIES }),
     'GET /tracks/SHOP/ticket-types': () =>
       jsonResponse(200, { typeSetId: 1, defaultTypeId: 3, ticketTypes: TYPES }),
@@ -671,7 +671,7 @@ describe('the create form (M1-012)', () => {
   it('[CORE-001] the Track picker is a labelled combobox with each track’s mark, key and name (T-255)', async () => {
     const user = userEvent.setup();
     openCreate({
-      'GET /tracks': () =>
+      'GET /tracks?limit=500': () =>
         jsonResponse(200, {
           tracks: [...TRACKS, { id: 2, key: 'OPS', name: 'Operations', color: '#2f6fdb' }],
         }),

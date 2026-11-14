@@ -10,6 +10,8 @@ export const PLAN_SECTIONS = [
   { id: 'capacity', path: '/capacity', labelId: 'plans.section.capacity' },
   { id: 'releases', path: '/releases', labelId: 'plans.section.releases' },
   { id: 'boards', path: '/boards', labelId: 'plans.section.boards' },
+  { id: 'changes', path: '/changes', labelId: 'plans.section.changes' },
+  { id: 'scenarios', path: '/scenarios', labelId: 'plans.section.scenarios' },
   { id: 'settings', path: '/settings', labelId: 'plans.section.settings' },
 ] as const satisfies readonly { id: string; path: string; labelId: MessageId }[];
 
@@ -46,21 +48,29 @@ export interface PlanPosition {
   sort?: PlanSort | undefined;
 }
 
-/** The view in the page's address: the filters, the grouping and where the view stands. */
+/**
+ * The view in the page's address: the filters, the grouping, where the view stands, the scenario
+ * read (ADR-122 stage 6; none is Live) and the two sides the Scenarios tab compares (`live` or a
+ * scenario's id).
+ */
 export interface PlanView {
   filters: PlanFilters;
   group: PlanGroup | null;
   position?: PlanPosition;
+  scenario?: number | undefined;
+  compare?: { a?: string | undefined; b?: string | undefined } | undefined;
 }
 
 /** `#/plans/12`, `#/plans/12/timeline` and the like, with or without a query. */
 export const PLAN_ROUTE =
-  /^#\/plans\/(\d{1,10})(?:\/(timeline|list|calendar|capacity|releases|boards|settings))?(?:[/?]|$)/;
+  /^#\/plans\/(\d{1,10})(?:\/(timeline|list|calendar|capacity|releases|boards|changes|scenarios|settings))?(?:[/?]|$)/;
 
 /** One program board of a plan (PLN-008): `#/plans/12/boards/5`, with or without a query. */
 export const PLAN_BOARD_ROUTE = /^#\/plans\/(\d{1,10})\/boards\/(\d{1,10})(?:[/?]|$)/;
 
 const STAGES = ['new', 'active', 'closed'] as const;
+/** The largest id a route takes. */
+const MAX_ID = 2_147_483_647;
 
 /** A day that exists, as `YYYY-MM-DD`. */
 function isDay(text: string): boolean {
@@ -103,12 +113,24 @@ export function readView(route: string): PlanView {
     filters.stage = stage as (typeof STAGES)[number];
   }
   const group = params.get('group');
-  return {
+  const view: PlanView = {
     filters,
     group:
       group && (PLAN_GROUPS as readonly string[]).includes(group) ? (group as PlanGroup) : null,
     position: readPosition(params),
   };
+  const scenario = params.get('scenario');
+  if (scenario && /^[1-9]\d{0,9}$/.test(scenario) && Number(scenario) <= MAX_ID) {
+    view.scenario = Number(scenario);
+  }
+  const side = (text: string | null) =>
+    text === 'live' || (text && /^[1-9]\d{0,9}$/.test(text) && Number(text) <= MAX_ID)
+      ? (text as string)
+      : undefined;
+  const a = side(params.get('a'));
+  const b = side(params.get('b'));
+  if (a || b) view.compare = { ...(a ? { a } : {}), ...(b ? { b } : {}) };
+  return view;
 }
 
 /** The address of a plan's section with a view; the view stays when the section changes. */
@@ -125,6 +147,12 @@ export function planHref(id: number, section: PlanSection = 'summary', view?: Pl
     const value = view.position?.[key];
     if (value) params.set(key, value);
   }
+  if (view.scenario) params.set('scenario', String(view.scenario));
+  // Only the Scenarios tab compares, so only its address keeps the two sides.
+  if (section === 'scenarios') {
+    if (view.compare?.a) params.set('a', view.compare.a);
+    if (view.compare?.b) params.set('b', view.compare.b);
+  }
   const text = params.toString();
   return text ? `${path}?${text}` : path;
 }
@@ -137,8 +165,9 @@ export function boardHref(id: number, boardId: number, view?: PlanView): string 
 }
 
 /**
- * What decides whether a plan is read again: the filters and the grouping, never where the view
- * stands, so moving a month or changing the zoom reads nothing more than its own view does.
+ * What decides whether a plan is read again: the filters, the grouping and the scenario, never
+ * where the view stands, so moving a month or changing the zoom reads nothing more than its own
+ * view does.
  */
 export const planViewKey = (id: number, view: PlanView): string =>
-  planHref(id, 'summary', { filters: view.filters, group: view.group });
+  planHref(id, 'summary', { filters: view.filters, group: view.group, scenario: view.scenario });

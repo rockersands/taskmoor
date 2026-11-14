@@ -209,8 +209,8 @@ AI-024,AI,Operations AI,M3,Must,JSM Premium AIOps
 AI-025,AI,Custom agents and scheduled agent jobs,M3,Should,Rovo Studio; Linear Loops
 AI-026,AI,Discovery and customer-service AI,M4,Must,JPD; JSM customer service
 PLN-001,PLN,Plans,M1,Must,"Jira Premium; exceeds Jira (10,000 items, 200 spaces)"
-PLN-002,PLN,Sandbox and selective commit,M2,Must,Jira Premium
-PLN-003,PLN,Scenarios,M2,Must,Jira Premium
+PLN-002,PLN,Draft changes,M1,Must,Jira Premium
+PLN-003,PLN,Scenarios,M1,Must,Jira Premium
 PLN-004,PLN,Auto-scheduler,M2,Must,Jira Premium
 PLN-005,PLN,Teams and capacity,M1,Must,Jira Premium
 PLN-006,PLN,Dependencies,M1,Must,Jira Premium

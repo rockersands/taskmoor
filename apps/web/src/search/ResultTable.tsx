@@ -49,6 +49,8 @@ export interface ResultTableProps {
   format?: (ticket: SearchTicket) => RowFormat | null;
   /** The order the rows are in, marked on that column's header (PL-11). */
   sort?: TableSort | null;
+  /** No cell edits in place: a plan's List read in a scenario (ADR-122 stage 6). */
+  readOnly?: boolean;
 }
 
 /**
@@ -168,6 +170,7 @@ export function ResultGrid({
   onSaved,
   format,
   sort,
+  readOnly = false,
 }: ResultTableProps) {
   const t = useT();
   const region = useRef<HTMLElement>(null);
@@ -234,7 +237,7 @@ export function ResultGrid({
                     ticket={ticket}
                     column={column}
                     columnName={nameOf(column)}
-                    editor={cellEditor(column, fields)}
+                    editor={readOnly ? null : cellEditor(column, fields)}
                     dateTime={isDateTimeColumn(column, fields)}
                     priorities={priorities}
                     client={client}

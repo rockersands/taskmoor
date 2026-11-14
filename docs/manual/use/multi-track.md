@@ -1,7 +1,7 @@
 ---
 title: "Plans"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/styles/plans.css, apps/web/src/styles/releases.css, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/useCandidates.ts, apps/server/src/search/bind.ts, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md, packages/webconfig/src/csv.ts, apps/web/src/plans/download.ts, apps/server/src/privacy/erase.ts, apps/server/src/audit/query.ts, apps/web/src/plans/ProgramBoardsPage.tsx, apps/web/src/plans/ProgramBoardPage.tsx, apps/web/src/plans/programBoardClient.ts, apps/server/src/routes/program-boards.ts, apps/server/src/plans/dependencies.ts, apps/web/src/shell/DangerAction.tsx, apps/web/src/shell/moreSides.ts
+sources: apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/styles/plans.css, apps/web/src/styles/releases.css, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/useCandidates.ts, apps/server/src/search/bind.ts, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md, packages/webconfig/src/csv.ts, apps/web/src/plans/download.ts, apps/server/src/privacy/erase.ts, apps/server/src/audit/query.ts, apps/web/src/plans/ProgramBoardsPage.tsx, apps/web/src/plans/ProgramBoardPage.tsx, apps/web/src/plans/programBoardClient.ts, apps/server/src/routes/program-boards.ts, apps/server/src/plans/dependencies.ts, apps/web/src/shell/DangerAction.tsx, apps/web/src/shell/moreSides.ts, apps/web/src/plans/ScenarioBar.tsx, apps/web/src/plans/ScenarioDialogs.tsx, apps/web/src/plans/PlanChangesPage.tsx, apps/web/src/plans/PlanScenariosPage.tsx, apps/web/src/plans/ScenarioCompare.tsx, apps/web/src/plans/changeWords.ts, apps/web/src/plans/drafting.ts, apps/web/src/plans/scenarioClient.ts, apps/server/src/routes/plan-scenarios.ts, apps/server/src/plans/drafts.ts, apps/server/src/privacy/export.ts
 accessed: 2026-11-14
 attestation: own-words
 ---
@@ -10,7 +10,8 @@ attestation: own-words
 Plans bring the work of several tracks together in one place, without changing how those
 tracks work. Each **plan** gathers the tickets of the tracks and saved searches you choose, and
 shows them as a **Summary**, a **Timeline**, a **List**, a **Calendar**, its teams'
-**Capacity**, its tracks' **Releases** and its **Program boards**. Open **Plans** in the sidebar, under **Plan and track**.
+**Capacity**, its tracks' **Releases** and its **Program boards**, and holds **scenarios** of draft
+changes to try before they change anything. Open **Plans** in the sidebar, under **Plan and track**.
 
 A plan never gives anyone access. Everyone who opens it sees only the tickets they may see
 anyway, exactly as a search would show them.
@@ -201,6 +202,142 @@ Each change is the ticket's own, so its track's **Set due dates** permission, it
 notifications apply. When a change is refused, the page says why: you may not schedule tickets in
 that track, the ticket's status or dates are locked for you, the track is archived, the ticket was
 deleted or is hidden from you, the dates are not valid, or someone changed the ticket meanwhile.
+
+## Scenarios and draft changes
+
+A **scenario** is a named set of **draft changes** to a plan's tickets: their start and due days and
+their value in a Team field. A draft changes nothing about a ticket until it is **applied**, so you
+can try a new schedule, see it on the plan's views and compare it with the tickets as they are.
+Scenarios belong to their plan: everyone who sees the plan sees its scenarios, and a scenario gives
+no access.
+
+### Live and a scenario
+
+Every tab but Settings has a **Scenario** select below the plan's name. **Live**, the first choice
+and where a plan opens, is the tickets as they are: a change you make there changes the ticket at
+once, and the sentence under the select says so. Choose a scenario to read the plan with its drafts.
+The sentence then says how many changes it holds and that nothing changes until you apply them, and
+**Review** opens its change list. The scenario you chose is in the page's address, so a link opens
+the same one. A link to a scenario that was deleted opens the plan live, and says so.
+
+### Drafting
+
+In a scenario, the ways you reschedule on the Timeline and the Calendar make drafts instead: drag a
+bar or a calendar entry, press Alt and an arrow, or use the side panel, whose button reads **Save
+draft**. On a program board, dragging a card or its **Move** dialog (whose button reads **Draft the
+move**) drafts its Team value and days. After each draft the page says, for example, "Draft: SPA-12
+due 10 Dec in Faster. Nothing changed yet."
+
+Drafts are marked in words, never by colour alone:
+
+- A drafted bar has a **Draft** tag and a dashed edge, and a screen reader hears its days drafted
+  and its days now. The side panel shows its days now and offers **Undo this draft**.
+- A drafted calendar entry begins with "Draft", and a drafted card carries a **Draft** tag.
+- A Capacity or board cell that a draft moved a ticket into or out of says "With 2 draft changes"
+  or "includes drafts", and its count is not a link: a search finds tickets as they are, so no
+  search could find that count. Cells no draft touches keep their links.
+- Capacity's heading names the scenario. **Set capacity** still sets the plan's own capacity, live
+  and in every scenario, and its dialog says so.
+
+The **Summary**, the **List** and **Releases** show tickets as they are in a scenario too, and say
+so; in a scenario the List's cells cannot be edited in place. Work outside the plan and blockers it
+does not list stay live. Setting a field back to its live value removes its draft.
+
+Files you download in a scenario hold the drafted values: their first line names the scenario, and
+the Timeline's and the Calendar's files say which rows are drafts. The Timeline's image says so in
+its title. The List's file is always live.
+
+### The change list
+
+The **Changes** tab lists the chosen scenario's drafts, a ticket at a time: its key and summary,
+its track, each drafted field as "Due: 3 Dec → 10 Dec", who drafted it and when, and its state in
+words:
+
+- **Ready**: it can be applied.
+- **Changed since drafted**: someone changed that field live since the draft was made, and the line
+  says the value now. **Keep my draft** keeps your draft against the value now; nothing else does,
+  so moving only a bar's end leaves its start marked if that is what changed. A ticket edited in
+  other ways, a comment or a new summary for example, is not changed since drafted.
+- **Already so**: the ticket already has the drafted value; applying it changes nothing.
+- **You may not schedule tickets in SPA** (or edit them, for a Team value): you lack what applying
+  it needs. **Only those I can apply** hides these.
+- **Refused**, with why: the last attempt to apply it was refused.
+
+On a phone each ticket is a card, and the actions for the chosen tickets stay in a bar at the
+bottom. The list shows 100 tickets at a time; **Show more** brings the next ones.
+
+### Applying
+
+Only the **main** scenario is applied from. Choose tickets, or **Select all**, then **Apply**; the
+page asks first: "Change 3 tickets as you, with your permissions?" Applying is each ticket's own
+change, made by you: your permissions in its track, its locks, its form and required fields, its
+history, its notifications and its followers all apply, as if you had changed it by hand, and
+applying makes you follow the tickets you change. A ticket's drafted fields are applied together.
+On a computer, **Apply all** applies every draft you see; on a phone, choose **Select all** and then
+**Apply**. The page applies 100 tickets at a time and says how far it has got.
+
+One ticket refused never stops the others. The result says, for example, "3 applied, 1 refused",
+and each refused ticket stays chosen with its reason:
+
+- you may not schedule tickets in its track, for days ("You may not schedule tickets in SPA"), or
+  edit them, for a Team value ("You may not edit tickets in SPA"); a ticket that needs another
+  permission says "you lack a permission it needs in SPA";
+- it is locked, by its status or a field rule, and the lock is named;
+- it is no longer in this plan for you (deleted, hidden from you, moved out of the plan, or its
+  track archived); such a ticket is listed by this reason alone, without its key;
+- its track is archived, when that happens in the moment it is applied;
+- it changed since drafted, with its values now;
+- the ticket does not take the value, for example a Team field that is not on its form;
+- something else went wrong: try again.
+
+Applied drafts leave the list; the others stay until applied or discarded. One apply runs at a time
+for a plan.
+
+### Discarding
+
+**Discard** removes the chosen tickets' drafts, and **Discard all**, on a computer, every draft you
+see in the scenario; both ask first, and no ticket changes. Drafts on tickets the plan does not show you stay:
+you cannot remove what you cannot see.
+
+### Scenarios and making one main
+
+The **Scenarios** tab lists the plan's scenarios, the main one first, each with its number of
+changes, who made it and when. From there you can **Open** a scenario on the Timeline, see its
+**Changes**, **Rename** it, make it main or **Delete** it, and make a **New scenario**, empty or as a
+copy of another's drafts. A plan holds up to 20 scenarios, and a scenario up to 10,000 drafted
+tickets. The first scenario made is main.
+
+**Make Faster main** asks first: Faster's drafts become the plan's drafts to apply, and the former
+main stays a scenario under its own name, with its drafts, so nothing is lost. Deleting a scenario
+asks first and says how many drafts go with it, those on tickets hidden from you counted; the main
+scenario cannot be deleted while others exist.
+
+### Comparing
+
+Below the list, **Compare** sets two sides side by side, each **Live** or a scenario, and the link
+keeps them. For each side it shows:
+
+- **the plan's end**: the latest due day of its open tickets, with how many open tickets have no
+  due day;
+- **each team's end**, by the site's first Team field, and "Other or no team";
+- how many draft changes it holds;
+- how many tickets end later and how many earlier, and the tickets that differ, the first 200 named.
+
+Each difference is said in words, such as "Ends 8 days later in Faster". On a phone each measure and
+each team is a card. The numbers are of the tickets you see, so two people can see different ends.
+
+### Who may do what
+
+- **Everyone who sees the plan** can choose a scenario, see its drafts on the views, read its change
+  list and compare.
+- **The plan's owner and site administrators** draft, apply, discard and manage scenarios. Anyone
+  else sees "Viewing Faster. Only the plan's owner and site administrators can draft."
+- **Drafts on tickets the plan does not show you** are counted, never named, dated or valued: "4
+  more changes are on tickets this plan does not show you."
+
+Drafts do not appear in a ticket's history and send no notifications until they are applied. The
+scenarios you made and the drafts you last changed are in your data download; a copy of a plan
+takes no scenarios.
 
 ## Changing and sharing a plan
 
@@ -450,7 +587,11 @@ you send it to reads what it holds.
 
 ## Not yet in plans
 
-Draft changes and scenarios, and the auto-scheduler come in later versions. A link cannot be
+The auto-scheduler comes in a later version. Drafts hold start and due days and Team values only:
+the assignee, estimates, sprint, release, rank, status and new tickets cannot be drafted yet. Only
+the main scenario is applied from, a whole ticket at a time, and an apply cannot be undone (the
+ticket's history shows it). Scenarios are shared, never private, and a scenario has no capacity of
+its own; the comparison does not compare late dependencies or team loads. A link cannot be
 named and saved as a view, or made public; files come as CSV and PNG only, by hand, with no
 schedule; and a copy cannot follow its original. A program board draws no lines between its cards
 (its badges and list say the same), shows no one else's cursor, cannot take its columns from each

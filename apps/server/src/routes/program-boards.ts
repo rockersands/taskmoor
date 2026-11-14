@@ -6,11 +6,13 @@ import { requireUser } from '../auth';
 import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
 import { dependencyOptions, linkTypesNamed, readDependencies } from '../plans/dependencies';
-import { filterShape, idParam } from '../plans/model';
+import { draftMarks, draftOverlay } from '../plans/drafts';
+import { filterShape, idParam, scenarioShape } from '../plans/model';
 import { type Period, periodsFrom } from '../plans/periods';
 import { planTickets, sourceRows } from '../plans/query';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
 import { isCalendarDay } from '../tickets/model';
+import { viewScenario } from './plan-scenarios';
 import { periodOf, planTeams, planVisible } from './plans';
 import { searchRefusal } from './search';
 
@@ -33,6 +35,9 @@ import { searchRefusal } from './search';
  *   mover's permissions, the ticket's history and its events apply; others see it through the
  *   change log and the realtime socket (ADR-013), which the board page follows.
  * - A plan or board the person may not see answers 404, as does a board under another plan.
+ * - With `scenario=<id>` (ADR-122 stage 6) each card stands in the cell of its drafted Team value
+ *   and due day, for tickets the viewer is shown; a cell a draft moves a card into or out of says
+ *   how many (`drafts`) and has no search (`clause: null`). Live, every count equals its search.
  */
 type Db = Kysely<Database> | Transaction<Database>;
 
@@ -75,7 +80,7 @@ const updateBoard = z
     version: idNum,
   })
   .strict();
-const boardQuery = z.object(filterShape).strict();
+const boardQuery = z.object({ ...filterShape, ...scenarioShape }).strict();
 
 /** A value as the query language reads it: a quoted string with its quotes escaped. */
 const quoted = (text: string) => `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
@@ -391,14 +396,18 @@ export function registerProgramBoardRoutes(
     if (!plan) return notFound(reply);
     const board = await boardOf(db, ws, plan.id, p.data.boardId);
     if (!board) return notFound(reply);
+    const { scenario: scenarioParam, ...filters } = q.data;
     try {
       const tickets = await planTickets(
         db,
         options.catalogs,
         request,
         await sourceRows(db, [plan.id]),
-        q.data,
+        filters,
       );
+      const scenario = await viewScenario(db, ws, plan.id, scenarioParam, tickets.unfiltered);
+      if (scenario === 'not_found') return invalidFields(reply, { scenario: 'not_found' });
+      const over = draftOverlay(scenario?.id ?? null, tickets.unfiltered);
       const periods = periodsFrom(periodOf(plan), board.from_day, board.periods);
       const teams = await planTeams(db, plan.id);
       const teamIds = teams.map((t) => t.id);
@@ -421,12 +430,8 @@ export function registerProgramBoardRoutes(
       const options_ = await dependencyOptions(db, plan.id);
       const where = tickets.where;
       const unfiltered = tickets.unfiltered;
-      const key = fieldId === null ? null : String(fieldId);
-      const teamOf =
-        key === null
-          ? sql<number | null>`NULL::bigint`
-          : sql<number | null>`(CASE WHEN jsonb_typeof(k.fields -> ${key}::text) = 'number'
-                THEN (k.fields ->> ${key}::text)::numeric::bigint END)`;
+      const teamOf = over.team(fieldId);
+      const liveTeam = draftOverlay(null, null).team(fieldId);
       const starts = periods.map((x) => x.start);
       const ends = periods.map((x) => x.end);
       const windowStart = starts[0] as string;
@@ -439,17 +444,18 @@ export function registerProgramBoardRoutes(
           await sql<{ id: number; team: number | null; col: number; total: number }>`
             WITH c AS (
               SELECT k.id, ${teamOf} AS team_value, h.rank AS level, k.rank AS krank,
-                     CASE WHEN k.due_date IS NULL THEN 0 ELSE (
+                     CASE WHEN ${over.due} IS NULL THEN 0 ELSE (
                        SELECT p.i::int FROM unnest(${starts}::date[], ${ends}::date[])
                          WITH ORDINALITY AS p(s, e, i)
-                        WHERE k.due_date BETWEEN p.s AND p.e) END AS col
+                        WHERE ${over.due} BETWEEN p.s AND p.e) END AS col
                 FROM ticket k
                 JOIN status s ON s.id = k.status_id
                 JOIN ticket_type y ON y.id = k.ticket_type_id
                 JOIN hierarchy_level h ON h.id = y.level_id
+                ${over.join}
                WHERE ${where} AND h.rank IN (0, 1)
-                 AND (k.due_date BETWEEN ${windowStart}::date AND ${windowEnd}::date
-                      OR (k.due_date IS NULL AND s.stage <> 'closed'))
+                 AND (${over.due} BETWEEN ${windowStart}::date AND ${windowEnd}::date
+                      OR (${over.due} IS NULL AND s.stage <> 'closed'))
             ), numbered AS (
               SELECT c.id, c.col,
                      CASE WHEN c.team_value = ANY(${teamIds}::bigint[]) THEN c.team_value::int END
@@ -466,8 +472,30 @@ export function registerProgramBoardRoutes(
              WHERE n <= ${CELL_CARDS}
              ORDER BY col, n`.execute(trx)
         ).rows;
+        // Cards a draft moves between cells: where they stand live and drafted, both read here.
+        const moved =
+          scenario === null
+            ? []
+            : (
+                await sql<{
+                  live_team: number | null;
+                  live_due: string | null;
+                  team: number | null;
+                  due: string | null;
+                  open: boolean;
+                }>`
+                  SELECT ${liveTeam}::int AS live_team, k.due_date::text AS live_due,
+                         ${teamOf}::int AS team, ${over.due}::text AS due,
+                         s.stage <> 'closed' AS open
+                    FROM ticket k
+                    JOIN status s ON s.id = k.status_id
+                    JOIN ticket_type y ON y.id = k.ticket_type_id
+                    JOIN hierarchy_level h ON h.id = y.level_id
+                    ${over.join}
+                   WHERE ${where} AND h.rank IN (0, 1) AND ${over.drafted}`.execute(trx)
+              ).rows;
         const ids = placed.map((r) => r.id);
-        if (ids.length === 0) return { placed, cards: [], deps: null };
+        if (ids.length === 0) return { placed, cards: [], deps: null, moved, marks: new Map() };
         const cards = (
           await sql<{
             id: number;
@@ -489,7 +517,7 @@ export function registerProgramBoardRoutes(
           }>`
             SELECT k.id, t.key || '-' || k.number AS key, k.summary, y.name AS type,
                    h.rank AS level_rank, h.kind AS level_kind, s.name AS status, s.stage,
-                   k.start_date::text AS start, k.due_date::text AS due, k.track_id, k.version,
+                   ${over.start}::text AS start, ${over.due}::text AS due, k.track_id, k.version,
                    k.assignee_id, u.name AS assignee_name, tm.id AS team_id, tm.name AS team_name
               FROM ticket k
               JOIN track t ON t.id = k.track_id
@@ -497,6 +525,7 @@ export function registerProgramBoardRoutes(
               JOIN ticket_type y ON y.id = k.ticket_type_id
               JOIN hierarchy_level h ON h.id = y.level_id
               LEFT JOIN app_user u ON u.id = k.assignee_id
+              ${over.join}
               LEFT JOIN team tm ON tm.workspace_id = k.workspace_id AND tm.id = ${teamOf}
              WHERE k.id = ANY(${ids}::int[])`.execute(trx)
         ).rows;
@@ -504,7 +533,8 @@ export function registerProgramBoardRoutes(
           unfiltered,
           checkPlan: true,
         });
-        return { placed, cards, deps };
+        const marks = await draftMarks(trx, scenario?.id ?? null, ids);
+        return { placed, cards, deps, moved, marks };
       });
 
       const empty = () => ({ count: 0, cards: [] as number[] });
@@ -520,21 +550,52 @@ export function registerProgramBoardRoutes(
         cell.count = r.total;
         cell.cards.push(r.id);
       }
+      // Cells a draft moves a card into or out of: their count is no search's.
+      const rowKey = (team: number | null) =>
+        fieldId !== null && team !== null && teamIds.includes(team) ? team : null;
+      const colOf = (due: string | null, open: boolean): number | null => {
+        if (due === null) return open ? 0 : null;
+        const at = periods.findIndex((x) => due >= x.start && due <= x.end);
+        return at < 0 ? null : at + 1;
+      };
+      const touched = new Map<string, number>();
+      for (const m of read?.moved ?? []) {
+        const from = colOf(m.live_due, m.open);
+        const to = colOf(m.due, m.open);
+        const a = from === null ? null : `${rowKey(m.live_team)}/${from}`;
+        const b = to === null ? null : `${rowKey(m.team)}/${to}`;
+        if (a === b) continue;
+        for (const k of [a, b]) if (k !== null) touched.set(k, (touched.get(k) ?? 0) + 1);
+      }
+      const marked = (
+        team: number | null,
+        col: number,
+        cell: { count: number; cards: number[] },
+      ) => {
+        const n = touched.get(`${team}/${col}`) ?? 0;
+        return n === 0 ? cell : { ...cell, drafts: n, clause: null };
+      };
+      const marks = read?.marks ?? new Map();
       const byId = new Map((read?.cards ?? []).map((c) => [c.id, c]));
       const order = (read?.placed ?? []).map((r) => r.id);
       return {
         board: boardView(board),
         plan: { id: plan.id, name: plan.name },
+        ...(scenario ? { scenario } : {}),
         editable: plan.editable,
         query: tickets.query,
         clause: LEVELS_CLAUSE,
         periods: periods.map((x) => ({ ...x, clause: periodClause(x) })),
         unscheduledClause: UNSCHEDULED,
-        rows: rows.map((r) => ({
-          team: r.team,
-          clause: r.clause,
-          ...(grid.get(r.key) as ReturnType<typeof cellsOf>),
-        })),
+        rows: rows.map((r) => {
+          const cells = grid.get(r.key) as ReturnType<typeof cellsOf>;
+          return {
+            team: r.team,
+            clause: r.clause,
+            unscheduled: marked(r.key, 0, cells.unscheduled),
+            cells: cells.cells.map((c, i) => marked(r.key, i + 1, c)),
+          };
+        }),
         cards: order.flatMap((id) => {
           const c = byId.get(id);
           if (!c) return [];
@@ -553,6 +614,7 @@ export function registerProgramBoardRoutes(
               assignee:
                 c.assignee_id === null ? null : { id: c.assignee_id, name: c.assignee_name ?? '' },
               team: c.team_id === null ? null : { id: c.team_id, name: c.team_name ?? '' },
+              ...(marks.has(c.id) ? { draft: marks.get(c.id) } : {}),
             },
           ];
         }),

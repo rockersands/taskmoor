@@ -13,6 +13,8 @@ export interface CapacityDialogProps {
   /** Saves the changes; true when saved, else the refusal's code. */
   onSave: (entries: CapacityEntry[]) => Promise<true | string>;
   onClose: () => void;
+  /** Opened in a scenario: says that capacity is the plan's own, not a draft (ADR-122 stage 6). */
+  scenarioNote?: string;
 }
 
 /** A capacity as typed: empty for none, else a number from 0 to 100,000 in hundredths. */
@@ -44,6 +46,7 @@ export function CapacityDialog({
   capacity,
   onSave,
   onClose,
+  scenarioNote,
 }: CapacityDialogProps) {
   const t = useT();
   const id = useId();
@@ -169,6 +172,7 @@ export function CapacityDialog({
         }}
       >
         <h2 id={`${id}-title`}>{t('plans.capacity.dialog.title', { name: subject.name })}</h2>
+        {scenarioNote && <p className="board-hint">{scenarioNote}</p>}
         <p className="board-hint">
           {t(
             unit === 'hours'

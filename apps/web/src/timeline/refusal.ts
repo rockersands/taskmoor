@@ -12,6 +12,9 @@ const REFUSALS: Record<string, MessageId> = {
   invalid_request: 'schedule.refused.invalid',
   version_conflict: 'schedule.refused.conflict',
   '409': 'schedule.refused.conflict',
+  // A draft in a plan's scenario (ADR-122 stage 6).
+  start_after_due: 'schedule.refused.order',
+  too_many_drafts: 'schedule.refused.tooManyDrafts',
 };
 
 /**
@@ -26,6 +29,7 @@ export function scheduleRefusal(
 ): string {
   if (refusal.code === 'forbidden') {
     if (refusal.locked) return t('schedule.refused.locked', { key });
+    if (refusal.permission === 'edit_plan') return t('schedule.refused.notEditor', { key });
     if (refusal.permission === undefined || refusal.permission === 'schedule_tickets') {
       return t('schedule.refused.forbidden', { key });
     }
