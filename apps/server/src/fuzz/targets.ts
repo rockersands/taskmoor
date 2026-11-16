@@ -214,7 +214,15 @@ const csvTarget: FuzzTarget<CsvInput> = {
     const detect = rng.chance(0.5);
     const delimiter = detect ? null : written;
     if (rng.chance(0.5)) {
-      const rows = csvTable(rng);
+      const pick = rng.int(0, 3);
+      // A file as Excel's plain "CSV" saves it holds only what Windows-1252 has: other characters
+      // become a letter it has, so the file is not UTF-8 by its accents alone.
+      const rows =
+        pick === 0
+          ? csvTable(rng).map((r) =>
+              r.map((c) => [...c].map((ch) => (windows1252(ch) ? ch : 'ñ')).join('')),
+            )
+          : csvTable(rng);
       const text = rows
         .map((r) => r.map((c) => quoteCell(c, written, detect)).join(written))
         .join(rng.pick(['\n', '\r\n']));
@@ -224,9 +232,7 @@ const csvTarget: FuzzTarget<CsvInput> = {
       if (utf8.toString('utf8') !== text || text.startsWith('﻿')) {
         return { delimiter, written, bytes: utf8 };
       }
-      const pick = rng.int(0, 3);
-      // As Excel's plain "CSV" saves it, where every character has a byte there and the bytes
-      // are not UTF-8 by chance.
+      // In Windows-1252 unless its bytes happen to be UTF-8 too.
       const legacy = pick === 0 ? windows1252(text) : null;
       if (legacy && !isUtf8(legacy)) return { ...base, encoding: 'windows-1252', bytes: legacy };
       if (pick === 1) {

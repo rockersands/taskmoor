@@ -181,7 +181,7 @@ The same is available through the API (an API token needs the admin scope; see
 | Request | Does |
 |---|---|
 | `GET /api/v1/audit` | Searches, newest first, 50 records a page (`limit` up to 500, `cursor` for the next page) |
-| `GET /api/v1/audit/export?format=csv` | Streams every matching record, oldest first, as CSV or `jsonl` (JSON Lines) |
+| `GET /api/v1/audit/export?format=csv` | Streams every matching record, oldest first, as CSV or `jsonl` (JSON Lines); CSV takes `separator=comma` (the default) or `semicolon` |
 | `GET /api/v1/audit/verify` | Checks this site's chain |
 | `GET` and `PUT /api/v1/audit/settings` | Reads or sets `retentionMonths` |
 
