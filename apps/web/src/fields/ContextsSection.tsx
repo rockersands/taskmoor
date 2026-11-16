@@ -683,8 +683,8 @@ function DefaultForm({
     case 'group':
     case 'team': {
       const kind = field.type === 'user' ? 'people' : field.type === 'group' ? 'groups' : 'teams';
-      // Groups are found through the field (`GET /fields/:id/groups`), which the people who
-      // run a local-mode track may read, unlike the site's list of groups (T-322).
+      // Groups come from the site's list, which administrators may always read; those who run a
+      // local-mode track find them through the field instead (`trackFieldsClient`, T-322).
       const search = (typed: string) => {
         if (field.type === 'user') return client.findPeople(typed);
         if (field.type === 'team') return client.findTeams(typed);

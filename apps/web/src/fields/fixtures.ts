@@ -555,8 +555,12 @@ export function fakeFieldsClient(options: { runs?: RunTrack[] } = {}): FakeField
     },
     findTeams: async (typed) =>
       TEAMS.filter((p) => p.name.toLowerCase().includes(typed.toLowerCase())),
-    findGroups: async (fieldId, typed) => {
-      reads.push(`findGroups ${fieldId}`);
+    findGroups: async (_fieldId, typed) => {
+      reads.push('findGroups');
+      return GROUPS.filter((g) => g.name.toLowerCase().includes(typed.toLowerCase()));
+    },
+    findFieldGroups: async (fieldId, typed) => {
+      reads.push(`findFieldGroups ${fieldId}`);
       return GROUPS.filter((g) => g.name.toLowerCase().includes(typed.toLowerCase()));
     },
     trackRoles: async (trackId) => {

@@ -313,9 +313,12 @@ routes the server already had, through the track-scope pattern of section 8 (`se
   gets the track's roles (`GET /tracks/:id/roles`), people who may be mentioned in it
   (`GET /people/mentionable?track=`) and no list of groups, so a person field offers anyone or a
   track role's holders; a group limit chosen before stays, named "the group chosen before". A
-  group field's default finds groups through the field (`GET /fields/:id/groups`), on the shared
-  page too. Site and configuration administrators on a track's page keep the site's lists, which
-  the track's own may refuse them (a configuration administrator need not run the track).
+  group field's default finds groups through the field (`GET /fields/:id/groups`). Site and
+  configuration administrators on a track's page keep the site's lists, which the track's own may
+  refuse them (a configuration administrator need not run the track); a group default, on the
+  shared page too, searches the site's list (`GET /groups?query=`), since the field's route also
+  needs Browse users and groups, which a site may take from everyone (`findFieldGroups` is the
+  runners' alone).
 - **Who sees the shared Fields page:** it now follows section 8 as Configuration sets does:
   someone who runs tracks but is no administrator gets links to the tracks they run with their own
   configuration, not the refusal of T-320, since the page no longer offers them controls on shared

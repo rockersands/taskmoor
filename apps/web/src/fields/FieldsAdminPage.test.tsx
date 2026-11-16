@@ -1,7 +1,7 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ADMIN, TRACK_ADMIN } from '../admin/fixtures';
+import { ADMIN, CONFIG_ADMIN, TRACK_ADMIN } from '../admin/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
 import { type Session, SessionProvider } from '../session/SessionProvider';
@@ -469,6 +469,42 @@ describe('a local-mode track’s own fields, for whoever runs the track (T-322)'
     expect(client.calls.at(-1)?.args[2]).toMatchObject({
       config: { userGroupId: 21, userRoleId: null },
     });
+  });
+
+  it('[CORE-009] a group field’s default finds groups in the site’s list, which a configuration administrator may always read', async () => {
+    const user = userEvent.setup();
+    const client = fakeFieldsClient();
+    await client.createField({ name: 'Approvers', type: 'group' });
+    client.calls.length = 0;
+    renderOwn(null, { client, session: CONFIG_ADMIN });
+    await user.click(await screen.findByRole('button', { name: 'Manage field Approvers' }));
+    const fallback = screen.getByRole('form', { name: 'Default value in Default' });
+    await user.type(within(fallback).getByLabelText('Default value'), 'Rev');
+    await user.click(await within(fallback).findByRole('button', { name: 'Reviewers' }));
+    await user.click(within(fallback).getByRole('button', { name: 'Save the default' }));
+    expect(await screen.findByText('The default in Default was saved.')).toBeInTheDocument();
+    expect(client.calls.at(-1)?.args[2]).toEqual({ defaultValue: 21 });
+    // Not through the field, which needs Browse users and groups as well.
+    expect(client.reads).toContain('findGroups');
+    expect(client.reads.filter((r) => r.startsWith('findFieldGroups'))).toEqual([]);
+  });
+
+  it('[CORE-009] [IAM-030] a group field’s default on the track’s page finds groups through the field', async () => {
+    const user = userEvent.setup();
+    const client = fakeFieldsClient();
+    const made = await client.createField({ name: 'Approvers', type: 'group', trackId: 4 });
+    client.calls.length = 0;
+    renderOwn(4, { client });
+    await user.click(await screen.findByRole('button', { name: 'Manage field Approvers' }));
+    const fallback = screen.getByRole('form', { name: 'Default value in Default' });
+    await user.type(within(fallback).getByLabelText('Default value'), 'Sup');
+    await user.click(await within(fallback).findByRole('button', { name: 'Support' }));
+    await user.click(within(fallback).getByRole('button', { name: 'Save the default' }));
+    expect(await screen.findByText('The default in Default was saved.')).toBeInTheDocument();
+    expect(client.calls.at(-1)?.args[2]).toEqual({ defaultValue: 22 });
+    // The site's list of groups is for administrators.
+    expect(client.reads).toContain(`findFieldGroups ${made.id}`);
+    expect(client.reads.filter((r) => r === 'findGroups' || r === 'groups')).toEqual([]);
   });
 
   it('[CORE-009] an administrator on the track’s page keeps the site’s lists', async () => {

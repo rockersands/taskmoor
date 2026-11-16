@@ -2,10 +2,11 @@ import { api } from '../api/client';
 import { everyTrack } from '../api/tracks';
 import { type TrackScopeClient, trackScopeClient } from '../sets/trackScope';
 import {
-  findGroups,
+  findGroups as findFieldGroups,
   findSitePeople,
   findTeams,
   findPeople as findTrackPeople,
+  PICKER_LIMIT,
 } from '../tickets/pickerSources';
 
 /** The field types an administrator adds from this page, formulas included (T-320). */
@@ -220,11 +221,16 @@ export interface FieldsClient extends TrackScopeClient {
   /** People and teams by name, for a default value. */
   findPeople: (typed: string) => Promise<Named[]>;
   findTeams: (typed: string) => Promise<Named[]>;
-  /** The groups a group field offers, by name, for its default (`GET /fields/:id/groups`). */
+  /**
+   * The groups a group field's default may name, by name: the site's list (`GET /groups`), which
+   * site and configuration administrators may always read.
+   */
   findGroups: (fieldId: number, typed: string) => Promise<Named[]>;
   /** What a local-mode track's runners read instead of the site's lists (T-322). */
   trackRoles: (trackId: number) => Promise<Named[]>;
   findTrackPeople: (trackKey: string, typed: string) => Promise<Named[]>;
+  /** The same groups through the field (`GET /fields/:id/groups`, Browse users and groups). */
+  findFieldGroups: (fieldId: number, typed: string) => Promise<Named[]>;
 }
 
 const optionPath = (fieldId: number, contextId: number) =>
@@ -307,10 +313,14 @@ export const fieldsClient: FieldsClient = {
   roles: async () => named((await api<{ roles: Named[] }>('/roles')).roles),
   findPeople: findSitePeople,
   findTeams,
-  findGroups,
+  findGroups: async (_fieldId, typed) =>
+    named(
+      (await api<{ groups: Named[] }>(`/groups?query=${encodeURIComponent(typed)}`)).groups,
+    ).slice(0, PICKER_LIMIT),
   trackRoles: async (trackId) =>
     named((await api<{ roles: Named[] }>(`/tracks/${trackId}/roles`)).roles),
   findTrackPeople: (trackKey, typed) => findTrackPeople(trackKey, typed),
+  findFieldGroups,
 };
 
 /**
@@ -319,7 +329,7 @@ export const fieldsClient: FieldsClient = {
  * fields cover it only. Site and configuration administrators keep the site's lists of groups,
  * roles and people. Anyone else, who runs the track, reads only what that lets them read: the
  * roles from the track's own list, people who may be mentioned in it, and no groups, whose list is
- * for administrators; a group field's default still finds groups by name through the field.
+ * for administrators; a group field's default finds groups by name through the field instead.
  */
 export function trackFieldsClient(
   client: FieldsClient,
@@ -337,6 +347,7 @@ export function trackFieldsClient(
           groups: async () => [],
           roles: () => client.trackRoles(track.id),
           findPeople: (typed: string) => client.findTrackPeople(track.key, typed),
+          findGroups: (fieldId: number, typed: string) => client.findFieldGroups(fieldId, typed),
         }),
   };
 }

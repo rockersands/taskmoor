@@ -645,9 +645,10 @@ the track: under **Its own configuration** are links to its own pages.
   and settings or formula, its contexts with their defaults and options, and **Delete field**. Its
   contexts cover the track alone. A person field's context offers **Anyone** or **The holders of
   a track role**, from the track's roles, and a default person is found among the people who may
-  be mentioned in the track; the site's list of groups is for administrators, so a limit to a
-  group's members chosen before stays as it is, as **the group chosen before**. The shared fields
-  that reach the track are not listed: they are the administrators'.
+  be mentioned in the track, a default group by its name through the field; the site's list of
+  groups is for administrators, so a limit to a group's members chosen before stays as it is, as
+  **the group chosen before**. The shared fields that reach the track are not listed: they are the
+  administrators'.
 - **Notification policies** (`#/manage/tracks/<id>/notification-policies`) lists the notification
   policies the track owns and says which one it uses: add one, change its rules, delete one the
   track does not use, and **Use this policy for** the track. See [Managing
