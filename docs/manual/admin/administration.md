@@ -95,7 +95,7 @@ of pages did not change, so links you saved keep working.
 | Group | Pages |
 |---|---|
 | **People and access** | **People**, **Groups**, **Teams**, **Permissions** (roles, access policies, global permissions), **Visibility policies**, **Permission explainer** |
-| **Tracks and setup** | **Tracks**, **Workflows**, **Workflow maps**, **Fields**, **Configuration sets**, **Layout sets**, **Which sets a track uses** |
+| **Tracks and setup** | **Tracks**, **Workflows**, **Workflow maps**, **Fields**, **Ticket types**, **Configuration sets**, **Layout sets**, **Which sets a track uses** |
 | **Sign-in and security** | **Security**, **Single sign-on**, **LDAP and Active Directory**, **Network access**, **Audit log** |
 | **Integrations and AI** | **API tokens**, **Service accounts**, **MCP server**, **Frontends**, **Webhooks**, **AI**, **AI usage**, **AI limits and prices** |
 | **System** | **System status**, which also shows backups, **API usage and limits**, **Imports**, **Trash**, **Guardrails** |
