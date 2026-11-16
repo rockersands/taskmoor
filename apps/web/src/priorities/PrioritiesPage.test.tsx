@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { ADMIN, CONFIG_ADMIN, MEMBER, TRACK_ADMIN } from '../admin/fixtures';
@@ -293,6 +293,10 @@ describe('priorities, priority sets and close reasons (T-320)', () => {
       within(sets()).queryByRole('button', { name: 'Delete priority set Support' }),
     ).toBeNull();
     expect(within(sets()).getByText(/^Tracks that choose no set use this one\./)).toBeVisible();
+    // The button that had the keyboard is gone: the note drawn in its place takes it.
+    await waitFor(() =>
+      expect(within(sets()).getByText(/^Tracks that choose no set use this one\./)).toHaveFocus(),
+    );
     const badge = within(sets()).getByText('Default set');
     expect(badge.closest('li')).toHaveTextContent(/^Support/);
   });

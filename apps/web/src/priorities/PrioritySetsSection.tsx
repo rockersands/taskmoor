@@ -1,4 +1,4 @@
-import { type FormEvent, useId, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { CardHead, NewButton, useNewForm } from '../admin/NewButton';
 import { useT } from '../i18n/I18nProvider';
@@ -37,6 +37,14 @@ export function PrioritySetsSection({
   const creating = useNewForm();
   const feedback = useFeedback(reload);
   const [open, setOpen] = useState<number | null>(null);
+  const note = useRef<HTMLParagraphElement>(null);
+  /** A set just made the default: its note, drawn where its button was, takes the keyboard. */
+  const [madeDefault, setMadeDefault] = useState(false);
+  useEffect(() => {
+    if (!madeDefault) return;
+    note.current?.focus();
+    setMadeDefault(false);
+  }, [madeDefault]);
   const nameOf = new Map(priorities.map((p) => [p.id, p.name]));
   const fallback = sets.find((s) => s.isDefault);
 
@@ -146,7 +154,9 @@ export function PrioritySetsSection({
                   }}
                 />
                 {set.isDefault ? (
-                  <p className="page-note">{t('admin.priorities.defaultSetNote')}</p>
+                  <p ref={note} tabIndex={-1} className="page-note">
+                    {t('admin.priorities.defaultSetNote')}
+                  </p>
                 ) : (
                   <div className="form-actions">
                     <button
@@ -158,7 +168,9 @@ export function PrioritySetsSection({
                           .updatePrioritySet(set.id, { isDefault: true })
                           .then(
                             () =>
-                              feedback.said(t('admin.priorities.madeDefault', { name: set.name })),
+                              feedback
+                                .said(t('admin.priorities.madeDefault', { name: set.name }))
+                                .then(() => setMadeDefault(true)),
                             feedback.refused,
                           );
                       }}
