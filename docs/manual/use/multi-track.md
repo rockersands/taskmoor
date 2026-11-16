@@ -225,8 +225,10 @@ not saved, and the dialog says so at that capacity. Emptying a capacity removes 
 **Save capacity** saves only what changed. Each change is kept in the plan's history with its
 note, so a note should say what planning needs ("Leave"), not why. When a person is erased, their
 capacity goes, and the notes about them are emptied in that history too; the amounts stay. The
-audit log records who changed whose capacity and the amounts, never the notes' words. If someone changes the plan's
-unit or periods while you type, nothing is saved and the dialog asks you to reload the page.
+audit log records who changed whose capacity and the amounts, not the notes' words; only records
+written by an earlier version of Taskmoor still hold them, shown empty for an erased person. If
+someone changes the plan's unit or periods while you type, nothing is saved and the dialog asks
+you to reload the page.
 
 ## Filtering and grouping
 
