@@ -115,6 +115,7 @@ export const STORY_DEPS: readonly string[] = [
   '@formatjs/icu-messageformat-parser',
   '@hocuspocus/provider',
   '@simplewebauthn/browser',
+  '@storybook/addon-a11y/preview',
   '@storybook/react-vite',
   '@tiptap/core',
   '@tiptap/extension-collaboration',
