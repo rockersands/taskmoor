@@ -137,7 +137,9 @@ describe('deleting a track (T-322)', () => {
     const main = screen.getByRole('main');
     await within(main).findAllByRole('listitem');
     await user.click(main.querySelector('.people-item .people-action') as HTMLButtonElement);
-    const trigger = main.querySelector('.button-danger-quiet') as HTMLButtonElement;
+    // Archive track, a danger action too since T-267, comes first; Delete track ends the panel.
+    const trigger = [...main.querySelectorAll<HTMLButtonElement>('.button-danger-quiet')].at(-1);
+    if (!trigger) throw new Error('no Delete track button');
     expect(
       untranslated([trigger.textContent ?? '', trigger.getAttribute('aria-label') ?? '']),
     ).toEqual([]);
