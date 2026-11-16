@@ -274,7 +274,7 @@ function TrackSetsForm({
             {t(hintId)}
           </p>
           {made && (
-            <p className="form-hint">
+            <p className="form-hint form-hint-link">
               <a href={routeHref(made.href)}>{t(made.linkId)}</a>
             </p>
           )}
