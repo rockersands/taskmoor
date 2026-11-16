@@ -187,10 +187,6 @@
   max-width: 100%;
 }
 
-.people-confirm {
-  font-weight: var(--font-weight-strong);
-}
-
 @media (pointer: coarse) {
   .people-action {
     min-height: var(--hit-target-touch);

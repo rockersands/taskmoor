@@ -71,8 +71,9 @@ round.
 - **At once** (each person's default): one email per ticket once its oldest unsent change is
   as old as the batch window. Five edits within the window make one email listing all five.
 - **Daily digest** and **Weekly digest**: one email with everything, at the digest hour in
-  each person's own time zone; the weekly one on Mondays.
-- **Quiet hours** hold a person's email until they end, in their time zone.
+  the time zone saved on each person's account; the weekly one on Mondays. For a person whose
+  time zone is set to **Automatic**, that is UTC: no device is there when email is sent.
+- **Quiet hours** hold a person's email until they end, in the same time zone.
 - Just before sending, Taskmoor checks again that the person may still see each ticket and
   read each comment; anything they may not is dropped. Notifications already read in the
   inbox are not emailed, and deactivated people get nothing.
@@ -95,8 +96,8 @@ Site administrators set the batch window and the digest hour on **Administration
   where Taskmoor runs (see above).
 - **Wait before emailing a ticket's changes, in minutes**: the batch window, from 0 to 60. A part of
   a minute is kept, so a window set through the API in seconds, such as 90, shows as 1.5.
-- **Digest hour**: the hour daily digests go out in each person's own time zone, and weekly ones on
-  Mondays, from 00:00 to 23:00.
+- **Digest hour**: the hour daily digests go out in the time zone saved on each person's account
+  (UTC for anyone on **Automatic**), and weekly ones on Mondays, from 00:00 to 23:00.
 - **Save email settings** saves both and says so; a number of minutes outside 0 to 60 is refused
   on the page.
 
@@ -114,7 +115,7 @@ Content-Type: application/json
 | Setting | Range | Default |
 |---|---|---|
 | `batchWindowSeconds` | 0 to 3,600 seconds | 120 |
-| `digestHour` | 0 to 23, in each person's time zone | 8 |
+| `digestHour` | 0 to 23, in each person's saved time zone (UTC on Automatic) | 8 |
 
 ## Notification policies
 

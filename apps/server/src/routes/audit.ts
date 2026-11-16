@@ -1,6 +1,11 @@
 import { Readable } from 'node:stream';
 import type { Database } from '@taskmoor/db';
-import { CSV_CONTENT_TYPE, csvLine as csvRecord, withBom } from '@taskmoor/webconfig';
+import {
+  CSV_CONTENT_TYPE,
+  CSV_SEPARATORS,
+  csvLine as csvRecord,
+  withBom,
+} from '@taskmoor/webconfig';
 import type { FastifyInstance } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
@@ -48,7 +53,11 @@ const searchQuery = filterQuery.extend({
   limit: z.coerce.number().int().min(1).max(500).default(50),
 });
 
-const exportQuery = filterQuery.extend({ format: z.enum(['csv', 'jsonl']).default('csv') });
+const exportQuery = filterQuery.extend({
+  format: z.enum(['csv', 'jsonl']).default('csv'),
+  /** How a CSV file separates its cells (T-263): `comma`, the default, or `semicolon`. */
+  separator: z.enum(CSV_SEPARATORS).default('comma'),
+});
 
 const settingsBody = z
   .object({ retentionMonths: z.number().int().min(0).max(MAX_RETENTION_MONTHS) })
@@ -194,7 +203,7 @@ export function registerAuditRoutes(
     if (!admin) return reply;
     const parsed = exportQuery.safeParse(request.query);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
-    const { format, ...rest } = parsed.data;
+    const { format, separator, ...rest } = parsed.data;
     const workspaceId = request.workspaceId;
     // Reading the log out is recorded before the first line leaves.
     await appendAudit(db, [
@@ -210,9 +219,9 @@ export function registerAuditRoutes(
     const filter = toFilter(rest);
     async function* chunks(): AsyncGenerator<string> {
       // A CSV file starts with the byte-order mark, once (T-252), then the header.
-      let buffer = format === 'csv' ? withBom(csvRecord(CSV_COLUMNS)) : '';
+      let buffer = format === 'csv' ? withBom(csvRecord(CSV_COLUMNS, separator)) : '';
       for await (const record of exportAudit(db, workspaceId, filter)) {
-        buffer += format === 'csv' ? csvLine(record) : `${JSON.stringify(record)}\n`;
+        buffer += format === 'csv' ? csvLine(record, separator) : `${JSON.stringify(record)}\n`;
         if (buffer.length >= 64 * 1024) {
           yield buffer;
           buffer = '';

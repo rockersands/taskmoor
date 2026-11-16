@@ -294,7 +294,7 @@ describe('general reports (M1-062)', () => {
     ]);
   });
 
-  it('[RPT-002] counts days on the browser’s clock: 21:47 in New York is that day, not UTC’s next (T-272)', async () => {
+  it('[RPT-002] counts days on the person’s clock: 21:47 in New York is that day, not UTC’s next (T-272, T-280)', async () => {
     // Made at 21:47 on Oct 9 in New York (EDT, UTC-4), which is already Oct 10 in UTC.
     t.evening = (
       await call(
@@ -319,18 +319,26 @@ describe('general reports (M1-062)', () => {
     expect(
       await call('alice', { method: 'GET', url: `${path}&timeZone=UTC`, headers: zone }),
     ).toMatchObject({ timeZone: 'UTC', created: [0, 1] });
-    // The browser's zone wins over the profile's; an unknown one falls back to the profile's.
+    // The zone saved on the account wins over the device's (T-280): one clock per person,
+    // whatever device they are on. A zone the request names still wins over both.
     await database.db
       .updateTable('app_user')
       .set({ time_zone: 'Europe/Berlin' })
       .where('id', '=', users.alice?.id as number)
       .execute();
     try {
-      expect(await read(zone)).toMatchObject({ timeZone: 'America/New_York', created: [1, 0] });
+      expect(await read(zone)).toMatchObject({ timeZone: 'Europe/Berlin', created: [0, 1] });
       expect(await read({ 'taskmoor-time-zone': 'Mars/Olympus' })).toMatchObject({
         timeZone: 'Europe/Berlin',
         created: [0, 1],
       });
+      expect(
+        await call('alice', {
+          method: 'GET',
+          url: `${path}&timeZone=${encodeURIComponent('America/New_York')}`,
+          headers: { 'taskmoor-time-zone': 'Europe/Berlin' },
+        }),
+      ).toMatchObject({ timeZone: 'America/New_York', created: [1, 0] });
     } finally {
       await database.db
         .updateTable('app_user')

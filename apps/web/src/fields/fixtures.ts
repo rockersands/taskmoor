@@ -244,19 +244,62 @@ export function sampleFields(): Field[] {
         },
       ],
     },
+    {
+      id: 4,
+      name: 'Office',
+      description: '',
+      type: 'cascading-select',
+      multiple: false,
+      config: {},
+      trackId: null,
+      contexts: [
+        {
+          id: 40,
+          name: 'Everywhere',
+          trackIds: null,
+          ticketTypeIds: null,
+          config: {},
+          defaultValue: {
+            id: 401,
+            value: 'Madrid',
+            child: { id: 4011, value: 'Floor 1' },
+          },
+          options: [
+            {
+              id: 401,
+              value: 'Madrid',
+              disabled: false,
+              children: [
+                { id: 4011, value: 'Floor 1', disabled: false },
+                { id: 4012, value: 'Floor 2', disabled: false },
+              ],
+            },
+            { id: 402, value: 'Lisbon', disabled: false, children: [] },
+            {
+              id: 403,
+              value: 'Porto',
+              disabled: false,
+              children: [{ id: 4031, value: 'Quay', disabled: false }],
+            },
+          ],
+        },
+      ],
+    },
   ];
 }
 
 /**
  * An in-memory backend for stories and tests: it answers as the API would. Medium is on three
- * tickets, so deleting it, the field or its context is refused. Severity has a second context
- * for Payments bugs; Region is a two-level list; Reviewer a person field limited to a group;
- * Cost a number shown as euros; Days left a formula. OPS, a track with its own configuration,
- * owns Components (T-322); `runs` are the tracks the person runs.
+ * tickets, so deleting it, the field or its context is refused; so is Porto. Severity has a second
+ * context for Payments bugs, and Low starts its new tickets; Region is a two-level list; Reviewer
+ * a person field limited to a group; Cost a number shown as euros; Days left a formula; Office a
+ * two-level list whose default is Madrid, Floor 1. Deleting an option a default names leaves the
+ * context with none, as the server does. OPS, a track with its own configuration, owns Components
+ * (T-322); `runs` are the tracks the person runs.
  */
 export function fakeFieldsClient(options: { runs?: RunTrack[] } = {}): FakeFieldsClient {
   let fields: Field[] = sampleFields();
-  const inUse = new Set([202]);
+  const inUse = new Set([202, 403]);
   let next = 1000;
   const calls: FakeFieldsClient['calls'] = [];
   const log = (action: string, ...args: unknown[]) => calls.push({ action, args });

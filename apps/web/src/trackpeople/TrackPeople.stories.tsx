@@ -48,6 +48,24 @@ type Story = StoryObj<typeof meta>;
 export const Manager: Story = {};
 
 /**
+ * Withdrawing an invitation asks first, in words that never tell whether the address has an
+ * account (D13, T-267); at a phone's width the question takes the row and nothing sticks out.
+ */
+export const WithdrawingAtPhoneWidth: Story = {
+  args: { client: fakeTrackPeopleClient() },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Withdraw the invitation to nia@example.com' }),
+    );
+    const question = canvas.getByRole('group', { name: /^The link sent to nia@example\.com/ });
+    await expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/**
  * On a phone the link inside a note keeps the line's height, its 44 px press area reaching above
  * and below it: the line holding 'Open Permissions' sat about 31 px under the line above, against
  * 18 px elsewhere (T-226).

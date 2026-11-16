@@ -151,25 +151,6 @@
   max-width: 20rem;
 }
 
-.token-confirm {
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border-radius: var(--radius-1);
-  background: var(--color-danger-soft);
-  color: var(--color-danger);
-}
-
-.token-confirm p {
-  margin: 0;
-}
-
-.token-confirm-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
 .service-account-tokens {
   display: grid;
   gap: var(--space-3);

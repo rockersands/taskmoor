@@ -89,7 +89,7 @@ export const NothingDropped: Story = {
   args: { impact: { removedStatuses: [], tracks: [] }, warnings: [] },
 };
 
-/** A draft with no transitions: publishing gives each status its free move (T-246; WF-008). */
+/** A draft with no transitions: publishing gives its statuses their free moves (T-246, T-260; WF-008). */
 export const NoTransitionsYet: Story = {
   args: { impact: { removedStatuses: [], tracks: [] }, warnings: [], freeMoves: true },
   decorators: [atPhoneWidth],
@@ -97,7 +97,7 @@ export const NoTransitionsYet: Story = {
     const canvas = within(canvasElement);
     await expect(
       canvas.getByText(
-        'This version has no transitions, so publishing gives each of its statuses a move from any status, as a new workflow gets.',
+        'This version has no transitions, so publishing gives its statuses a move from any status, as a new workflow gets. A closed-stage status gets one only when there is a close reason to close with; if no status can get one, the publish is refused and says why.',
       ),
     ).toBeVisible();
     await fitsPhoneWidth(canvas);

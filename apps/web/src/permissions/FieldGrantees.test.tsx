@@ -95,6 +95,15 @@ describe('people and groups in a field of the ticket (T-320)', () => {
         name: 'Remove People in field Reviewer from Edit tickets',
       }),
     );
+    // Removing a grant asks first, naming the field grantee by its field (D13, T-267).
+    const removing = screen.getByRole('group', {
+      name: /^People in field Reviewer loses Edit tickets in /,
+    });
+    await user.click(
+      within(removing).getByRole('button', {
+        name: 'Remove People in field Reviewer from Edit tickets',
+      }),
+    );
     expect(
       await screen.findByText('People in field Reviewer no longer has Edit tickets.'),
     ).toBeInTheDocument();

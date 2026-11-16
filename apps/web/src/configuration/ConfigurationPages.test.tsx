@@ -34,7 +34,7 @@ function renderPage(
 }
 
 describe('track and workflow map administration (M1-053)', () => {
-  it('[CORE-001] adds a track, renames it and archives it', async () => {
+  it('[CORE-001] [CORE-025] adds a track, renames it, archives it after asking and restores it at once', async () => {
     const user = userEvent.setup();
     const client = renderPage('tracks');
     await screen.findByText('SHOP · Shop');
@@ -49,14 +49,31 @@ describe('track and workflow map administration (M1-053)', () => {
     await user.type(name, 'Payments team');
     await user.click(screen.getByRole('button', { name: 'Rename' }));
     expect(await screen.findByText('Track PAY was changed.')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Archive track PAY' }));
-    await user.click(screen.getByRole('button', { name: 'Yes' }));
+    // Archiving locks everyone out of changing it: asked first, focus on Cancel (D13, T-267).
+    const archive = screen.getByRole('button', { name: 'Archive track PAY' });
+    expect(archive).toHaveClass('button-danger-quiet');
+    await user.click(archive);
+    const question = screen.getByRole('group', {
+      name: 'Nobody can change the tickets of PAY until it is restored, and search leaves them out. They stay readable.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    expect(client.calls.map((c) => c.action)).toEqual(['createTrack', 'updateTrack']);
+    await user.click(within(question).getByRole('button', { name: 'Archive track PAY' }));
     expect(await screen.findByText('Track PAY was archived.')).toBeInTheDocument();
+    // Restoring loses nothing: a plain button, with the focus, that acts at once.
+    const restore = await screen.findByRole('button', { name: 'Restore track PAY' });
+    expect(restore).toHaveClass('button-secondary');
+    expect(restore).toHaveFocus();
+    await user.click(restore);
+    expect(await screen.findByText('Track PAY was restored.')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Archive track PAY' })).toHaveFocus();
     expect(client.calls.map((c) => c.action)).toEqual([
       'createTrack',
       'updateTrack',
       'archiveTrack',
+      'archiveTrack',
     ]);
+    expect(client.calls.at(-1)?.args).toEqual([expect.any(Number), false]);
   });
 
   it('[CORE-002] adds a track from the Scrum template and opens the board it made', async () => {

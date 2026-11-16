@@ -11,7 +11,9 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { MEMBER } from '../admin/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
+import { type Session, SessionProvider } from '../session/SessionProvider';
 import { HOLD } from '../shell/pointerDrag';
 import { useTimeZone } from '../test/timeZone';
 import { setCoarsePointer, setViewportWidth } from '../test/viewport';
@@ -548,6 +550,22 @@ describe('this month on the person’s own clock (AGL-017)', () => {
     expect(screen.getByRole('heading', { name: 'December 2026' })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'This month' }));
     expect(screen.getByRole('heading', { name: 'November 2026' })).toBeVisible();
+  });
+
+  it('[AGL-017] opens on the month and today of the zone saved on the account, not the device’s (T-280)', async () => {
+    // The account says Tokyo, where 02:00 on 1 December in UTC is 11:00 that day.
+    const member = (MEMBER as Extract<Session, { status: 'signed-in' }>).user;
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider
+          session={{ status: 'signed-in', user: { ...member, timeZone: 'Asia/Tokyo' } }}
+        >
+          <CalendarPage trackKey="CAL" client={fakeCalendarClient()} now={evening} />
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    expect(await screen.findByRole('heading', { name: 'December 2026' })).toBeVisible();
+    expect(day(/^Dec 1, 2026/)).toHaveClass('is-today');
   });
 
   it('[AGL-017] saves a ticket dragged in the evening on the day it was dropped on', async () => {

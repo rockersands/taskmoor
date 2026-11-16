@@ -1947,7 +1947,7 @@ Responses:
 | `at` | string | yes |  |
 | `actor` | [PersonRef](#schema-personref) or null | yes |  |
 | `field` | string | yes |  |
-| `fieldName` | string or null | no | A custom field’s row (`cf[12]`) only: the field’s name, when the field applies to the ticket where it is now; null otherwise. |
+| `fieldName` | string or null | no | A custom field’s row (`cf[12]`) only: the field’s name, when the field applies to the ticket where it is now or the reader may read the field’s definition (a shared field: anyone signed in; a track’s own field: those who may read that track’s fields); null otherwise, as for a field since deleted. |
 | `valueType` | `"date"`, `"datetime"` or null | no | A custom field’s row only: `date` when its values are calendar days (`YYYY-MM-DD`), `datetime` when they are instants (ISO 8601 in UTC), null for any other kind of value. |
 | `from` | object | yes |  |
 | `to` | object | yes |  |

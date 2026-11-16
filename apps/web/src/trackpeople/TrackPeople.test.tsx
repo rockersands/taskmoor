@@ -277,8 +277,20 @@ describe('the invite dialog (IAM-027)', () => {
     await user.click(screen.getByRole('button', { name: 'Make a new link for nia@example.com' }));
     const fresh = await screen.findByRole('textbox', { name: 'Link for nia@example.com' });
     expect((fresh as HTMLInputElement).value).toContain('again-21');
+    // Withdrawing kills the emailed link and may take a role back: asked first (D13, T-267), in
+    // words that do not tell whether the address has an account.
+    const withdraw = screen.getByRole('button', {
+      name: 'Withdraw the invitation to nia@example.com',
+    });
+    expect(withdraw).toHaveClass('button-danger-quiet');
+    await user.click(withdraw);
+    const question = screen.getByRole('group', {
+      name: 'The link sent to nia@example.com stops working. If this invitation already gave them the role Members, they lose it.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    expect(client.calls.map((c) => c.action)).toEqual(['resend', 'resend']);
     await user.click(
-      screen.getByRole('button', { name: 'Withdraw the invitation to nia@example.com' }),
+      within(question).getByRole('button', { name: 'Withdraw the invitation to nia@example.com' }),
     );
     expect(await screen.findByText('No invitations are waiting.')).toBeInTheDocument();
     expect(client.calls.map((c) => c.action)).toEqual(['resend', 'resend', 'revoke']);
@@ -554,6 +566,12 @@ describe('what an action did shows beside the row pressed (T-248)', () => {
     await user.click(
       screen.getByRole('button', { name: 'Withdraw the invitation to nia@example.com' }),
     );
+    await user.click(
+      within(screen.getByRole('group', { name: /^The link sent to nia@example\.com/ })).getByRole(
+        'button',
+        { name: 'Withdraw the invitation to nia@example.com' },
+      ),
+    );
     await seen('The invitation to nia@example.com was withdrawn.');
     expect(rowsOf(within(waiting).getByRole('list'))[0]).toBe(
       'The invitation to nia@example.com was withdrawn.',
@@ -583,6 +601,9 @@ describe('the permission to create tracks with the role that runs the track (IAM
     expect(screen.getByLabelText('Role')).toHaveDisplayValue('Administrators');
     expect(box()).toBeChecked();
     expect(box()).toHaveAccessibleDescription(/permission for the whole site/);
+    // The permission goes with the role (T-087b, S3-TR-1): the hint never says it stays.
+    expect(box()).toHaveAccessibleDescription(/It goes with the role: once they run no track/);
+    expect(box()).not.toHaveAccessibleDescription(/does not remove it/);
     await user.type(screen.getByLabelText('Find a person by name'), 'ana');
     await user.click(
       await screen.findByRole('button', { name: 'Give Administrators to Ana Duarte' }),

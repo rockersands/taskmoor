@@ -18,8 +18,9 @@ export interface PublishPanelProps {
   draftStatusIds: readonly number[];
   /**
    * The draft has no transitions and no rule: the server publishes it with a move into every
-   * status, as a new workflow gets (T-246; WF-008 (4)). A board-managed workflow always has its
-   * columns' moves, so it never gets here.
+   * status, as a new workflow gets (T-246; WF-008 (4)), a closed-stage status only when there is a
+   * reason to close with; it refuses one that can get no move at all, and says why (T-260). A
+   * board-managed workflow always has its columns' moves, so it never gets here.
    */
   freeMoves?: boolean;
   busy: boolean;

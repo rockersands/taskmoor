@@ -90,6 +90,15 @@ describe('the email settings page (T-155)', () => {
     expect(client.saved).toEqual([{ batchWindowSeconds: 300, digestHour: 7 }]);
   });
 
+  it('[NTF-004] says the digest hour is in each person’s saved time zone, and UTC on Automatic (T-280)', async () => {
+    renderPage();
+    const form = await screen.findByRole('form', { name: 'When email goes out' });
+    // The mailer has no device to ask, so a person on Automatic gets digests on UTC (deliver.ts).
+    expect(within(form).getByLabelText('Digest hour')).toHaveAccessibleDescription(
+      /the time zone saved on each person’s account \(UTC for anyone on Automatic/,
+    );
+  });
+
   it('[NTF-002] keeps a window set through the API in seconds, and refuses one out of range', async () => {
     const user = userEvent.setup();
     const client = fakeEmail({ batchWindowSeconds: 90 });

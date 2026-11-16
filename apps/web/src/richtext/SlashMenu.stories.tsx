@@ -204,3 +204,66 @@ export const ColumnWidths: Story = {
     ).toHaveDisplayValue('33.3%, 66.7%');
   },
 };
+
+/** A table's edits where the caret is in one (T-120): in the toolbar and in the menu. */
+export const TableEdits: Story = {
+  args: {
+    initial: {
+      type: 'doc',
+      content: [
+        {
+          type: 'table',
+          content: ['Browser', 'Safari'].map((text, row) => ({
+            type: 'tableRow',
+            content: [text, row === 0 ? 'Result' : 'fails'].map((cell) => ({
+              type: row === 0 ? 'tableHeader' : 'tableCell',
+              content: para(cell),
+            })),
+          })),
+        },
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByText('fails'));
+    await userEvent.keyboard(' /delete');
+    const list = await canvas.findByRole('listbox', { name: 'Blocks to add' });
+    await expect(within(list).getByRole('option', { name: 'Delete this row' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Delete this column' })).toBeVisible();
+  },
+};
+
+/** A file uploaded from the file prompt (T-120), refused for its size: the reason stays there. */
+export const UploadFromTheFilePrompt: Story = {
+  decorators: [
+    (Story) => (
+      <EditorToolsProvider
+        value={{
+          ...TOOLS,
+          uploader: () => ({
+            limit: '1 GB',
+            upload: async (file) => ({
+              file: null,
+              problems: [`${file.name} is larger than the 1 GB limit for one file.`],
+            }),
+          }),
+        }}
+      >
+        <Story />
+      </EditorToolsProvider>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('textbox', { name: 'Description' }));
+    await userEvent.keyboard('/image');
+    await canvas.findByRole('listbox', { name: 'Blocks to add' });
+    await userEvent.keyboard('{Enter}');
+    const chooser = await canvas.findByLabelText('Upload a file');
+    await userEvent.upload(chooser, new File(['zip'], 'everything.zip'));
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      'everything.zip is larger than the 1 GB limit for one file.',
+    );
+  },
+};

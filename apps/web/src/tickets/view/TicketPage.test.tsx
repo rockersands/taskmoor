@@ -5,7 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { MEMBER } from '../../admin/fixtures';
 import { ApiError } from '../../api/client';
-import { fakeAttachmentClient } from '../../attachments/fixtures';
+import type { AttachTarget } from '../../attachments/FileDrop';
+import { ATTACHMENTS, fakeAttachmentClient } from '../../attachments/fixtures';
 import { fakeCommentClient } from '../../comments/fixtures';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import { type Locale, messagesFor } from '../../i18n/locale';
@@ -207,7 +208,7 @@ describe('the ticket view (M1-051)', () => {
     expect(alert).not.toHaveTextContent('The workflow does not let');
   });
 
-  it('[CORE-022][CORE-015] names a choice the track does not offer, or an archived one, as the create form does (T-287)', async () => {
+  it('[CORE-022][CORE-015][CORE-016] names a choice the track does not offer, or an archived one, as the create form does (T-287, T-286)', async () => {
     const user = userEvent.setup();
     const { client } = renderPage();
     await heading();
@@ -221,6 +222,21 @@ describe('the ticket view (M1-051)', () => {
     await user.click(screen.getByRole('option', { name: 'Highest' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'This track does not offer this choice. Choose one of its own.',
+    );
+    // A release or an area says which it is (T-286); the priority keeps the general words.
+    client.edit = async () => {
+      throw new ApiError(400, {
+        error: 'invalid_fields',
+        fields: { targetReleaseIds: 'not_in_track', areaIds: 'not_in_track' },
+      });
+    };
+    await user.click(within(details()).getByRole('combobox', { name: 'Priority' }));
+    await user.click(screen.getByRole('option', { name: 'Medium' }));
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Target releases: This release is not in this track. Choose one of its releases. ' +
+          'Areas: This area is not in this track. Choose one of its areas.',
+      ),
     );
     refuse('archived');
     await user.click(within(details()).getByRole('combobox', { name: 'Priority' }));
@@ -814,6 +830,43 @@ describe('what the ticket offers the editors in it (NTF-014)', () => {
     expect(list).toHaveBeenCalledTimes(2);
     await tools.attachments?.(true);
     expect(list).toHaveBeenCalledTimes(3);
+  });
+
+  it('[CORE-021] [NTF-013] sends a file chosen in an editor through the Attachments panel, then reads the files again (T-120)', async () => {
+    const files = fakeAttachmentClient();
+    const list = vi.spyOn(files, 'list');
+    let panel: AttachTarget | null = null;
+    const tools = ticketEditorTools(files, { pick: async () => [] }, () => panel);
+    // No panel yet, or one that may not take files: no upload.
+    expect(tools.uploader?.()).toBeNull();
+    const added = { ...(ATTACHMENTS[0] as (typeof ATTACHMENTS)[number]), id: 77, name: 'shot.png' };
+    const attach = vi.fn(async () => ({ added: [added], problems: [] }));
+    panel = {
+      ready: false,
+      refusal: 'You may not attach files to this ticket.',
+      limit: '1 GB',
+      attach,
+    };
+    expect(tools.uploader?.()).toBeNull();
+    panel = { ...panel, ready: true, refusal: null };
+    const uploader = tools.uploader?.();
+    expect(uploader?.limit).toBe('1 GB');
+    await tools.attachments?.();
+    expect(list).toHaveBeenCalledTimes(1);
+    const outcome = await uploader?.upload(new File(['png'], 'shot.png', { type: 'image/png' }));
+    // Quietly: the prompt that sent it says how it went, and the panel only lists it.
+    expect(attach).toHaveBeenCalledWith([expect.any(File)], { quiet: true });
+    expect(outcome).toEqual({
+      file: expect.objectContaining({
+        name: 'shot.png',
+        sha256: added.sha256,
+        href: files.urls.content(added),
+      }),
+      problems: [],
+    });
+    // The ticket has another file: a reference reads the list again.
+    await tools.attachments?.();
+    expect(list).toHaveBeenCalledTimes(2);
   });
 });
 

@@ -1,3 +1,4 @@
+import { CSV_SEPARATORS } from '@taskmoor/webconfig';
 import { z } from 'zod';
 import { shareInput } from '../sharing/shares';
 import { isCalendarDay } from '../tickets/model';
@@ -152,6 +153,8 @@ export const exportQuery = z
     format: z.literal('csv').default('csv'),
     columns: z.string().max(4000).optional(),
     sort: z.enum(['created', 'updated', 'due', 'priority']).default('created'),
+    /** How the file separates its cells and writes numbers (T-263). */
+    separator: z.enum(CSV_SEPARATORS).default('comma'),
   })
   .strict();
 

@@ -62,6 +62,19 @@ describe('refused fields by their labels (T-292)', () => {
     );
   });
 
+  it('[CORE-015] [CORE-016] a transition screen’s release or area that is not in the track says which it is (T-286)', () => {
+    // The transition route names the fields as a screen does: target-release, found-in-release.
+    expect(refusedFieldsMessage(t, { 'target-release': 'not_in_track' })).toBe(
+      'Check these values. Target releases: This release is not in this track. Choose one of its releases.',
+    );
+    expect(refusedFieldsMessage(t, { 'found-in-release': 'not_in_track' })).toBe(
+      'Check these values. Found in releases: This release is not in this track. Choose one of its releases.',
+    );
+    expect(refusedFieldsMessage(t, { area: 'not_in_track' })).toBe(
+      'Check these values. Areas: This area is not in this track. Choose one of its areas.',
+    );
+  });
+
   it('[CORE-008] finds the custom fields a refusal names, to read their names (T-297)', () => {
     const refused = new ApiError(400, {
       error: 'invalid_fields',

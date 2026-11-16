@@ -1890,6 +1890,18 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM plan p WHERE p.name = 'Seed plan'`.execute(db);
     },
   },
+  '0113_csv_separator': {
+    tables: {
+      user_preference: `csv_separator = 'semicolon' AND auto_follow = false
+        AND user_id = (SELECT id FROM app_user WHERE email = 'seed@example.com')`,
+    },
+    seed: async (db) => {
+      // The seed person writes semicolons in spreadsheet files; their earlier settings stay
+      // (T-263).
+      await sql`UPDATE user_preference SET csv_separator = 'semicolon'
+        WHERE user_id = (SELECT id FROM app_user WHERE email = 'seed@example.com')`.execute(db);
+    },
+  },
 };
 
 /**

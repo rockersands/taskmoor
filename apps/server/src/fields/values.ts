@@ -39,24 +39,39 @@ export const historyName = (fieldId: number) => `cf[${fieldId}]`;
 export type HistoryValueType = 'date' | 'datetime';
 
 /**
+ * Who reads a page of history, as far as custom field names go (T-283): whether they are signed
+ * in, and the tracks whose own fields (local mode) they may read; `fields/access.ts` says who may
+ * read a field's definition and makes this.
+ */
+export interface FieldReader {
+  signedIn: boolean;
+  tracks: ReadonlySet<number>;
+}
+
+/**
  * What a ticket's history tells its reader about a custom field's row (T-277), or null for a
- * system field's row: the field's name, only when the field applies to the ticket where it is now
- * (so the reader sees the field on the ticket itself); and whether its values are calendar days
- * (`date`, as a date field or a formula giving a date stores them) or instants (`datetime`), for
- * a client to read them in the person's locale. A field since deleted is neither.
+ * system field's row: the field's name, when the field applies to the ticket where it is now (so
+ * the reader sees the field on the ticket itself) or when the reader may read the field's
+ * definition (T-283: a shared field to anyone signed in, a track's own field to those who may
+ * read that track's fields), so a field that stopped applying keeps its name for them; and
+ * whether its values are calendar days (`date`, as a date field or a formula giving a date stores
+ * them) or instants (`datetime`), for a client to read them in the person's locale. A field since
+ * deleted is neither.
  */
 export function historyFieldOf(
   catalog: Catalog,
   at: { trackId: number; ticketTypeId: number },
   field: string,
+  reader: FieldReader,
 ): { fieldName: string | null; valueType: HistoryValueType | null } | null {
   const id = customFieldId(field);
   if (id === null) return null;
   const def = catalog.fields.get(id);
   if (!def) return { fieldName: null, valueType: null };
   const storage = storageOf(def);
+  const readable = reader.signedIn && (def.trackId === null || reader.tracks.has(def.trackId));
   return {
-    fieldName: catalog.contextOf(id, at.trackId, at.ticketTypeId) ? def.name : null,
+    fieldName: readable || catalog.contextOf(id, at.trackId, at.ticketTypeId) ? def.name : null,
     valueType: storage === 'date' ? 'date' : storage === 'time' ? 'datetime' : null,
   };
 }
@@ -268,6 +283,26 @@ export async function allowedPeople(
     for (const r of rows) out.add(r.user_id);
   }
   return out;
+}
+
+/**
+ * Whom a person field's own picker offers for a ticket of a type in a track (CORE-009 (2); T-278,
+ * T-284), the one check its people route and a template's start share: null when the field does
+ * not apply there; `directory` when its context there names no group or role, so the picker
+ * offers the site's people, which only holders of "Browse users and groups" may list; otherwise
+ * the ids its group or track role allows, offered to anyone who may fill the field. Both callers
+ * keep to active people as they read names.
+ */
+export async function offeredPeople(
+  db: Db,
+  catalog: Catalog,
+  at: Placement,
+  fieldId: number,
+): Promise<null | 'directory' | Set<number>> {
+  const context = catalog.contextOf(fieldId, at.trackId, at.ticketTypeId);
+  if (!context) return null;
+  const allowed = await allowedPeople(db, at, context);
+  return allowed === 'all' ? 'directory' : allowed;
 }
 
 /** Adds labels to each labels field's own vocabulary (spec 01a section 1.4). */

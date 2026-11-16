@@ -69,10 +69,11 @@ describe('field administration (M1-053, T-320)', () => {
     await user.click(screen.getByRole('button', { name: 'Stop offering South' }));
     expect(await screen.findByText('South is no longer offered.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Offer again South' })).toBeVisible();
-    // Delete asks first (D13).
-    await user.click(screen.getByRole('button', { name: 'Delete North east' }));
-    const question = screen.getByRole('group', { name: /^Delete North east\? It leaves/ });
-    await user.click(within(question).getByRole('button', { name: 'Delete North east' }));
+    // A plain unused option comes back by typing its name: it goes at once (D13, T-267).
+    const deleting = screen.getByRole('button', { name: 'Delete North east' });
+    expect(deleting).toHaveClass('button-secondary');
+    await user.click(deleting);
+    expect(screen.queryByRole('group', { name: /^Delete North east/ })).toBeNull();
     expect(await screen.findByText('North east was deleted.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Rename North east' })).toBeNull();
   });
@@ -81,14 +82,12 @@ describe('field administration (M1-053, T-320)', () => {
     const user = userEvent.setup();
     renderPage();
     await user.click(await screen.findByRole('button', { name: 'Manage field Severity' }));
+    // A plain option asks nothing first (T-267): the refusal comes at the first press.
     await user.click(await screen.findByRole('button', { name: 'Delete Medium' }));
-    const asked = screen.getByRole('group', { name: /^Delete Medium\?/ });
-    await user.click(within(asked).getByRole('button', { name: 'Delete Medium' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       '3 tickets hold it, the trash included. Stop offering it instead.',
     );
-    // Refused: the option's question stays open, to cancel.
-    await user.click(within(asked).getByRole('button', { name: 'Cancel' }));
+    // Refused: the option stays, and so does the keyboard.
     expect(screen.getByRole('button', { name: 'Delete Medium' })).toHaveFocus();
     await user.click(screen.getByRole('button', { name: 'Delete field Severity' }));
     const question = screen.getByRole('group', { name: /^Delete Severity\?/ });
@@ -97,6 +96,74 @@ describe('field administration (M1-053, T-320)', () => {
     // Refused: the question stays open; Cancel gives the focus back to the first button (D13).
     await user.click(within(question).getByRole('button', { name: 'Cancel' }));
     expect(screen.getByRole('button', { name: 'Delete field Severity' })).toHaveFocus();
+  });
+
+  it('[CORE-009] asks before deleting an option whose child options or default go with it', async () => {
+    const user = userEvent.setup();
+    const client = renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Manage field Office' }));
+    // A plain unused option comes back by typing its name: it goes at once (D13, T-267).
+    const lisbon = await screen.findByRole('button', { name: 'Delete Lisbon' });
+    expect(lisbon).toHaveClass('button-secondary');
+    await user.click(lisbon);
+    expect(await screen.findByText('Lisbon was deleted.')).toBeInTheDocument();
+    // A child option the default names asks; a plain one does not.
+    expect(screen.getByRole('button', { name: 'Delete Floor 1' })).toHaveClass(
+      'button-danger-quiet',
+    );
+    expect(screen.getByRole('button', { name: 'Delete Floor 2' })).toHaveClass('button-secondary');
+    // Madrid takes its two child options and the default.
+    const madrid = screen.getByRole('button', { name: 'Delete Madrid' });
+    expect(madrid).toHaveClass('button-danger-quiet');
+    await user.click(madrid);
+    const question = screen.getByRole('group', {
+      name:
+        'Delete Madrid and its 2 child options? They leave this list for good. New tickets in ' +
+        'Everywhere start with Madrid: once it goes they start empty until a default is saved ' +
+        'again. Options a ticket holds are not deleted: stop offering them instead. This cannot ' +
+        'be undone.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Delete Madrid' })).toHaveFocus();
+    expect(client.calls.filter((c) => c.action === 'deleteOption')).toHaveLength(1);
+    await user.click(screen.getByRole('button', { name: 'Delete Madrid' }));
+    await user.click(
+      within(screen.getByRole('group', { name: /^Delete Madrid and/ })).getByRole('button', {
+        name: 'Delete Madrid',
+      }),
+    );
+    expect(await screen.findByText('Madrid was deleted.')).toBeInTheDocument();
+    expect(client.calls.filter((c) => c.action === 'deleteOption')).toEqual([
+      { action: 'deleteOption', args: [4, 40, 402] },
+      { action: 'deleteOption', args: [4, 40, 401] },
+    ]);
+  });
+
+  it('[CORE-009] asks before deleting a default option, and keeps the question when tickets hold it', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Manage field Severity' }));
+    await user.click(await screen.findByRole('button', { name: 'Delete Low' }));
+    const low = screen.getByRole('group', {
+      name:
+        'Delete Low? It leaves this list for good. New tickets in Everywhere start with Low: once ' +
+        'it goes they start empty until a default is saved again. An option a ticket holds is not ' +
+        'deleted: stop offering it instead. This cannot be undone.',
+    });
+    await user.click(within(low).getByRole('button', { name: 'Cancel' }));
+
+    await user.click(screen.getByRole('button', { name: 'Manage field Office' }));
+    await user.click(await screen.findByRole('button', { name: 'Delete Porto' }));
+    const question = screen.getByRole('group', {
+      name:
+        'Delete Porto and its child option? They leave this list for good. Options a ticket ' +
+        'holds are not deleted: stop offering them instead. This cannot be undone.',
+    });
+    await user.click(within(question).getByRole('button', { name: 'Delete Porto' }));
+    // Refused: the reason shows, and the question stays open to cancel.
+    expect(await screen.findByRole('alert')).toHaveTextContent('3 tickets hold it');
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toBeVisible();
   });
 
   it('[CORE-003] renames a field, describes it, and deletes one no ticket holds', async () => {
@@ -279,6 +346,7 @@ describe('field administration (M1-053, T-320)', () => {
       'Severity',
       'Components',
       'Region',
+      'Office',
       'Reviewer',
       'Cost',
       'Days left',

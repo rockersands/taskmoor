@@ -1396,7 +1396,7 @@ export const messagesEs: Record<MessageId, string> = {
   'emailSettings.windowInvalid': 'Indica un número de minutos de 0 a 60.',
   'emailSettings.digestHour': 'Hora del resumen',
   'emailSettings.digestHourHint':
-    'Los resúmenes diarios salen a esta hora en la zona horaria de cada persona, y los semanales los lunes a la misma hora.',
+    'Los resúmenes diarios salen a esta hora en la zona horaria guardada en la cuenta de cada persona (UTC para quien la tenga en Automática, porque no hay ningún dispositivo cuando se envían), y los semanales los lunes a la misma hora.',
   'emailSettings.hour': '{hour}:00',
   'emailSettings.save': 'Guardar los ajustes de correo',
   'emailSettings.saved': 'Se guardaron los ajustes de correo.',
@@ -1450,10 +1450,17 @@ export const messagesEs: Record<MessageId, string> = {
   'account.name': 'Nombre',
   'account.timeZone': 'Zona horaria',
   'account.timeZoneAutomatic': 'Automática',
-  'account.timeZoneHint': 'Automática sigue la zona horaria del dispositivo que estás usando.',
+  'account.timeZoneHint':
+    'Automática sigue el dispositivo que estás usando. Una zona elegida aquí fija tus días y horas en todos tus dispositivos.',
   'account.locale': 'Idioma y región',
   'account.localeAutomatic': 'Automático',
   'account.localeHint': 'Automático sigue la configuración de idioma de tu navegador.',
+  'account.csv': 'Hojas de cálculo (CSV)',
+  'account.csvAutomatic': 'Automático',
+  'account.csvComma': 'Comas, números como 1.5',
+  'account.csvSemicolon': 'Punto y coma, números como 1,5',
+  'account.csvHint':
+    'Cómo separan sus celdas los archivos CSV que descargas, para que tu hoja de cálculo los abra en columnas. Automático sigue tu idioma y región: punto y coma donde los números se escriben 1,5, comas donde se escriben 1.5.',
   'account.saveProfile': 'Guardar el perfil',
   'account.profileSaved': 'Perfil guardado.',
   'account.invalidTimeZone': 'No se reconoce esa zona horaria.',
@@ -1593,6 +1600,8 @@ export const messagesEs: Record<MessageId, string> = {
   'account.twoFactor.turnOnApp': 'Activar',
   'account.twoFactor.appEnabled': 'Aplicación autenticadora configurada.',
   'account.twoFactor.switchOffApp': 'Desactivar la aplicación',
+  'account.twoFactor.appOffOutcome':
+    'Los códigos de tu aplicación autenticadora ya no sirven para iniciar sesión. Para volver a usarla, configúrala de nuevo.',
   'account.twoFactor.appDisabled': 'Aplicación autenticadora desactivada.',
   'account.twoFactor.keys': 'Llaves de seguridad',
   'account.twoFactor.keysIntro':
@@ -1603,6 +1612,7 @@ export const messagesEs: Record<MessageId, string> = {
   'account.twoFactor.keyNeverUsed': 'Aún sin usar',
   'account.twoFactor.removeKey': 'Quitar',
   'account.twoFactor.removeKeyNamed': 'Quitar {name}',
+  'account.twoFactor.removeKeyOutcome': 'Ya no puedes iniciar sesión con {name}.',
   'account.twoFactor.keyRemoved': 'Se quitó {name}.',
   'account.twoFactor.addKey': 'Añadir una llave de seguridad',
   'account.twoFactor.keyName': 'Nombre de la llave',
@@ -2104,6 +2114,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.imports.report.code': 'Código {code}.',
   'admin.imports.report.codeDetail': 'Código {code}: {detail}.',
   'admin.imports.report.examples': 'Por ejemplo {examples}.',
+  'admin.imports.report.lineExample': 'línea {line}: {text}',
   'admin.imports.report.unsupported': 'No importado',
   'admin.imports.report.unsupportedItem': '{kind}: {count} ({reason})',
   'admin.imports.report.failures': 'Fallos',
@@ -2211,6 +2222,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Una clave anterior pertenece aquí a otra cosa y sigue siendo suya.',
   'admin.imports.warning.ticket_in_another_open_sprint':
     'Un ticket estaba en dos sprints abiertos; se queda en el primero.',
+  'admin.imports.warning.read_as_windows_1252':
+    'El archivo no está en UTF-8, así que se leyó como europeo occidental de Windows (Windows-1252), que es como Excel guarda un CSV sencillo. Revisa las letras con tilde de las líneas indicadas. Para ir sobre seguro, guarda el archivo desde Excel como «CSV UTF-8» e importa ese.',
   'admin.frontends.title': 'Frontends web',
   'admin.frontends.forbidden':
     'Solo los administradores del sitio cambian qué frontends pueden usar este servidor.',
@@ -3043,6 +3056,9 @@ export const messagesEs: Record<MessageId, string> = {
   'tickets.error.otherTrack': 'Un subticket se queda en el track de su padre.',
   'tickets.error.archived': 'Esta versión o área está archivada. Elige otra.',
   'tickets.error.notInTrack': 'Este track no ofrece esta opción. Elige una de las suyas.',
+  'tickets.error.releaseNotInTrack':
+    'Esta versión no es de este track. Elige una de sus versiones.',
+  'tickets.error.areaNotInTrack': 'Esta área no es de este track. Elige una de sus áreas.',
   'tickets.create.withheld':
     'No puedes definir este campo en un ticket nuevo. El ticket solo se crea si lo rellena un valor predeterminado o el flujo de trabajo; si no, pídeselo a un administrador del track.',
   'tickets.create.parentHint': 'Escribe la clave de un ticket o palabras de su resumen.',
@@ -3328,7 +3344,7 @@ export const messagesEs: Record<MessageId, string> = {
   'trackPeople.roleGivenWithTracks': '{name} ahora tiene {role} y puede crear tracks.',
   'trackPeople.createTracks': 'Permitir también crear tracks',
   'trackPeople.createTracksHint':
-    'Es un permiso para todo el sitio, no solo para este track. Quitar el rol después no lo retira; un administrador del sitio puede hacerlo en la página Permisos.',
+    'Es un permiso para todo el sitio, no solo para este track. Va con el rol: cuando ya no dirija ningún track, se retira también. Para que lo conserve, un administrador del sitio lo da en la página Permisos.',
   'trackPeople.pending': 'Invitaciones en espera',
   'trackPeople.noPending': 'No hay invitaciones en espera.',
   'trackPeople.pendingMeta': '{role}, invitación de {who}.',
@@ -3343,6 +3359,8 @@ export const messagesEs: Record<MessageId, string> = {
   'trackPeople.linkMade': 'Hay un enlace nuevo para {who}; el anterior ya no funciona.',
   'trackPeople.revoke': 'Retirar',
   'trackPeople.revokeFor': 'Retirar la invitación a {who}',
+  'trackPeople.revokeOutcome':
+    'El enlace enviado a {who} deja de funcionar. Si esta invitación ya le dio el rol {role}, lo pierde.',
   'trackPeople.revoked': 'Se retiró la invitación a {who}.',
   'trackPeople.inviteTitle': 'Invitar personas a {key}',
   'trackPeople.addresses': 'Direcciones de correo',
@@ -3486,11 +3504,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.tracks.archiveOf': 'Archivar el track {key}',
   'admin.tracks.restore': 'Restaurar el track',
   'admin.tracks.restoreOf': 'Restaurar el track {key}',
-  'admin.tracks.confirmArchive':
-    '¿Archivar {key}? Sus tickets se pueden seguir leyendo y nadie puede cambiarlos.',
-  'admin.tracks.confirmRestore': '¿Restaurar {key}? Sus tickets se pueden volver a cambiar.',
-  'admin.tracks.confirmYes': 'Sí',
-  'admin.tracks.confirmNo': 'No',
+  'admin.tracks.archiveOutcome':
+    'Nadie puede cambiar los tickets de {key} hasta que se restaure, y la búsqueda los deja fuera. Se siguen pudiendo leer.',
   'admin.tracks.archivedSaid': 'Se archivó el track {key}.',
   'admin.tracks.restored': 'Se restauró el track {key}.',
   'admin.tracks.problem.mapping':
@@ -3772,6 +3787,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.fields.optionEnableOf': 'Volver a ofrecer {value}',
   'admin.fields.optionDelete': 'Eliminar',
   'admin.fields.optionDeleteOf': 'Eliminar {value}',
+  'admin.fields.optionDeleteOutcome':
+    '{children, plural, =0 {¿Eliminar {value}? Sale de esta lista para siempre.} one {¿Eliminar {value} y su opción hija? Salen de esta lista para siempre.} other {¿Eliminar {value} y sus # opciones hijas? Salen de esta lista para siempre.}} {isDefault, select, yes {Los tickets nuevos de {context} empiezan con {value}: cuando se vaya empezarán vacíos hasta que se guarde otro valor por defecto. } other {}}{children, plural, =0 {Una opción que tenga un ticket no se elimina: deja de ofrecerla.} other {Las opciones que tenga un ticket no se eliminan: deja de ofrecerlas.}} No se puede deshacer.',
   'admin.fields.delete': 'Eliminar el campo',
   'admin.fields.deleteOf': 'Eliminar el campo {name}',
   'admin.fields.confirmDelete':
@@ -3968,10 +3985,6 @@ export const messagesEs: Record<MessageId, string> = {
     'Eso superaría uno de los límites del sitio. Un administrador del sitio puede subirlo en la página Salvaguardas.',
   'admin.fields.problem.invalid': 'No se aceptaron esos ajustes. Revísalos e inténtalo de nuevo.',
   // La página Campos tras la revisión (T-320).
-  'admin.fields.optionConfirmDelete':
-    '¿Eliminar {value}? Sale de esta lista para siempre, y un valor por defecto que la nombre se quita. Una opción que tenga un ticket no se elimina: deja de ofrecerla. No se puede deshacer.',
-  'admin.fields.optionConfirmDeleteChildren':
-    '¿Eliminar {value} y {count, plural, one {su # opción hija} other {sus # opciones hijas}}? Salen de esta lista para siempre, y un valor por defecto que nombre alguna se quita. Las opciones que tenga un ticket no se eliminan: deja de ofrecerlas. No se puede deshacer.',
   'admin.fields.default.notOffered':
     'El valor por defecto aún nombra {values}, que ya no se ofrece aquí, así que al guardarlo se deja fuera.',
   'admin.fields.contexts.goneTracks':
@@ -4031,6 +4044,9 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.permissions.removed': '{grantee} ya no tiene {permission}.',
   'admin.permissions.remove': 'Quitar',
   'admin.permissions.removeOf': 'Quitar a {grantee} de {permission}',
+  'admin.permissions.removeOutcome':
+    '{grantee} pierde {permission} en {count, plural, =0 {cada track que use esta política, y aún no la usa ninguno} one {{tracks}, el track que usa esta política} other {{tracks}, los # tracks que usan esta política}}.',
+  'admin.permissions.removeGlobalOutcome': '{grantee} pierde {permission} en todo el sitio.',
   'admin.permissions.global': 'Permisos globales',
   'admin.permissions.newGrantIn': 'Nuevo permiso en {name}',
   'admin.permissions.newGlobal': 'Nuevo permiso global',
@@ -4678,6 +4694,9 @@ export const messagesEs: Record<MessageId, string> = {
   'richtext.table.addRow': 'Añadir una fila debajo',
   'richtext.table.addColumn': 'Añadir una columna a la derecha',
   'richtext.table.delete': 'Eliminar la tabla',
+  // Removing a row or a column (T-120).
+  'richtext.table.deleteRow': 'Eliminar esta fila',
+  'richtext.table.deleteColumn': 'Eliminar esta columna',
   'richtext.mention': 'Mencionar a alguien',
   'richtext.taskItem': 'Elemento de la lista: {text}',
   'richtext.taskItemEmpty': 'Elemento de la lista vacío',
@@ -4860,7 +4879,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.fixTextFirst':
     'Corrige antes el texto: el diagrama solo puede mostrar una definición que se lea correctamente.',
   'admin.workflow.confirmDiscard':
-    '¿Descartar el borrador y todos los cambios sin guardar? La versión publicada se queda como está.',
+    'El borrador guardado y todos los cambios sin guardar se eliminan. La versión publicada se queda como está.',
   'admin.workflow.confirmDiscardButton': 'Descartar el borrador',
   'admin.workflow.discarded': 'El borrador se descartó; el editor muestra la versión publicada.',
   'admin.workflow.cancel': 'Cancelar',
@@ -5170,6 +5189,8 @@ export const messagesEs: Record<MessageId, string> = {
     '{where}: el motivo de cierre que establece ya no existe.',
   'workflow.problem.invalid_pattern': '{where}: {pattern} no es una expresión regular válida.',
   'workflow.problem.guards_too_deep': '{where}: las condiciones se anidan demasiado.',
+  'workflow.problem.no_moves':
+    'Ningún ticket podría moverse nunca en él: no tiene transiciones, todos sus estados están en la etapa cerrada y no hay ningún motivo de cierre con el que cerrar. Añade un motivo de cierre llamado Completed, haz que el flujo de trabajo predeterminado defina un motivo al cerrar un ticket, añade un estado fuera de la etapa cerrada o dibuja tú las transiciones.',
   'workflow.problem.onCreate': 'Crear un ticket',
   'workflow.problem.refused': 'El servidor rechazó la definición.',
   'workflow.problem.mappingRequired': 'Elige adónde van los tickets de cada estado que se quita.',
@@ -5187,7 +5208,7 @@ export const messagesEs: Record<MessageId, string> = {
     '{count, plural, one {El borrador tiene # aviso; aun así se puede publicar.} other {El borrador tiene # avisos; aun así se puede publicar.}}',
   'admin.workflow.publishPanel.dropped': 'Estados que quita esta versión',
   'admin.workflow.publishPanel.freeMoves':
-    'Esta versión no tiene transiciones, así que al publicarla cada uno de sus estados recibe una transición desde cualquier estado, como un flujo de trabajo nuevo.',
+    'Esta versión no tiene transiciones, así que al publicarla sus estados reciben una transición desde cualquier estado, como un flujo de trabajo nuevo. Un estado de la etapa cerrada solo la recibe si hay un motivo de cierre con el que cerrar; si ningún estado puede recibirla, la publicación se rechaza y dice por qué.',
   'admin.workflow.publishPanel.moveTo':
     'Mover {count, plural, one {el # ticket} other {los # tickets}} de {status} a',
   'admin.workflow.publishPanel.empty': '{status}: no hay tickets que mover.',
@@ -5209,7 +5230,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.versions.restore': 'Restaurar como borrador',
   'admin.workflow.versions.restoreNamed': 'Restaurar la versión {version} como borrador',
   'admin.workflow.versions.confirmRestore':
-    'Restaurar la versión {version} reemplaza el borrador actual y todos los cambios sin guardar.',
+    'Restaurar la versión {version} reemplaza {draft, select, none {todos los cambios sin guardar} other {el borrador (versión {draft}) y todos los cambios sin guardar}}. La versión publicada se queda como está.',
   'admin.workflow.versions.confirmRestoreButton': 'Restaurar la versión {version}',
   'admin.workflow.versions.restored':
     'La versión {version} es ahora el borrador. Publícala para volver a usarla.',
@@ -6247,7 +6268,7 @@ export const messagesEs: Record<MessageId, string> = {
   'summary.filter.mine': 'Mis tickets',
   'summary.filter.clear': 'Quitar el filtro',
   'summary.filter.note':
-    'Solo tú ves este filtro. Reduce cada número y cada widget de aquí a los tickets que también coinciden, y se queda en la dirección de esta página, así que puedes guardarla en marcadores. El resumen que ven los demás no cambia.',
+    'Este filtro solo cambia tu vista: reduce cada número y cada widget de aquí a los tickets que también coinciden. Se queda en la dirección de esta página, así que puedes guardarla en marcadores o compartir el enlace; el resumen que ven los demás no cambia.',
   'summary.filter.bad':
     'Ese filtro no se lee como una búsqueda. Revísalo en la página de búsqueda.',
   'summary.filter.on': 'Solo se muestran los tickets que coinciden con {filter}.',
@@ -7690,6 +7711,8 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketTools.links.added': 'Enlazado: {phrase} {key}.',
   'ticketTools.links.removed': 'Quitado: {phrase} {key}.',
   'ticketTools.links.remove': 'Quitar el enlace: {phrase} {key}',
+  'ticketTools.links.removeOutcome':
+    '{key} está en otro track: cuando el enlace se vaya, esta página no puede volver a enlazarlo.',
   'ticketTools.links.exists': 'Ese enlace ya existe.',
   'ticketTools.links.disabled': 'Los enlaces entre tickets están desactivados en este sitio.',
   'ticketTools.links.archived':
@@ -7746,6 +7769,8 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketTools.checklists.moved': 'Se movió la lista {name}.',
   'ticketTools.checklists.rename': 'Editar la lista {name}',
   'ticketTools.checklists.remove': 'Quitar la lista {name}',
+  'ticketTools.checklists.removeOutcome':
+    'Quitar {name} elimina {count, plural, one {su # elemento} other {sus # elementos}} y el estado de cada uno: {done, plural, =0 {ninguno estaba hecho} one {# estaba hecho} other {# estaban hechos}}. El historial solo guarda el nombre de la lista, así que no se puede deshacer.',
   'ticketTools.checklists.moveListUp': 'Subir la lista {name}',
   'ticketTools.checklists.moveListDown': 'Bajar la lista {name}',
   'ticketTools.checklists.addItem': 'Añadir un elemento a {name}',
@@ -7799,6 +7824,10 @@ export const messagesEs: Record<MessageId, string> = {
   'richtext.prompt.file': '{name} ({details})',
   'richtext.prompt.fileBy': 'de {author}',
   'richtext.prompt.fileNumber': 'archivo {number}',
+  // A file uploaded from the file prompt (T-120).
+  'richtext.prompt.upload': 'Subir un archivo',
+  'richtext.prompt.uploadHint': 'Hasta {limit}. También aparece en Adjuntos.',
+  'richtext.prompt.uploading': 'Subiendo {name}…',
   'richtext.columns.widths': 'Ancho de las {count} columnas',
   'richtext.columns.equal': 'Iguales',
   'richtext.columns.apply': 'Aplicar',
@@ -8146,6 +8175,9 @@ export const messagesEs: Record<MessageId, string> = {
   'crossTrack.linked.choose': 'Elegir',
   'crossTrack.linked.tooMany': 'Una admite como máximo 100 versiones.',
   'crossTrack.linked.remove': 'Quitar {name}',
+  'crossTrack.linked.removeConfirm': 'Quitar {track} {name}',
+  'crossTrack.linked.removeOutcome':
+    '{name} de {track} sale de esta versión entre tracks: sus tickets dejan de contar aquí, y su fecha ya no se mueve con esta. Solo los administradores de {track} pueden volver a enlazarla, y solo mientras no esté publicada ni archivada.',
   'crossTrack.linked.removed': '{name} ya no está enlazada. Su fecha no cambió.',
   'crossTrack.linked.removeFailed': 'No se pudo quitar la versión.',
   'crossTrack.edit.open': 'Editar',
@@ -8204,6 +8236,8 @@ export const messagesEs: Record<MessageId, string> = {
   'release.crossTrack.add': 'Añadir a una versión entre tracks…',
   'release.crossTrack.listFailed': 'No se pudieron leer las versiones entre tracks.',
   'release.crossTrack.remove': 'Quitar de {name}',
+  'release.crossTrack.removeOutcome':
+    '{name} de {track} sale de {crossTrack}: sus tickets dejan de contar allí, y su fecha ya no se mueve con ella. Solo los administradores de {track} pueden volver a enlazarla, y solo mientras no esté publicada ni archivada.',
   'release.crossTrack.linked': 'Esta versión ahora está enlazada a {name}.',
   'release.crossTrack.unlinked': 'Esta versión ya no está enlazada a {name}. Su fecha no cambió.',
   'release.crossTrack.noneToJoin': 'No hay ninguna a la que unirse',

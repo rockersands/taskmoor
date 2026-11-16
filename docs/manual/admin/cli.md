@@ -2,7 +2,7 @@
 title: "The operator CLI"
 audience: admins
 sources: apps/server/src/updates/check.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/server/src/backup.ts, apps/server/src/backups/drill.ts, apps/server/src/backups/schedule.ts, apps/server/src/upgrade.ts, apps/server/src/upgrade-check.ts, apps/server/src/directory.ts, apps/server/src/audit/chain.ts, apps/server/src/fields/jobs.ts, apps/server/src/workflows/free-moves.ts, apps/server/src/import/load-config.ts, packages/db/src/migrations/0107_workflows_left_without_moves.ts, apps/server/src/reports/events.ts, apps/server/src/trash/purge.ts, apps/server/src/export/write.ts, Dockerfile, deploy/README.md, deploy/compose/upgrade.sh, deploy/allinone/Dockerfile, deploy/allinone/entrypoint.sh, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, docs/adr/0022-upgrades-and-migrations.md, apps/server/src/embeddings/backfill.ts, docs/adr/0106-local-embeddings-and-vector-search.md
-accessed: 2026-11-13
+accessed: 2026-11-16
 attestation: own-words
 ---
 # The operator CLI
@@ -162,7 +162,9 @@ from any status into each of its statuses, as a new workflow gets, published as 
 and Taskmoor now gives those moves to a workflow published or imported with none (from a
 workflow file or a backup), so on an upgraded server this finds only what free moves leave alone,
 whether old or published or imported since: a workflow with a rule, one a board manages, and one
-whose only statuses are closed-stage ones with no close reason to set. It prints one JSON line per
+whose only statuses are closed-stage ones with no close reason to set. A publish or a workflow
+file imported as a new workflow refuses that last kind, so it now comes only from an import run
+(a backup or an export) or from before this version. It prints one JSON line per
 site: how many it found (`withoutMoves`), how many it repaired and their ids. `--repair`
 gives any it can its free moves, as the upgrade does; a move into a closed-stage status sets the
 close reason free moves close with. Each workflow it repairs records one published version by the

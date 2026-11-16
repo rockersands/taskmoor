@@ -427,8 +427,9 @@ export function registerUserRoutes(
         .where('used_at', 'is', null)
         .execute();
       if (current.deactivated_at === null) {
-        // A deactivated person runs no track: a permission to create tracks that came with a
-        // role goes (T-087b; IAM-033).
+        // Deactivation keeps the person's roles, and with them a permission to create tracks
+        // that came with a role (T-259): unusable while deactivated, theirs again on
+        // reactivation. One whose roles are already gone still goes (T-087b; IAM-033).
         const lapsed = await dropLapsedCreateTracks(trx, request.workspaceId, [current.id]);
         await emit(
           trx,

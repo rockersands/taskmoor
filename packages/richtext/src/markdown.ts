@@ -36,6 +36,7 @@ import {
   isAttachmentName,
   layoutSpan,
   MAX_COLUMNS,
+  SAFE_COLOR,
   shownColumnWidth,
   TICKET_KEY,
 } from './adf';
@@ -153,9 +154,6 @@ const ALERT_ALIASES: Record<string, string> = { important: 'info', caution: 'err
 /** The text with each lone surrogate replaced by U+FFFD, so it can be URI-encoded. */
 export const wellFormed = (text: string): string =>
   text.replace(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/g, '\ufffd');
-
-/** Only colours we can write back safely: hex values or plain colour names. */
-export const SAFE_COLOR = /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]{3,20})$/;
 
 /**
  * Link targets a document may hold; anything else (javascript:, data:, ...) keeps only its text.
