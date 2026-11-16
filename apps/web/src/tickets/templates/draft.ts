@@ -113,6 +113,10 @@ export interface TemplateDraft {
   labels: string;
   startInDays: string;
   dueInDays: string;
+  /**
+   * Who it assigns; with no name when the reader may not see them named, or they are gone
+   * (T-283).
+   */
   assignee: Named | null;
   areaIds: number[];
   targetReleaseIds: number[];
@@ -197,7 +201,10 @@ export function draftOf(
     labels: (defaults.labels ?? []).join(' '),
     startInDays: asText(defaults.startInDays),
     dueInDays: asText(defaults.dueInDays),
-    assignee: saved?.assignee ?? null,
+    // An assignee the API does not name keeps its id, so a save never drops it (T-283).
+    assignee:
+      saved?.assignee ??
+      (defaults.assigneeId === undefined ? null : { id: defaults.assigneeId, name: '' }),
     areaIds: defaults.areaIds ?? [],
     targetReleaseIds: defaults.targetReleaseIds ?? [],
     foundInReleaseIds: defaults.foundInReleaseIds ?? [],

@@ -212,6 +212,10 @@ export function fakeTemplateClient(
       searched.push(`people:${track}:${query}`);
       return matching(TRACK_PEOPLE, query);
     },
+    assignable: async (track, query) => {
+      searched.push(`assignable:${track}:${query}`);
+      return matching(TRACK_PEOPLE, query);
+    },
     sitePeople: async (query) => {
       searched.push(`sitePeople:${query}`);
       return matching(SITE_PEOPLE, query);
@@ -260,6 +264,8 @@ export function fakeTemplateClient(
 
 export interface FakePickerClient extends PickerClient {
   applied: { id: number; body: Record<string, unknown> }[];
+  /** The starts asked for, as `id:track:type` (T-284). */
+  started: string[];
 }
 
 /** The create form's side of the API. */
@@ -276,10 +282,15 @@ export function fakePickerClient(
   names: Record<string, Named[]> = {},
 ): FakePickerClient {
   const applied: FakePickerClient['applied'] = [];
+  const started: string[] = [];
   return {
     applied,
+    started,
     list: async () => templates,
-    start: async () => ({ start, names }),
+    start: async (id, track, ticketTypeId) => {
+      started.push(`${id}:${track}:${ticketTypeId}`);
+      return { start, names };
+    },
     apply: async (id, body) => {
       applied.push({ id, body });
       return {

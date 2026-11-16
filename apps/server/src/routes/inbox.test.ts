@@ -699,13 +699,14 @@ describe('inbox, mentions and activity (M1-058)', () => {
     expect((await get('dave', `/api/v1/tracks/${trackId}/activity`)).statusCode).toBe(404);
   });
 
-  it("[CORE-022] names a custom field's change in both activity streams and says how its values read (T-282)", async () => {
+  it("[CORE-022] names a custom field's change in both activity streams and says how its values read (T-282, T-283)", async () => {
     const made: Record<string, { id: number; contexts: { id: number }[] }> = {};
     for (const [name, type] of [
       ['Go-live day', 'date'],
       ['Cut-over', 'datetime'],
       ['Rollout note', 'text'],
       ['Audit day', 'date'],
+      ['Retired note', 'text'],
     ] as const) {
       const res = await post('admin', '/api/v1/fields', { name, type });
       expect(res.statusCode, res.body).toBe(201);
@@ -719,9 +720,21 @@ describe('inbox, mentions and activity (M1-058)', () => {
         [f('Cut-over').id]: '2026-10-13T09:00:00Z',
         [f('Rollout note').id]: 'Soon',
         [f('Audit day').id]: '2026-11-01',
+        [f('Retired note').id]: 'Gone soon',
       },
     });
-    // Audit day stops applying to the ticket's track: its rows keep how they read, not the name.
+    // Retired note is emptied and deleted: its rows keep their values, and no name.
+    const emptied = await patch('alice', `/api/v1/tickets/${t.id}`, {
+      fields: { [f('Retired note').id]: null },
+    });
+    expect(emptied.statusCode, emptied.body).toBe(200);
+    const deleted = await as('admin', {
+      method: 'DELETE',
+      url: `/api/v1/fields/${f('Retired note').id}`,
+    });
+    expect(deleted.statusCode, deleted.body).toBe(204);
+    // Audit day stops applying to the ticket's track: its rows keep how they read, and its name,
+    // as Bob may read a shared field's definition (T-283).
     const narrowed = await patch(
       'admin',
       `/api/v1/fields/${f('Audit day').id}/contexts/${f('Audit day').contexts[0]?.id}`,
@@ -749,7 +762,8 @@ describe('inbox, mentions and activity (M1-058)', () => {
         fieldName: 'Rollout note',
         valueType: null,
       });
-      expect(row('Audit day'), url).toMatchObject({ fieldName: null, valueType: 'date' });
+      expect(row('Audit day'), url).toMatchObject({ fieldName: 'Audit day', valueType: 'date' });
+      expect(row('Retired note'), url).toMatchObject({ fieldName: null, valueType: null });
       // A system field's change carries neither.
       const summary = changes.find((c) => c.field === 'summary');
       expect(summary, url).toBeDefined();

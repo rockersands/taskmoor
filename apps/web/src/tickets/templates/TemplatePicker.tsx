@@ -89,12 +89,12 @@ export function TemplatePicker({
   const choose = async (value: string) => {
     setFailed(false);
     const template = templates.find((x) => String(x.id) === value);
-    if (!template || !form) {
+    if (!template || !form || typeId === null) {
       onPick(null, null);
       return;
     }
     try {
-      const { start, names } = await client.start(template.id, track);
+      const { start, names } = await client.start(template.id, track, typeId);
       const fill = fillForm(start, form, {
         keys: pickable ?? new Set(),
         assignee: template.assignee,

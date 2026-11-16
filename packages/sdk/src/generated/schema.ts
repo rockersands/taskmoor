@@ -1376,7 +1376,7 @@ export interface components {
             at: string;
             changeSet: string;
             field: string;
-            /** @description A custom field’s row (`cf[12]`) only: the field’s name, when the field applies to the ticket where it is now; null otherwise. */
+            /** @description A custom field’s row (`cf[12]`) only: the field’s name, when the field applies to the ticket where it is now or the reader may read the field’s definition (a shared field: anyone signed in; a track’s own field: those who may read that track’s fields); null otherwise, as for a field since deleted. */
             fieldName?: string | null;
             from: {
                 display: string | null;

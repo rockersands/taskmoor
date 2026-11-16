@@ -8,6 +8,7 @@ import { refusedKeys } from '../clone/run';
 import { emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
 import { type FieldShape, parseValue, referencedIds } from '../fields/types';
+import { offeredPeople } from '../fields/values';
 import {
   createTemplateBody,
   expandSummary,
@@ -39,15 +40,21 @@ import { ticketRoutes } from './tickets';
  * - `GET /api/v1/ticket-templates?track=KEY[&ticketTypeId=N]` lists the templates a ticket in
  *   that track may start from: the track's own and those for every track, limited to the type
  *   when one is named. Without `track` it lists the templates for every track. Each says
- *   whether the caller may change it (`mayEdit`).
- * - `GET /api/v1/ticket-templates/:id[?track=KEY]` reads one; with a track, also the values
- *   it starts a ticket there with for this person (`start`): the summary pattern filled in, the
- *   dates counted from today in their time zone. `names` gives the names of the people, groups
- *   and teams its custom values name, by body key (`fields.12`), so a form can show them in its
- *   pickers (T-276) and the template form by name (T-299, also without a track): only those the
- *   reader may see, as the pickers would offer them. People and
- *   groups need "Browse users and groups" and people must be active; teams are seen by everyone
- *   signed in. A value the reader may not see has no name there.
+ *   whether the caller may change it (`mayEdit`), and names who `defaults.assigneeId` assigns
+ *   (`assignee`) as the assignee picker would offer them: an active person, to readers who hold
+ *   "Browse users and groups"; otherwise `assignee` is null and the id stays in the defaults
+ *   (T-283). Who made it (`createdBy`) is named to every reader.
+ * - `GET /api/v1/ticket-templates/:id[?track=KEY[&ticketTypeId=N]]` reads one; with a track,
+ *   also the values it starts a ticket there with for this person (`start`): the summary pattern
+ *   filled in, the dates counted from today in their time zone. `names` gives the names of the
+ *   people, groups and teams its custom values name, by body key (`fields.12`), so a form can
+ *   show them in its pickers (T-276) and the template form by name (T-299, also without a
+ *   track): only those the reader may see, as the pickers would offer them. People and groups
+ *   need "Browse users and groups" and people must be active; teams are seen by everyone signed
+ *   in. Once the start knows the ticket type (the one named, else the template's first when it
+ *   is limited to some, as when a ticket is made; a type the template does not fit is refused),
+ *   a person field limited to a group or a track role names exactly the active people its own
+ *   list offers there, to every reader (T-284). A value the reader may not see has no name there.
  * - Track templates are seen by those who browse the track and changed by its administrators
  *   ("Administer track") and configuration administrators; templates for every track are seen
  *   by everyone signed in and changed by configuration administrators.
@@ -74,7 +81,12 @@ const listQuery = z
   })
   .strict();
 const readQuery = z
-  .object({ track: z.string().trim().min(1).max(300).optional(), format: z.string().optional() })
+  .object({
+    track: z.string().trim().min(1).max(300).optional(),
+    /** The type of the ticket the start is for (T-284); read with a track only. */
+    ticketTypeId: z.coerce.number().int().positive().max(MAX_INT).optional(),
+    format: z.string().optional(),
+  })
   .strict();
 /** The apply route's own keys; the rest of its body is a ticket create body. */
 const applyOptions = z
@@ -129,6 +141,20 @@ function inBody(body: Record<string, unknown>, key: string): boolean {
     return fields !== undefined && key.slice('fields.'.length) in fields;
   }
   return key in body;
+}
+
+/**
+ * The ticket type a template starts or makes a ticket of: the one named, else the template's
+ * first when it is limited to some, else none (the create route's default type);
+ * `not_in_template` for a named type the template does not fit.
+ */
+function typeFor(
+  row: { ticket_type_ids: number[] },
+  named: number | undefined,
+): number | undefined | 'not_in_template' {
+  const limited = row.ticket_type_ids.length > 0;
+  if (named === undefined) return limited ? row.ticket_type_ids[0] : undefined;
+  return limited && !row.ticket_type_ids.includes(named) ? 'not_in_template' : named;
 }
 
 function uniqueViolation(error: unknown): boolean {
@@ -193,6 +219,33 @@ export function registerTicketTemplateRoutes(
     return new Map(rows.map((r) => [r.id, r]));
   }
 
+  /**
+   * The names of the active people among `ids`, by id: those a person picker could offer. Which
+   * ids the reader may see named is the caller's to say, by the picker that takes the value
+   * (T-276, T-283, T-284): the assignee's and an unrestricted person field's search the site's
+   * people, for holders of "Browse users and groups" (`seesDirectory`); a person field limited
+   * to a group or a track role offers its own list to anyone who may fill it.
+   */
+  async function activePeople(
+    workspaceId: number,
+    ids: Iterable<number>,
+  ): Promise<Map<number, string>> {
+    const wanted = [...new Set(ids)];
+    if (wanted.length === 0) return new Map();
+    const rows = await db
+      .selectFrom('app_user')
+      .select(['id', 'name'])
+      .where('workspace_id', '=', workspaceId)
+      .where('id', 'in', wanted)
+      .where('deactivated_at', 'is', null)
+      .where('kind', '=', 'person')
+      .execute();
+    return new Map(rows.map((r) => [r.id, r.name]));
+  }
+
+  /** Whether the reader's person pickers search the site's people ("Browse users and groups"). */
+  const seesDirectory = (request: FastifyRequest) => request.authz.hasGlobal('browse_users');
+
   async function views(
     request: FastifyRequest,
     rows: readonly TemplateRow[],
@@ -201,19 +254,29 @@ export function registerTicketTemplateRoutes(
     const tracks = await trackInfo(rows.flatMap((r) => (r.track_id === null ? [] : [r.track_id])));
     const assigneeOf = (r: TemplateRow) =>
       (r.defaults as { assigneeId?: number } | null)?.assigneeId ?? null;
-    const people = [
-      ...new Set(
-        rows.flatMap((r) =>
-          [r.created_by, assigneeOf(r)].flatMap((id) => (id === null ? [] : [id])),
-        ),
-      ),
+    const creators = [
+      ...new Set(rows.flatMap((r) => (r.created_by === null ? [] : [r.created_by]))),
     ];
     const names = new Map(
-      (people.length === 0
+      (creators.length === 0
         ? []
-        : await db.selectFrom('app_user').select(['id', 'name']).where('id', 'in', people).execute()
+        : await db
+            .selectFrom('app_user')
+            .select(['id', 'name'])
+            .where('id', 'in', creators)
+            .execute()
       ).map((u) => [u.id, u.name]),
     );
+    // The assignee is named as the assignee picker would offer them (T-283).
+    const assignees = (await seesDirectory(request))
+      ? await activePeople(
+          request.workspaceId,
+          rows.flatMap((r) => {
+            const id = assigneeOf(r);
+            return id === null ? [] : [id];
+          }),
+        )
+      : new Map<number, string>();
     const manage = new Map<number | null, boolean>();
     const out = [];
     for (const r of rows) {
@@ -228,8 +291,11 @@ export function registerTicketTemplateRoutes(
         summary: r.summary,
         description: writeRichText(r.description, format),
         defaults: r.defaults,
-        /** Who `defaults.assigneeId` names, so a form can show them. */
-        assignee: assignee === null ? null : { id: assignee, name: names.get(assignee) ?? '' },
+        /** Who `defaults.assigneeId` names, so a form can show them; null for one not shown. */
+        assignee:
+          assignee === null || !assignees.has(assignee)
+            ? null
+            : { id: assignee, name: assignees.get(assignee) ?? '' },
         subtickets: r.subtickets,
         createdBy:
           r.created_by === null ? null : { id: r.created_by, name: names.get(r.created_by) ?? '' },
@@ -468,6 +534,11 @@ export function registerTicketTemplateRoutes(
     ) {
       return invalidFields(reply, { track: 'not_found' });
     }
+    // The ticket's type, as making the ticket picks it (T-284).
+    const typeId = typeFor(row, q.data.ticketTypeId);
+    if (typeId === 'not_in_template') {
+      return invalidFields(reply, { ticketTypeId: 'not_in_template' });
+    }
     const track = await db
       .selectFrom('track')
       .select('key')
@@ -477,18 +548,23 @@ export function registerTicketTemplateRoutes(
     if (start.description !== undefined) {
       start.description = writeRichText(start.description as JsonValue, format);
     }
-    return { template: view, start, names: await startNames(request, start) };
+    const here = typeId === undefined ? undefined : { trackId, ticketTypeId: typeId };
+    return { template: view, start, names: await startNames(request, start, here) };
   });
 
   /**
    * The names of the people, groups and teams a template's custom values name, by body key, as
    * far as the reader may see them (T-276): the same people and groups the create form's
    * pickers offer (those who hold "Browse users and groups"; active people only), and the
-   * site's teams. A value left unnamed is never told apart from one that is gone.
+   * site's teams. Once the ticket's track and type are known (`here`), a person field limited
+   * to a group or a track role there names exactly the active people its own list offers, to
+   * every reader (T-284): one no longer allowed stays unnamed, like an archived release. A value
+   * left unnamed is never told apart from one that is gone.
    */
   async function startNames(
     request: FastifyRequest,
     start: Record<string, unknown>,
+    here?: { trackId: number; ticketTypeId: number },
   ): Promise<Record<string, { id: number; name: string }[]>> {
     const values = (start.fields ?? {}) as Record<string, unknown>;
     const ws = request.workspaceId;
@@ -503,25 +579,32 @@ export function registerTicketTemplateRoutes(
       if (ids.length > 0) wanted.push({ key: `fields.${id}`, kind, ids });
     }
     if (wanted.length === 0) return {};
-    const browse = await request.authz.hasGlobal('browse_users');
+    const browse = await seesDirectory(request);
+    // Which of each field's values the reader may see named, by the picker that takes them.
+    for (const w of wanted) {
+      if (w.kind === 'group') {
+        if (!browse) w.ids = [];
+        continue;
+      }
+      if (w.kind !== 'user') continue;
+      const offered = here
+        ? await offeredPeople(
+            db,
+            catalog,
+            { workspaceId: ws, ...here },
+            Number(w.key.slice('fields.'.length)),
+          )
+        : null;
+      if (offered instanceof Set) w.ids = w.ids.filter((id) => offered.has(id));
+      else if (!browse) w.ids = [];
+    }
     const of = (kind: 'user' | 'group' | 'team') => [
       ...new Set(wanted.filter((w) => w.kind === kind).flatMap((w) => w.ids)),
     ];
-    const people = browse ? of('user') : [];
-    const groups = browse ? of('group') : [];
+    const groups = of('group');
     const teams = of('team');
     const named = new Map<string, string>();
-    if (people.length > 0) {
-      const rows = await db
-        .selectFrom('app_user')
-        .select(['id', 'name'])
-        .where('workspace_id', '=', ws)
-        .where('id', 'in', people)
-        .where('deactivated_at', 'is', null)
-        .where('kind', '=', 'person')
-        .execute();
-      for (const r of rows) named.set(`user:${r.id}`, r.name);
-    }
+    for (const [id, name] of await activePeople(ws, of('user'))) named.set(`user:${id}`, name);
     if (groups.length > 0) {
       const rows = await db
         .selectFrom('user_group')
@@ -811,13 +894,8 @@ export function registerTicketTemplateRoutes(
       return invalidFields(reply, { track: 'not_template_track' });
     }
     // The type: the one named, else the template's first when it is limited to some.
-    let typeId = given.ticketTypeId as number | undefined;
-    if (typeId === undefined && row.ticket_type_ids.length > 0) typeId = row.ticket_type_ids[0];
-    if (
-      typeId !== undefined &&
-      row.ticket_type_ids.length > 0 &&
-      !row.ticket_type_ids.includes(typeId)
-    ) {
+    const typeId = typeFor(row, given.ticketTypeId as number | undefined);
+    if (typeId === 'not_in_template') {
       return invalidFields(reply, { ticketTypeId: 'not_in_template' });
     }
     const track = await db

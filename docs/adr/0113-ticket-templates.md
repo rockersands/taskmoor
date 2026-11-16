@@ -88,6 +88,42 @@ create form's searches (`apps/web/src/tickets/pickerSources.ts`); no new server 
 
 A value is still checked only when a ticket is made from the template, as above.
 
+Answered on 2026-11-16 (T-269): the template form's **Assignee** searches with the create form's
+assignee search (`/people/mentionable?assignable=true`), so it offers only people a ticket in the
+track can be given to; the apply route already left out any other (`not_assignable`).
+
+### Whose names pickers and template starts show (T-278, T-283, T-284)
+
+Answered on 2026-11-16. One rule: a template names a person exactly when the picker that takes the
+value would offer that person to the reader.
+
+- **The site's people are the directory.** Only holders of "Browse users and groups" may list
+  them: the mention search, an unrestricted custom person field and a group field's picker (group
+  names only). `GET /fields/:id/people` for a context that limits no one now answers `403
+  forbidden` without the permission (T-278); before, it listed every active person to anyone who
+  could browse the track, so taking the permission away did not hide the directory.
+- **A list an administrator narrowed** (a person field limited to a group or a track role) goes
+  to anyone who may fill the field, with or without the permission: the administrator chose who
+  the field may name, and a required limited field must stay fillable on a site that took the
+  permission away. `offeredPeople` in `apps/server/src/fields/values.ts` is the one check that
+  route and the template start share.
+- **The start takes the ticket type** (`GET /ticket-templates/:id?track=KEY&ticketTypeId=N`), as
+  apply picks it: the one named, else the template's first when it fits only some; a type it does
+  not fit is refused with `ticketTypeId: not_in_template`. Once the type is known, a limited
+  field's value is named exactly when its list offers that person there (the field applies to the
+  track and type, the person is allowed and active), for every reader, holders of the permission
+  included (T-284). Someone no longer allowed is not named, so the form shows the value under
+  "Also from this template" like an archived release, instead of filling a picker with a value
+  the create route would refuse as `not_allowed`. Without a type, and for unrestricted fields,
+  groups and teams, the rule of T-276 stays. The web form sends the type it has.
+- **The system assignee** follows the same rule as the custom people (T-283): `assignee` is named
+  only to holders of "Browse users and groups" and only for an active person; otherwise it is
+  null and the id stays in `defaults.assigneeId`. The create form then lists it under "Also from
+  this template" as Assignee; the template form shows it as "Person 21, hidden from you or gone"
+  with Remove, and saving keeps it. A deactivated assignee is left out and reported when a ticket
+  is made, instead of filling the picker and being refused. `createdBy` stays named to every
+  reader, as a ticket's reporter is: no picker is involved.
+
 ### Events and audit
 
 There is no template event on apply: each ticket made is its own `ticket.created`, with an

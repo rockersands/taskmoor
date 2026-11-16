@@ -7,7 +7,7 @@ import { setViewportWidth } from '../../test/viewport';
 import { type CreateClient, CreateTicketPage } from '../CreateTicketPage';
 import { BUG_FORM, CHORE_FORM, PRIORITIES, TRACKS, TYPES } from '../fixtures';
 import type { TicketForm } from '../form';
-import { type FakePickerClient, fakePickerClient } from './fixtures';
+import { type FakePickerClient, fakePickerClient, RELEASE_TEMPLATE } from './fixtures';
 
 function renderForm(
   picker: FakePickerClient = fakePickerClient(),
@@ -195,6 +195,34 @@ describe('starting a ticket from a template (CORE-030)', () => {
     expect(body).toMatchObject({ assigneeId: 22, targetReleaseIds: [41] });
     expect(body.areaIds).toBeUndefined();
     expect(body.omit).toEqual(['areaIds']);
+  });
+
+  it('[CORE-030] asks for the start of a ticket of the form’s type, so a limited person field names whom its list offers (T-284)', async () => {
+    const user = userEvent.setup();
+    const { picker } = renderForm();
+    await pick(user);
+    expect(picker.started).toEqual(['11:SHOP:3']);
+  });
+
+  it('[CORE-030] [IAM-009] lists an assignee the template does not name as a checkbox, not in the picker (T-283)', async () => {
+    const user = userEvent.setup();
+    const picker = fakePickerClient([{ ...RELEASE_TEMPLATE, assignee: null }], {
+      summary: 'Release SHOP 2026-11-03',
+      assigneeId: 21,
+      dueDate: '2026-11-10',
+      fields: { '7': 70 },
+    });
+    renderForm(picker, 'en', { form: async () => PICKER_FORM });
+    await pick(user);
+    expect(screen.queryByRole('list', { name: 'Assignee' })).toBeNull();
+    const also = screen.getByRole('group', { name: 'Also from this template' });
+    const assignee = within(also).getByRole('checkbox', { name: 'Assignee' });
+    expect(assignee).toBeChecked();
+    // Turned off there, it is left out; kept, the template's id is sent with the ticket.
+    await user.click(assignee);
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+    expect(await screen.findByText('SHOP-9 was created.')).toBeInTheDocument();
+    expect(picker.applied[0]?.body.omit).toEqual(['assigneeId']);
   });
 
   it('[CORE-030] keeps a release the picker does not offer in the list, where it can be turned off (T-265)', async () => {
