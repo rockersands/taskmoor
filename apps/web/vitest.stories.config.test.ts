@@ -1,3 +1,4 @@
+import { EventEmitter } from 'node:events';
 import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
@@ -7,6 +8,7 @@ import { loadCsf } from 'storybook/internal/csf-tools';
 import { type ResolvedConfig, resolveConfig } from 'vite';
 import { describe, expect, it } from 'vitest';
 import {
+  followTouchStoryFiles,
   STORY_DEPS,
   type StoryPointer,
   type StorySkin,
@@ -114,6 +116,59 @@ describe('story tests in two skins, with a mouse and on a touch screen', () => {
     expect(light.test?.include).toContain('src/**/*.stories.@(ts|tsx)');
     expect(lightTouch.test?.include).toEqual(touchStoryFiles());
     expect(lightTouch.test?.browser?.fileParallelism).toBe(false);
+  });
+
+  // The list above is made once, when the project starts. In watch mode a story that gains the
+  // tag in a file the list lacks would leave the mouse projects and run nowhere.
+  it('[NFR-007] in watch mode, take in a story file once it holds a touch story', async () => {
+    const [, , lightTouch] = (await resolvedAll()) as [StoryConfig, StoryConfig, StoryConfig];
+    // The hook the project's config carries (Vite loads the config as its own module copy).
+    const follow = lightTouch.plugins.find(
+      (p) => p.name === 'taskmoor:touch-story-files',
+    )?.configureVitest;
+    expect(follow?.name).toBe(followTouchStoryFiles.name);
+
+    const [touchFile] = touchStoryFiles() as [string];
+    const mouseFile = storyFiles().find(({ file }) => !touchStoryFiles().includes(file))?.file;
+    expect(mouseFile).toBeDefined();
+    const session = (watch: boolean) => {
+      const watcher = new EventEmitter();
+      const include: string[] = [];
+      const marked: string[] = [];
+      const cleared: string[] = [];
+      // Vitest's own listener, registered first: by the time it decides what reruns, the
+      // project must already list the file.
+      const seenByVitest: string[][] = [];
+      watcher.on('change', () => seenByVitest.push([...include]));
+      follow?.({
+        project: { config: { include }, matchesTestGlob: (f: string) => marked.push(f) },
+        vitest: {
+          config: { watch },
+          vite: { watcher },
+          clearSpecificationsCache: (f: string) => cleared.push(f),
+        },
+      } as unknown as Parameters<NonNullable<typeof follow>>[0]);
+      return { watcher, include, marked, cleared, seenByVitest };
+    };
+
+    const watching = session(true);
+    const absolute = (file: string) => join(WEB, file);
+    watching.watcher.emit('change', absolute(mouseFile as string));
+    watching.watcher.emit('change', join(WEB, 'vitest.stories.config.ts'));
+    expect(watching.include).toEqual([]);
+    watching.watcher.emit('change', absolute(touchFile));
+    watching.watcher.emit('add', absolute(touchFile));
+    expect(watching.include).toEqual([touchFile]);
+    expect(watching.seenByVitest.at(-1)).toEqual([touchFile]);
+    const slashed = absolute(touchFile).replaceAll('\\', '/');
+    expect(watching.marked).toEqual([slashed]);
+    expect(watching.cleared).toEqual([slashed]);
+
+    // A one-shot run lists its files once and is done.
+    const once = session(false);
+    expect(once.watcher.listenerCount('change')).toBe(1);
+    once.watcher.emit('change', absolute(touchFile));
+    expect(once.include).toEqual([]);
   });
 });
 

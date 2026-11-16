@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { storybookTest } from '@storybook/addon-vitest/vitest-plugin';
 import { playwright } from '@vitest/browser-playwright';
 import { defineProject } from 'vitest/config';
+import type { VitestPluginContext } from 'vitest/node';
 
 const webDir = fileURLToPath(new URL('.', import.meta.url));
 const configDir = join(webDir, '.storybook');
@@ -45,11 +46,49 @@ export function touchStoryFiles(): string[] {
     readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
       entry.isDirectory() ? walk(join(dir, entry.name)) : [join(dir, entry.name)],
     );
-  return walk(join(webDir, 'src'))
-    .filter((file) => /\.stories\.tsx?$/.test(file))
-    .filter((file) => TOUCH_TAG_WRITTEN.test(readFileSync(file, 'utf8')))
-    .map((file) => relative(webDir, file).replaceAll('\\', '/'))
-    .sort();
+  return walk(join(webDir, 'src')).filter(holdsTouchStory).map(includePath).sort();
+}
+
+/** A file's path as a story project's `include` lists it: relative to apps/web, with slashes. */
+const includePath = (file: string) => relative(webDir, file).replaceAll('\\', '/');
+
+/** Whether a file is one of the web app's story files and has a story tagged `touch` written in it. */
+function holdsTouchStory(file: string): boolean {
+  if (!/\.stories\.tsx?$/.test(file) || !includePath(file).startsWith('src/')) return false;
+  try {
+    return TOUCH_TAG_WRITTEN.test(readFileSync(file, 'utf8'));
+  } catch {
+    return false; // Moved or deleted since the watcher saw it.
+  }
+}
+
+/**
+ * Keeps a touch project's story files current while Vitest watches (T-328).
+ *
+ * A touch project's list comes from `touchStoryFiles()` once, when it starts. A one-shot run
+ * (`pnpm verify`) needs no more. In watch mode (`pnpm test:watch`) a story that gains
+ * `tags: ['touch']` in a file that had none would leave the mouse projects, by its tag, and not
+ * reach the touch ones, whose list lacks its file: it would run nowhere until Vitest restarted.
+ * So the project follows Vitest's file watcher. A story file that now holds a touch story joins
+ * the project's `include` and test files, and its cached test specifications are dropped, so the
+ * rerun the change starts finds it here. The listener goes before Vitest's own, which decides
+ * what reruns. A file that loses its last touch story may stay: Storybook skips a file with no
+ * story for the project.
+ */
+export function followTouchStoryFiles({
+  project,
+  vitest,
+}: Pick<VitestPluginContext, 'project' | 'vitest'>): void {
+  if (!vitest.config.watch) return;
+  const follow = (path: string) => {
+    if (!holdsTouchStory(path) || project.config.include.includes(includePath(path))) return;
+    project.config.include.push(includePath(path));
+    const file = path.replaceAll('\\', '/');
+    project.matchesTestGlob(file);
+    vitest.clearSpecificationsCache(file);
+  };
+  vitest.vite.watcher.prependListener('add', follow);
+  vitest.vite.watcher.prependListener('change', follow);
 }
 
 /**
@@ -176,6 +215,8 @@ export function storiesProject(skin: StorySkin, pointer: StoryPointer = 'mouse')
                   if (config.test) config.test.include = touchStoryFiles();
                 },
               },
+              // In watch mode, a file that gains a touch story joins that list.
+              configureVitest: followTouchStoryFiles,
             },
           ]
         : []),

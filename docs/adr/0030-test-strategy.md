@@ -121,7 +121,10 @@ Touch is now the browser's, not the story's:
   the two did.
 - A touch project loads only the story files with a touch story (`touchStoryFiles()`) and runs
   them on one page (`browser.fileParallelism: false`). A page count of its own would need a
-  `sequence.groupOrder` of its own, which Vitest runs after every other project.
+  `sequence.groupOrder` of its own, which Vitest runs after every other project. The list is
+  made when the project starts; in watch mode the project also follows Vitest's file watcher
+  (`followTouchStoryFiles()`), so a file that gains a touch story joins it at once instead of
+  its story running nowhere until Vitest restarts.
 - `onARealTouchScreen` only checks: in a story test whose browser has a mouse it fails, naming
   the missing tag. Storybook's own page falls back to `asOnATouchScreen`.
 - `vitest.stories.config.test.ts` reads every story file with Storybook's CSF parser: every story
