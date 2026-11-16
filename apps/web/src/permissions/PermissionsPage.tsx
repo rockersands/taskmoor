@@ -588,17 +588,29 @@ function PolicyPanel({
       <GrantList
         grants={policy.grants}
         order={order}
-        onRemove={(grant) =>
-          client.removeGrant(id, grant.id).then(() => {
-            void reload();
-            said(
-              t('admin.permissions.removed', {
-                grantee: granteeName(t, grant),
-                permission: permissionName(t, grant.permission),
-              }),
-            );
-          }, failed)
+        outcome={(grant) =>
+          t('admin.permissions.removeOutcome', {
+            grantee: granteeName(t, grant),
+            permission: permissionName(t, grant.permission),
+            count: policy.tracks.length,
+            tracks: policy.tracks.map((tr) => tr.key).join(', '),
+          })
         }
+        onRemove={async (grant) => {
+          try {
+            await client.removeGrant(id, grant.id);
+          } catch (error) {
+            failed(error);
+            throw error;
+          }
+          void reload();
+          said(
+            t('admin.permissions.removed', {
+              grantee: granteeName(t, grant),
+              permission: permissionName(t, grant.permission),
+            }),
+          );
+        }}
       />
       {policy.tracks.length > 0 && (
         <p className="page-note">
@@ -687,32 +699,48 @@ function GlobalSection({
       <GrantList
         grants={grants}
         order={catalogue.global}
-        onRemove={(grant) =>
-          client.removeGlobalGrant(grant.id).then(
-            () =>
-              said(
-                t('admin.permissions.removed', {
-                  grantee: granteeName(t, grant),
-                  permission: permissionName(t, grant.permission),
-                }),
-              ),
-            failed,
-          )
+        outcome={(grant) =>
+          t('admin.permissions.removeGlobalOutcome', {
+            grantee: granteeName(t, grant),
+            permission: permissionName(t, grant.permission),
+          })
         }
+        onRemove={async (grant) => {
+          try {
+            await client.removeGlobalGrant(grant.id);
+          } catch (error) {
+            failed(error);
+            throw error;
+          }
+          said(
+            t('admin.permissions.removed', {
+              grantee: granteeName(t, grant),
+              permission: permissionName(t, grant.permission),
+            }),
+          );
+        }}
       />
     </section>
   );
 }
 
-/** Grants by permission, each grantee with a remove button. */
+/**
+ * Grants by permission, each grantee with a remove button. One grant reaches a whole role, group or
+ * everyone, across every track of the policy or the whole site, and the row does not say who that
+ * is, so removing asks first (D13, T-267), saying who loses what and where.
+ */
 function GrantList({
   grants,
   order,
+  outcome,
   onRemove,
 }: {
   grants: Grant[];
   order: string[];
-  onRemove: (grant: Grant) => void;
+  /** What removing the grant takes away, and from whom. */
+  outcome: (grant: Grant) => string;
+  /** Rejects when it was refused, so the question stays open. */
+  onRemove: (grant: Grant) => Promise<void>;
 }) {
   const t = useT();
   if (grants.length === 0) return <EmptyState compact title={t('admin.permissions.noGrants')} />;
@@ -724,19 +752,19 @@ function GrantList({
           {list.map((grant) => (
             <dd key={grant.id} className="people-sublist-row">
               <span>{granteeName(t, grant)}</span>
-              {/* The danger look every removing action has (D13); whether it asks first waits
-                  on T-267. */}
-              <button
-                type="button"
-                className="button-danger-quiet people-action"
-                aria-label={t('admin.permissions.removeOf', {
+              <DangerAction
+                label={t('admin.permissions.remove')}
+                name={t('admin.permissions.removeOf', {
                   grantee: granteeName(t, grant),
                   permission: permissionName(t, permission),
                 })}
-                onClick={() => onRemove(grant)}
-              >
-                {t('admin.permissions.remove')}
-              </button>
+                outcome={outcome(grant)}
+                confirmLabel={t('admin.permissions.removeOf', {
+                  grantee: granteeName(t, grant),
+                  permission: permissionName(t, permission),
+                })}
+                onConfirm={() => onRemove(grant)}
+              />
             </dd>
           ))}
         </div>

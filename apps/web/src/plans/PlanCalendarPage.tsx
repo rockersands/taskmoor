@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCsvSeparator } from '../account/csvStyle';
 import { withoutTrackName } from '../calendar/CalendarPage';
 import { CalendarView, monthOf, monthWeeks } from '../calendar/CalendarView';
 import { useT } from '../i18n/I18nProvider';
@@ -50,6 +51,8 @@ export function PlanCalendarPage({
   onDrafted,
 }: PlanSectionProps) {
   const t = useT();
+  // Commas or semicolons, as the person's spreadsheet opens them (T-263).
+  const csvSeparator = useCsvSeparator();
   const today = localDay(now());
   // Kept in the address on a plan's page, so a link opens the same month.
   const [monthHere, setMonthHere] = useState(() => monthOf(dayNumber(today)));
@@ -143,7 +146,7 @@ export function PlanCalendarPage({
                     scenario?.id,
                   );
                   const name = fileName(plan.name, 'calendar', isoDay(month).slice(0, 7), 'csv');
-                  saveBlob(name, csvBlob(calendarCsv(t, fresh)));
+                  saveBlob(name, csvBlob(calendarCsv(t, fresh, csvSeparator)));
                   return name;
                 },
               },

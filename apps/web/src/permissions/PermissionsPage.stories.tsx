@@ -57,6 +57,28 @@ export const PolicyOpen: Story = {
   },
 };
 
+/**
+ * Removing a grant asks first, saying who loses what and in which tracks (D13, T-267); on a phone
+ * the question takes the grant's whole row and nothing sticks out.
+ */
+export const RemovingAGrantAsksOnAPhone: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Manage Default access policy' }),
+    );
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Remove Role Members from See the track' }),
+    );
+    const question = canvas.getByRole('group', {
+      name: 'Role Members loses See the track in SHOP, OPS, the 2 tracks that use this policy.',
+    });
+    await expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await fitsPhoneWidth(canvas);
+  },
+};
+
 /** All three parts on a phone, each on its card with its rows as wells. */
 export const AtPhoneWidth: Story = {
   decorators: [atPhoneWidth],

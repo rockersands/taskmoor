@@ -1,8 +1,8 @@
 ---
 title: "API tokens and service accounts"
 audience: admins
-sources: apps/server/src/tokens/api-tokens.ts, apps/server/src/tokens/bearer.ts, apps/server/src/tokens/scopes.ts, apps/server/src/routes/tokens.ts, apps/server/src/routes/service-accounts.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/subscriber.ts, apps/server/src/app.ts, apps/server/src/config.ts, packages/iam/src/api-token.ts, packages/iam/src/throttle.ts, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/AdminTokensPage.tsx, apps/web/src/api/pages.ts, apps/web/src/tokens/client.ts, apps/web/src/tokens/ServiceAccountsPage.tsx, apps/web/src/tokens/format.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0035-api-tokens-and-service-accounts.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/ratelimit/limiter.ts, apps/server/src/routes/rate-limits.ts, apps/web/src/admin/ApiUsagePage.tsx, apps/web/src/admin/TableScroller.tsx, docs/adr/0075-rate-limits.md, apps/server/src/security/alerts.ts, docs/adr/0109-security-notices-and-alerts.md, apps/web/src/shell/DangerAction.tsx
-accessed: 2026-11-14
+sources: apps/server/src/tokens/api-tokens.ts, apps/server/src/tokens/bearer.ts, apps/server/src/tokens/scopes.ts, apps/server/src/routes/tokens.ts, apps/server/src/routes/service-accounts.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/subscriber.ts, apps/server/src/app.ts, apps/server/src/config.ts, packages/iam/src/api-token.ts, packages/iam/src/throttle.ts, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/AdminTokensPage.tsx, apps/web/src/api/pages.ts, apps/web/src/tokens/client.ts, apps/web/src/tokens/ServiceAccountsPage.tsx, apps/web/src/tokens/format.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0035-api-tokens-and-service-accounts.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/02a-platform-api-and-integrations.md, apps/server/src/ratelimit/limiter.ts, apps/server/src/routes/rate-limits.ts, apps/web/src/admin/ApiUsagePage.tsx, apps/web/src/admin/TableScroller.tsx, docs/adr/0075-rate-limits.md, apps/server/src/security/alerts.ts, docs/adr/0109-security-notices-and-alerts.md, apps/web/src/shell/DangerAction.tsx, apps/web/src/i18n/zone.ts
+accessed: 2026-11-16
 attestation: own-words
 ---
 # API tokens and service accounts
@@ -150,8 +150,9 @@ Site administrators see every token of the site on **Administration**, then **AP
   token's name and its owner's, in that question, stops it; **Cancel** keeps it.
 - **Revoke in bulk** handles a leak or a departure. Under **Which tokens**, choose **Every
   token of one owner**, **Tokens created before a date** or **Every token**, then **Revoke
-  tokens**. Taskmoor first counts the active tokens that match and asks, as every destructive
-  action does: **Confirm revocation** revokes them, **Cancel** or Escape goes back. Expired tokens are left as they are. While there is no token at all, the list says so
+  tokens**. A date counts from the start of that day on your clock: the time zone saved on your
+  account, else your device's. Taskmoor first counts the active tokens that match and asks, as
+  every destructive action does: **Confirm revocation** revokes them, **Cancel** or Escape goes back. Expired tokens are left as they are. While there is no token at all, the list says so
   and **Revoke in bulk** is not shown.
 - **Token policy** sets the **Longest lifetime (days)** a new token may have (1 to 3,650,
   default 365) and the **Rotation reminder (days before expiry)** (1 to 90, default 14).

@@ -47,7 +47,7 @@ describe('bulk operation progress (M1-021)', () => {
     );
   });
 
-  it('[CORE-024][CORE-015] names a choice a ticket’s track does not offer, or an archived one, as the create form does (T-287)', async () => {
+  it('[CORE-024][CORE-015] names a choice a ticket’s track does not offer, or an archived one, as the create form does (T-287, T-286)', async () => {
     const refused = (position: number, ref: string, fields: Record<string, string>): BulkItem => ({
       position,
       ref,
@@ -74,7 +74,8 @@ describe('bulk operation progress (M1-021)', () => {
     const failures = await screen.findByRole('region', { name: 'Tickets that were not changed' });
     const items = await within(failures).findAllByRole('listitem');
     expect(items.map((li) => li.textContent)).toEqual([
-      'SHOP-2This track does not offer this choice. Choose one of its own.',
+      // An area by name, as the create form says it (T-286).
+      'SHOP-2This area is not in this track. Choose one of its areas.',
       'SHOP-3This release or area is archived. Choose another.',
       'SHOP-4Some of the values do not fit this ticket.',
     ]);

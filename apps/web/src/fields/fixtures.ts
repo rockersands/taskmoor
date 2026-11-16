@@ -1,5 +1,5 @@
 import { ApiError } from '../api/client';
-import type { Field, FieldsClient } from './client';
+import { defaultOptionIds, type Field, type FieldsClient } from './client';
 
 export interface FakeFieldsClient extends FieldsClient {
   calls: { action: string; args: unknown[] }[];
@@ -7,7 +7,9 @@ export interface FakeFieldsClient extends FieldsClient {
 
 /**
  * An in-memory backend for stories and tests: it answers as the API would. Medium is on three
- * tickets, so deleting it, or the field, is refused.
+ * tickets, so deleting it, or the field, is refused; so is Porto. Low starts new Severity tickets,
+ * and Office is a cascading list whose default is Madrid, Floor 1; deleting an option a default
+ * names leaves the context with none, as the server does.
  */
 export function fakeFieldsClient(): FakeFieldsClient {
   let fields: Field[] = [
@@ -33,6 +35,7 @@ export function fakeFieldsClient(): FakeFieldsClient {
           name: 'Everywhere',
           trackIds: null,
           ticketTypeIds: null,
+          defaultValue: { id: 201, value: 'Low' },
           options: [
             { id: 201, value: 'Low', disabled: false, children: [] },
             { id: 202, value: 'Medium', disabled: false, children: [] },
@@ -50,8 +53,47 @@ export function fakeFieldsClient(): FakeFieldsClient {
       trackId: 4,
       contexts: [{ id: 30, name: 'OPS', trackIds: [4], ticketTypeIds: null, options: [] }],
     },
+    {
+      id: 4,
+      name: 'Office',
+      description: '',
+      type: 'cascading-select',
+      multiple: false,
+      trackId: null,
+      contexts: [
+        {
+          id: 40,
+          name: 'Everywhere',
+          trackIds: null,
+          ticketTypeIds: null,
+          defaultValue: {
+            id: 401,
+            value: 'Madrid',
+            child: { id: 4011, value: 'Floor 1' },
+          },
+          options: [
+            {
+              id: 401,
+              value: 'Madrid',
+              disabled: false,
+              children: [
+                { id: 4011, value: 'Floor 1', disabled: false },
+                { id: 4012, value: 'Floor 2', disabled: false },
+              ],
+            },
+            { id: 402, value: 'Lisbon', disabled: false, children: [] },
+            {
+              id: 403,
+              value: 'Porto',
+              disabled: false,
+              children: [{ id: 4031, value: 'Quay', disabled: false }],
+            },
+          ],
+        },
+      ],
+    },
   ];
-  const inUse = new Set([202]);
+  const inUse = new Set([202, 403]);
   let next = 1000;
   const calls: FakeFieldsClient['calls'] = [];
   const log = (action: string, ...args: unknown[]) => calls.push({ action, args });
@@ -121,10 +163,16 @@ export function fakeFieldsClient(): FakeFieldsClient {
       log('deleteOption', fieldId, contextId, optionId);
       if (inUse.has(optionId)) throw new ApiError(409, { error: 'in_use', ticketCount: 3 });
       const list = options(fieldId, contextId);
+      const option = list.find((o) => o.id === optionId);
       list.splice(
         list.findIndex((o) => o.id === optionId),
         1,
       );
+      const context = find(fieldId).contexts.find((c) => c.id === contextId);
+      const gone = [optionId, ...(option?.children ?? []).map((c) => c.id)];
+      if (context && defaultOptionIds(context.defaultValue).some((id) => gone.includes(id))) {
+        context.defaultValue = null;
+      }
     },
   };
 }

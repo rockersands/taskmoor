@@ -73,11 +73,22 @@ describe('LinksPanel', () => {
     expect(within(panel).getByRole('link', { name: 'Pull request 7' })).toBeVisible();
   });
 
-  it('[CORE-031] shows a link to another track, and removes it', async () => {
+  it('[CORE-018] [CORE-031] shows a link to another track, and asks before removing it (D13)', async () => {
     const user = userEvent.setup();
     const { client } = renderPanel();
+    // The form only finds tickets of this track, so it could not make this link again.
+    const trigger = await screen.findByRole('button', {
+      name: 'Remove the link: is blocked by OPS-88',
+    });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    const question = screen.getByRole('group', {
+      name: 'OPS-88 is in another track: once the link goes, this page cannot link it again.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    expect(client.calls.some((c) => c.action === 'removeLink')).toBe(false);
     await user.click(
-      await screen.findByRole('button', { name: 'Remove the link: is blocked by OPS-88' }),
+      within(question).getByRole('button', { name: 'Remove the link: is blocked by OPS-88' }),
     );
     await waitFor(() => expect(screen.queryByRole('link', { name: 'OPS-88' })).toBeNull());
     expect(client.calls).toContainEqual({ action: 'removeLink', args: [41, 2] });
@@ -93,6 +104,12 @@ describe('LinksPanel', () => {
     const picker = await screen.findByRole('combobox', { name: 'Ticket number or name' });
     await waitFor(() => expect(picker).toBeEnabled());
     await user.click(screen.getByRole('button', { name: 'Remove the link: is blocked by OPS-88' }));
+    await user.click(
+      within(screen.getByRole('group', { name: /^OPS-88 is in another track/ })).getByRole(
+        'button',
+        { name: 'Remove the link: is blocked by OPS-88' },
+      ),
+    );
     await waitFor(() => expect(screen.queryByRole('link', { name: 'OPS-88' })).toBeNull());
     await waitFor(() => expect(picker).toHaveFocus());
   });
@@ -190,6 +207,38 @@ describe('LinksPanel', () => {
     await screen.findByRole('link', { name: 'SHOP-39' });
     expect(screen.queryByRole('button', { name: 'Add a link' })).toBeNull();
     expect(screen.queryByRole('button', { name: /Remove the link/ })).toBeNull();
+  });
+
+  it('[CORE-018] [CORE-031] removes a link inside the track at once, as the form makes it again', async () => {
+    const user = userEvent.setup();
+    const { client } = renderPanel();
+    const trigger = await screen.findByRole('button', { name: 'Remove the link: blocks SHOP-39' });
+    expect(trigger).toHaveClass('button-secondary');
+    await user.click(trigger);
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'SHOP-39' })).toBeNull());
+    expect(screen.queryByRole('group')).toBeNull();
+    expect(client.calls.some((c) => c.action === 'removeLink')).toBe(true);
+  });
+
+  it('[CORE-031] keeps the question open when the server refuses a link to another track', async () => {
+    const user = userEvent.setup();
+    const client = fakeToolsClient();
+    const { ApiError } = await import('../../api/client');
+    client.removeLink = async () => {
+      throw new ApiError(409, { error: 'track_archived' });
+    };
+    renderPanel(client);
+    await user.click(
+      await screen.findByRole('button', { name: 'Remove the link: is blocked by OPS-88' }),
+    );
+    const question = screen.getByRole('group', { name: /^OPS-88 is in another track/ });
+    await user.click(
+      within(question).getByRole('button', { name: 'Remove the link: is blocked by OPS-88' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'That ticket’s track is archived, so its links cannot change.',
+    );
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toBeVisible();
   });
 
   it('[CORE-031] says so when the server refuses', async () => {

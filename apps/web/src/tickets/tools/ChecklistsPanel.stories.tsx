@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, fireEvent, waitFor, within } from 'storybook/test';
+import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
 import { gripsTooSmall, onARealTouchScreen } from '../../test/touch';
 import { ChecklistsPanel } from './ChecklistsPanel';
 import { fakeToolsClient, STARTING_CHECKLISTS } from './fixtures';
@@ -46,6 +46,30 @@ export const Several: Story = {
   },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('All checklists')).toBeVisible();
+  },
+};
+
+/**
+ * Removing a list with items asks first, in its heading's place, saying what goes (D13, T-267); at
+ * a small phone's width the question takes the heading's whole line and nothing sticks out.
+ */
+export const RemovingAListAsksOnAPhone: Story = {
+  decorators: [
+    (Story) => (
+      <div data-testid="phone-width" style={{ width: 360 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Remove the checklist Before release' }),
+    );
+    const question = canvas.getByRole('group', { name: /^Removing Before release/ });
+    await expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    const box = canvas.getByTestId('phone-width');
+    await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
   },
 };
 

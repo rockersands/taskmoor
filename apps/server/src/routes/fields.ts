@@ -5,6 +5,7 @@ import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireGlobal, requireUser } from '../auth';
 import { diff, emit } from '../events/bus';
+import { readsFieldsOf } from '../fields/access';
 import {
   type Catalog,
   type ContextConfig,
@@ -34,7 +35,7 @@ import {
   SELECT_DISPLAYS,
   type Stored,
 } from '../fields/types';
-import { allowedPeople, describeFields, loadResolver } from '../fields/values';
+import { describeFields, loadResolver, offeredPeople } from '../fields/values';
 import { enforceLimit, fieldsPerTrackWith } from '../guardrails/model';
 import { canonicalJson } from '../tickets/model';
 import { resolveTrack } from '../tickets/store';
@@ -366,9 +367,9 @@ export function registerFieldRoutes(
     return global.has('site_admin') || global.has('configuration_admin');
   }
 
-  async function canSeeTrack(request: FastifyRequest, trackId: number): Promise<boolean> {
-    const held = await request.authz.track(trackId);
-    return held.has('browse_track') || held.has('administer_track') || isAdmin(request);
+  /** Whether the caller may read a track's own fields; the history names fields by it (T-283). */
+  function canSeeTrack(request: FastifyRequest, trackId: number): Promise<boolean> {
+    return readsFieldsOf(request.authz, trackId);
   }
 
   /** A field the caller may read, or null. */
@@ -1487,7 +1488,9 @@ export function registerFieldRoutes(
     return { labels: rows.map((r) => r.name) };
   });
 
-  // The people a user picker offers for a ticket of a type in a track (CORE-009 (2)).
+  // The people a user picker offers for a ticket of a type in a track (CORE-009 (2)). A field
+  // limited to a group or a track role offers its own list to anyone who may fill it; one that
+  // limits no one would list the site's people, which needs "Browse users and groups" (T-278).
   app.get('/api/v1/fields/:id/people', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
     const p = z.object({ id }).safeParse(request.params);
@@ -1501,14 +1504,17 @@ export function registerFieldRoutes(
       return notFound(reply);
     }
     const catalog = await catalogs.get(ws);
-    const context = catalog.contextOf(field.id, trackId, q.data.ticketTypeId);
-    if (!context) return reply.code(409).send({ error: 'not_applicable' });
-    const allowed = await allowedPeople(
+    const allowed = await offeredPeople(
       db,
+      catalog,
       { workspaceId: ws, trackId, ticketTypeId: q.data.ticketTypeId },
-      context,
+      field.id,
     );
-    if (allowed !== 'all' && allowed.size === 0) return { people: [] };
+    if (allowed === null) return reply.code(409).send({ error: 'not_applicable' });
+    if (allowed === 'directory' && !(await request.authz.hasGlobal('browse_users'))) {
+      return reply.code(403).send({ error: 'forbidden' });
+    }
+    if (allowed !== 'directory' && allowed.size === 0) return { people: [] };
     const text = q.data.q
       .trim()
       .toLowerCase()
@@ -1519,7 +1525,7 @@ export function registerFieldRoutes(
       .where('workspace_id', '=', ws)
       .where('deactivated_at', 'is', null)
       .where('kind', '=', 'person');
-    if (allowed !== 'all') query = query.where('id', 'in', [...allowed]);
+    if (allowed !== 'directory') query = query.where('id', 'in', [...allowed]);
     if (text !== '') {
       query = query.where((eb) =>
         eb.or([

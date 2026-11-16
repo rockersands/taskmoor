@@ -574,7 +574,7 @@ describe('workflow editor (M1-030)', () => {
   it('[WF-008] says nothing of free moves when the draft it publishes has transitions (T-246)', async () => {
     const user = userEvent.setup();
     const note =
-      'This version has no transitions, so publishing gives each of its statuses a move from any status, as a new workflow gets.';
+      'This version has no transitions, so publishing gives its statuses a move from any status, as a new workflow gets. A closed-stage status gets one only when there is a close reason to close with; if no status can get one, the publish is refused and says why.';
     // A draft with transitions says nothing of the kind.
     renderEditor(withDraft());
     await user.click(await screen.findByRole('button', { name: 'Publish' }));
@@ -605,7 +605,7 @@ describe('workflow editor (M1-030)', () => {
     const panel = await screen.findByRole('region', { name: 'Publish version 3' });
     expect(
       within(panel).getByText(
-        'This version has no transitions, so publishing gives each of its statuses a move from any status, as a new workflow gets.',
+        'This version has no transitions, so publishing gives its statuses a move from any status, as a new workflow gets. A closed-stage status gets one only when there is a close reason to close with; if no status can get one, the publish is refused and says why.',
       ),
     ).toBeVisible();
     await user.click(within(panel).getByRole('button', { name: 'Publish now' }));
@@ -623,19 +623,36 @@ describe('workflow editor (M1-030)', () => {
     );
   });
 
-  it('[WF-002] discards the draft after asking', async () => {
+  it('[WF-002] [NFR-005] discards the draft after asking, focus on Cancel (D13)', async () => {
     const user = userEvent.setup();
     const client = withDraft();
     const discard = vi.spyOn(client, 'discardDraft');
     renderEditor(client);
-    await user.click(await screen.findByRole('button', { name: 'Discard draft' }));
-    const confirm = screen.getAllByRole('button', { name: 'Discard draft' })[1] as HTMLElement;
-    expect(confirm).toHaveFocus();
-    await user.click(confirm);
+    const trigger = await screen.findByRole('button', { name: 'Discard draft' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    const outcome =
+      'The saved draft and every unsaved change are deleted. The published version stays as it is.';
+    let question = screen.getByRole('group', { name: outcome });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    // Escape puts the button back, sending nothing.
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Discard draft' })).toHaveFocus();
+    expect(discard).not.toHaveBeenCalled();
+    // A refusal says why and keeps the question open; a second answer discards it.
+    discard.mockRejectedValueOnce(new ApiError(409, { error: 'no_draft' }));
+    await user.click(screen.getByRole('button', { name: 'Discard draft' }));
+    question = screen.getByRole('group', { name: outcome });
+    await user.click(within(question).getByRole('button', { name: 'Discard draft' }));
+    expect(await screen.findByRole('alert')).toBeVisible();
+    expect(question).toBeInTheDocument();
+    await user.click(within(question).getByRole('button', { name: 'Discard draft' }));
     expect(await screen.findByText(/The draft is gone/)).toBeVisible();
-    expect(discard).toHaveBeenCalledWith(2);
+    expect(discard).toHaveBeenLastCalledWith(2);
     expect(screen.getByText('No draft: the first saved change starts one.')).toBeVisible();
     expect(within(statusList()).getByRole('button', { name: 'Draft' })).toBeVisible();
+    // Nothing is left to discard: the button stays focused while it is unavailable.
+    expect(screen.getByRole('button', { name: 'Discard draft' })).toHaveFocus();
   });
 
   it('[WF-002] restores an earlier version as the draft', async () => {
@@ -646,16 +663,50 @@ describe('workflow editor (M1-030)', () => {
     await user.click(await screen.findByRole('button', { name: 'Version history' }));
     const history = await screen.findByRole('region', { name: 'Version history' });
     expect(await within(history).findAllByRole('listitem')).toHaveLength(3);
-    await user.click(
-      await within(history).findByRole('button', { name: 'Restore version 1 as the draft' }),
-    );
-    // A draft exists, so restoring asks first.
-    await user.click(within(history).getByRole('button', { name: 'Restore version 1' }));
+    const trigger = await within(history).findByRole('button', {
+      name: 'Restore version 1 as the draft',
+    });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    // A draft exists, so restoring asks first, naming what it replaces (D13).
+    const question = within(history).getByRole('group', {
+      name: 'Restoring version 1 replaces the draft (version 3) and every unsaved change. The published version stays as it is.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    expect(restore).not.toHaveBeenCalled();
+    await user.click(within(question).getByRole('button', { name: 'Restore version 1' }));
     expect(
       await screen.findByText('Version 1 is the draft now. Publish it to use it again.'),
     ).toBeVisible();
     expect(restore).toHaveBeenCalledWith(2, 1);
     expect(within(statusList()).getByRole('button', { name: 'Draft' })).toBeVisible();
+  });
+
+  it('[WF-002] restores at once when there is no draft and nothing unsaved to replace', async () => {
+    const user = userEvent.setup();
+    const client = fakeWorkflowsClient();
+    const restore = vi.spyOn(client, 'restore');
+    renderEditor(client);
+    await user.click(await screen.findByRole('button', { name: 'Version history' }));
+    const history = await screen.findByRole('region', { name: 'Version history' });
+    const trigger = await within(history).findByRole('button', {
+      name: 'Restore version 1 as the draft',
+    });
+    expect(trigger).toHaveClass('button-secondary');
+    await user.click(trigger);
+    expect(
+      await screen.findByText('Version 1 is the draft now. Publish it to use it again.'),
+    ).toBeVisible();
+    expect(restore).toHaveBeenCalledWith(2, 1);
+    // Now a draft exists, so the same row's button asks, and it has the focus back.
+    await waitFor(() =>
+      expect(
+        within(history).getByRole('button', { name: 'Restore version 1 as the draft' }),
+      ).toHaveFocus(),
+    );
+    expect(
+      within(history).getByRole('button', { name: 'Restore version 1 as the draft' }),
+    ).toHaveClass('button-danger-quiet');
   });
 
   it('[WF-002] on a phone the diagram waits behind a button and the lists come first', async () => {

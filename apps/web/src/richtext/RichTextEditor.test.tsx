@@ -155,6 +155,34 @@ describe('the rich text editor (M1-017)', () => {
     expect(screen.getByRole('button', { name: 'Add a row below' })).toBeInTheDocument();
   });
 
+  it('[NTF-006] deletes the row and the column the caret is in, never the last of either (T-120)', async () => {
+    const user = userEvent.setup();
+    const { textbox, changes } = renderEditor();
+    act(() => textbox.focus());
+    act(() => paste(textbox, '| Browser | Result |\n| - | - |\n| Safari | fails |\n'));
+    await within(textbox).findByRole('table');
+    const shape = () => {
+      const rows = changes.at(-1)?.content?.find((node) => node.type === 'table')?.content ?? [];
+      return [rows.length, rows[0]?.content?.length ?? 0];
+    };
+    const tool = (name: string) => screen.getByRole('button', { name });
+    expect(shape()).toEqual([2, 2]);
+    expect(tool('Delete this row')).not.toHaveAttribute('aria-disabled');
+    await user.click(tool('Delete this row'));
+    expect(shape()).toEqual([1, 2]);
+    expect(within(textbox).queryByRole('cell', { name: 'fails' })).toBeNull();
+    // The table's last row goes only with the table.
+    expect(tool('Delete this row')).toHaveAttribute('aria-disabled', 'true');
+    await user.click(tool('Delete this column'));
+    expect(shape()).toEqual([1, 1]);
+    expect(tool('Delete this column')).toHaveAttribute('aria-disabled', 'true');
+    await user.click(tool('Delete this row'));
+    await user.click(tool('Delete this column'));
+    expect(shape()).toEqual([1, 1]);
+    await user.click(tool('Delete the table'));
+    expect(within(textbox).queryByRole('table')).toBeNull();
+  });
+
   it('[NTF-005] offers people after "@", walks them with the arrow keys and warns about those who cannot see the ticket', async () => {
     const user = userEvent.setup();
     const mentions = vi.fn(async (query: string) =>

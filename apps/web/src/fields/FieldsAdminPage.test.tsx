@@ -87,6 +87,67 @@ describe('field administration (M1-053)', () => {
     expect(screen.getByRole('button', { name: 'Delete field Severity' })).toHaveFocus();
   });
 
+  it('[CORE-009] asks before deleting an option whose second-level options or default go with it', async () => {
+    const user = userEvent.setup();
+    const client = renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Manage field Office' }));
+    // A plain unused option comes back by typing its name: it goes at once (D13, T-267).
+    const lisbon = await screen.findByRole('button', { name: 'Delete Lisbon' });
+    expect(lisbon).toHaveClass('button-secondary');
+    await user.click(lisbon);
+    expect(await screen.findByText('Lisbon was deleted.')).toBeInTheDocument();
+    // Madrid takes its two second-level options, which the page does not show, and the default.
+    const madrid = screen.getByRole('button', { name: 'Delete Madrid' });
+    expect(madrid).toHaveClass('button-danger-quiet');
+    await user.click(madrid);
+    const question = screen.getByRole('group', {
+      name:
+        'Deleting Madrid also deletes its 2 second-level options, which this page does not show. ' +
+        'New tickets in Everywhere start with Madrid: once it goes they start empty, and this page ' +
+        'cannot set that again. This cannot be undone.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Delete Madrid' })).toHaveFocus();
+    expect(client.calls.filter((c) => c.action === 'deleteOption')).toHaveLength(1);
+    await user.click(screen.getByRole('button', { name: 'Delete Madrid' }));
+    await user.click(
+      within(screen.getByRole('group', { name: /^Deleting Madrid/ })).getByRole('button', {
+        name: 'Delete Madrid',
+      }),
+    );
+    expect(await screen.findByText('Madrid was deleted.')).toBeInTheDocument();
+    expect(client.calls.filter((c) => c.action === 'deleteOption')).toEqual([
+      { action: 'deleteOption', args: [4, 40, 402] },
+      { action: 'deleteOption', args: [4, 40, 401] },
+    ]);
+  });
+
+  it('[CORE-009] asks before deleting a default option, and keeps the question when tickets hold it', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Manage field Severity' }));
+    await user.click(await screen.findByRole('button', { name: 'Delete Low' }));
+    const low = screen.getByRole('group', {
+      name:
+        'New tickets in Everywhere start with Low: once it goes they start empty, and this page ' +
+        'cannot set that again. This cannot be undone.',
+    });
+    await user.click(within(low).getByRole('button', { name: 'Cancel' }));
+
+    await user.click(screen.getByRole('button', { name: 'Manage field Office' }));
+    await user.click(await screen.findByRole('button', { name: 'Delete Porto' }));
+    const question = screen.getByRole('group', {
+      name:
+        'Deleting Porto also deletes its second-level option, which this page does not show. ' +
+        'This cannot be undone.',
+    });
+    await user.click(within(question).getByRole('button', { name: 'Delete Porto' }));
+    // Refused: the reason shows, and the question stays open to cancel.
+    expect(await screen.findByRole('alert')).toHaveTextContent('3 tickets hold it');
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toBeVisible();
+  });
+
   it('[CORE-003] renames a field and deletes one no ticket holds', async () => {
     const user = userEvent.setup();
     const client = renderPage();
@@ -121,7 +182,7 @@ describe('field administration (M1-053)', () => {
     renderPage('en-XA');
     const main = screen.getByRole('main');
     await within(main).findAllByRole('listitem');
-    const data = new Set(['Customer', 'Severity', 'Components']);
+    const data = new Set(['Customer', 'Severity', 'Components', 'Office']);
     const texts = visibleTexts(main).filter((t) => !data.has(t));
     expect(untranslated(texts)).toEqual([]);
   });

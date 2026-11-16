@@ -5,6 +5,7 @@ import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { boardScope, compileQuery, type Scope } from '../boards/data';
 import type { FieldCatalogs } from '../fields/catalog';
+import { notesLanguage, notesTypeName, plannedFor, releasedOn } from '../releases/notes-text';
 import { viewerDay, viewerTimeZone } from '../reports/zone';
 import { COUNT_CAP, DEFAULT_QUERY_TIMEOUT_MS, prepareSearch, readOnly } from '../search/run';
 import { searchPerson, searchRefusal } from './search';
@@ -20,9 +21,12 @@ import { searchPerson, searchRefusal } from './search';
  *   the viewer sees, grouped by ticket type in the order of the track's type set, as data and
  *   as Markdown (`?format=markdown` sends the Markdown as a file; `?timeZone=` gives the day a
  *   release with no release date shipped on, for a link that cannot send the reader's zone).
- *   The Markdown writes its days in plain English (T-277). Tickets closed with a reason
- *   other than the workspace's first (by default Completed: not planned, duplicates) are left
- *   out and counted by reason.
+ *   The Markdown is written in the reader's language (T-283): `?locale=` (the app sends its
+ *   page's), else the account's saved language, else English; English and Spanish are written,
+ *   any other language reads as English. Its dating sentence, its days in words (T-277) and the
+ *   seeded types' headings follow it; names people gave stay as written. Tickets closed with a
+ *   reason other than the workspace's first (by default Completed: not planned, duplicates)
+ *   are left out and counted by reason.
  *
  * Both read as anyone who may browse the release's track; nothing here changes a release.
  */
@@ -37,6 +41,12 @@ const notesQuery = z
       .min(1)
       .max(64)
       .refine((zone) => knownTimeZone(zone))
+      .optional(),
+    /** The language to write the Markdown in, a BCP 47 tag: the page's (T-283). */
+    locale: z
+      .string()
+      .max(35)
+      .regex(/^[A-Za-z]{2,8}(?:[-_][A-Za-z0-9]{1,8})*$/)
       .optional(),
   })
   .strict();
@@ -124,18 +134,6 @@ export async function listTicketsWhere(trx: Db, where: RawBuilder<boolean>) {
      LIMIT ${LISTED + 1}`.execute(trx);
   return { rows: rows.slice(0, LISTED), truncated: rows.length > LISTED };
 }
-
-/**
- * A calendar day as the notes write it, in plain English: 'October 1, 2026', never `2026-10-01`
- * (T-277). Read on UTC's clock, as a calendar day has no time of day.
- */
-const longDay = new Intl.DateTimeFormat('en-US', {
-  timeZone: 'UTC',
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-});
-const notesDay = (day: string) => longDay.format(new Date(`${day}T00:00:00Z`));
 
 /** Markdown's own characters in text taken from tickets, escaped so they read as written. */
 const escapeMarkdown = (text: string) => text.replace(/[\\`*_[\]<>#|]/g, (c) => `\\${c}`);
@@ -357,14 +355,15 @@ export function registerReleaseHubRoutes(
           ? null
           : (release.release_date ??
             localDate(release.shipped_at, viewerTimeZone(request, format.data.timeZone)));
+      const language = notesLanguage(format.data.locale, request.user?.locale);
       const lines = [`# ${escapeMarkdown(`${release.track_name} ${release.name}`)}`, ''];
-      if (shippedOn) lines.push(`Released on ${notesDay(shippedOn)}.`, '');
+      if (shippedOn) lines.push(releasedOn(language, shippedOn), '');
       else if (release.release_date) {
-        lines.push(`Planned for ${notesDay(release.release_date)}.`, '');
+        lines.push(plannedFor(language, release.release_date), '');
       }
       if (release.description.trim() !== '') lines.push(release.description.trim(), '');
       for (const s of sections) {
-        lines.push(`## ${escapeMarkdown(s.type)}`, '');
+        lines.push(`## ${escapeMarkdown(notesTypeName(language, s.type))}`, '');
         for (const k of s.tickets) lines.push(`- ${k.key} ${escapeMarkdown(k.summary)}`);
         lines.push('');
       }

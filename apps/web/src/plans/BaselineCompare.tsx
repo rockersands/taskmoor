@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
+import { useCsvSeparator } from '../account/csvStyle';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
@@ -68,6 +69,8 @@ export function BaselineCompare({
   now = () => new Date(),
 }: BaselineCompareProps) {
   const t = useT();
+  // Commas or semicolons, as the person's spreadsheet opens them (T-263).
+  const csvSeparator = useCsvSeparator();
   const intl = useIntl();
   const id = useId();
   const heading = useRef<HTMLHeadingElement>(null);
@@ -187,7 +190,7 @@ export function BaselineCompare({
         tickets.push(...page.tickets);
         next = page.next;
       }
-      const text = baselineCsv(t, baseline.name, tickets, data.first.counts.notShown);
+      const text = baselineCsv(t, baseline.name, tickets, data.first.counts.notShown, csvSeparator);
       saveBlob(fileName(planName, 'baseline', localDay(now()), 'csv'), csvBlob(text));
     } catch {
       setProblem(t('baselines.compare.downloadFailed'));

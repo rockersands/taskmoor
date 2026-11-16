@@ -193,6 +193,7 @@ export function TwoFactorSection({ client, email, timeZone }: TwoFactorSectionPr
               email={email}
               label={t('account.twoFactor.switchOffApp')}
               submitLabel={t('account.twoFactor.switchOffApp')}
+              outcome={t('account.twoFactor.appOffOutcome')}
               onConfirm={async (password) => {
                 await client.disableTotp(password);
                 await finish(t('account.twoFactor.appDisabled'));
@@ -202,9 +203,10 @@ export function TwoFactorSection({ client, email, timeZone }: TwoFactorSectionPr
           ) : (
             <div className="form-actions">
               {factors.totp ? (
+                // The first step of a removal has the danger look (D13); the password asks.
                 <button
                   type="button"
-                  className="button-secondary"
+                  className="button-danger-quiet"
                   disabled={busy || locked}
                   onClick={() => open({ kind: 'app-off' })}
                   {...lockedProps}
@@ -255,6 +257,7 @@ export function TwoFactorSection({ client, email, timeZone }: TwoFactorSectionPr
                           email={email}
                           label={t('account.twoFactor.removeKeyNamed', { name: key.name })}
                           submitLabel={t('account.twoFactor.removeKey')}
+                          outcome={t('account.twoFactor.removeKeyOutcome', { name: key.name })}
                           onConfirm={async (password) => {
                             await client.removeSecurityKey(key.id, password);
                             await finish(t('account.twoFactor.keyRemoved', { name: key.name }));
@@ -265,7 +268,7 @@ export function TwoFactorSection({ client, email, timeZone }: TwoFactorSectionPr
                     ) : (
                       <button
                         type="button"
-                        className="button-secondary"
+                        className="button-danger-quiet"
                         aria-label={t('account.twoFactor.removeKeyNamed', { name: key.name })}
                         disabled={busy || locked}
                         onClick={() => open({ kind: 'remove-key', key })}

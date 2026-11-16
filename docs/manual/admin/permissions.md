@@ -1,8 +1,8 @@
 ---
 title: "Permissions and access"
 audience: admins
-sources: apps/web/src/admin/sections.ts, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/permissions/visibilityClient.ts, apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx, apps/server/src/authz/track-admins.ts, apps/server/src/authz/create-tracks.ts, apps/server/src/routes/setup.ts, docs/adr/0118-track-invitations.md, apps/web/src/admin/NewButton.tsx
-accessed: 2026-11-14
+sources: apps/web/src/admin/sections.ts, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/permissions/visibilityClient.ts, apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/fields.ts, apps/server/src/fields/values.ts, apps/server/src/routes/ticket-templates.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx, apps/server/src/authz/track-admins.ts, apps/server/src/authz/create-tracks.ts, apps/server/src/routes/setup.ts, docs/adr/0118-track-invitations.md, apps/web/src/admin/NewButton.tsx
+accessed: 2026-11-16
 attestation: own-words
 ---
 # Permissions and access
@@ -50,17 +50,23 @@ stays in the API for them.
 
 On **Global permissions**, **New global permission** opens the form above the list: **Give** it
 to **A group**, **A person** or **Anyone signed in**. **Remove**, in the danger colour, takes one
-back.
+back after asking: the question says who loses which permission across the whole site.
 
 | Permission | Code | What it allows | Given by default to |
 |---|---|---|---|
 | **Run the site** | `site_admin` | Everything, see above | (the flag on the first account) |
 | **Change configuration** | `configuration_admin` | Configuration, see above | Nobody |
-| **See people and groups** | `browse_users` | Look people up, for example to mention them | Anyone signed in |
+| **See people and groups** | `browse_users` | Look people up, for example to mention them or fill a custom person field. It also covers group names in group fields and the list of people a person field with no limit offers | Anyone signed in |
 | **Share saved searches** | `share_saved_searches` | Share saved searches and dashboards beyond "only me" | Anyone signed in |
 | **Subscribe groups to searches** | `manage_group_subscriptions` | Subscribe a group to a saved search | Nobody |
 | **Change many tickets at once** | `bulk_change` | Bulk operations | Anyone signed in |
 | **Create tracks with their own configuration** | `create_local_tracks` | Create local-mode tracks | Nobody on a new site; anyone signed in on a site set up with an earlier version, until you remove that grant |
+
+Without **See people and groups**, two pickers still work. **Assignee** finds people for whoever
+may assign tickets in the track: by name only, once something is typed, and only people who may
+be given tickets there and can see the track. A person field limited to a group's or a role's
+people offers that list to anyone who can fill the field. If you take the permission away, limit
+any person field that people must fill, or they cannot fill it.
 
 Site administrators hold every global permission, so they always create tracks. Besides this page,
 **Create tracks with their own configuration** reaches people through a track: whoever gives
@@ -129,8 +135,9 @@ To work with policies under **Access policies**:
    policy's grants, or **No grants**, then **Add an access policy**.
 2. **Manage** a policy to see its grants by permission and the tracks it is **Used by**.
 3. **New permission in** the policy's name opens the form above its grants, as on **Global
-   permissions**: choose the **Permission** and who it goes **To**, then **Give**. **Remove**
-   takes a grant away.
+   permissions**: choose the **Permission** and who it goes **To**, then **Give**. **Remove**, in
+   the danger colour, takes a grant away after asking: one grant can reach a whole role, group or
+   everyone, so the question names who loses which permission and the tracks that use the policy.
 4. **Delete policy** works only when no track uses it. Like **Delete** on a role, it is in the
    danger colour and asks first, saying what will happen.
 

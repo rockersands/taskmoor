@@ -5,6 +5,7 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import { trackHref } from '../tracks/TrackLayout';
@@ -338,7 +339,15 @@ function TrackPanel({
   const [search, setSearch] = useState('');
   const [found, setFound] = useState<Named[]>([]);
   const [group, setGroup] = useState('');
-  const [confirming, setConfirming] = useState(false);
+  /** The archive or restore button that takes the other's place gets the focus. */
+  const archiveActions = useRef<HTMLDivElement>(null);
+  const toggled = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once the track reads as changed
+  useEffect(() => {
+    if (!toggled.current) return;
+    toggled.current = false;
+    archiveActions.current?.querySelector('button')?.focus();
+  }, [track.archived]);
 
   const loadActors = useCallback(async () => {
     try {
@@ -617,45 +626,40 @@ function TrackPanel({
         </>
       )}
 
-      <div className="form-actions">
-        {confirming ? (
-          <>
-            <span className="people-confirm">
-              {t(track.archived ? 'admin.tracks.confirmRestore' : 'admin.tracks.confirmArchive', {
-                key: track.key,
-              })}
-            </span>
-            <button
-              type="button"
-              className="button-primary"
-              onClick={() =>
-                void client.archiveTrack(track.id, !track.archived).then(() => {
-                  setConfirming(false);
-                  onChanged(
-                    t(track.archived ? 'admin.tracks.restored' : 'admin.tracks.archivedSaid', {
-                      key: track.key,
-                    }),
-                  );
-                }, onProblem)
-              }
-            >
-              {t('admin.tracks.confirmYes')}
-            </button>
-            <button type="button" className="button-secondary" onClick={() => setConfirming(false)}>
-              {t('admin.tracks.confirmNo')}
-            </button>
-          </>
-        ) : (
+      <div ref={archiveActions} className="form-actions">
+        {track.archived ? (
+          // Restoring gives back and loses nothing: no question.
           <button
             type="button"
             className="button-secondary"
-            aria-label={t(track.archived ? 'admin.tracks.restoreOf' : 'admin.tracks.archiveOf', {
-              key: track.key,
-            })}
-            onClick={() => setConfirming(true)}
+            aria-label={t('admin.tracks.restoreOf', { key: track.key })}
+            onClick={() =>
+              void client.archiveTrack(track.id, false).then(() => {
+                toggled.current = true;
+                onChanged(t('admin.tracks.restored', { key: track.key }));
+              }, onProblem)
+            }
           >
-            {t(track.archived ? 'admin.tracks.restore' : 'admin.tracks.archive')}
+            {t('admin.tracks.restore')}
           </button>
+        ) : (
+          // Archiving locks everyone out of changing it: asked first (D13, T-267).
+          <DangerAction
+            label={t('admin.tracks.archive')}
+            name={t('admin.tracks.archiveOf', { key: track.key })}
+            outcome={t('admin.tracks.archiveOutcome', { key: track.key })}
+            confirmLabel={t('admin.tracks.archiveOf', { key: track.key })}
+            onConfirm={async () => {
+              try {
+                await client.archiveTrack(track.id, true);
+              } catch (error) {
+                onProblem(error);
+                throw error;
+              }
+              toggled.current = true;
+              onChanged(t('admin.tracks.archivedSaid', { key: track.key }));
+            }}
+          />
         )}
       </div>
     </div>

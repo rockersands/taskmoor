@@ -1250,10 +1250,18 @@ export const messagesEn = {
   'account.name': 'Name',
   'account.timeZone': 'Time zone',
   'account.timeZoneAutomatic': 'Automatic',
-  'account.timeZoneHint': 'Automatic follows the time zone of the device you are using.',
+  'account.timeZoneHint':
+    'Automatic follows the device you are using. A zone picked here sets your days and times on every device.',
   'account.locale': 'Language and region',
   'account.localeAutomatic': 'Automatic',
   'account.localeHint': 'Automatic follows the language setting of your browser.',
+  // How downloaded CSV files are written (T-263).
+  'account.csv': 'Spreadsheet files (CSV)',
+  'account.csvAutomatic': 'Automatic',
+  'account.csvComma': 'Commas, numbers as 1.5',
+  'account.csvSemicolon': 'Semicolons, numbers as 1,5',
+  'account.csvHint':
+    'How the CSV files you download separate their cells, so your spreadsheet opens them in columns. Automatic follows your language and region: semicolons where numbers are written as 1,5, commas where they are written as 1.5.',
   'account.saveProfile': 'Save profile',
   'account.profileSaved': 'Profile saved.',
   'account.invalidTimeZone': 'That time zone is not recognised.',
@@ -1389,6 +1397,8 @@ export const messagesEn = {
   'account.twoFactor.turnOnApp': 'Turn on',
   'account.twoFactor.appEnabled': 'Authenticator app set up.',
   'account.twoFactor.switchOffApp': 'Switch off the app',
+  'account.twoFactor.appOffOutcome':
+    'Codes from your authenticator app no longer sign you in. To use it again, set it up afresh.',
   'account.twoFactor.appDisabled': 'Authenticator app switched off.',
   'account.twoFactor.keys': 'Security keys',
   'account.twoFactor.keysIntro':
@@ -1399,6 +1409,7 @@ export const messagesEn = {
   'account.twoFactor.keyNeverUsed': 'Not used yet',
   'account.twoFactor.removeKey': 'Remove',
   'account.twoFactor.removeKeyNamed': 'Remove {name}',
+  'account.twoFactor.removeKeyOutcome': 'You can no longer sign in with {name}.',
   'account.twoFactor.keyRemoved': 'Removed {name}.',
   'account.twoFactor.addKey': 'Add a security key',
   'account.twoFactor.keyName': 'Name of the key',
@@ -1892,6 +1903,8 @@ export const messagesEn = {
   'admin.imports.report.code': 'Code {code}.',
   'admin.imports.report.codeDetail': 'Code {code}: {detail}.',
   'admin.imports.report.examples': 'For example {examples}.',
+  // One line of a CSV file the import read as Windows-1252, and its first accented word (T-263).
+  'admin.imports.report.lineExample': 'line {line}: {text}',
   'admin.imports.report.unsupported': 'Not imported',
   'admin.imports.report.unsupportedItem': '{kind}: {count} ({reason})',
   'admin.imports.report.failures': 'Failures',
@@ -1997,6 +2010,8 @@ export const messagesEn = {
     'An earlier key belongs to something else here and stays theirs.',
   'admin.imports.warning.ticket_in_another_open_sprint':
     'A ticket was in two open sprints; it stays in the first.',
+  'admin.imports.warning.read_as_windows_1252':
+    'The file is not UTF-8, so it was read as Windows Western European (Windows-1252), which is how Excel saves a plain CSV file. Check the accented letters on the lines shown. To be sure, save the file from Excel as “CSV UTF-8” and import that instead.',
   'admin.frontends.title': 'Frontends',
   'admin.frontends.forbidden':
     'Only site administrators change which frontends may use this server.',
@@ -2796,6 +2811,10 @@ export const messagesEn = {
   'tickets.error.otherTrack': 'A subticket stays in its parent’s track.',
   'tickets.error.archived': 'This release or area is archived. Choose another.',
   'tickets.error.notInTrack': 'This track does not offer this choice. Choose one of its own.',
+  // A release or area the track does not have names which it is (T-286).
+  'tickets.error.releaseNotInTrack':
+    'This release is not in this track. Choose one of its releases.',
+  'tickets.error.areaNotInTrack': 'This area is not in this track. Choose one of its areas.',
   'tickets.create.withheld':
     'You may not set this field on a new ticket. The ticket is created only if a default or the workflow fills it in; if not, ask a track administrator.',
   'tickets.create.parentHint': 'Type a ticket’s key or words from its summary.',
@@ -3074,7 +3093,7 @@ export const messagesEn = {
   'trackPeople.roleGivenWithTracks': '{name} now holds {role} and can create tracks.',
   'trackPeople.createTracks': 'Also let them create tracks',
   'trackPeople.createTracksHint':
-    'A permission for the whole site, not only this track. Taking the role away later does not remove it; a site administrator can, on the Permissions page.',
+    'A permission for the whole site, not only this track. It goes with the role: once they run no track, it goes too. To let them keep it, a site administrator gives it on the Permissions page.',
   'trackPeople.pending': 'Invitations waiting',
   'trackPeople.noPending': 'No invitations are waiting.',
   'trackPeople.pendingMeta': '{role}, invited by {who}.',
@@ -3089,6 +3108,8 @@ export const messagesEn = {
   'trackPeople.linkMade': 'There is a new link for {who}; the old one no longer works.',
   'trackPeople.revoke': 'Withdraw',
   'trackPeople.revokeFor': 'Withdraw the invitation to {who}',
+  'trackPeople.revokeOutcome':
+    'The link sent to {who} stops working. If this invitation already gave them the role {role}, they lose it.',
   'trackPeople.revoked': 'The invitation to {who} was withdrawn.',
   'trackPeople.inviteTitle': 'Invite people to {key}',
   'trackPeople.addresses': 'Email addresses',
@@ -3227,11 +3248,8 @@ export const messagesEn = {
   'admin.tracks.archiveOf': 'Archive track {key}',
   'admin.tracks.restore': 'Restore track',
   'admin.tracks.restoreOf': 'Restore track {key}',
-  'admin.tracks.confirmArchive':
-    'Archive {key}? Its tickets stay readable and nobody can change them.',
-  'admin.tracks.confirmRestore': 'Restore {key}? Its tickets can be changed again.',
-  'admin.tracks.confirmYes': 'Yes',
-  'admin.tracks.confirmNo': 'No',
+  'admin.tracks.archiveOutcome':
+    'Nobody can change the tickets of {key} until it is restored, and search leaves them out. They stay readable.',
   'admin.tracks.archivedSaid': 'Track {key} was archived.',
   'admin.tracks.restored': 'Track {key} was restored.',
   'admin.tracks.problem.mapping':
@@ -3393,6 +3411,8 @@ export const messagesEn = {
   'admin.fields.optionEnableOf': 'Offer again {value}',
   'admin.fields.optionDelete': 'Delete',
   'admin.fields.optionDeleteOf': 'Delete {value}',
+  'admin.fields.optionDeleteOutcome':
+    '{children, plural, =0 {} one {Deleting {value} also deletes its second-level option, which this page does not show. } other {Deleting {value} also deletes its # second-level options, which this page does not show. }}{isDefault, select, yes {New tickets in {context} start with {value}: once it goes they start empty, and this page cannot set that again. } other {}}This cannot be undone.',
   'admin.fields.delete': 'Delete field',
   'admin.fields.deleteOf': 'Delete field {name}',
   'admin.fields.confirmDelete':
@@ -3475,6 +3495,9 @@ export const messagesEn = {
   'admin.permissions.removed': '{grantee} no longer has {permission}.',
   'admin.permissions.remove': 'Remove',
   'admin.permissions.removeOf': 'Remove {grantee} from {permission}',
+  'admin.permissions.removeOutcome':
+    '{grantee} loses {permission} in {count, plural, =0 {every track that uses this policy, and none does yet} one {{tracks}, the track that uses this policy} other {{tracks}, the # tracks that use this policy}}.',
+  'admin.permissions.removeGlobalOutcome': '{grantee} loses {permission} across the whole site.',
   'admin.permissions.global': 'Global permissions',
   'admin.permissions.newGrantIn': 'New permission in {name}',
   'admin.permissions.newGlobal': 'New global permission',
@@ -3909,6 +3932,9 @@ export const messagesEn = {
   'richtext.table.addRow': 'Add a row below',
   'richtext.table.addColumn': 'Add a column to the right',
   'richtext.table.delete': 'Delete the table',
+  // Removing a row or a column (T-120).
+  'richtext.table.deleteRow': 'Delete this row',
+  'richtext.table.deleteColumn': 'Delete this column',
   'richtext.mention': 'Mention someone',
   'richtext.taskItem': 'Checklist item: {text}',
   'richtext.taskItemEmpty': 'Empty checklist item',
@@ -4085,7 +4111,7 @@ export const messagesEn = {
   'admin.workflow.fixTextFirst':
     'Fix the text first: the diagram can only show a definition that reads correctly.',
   'admin.workflow.confirmDiscard':
-    'Discard the draft and every unsaved change? The published version stays as it is.',
+    'The saved draft and every unsaved change are deleted. The published version stays as it is.',
   'admin.workflow.confirmDiscardButton': 'Discard draft',
   'admin.workflow.discarded': 'The draft is gone; the editor shows the published version.',
   'admin.workflow.cancel': 'Cancel',
@@ -4387,6 +4413,10 @@ export const messagesEn = {
   'workflow.problem.unknown_close_reason': '{where}: the close reason it sets no longer exists.',
   'workflow.problem.invalid_pattern': '{where}: {pattern} is not a valid regular expression.',
   'workflow.problem.guards_too_deep': '{where}: the guards nest too deep.',
+  // A workflow with no transitions whose every status closes, with no close reason to close
+  // with, would be live with no move at all (T-260).
+  'workflow.problem.no_moves':
+    'No ticket could ever move in it: it has no transitions, every status is in the closed stage, and there is no close reason for a move to close with. Add a close reason named Completed, make the default workflow set a reason when it closes a ticket, add a status outside the closed stage, or draw the transitions yourself.',
   'workflow.problem.onCreate': 'Creating a ticket',
   'workflow.problem.refused': 'The server refused the definition.',
   'workflow.problem.mappingRequired': 'Choose where the tickets of each dropped status go.',
@@ -4403,7 +4433,7 @@ export const messagesEn = {
     '{count, plural, one {The draft has # warning; it can still be published.} other {The draft has # warnings; it can still be published.}}',
   'admin.workflow.publishPanel.dropped': 'Statuses this version drops',
   'admin.workflow.publishPanel.freeMoves':
-    'This version has no transitions, so publishing gives each of its statuses a move from any status, as a new workflow gets.',
+    'This version has no transitions, so publishing gives its statuses a move from any status, as a new workflow gets. A closed-stage status gets one only when there is a close reason to close with; if no status can get one, the publish is refused and says why.',
   'admin.workflow.publishPanel.moveTo':
     'Move the {count, plural, one {# ticket} other {# tickets}} in {status} to',
   'admin.workflow.publishPanel.empty': '{status}: no tickets to move.',
@@ -4425,7 +4455,7 @@ export const messagesEn = {
   'admin.workflow.versions.restore': 'Restore as draft',
   'admin.workflow.versions.restoreNamed': 'Restore version {version} as the draft',
   'admin.workflow.versions.confirmRestore':
-    'Restoring version {version} replaces the current draft and every unsaved change.',
+    'Restoring version {version} replaces {draft, select, none {every unsaved change} other {the draft (version {draft}) and every unsaved change}}. The published version stays as it is.',
   'admin.workflow.versions.confirmRestoreButton': 'Restore version {version}',
   'admin.workflow.versions.restored':
     'Version {version} is the draft now. Publish it to use it again.',
@@ -5447,7 +5477,7 @@ export const messagesEn = {
   'summary.filter.mine': 'My tickets',
   'summary.filter.clear': 'Clear the filter',
   'summary.filter.note':
-    'Only you see this filter. It narrows every number and widget here to the tickets that also match, and stays in this page’s address, so you can bookmark it. The summary everyone else sees does not change.',
+    'This filter changes only your view: it narrows every number and widget here to the tickets that also match. It stays in this page’s address, so you can bookmark it or share the link; the summary everyone else sees does not change.',
   'summary.filter.bad': 'That filter does not read as a search. Check it on the search page.',
   'summary.filter.on': 'Showing only the tickets that match {filter}.',
   'summary.filter.sprints': 'Sprint widgets still show their whole sprint.',
@@ -6692,6 +6722,8 @@ export const messagesEn = {
   'ticketTools.links.added': 'Linked: {phrase} {key}.',
   'ticketTools.links.removed': 'Removed: {phrase} {key}.',
   'ticketTools.links.remove': 'Remove the link: {phrase} {key}',
+  'ticketTools.links.removeOutcome':
+    '{key} is in another track: once the link goes, this page cannot link it again.',
   'ticketTools.links.exists': 'That link is already there.',
   'ticketTools.links.disabled': 'Ticket links are turned off on this site.',
   'ticketTools.links.archived': 'That ticket’s track is archived, so its links cannot change.',
@@ -6747,6 +6779,8 @@ export const messagesEn = {
   'ticketTools.checklists.moved': 'The checklist {name} was moved.',
   'ticketTools.checklists.rename': 'Edit checklist {name}',
   'ticketTools.checklists.remove': 'Remove the checklist {name}',
+  'ticketTools.checklists.removeOutcome':
+    'Removing {name} deletes its {count, plural, one {# item} other {# items}} and the state of each: {done, plural, =0 {none was done} one {# was done} other {# were done}}. History keeps only the checklist’s name, so this cannot be undone.',
   'ticketTools.checklists.moveListUp': 'Move up the checklist {name}',
   'ticketTools.checklists.moveListDown': 'Move down the checklist {name}',
   'ticketTools.checklists.addItem': 'Add an item to {name}',
@@ -6800,6 +6834,10 @@ export const messagesEn = {
   'richtext.prompt.file': '{name} ({details})',
   'richtext.prompt.fileBy': 'by {author}',
   'richtext.prompt.fileNumber': 'file {number}',
+  // A file uploaded from the file prompt (T-120).
+  'richtext.prompt.upload': 'Upload a file',
+  'richtext.prompt.uploadHint': 'Up to {limit}. It is also listed under Attachments.',
+  'richtext.prompt.uploading': 'Uploading {name}…',
   'richtext.columns.widths': 'Widths of the {count} columns',
   'richtext.columns.equal': 'Equal',
   'richtext.columns.apply': 'Apply',
@@ -7106,6 +7144,9 @@ export const messagesEn = {
   'crossTrack.linked.choose': 'Choose',
   'crossTrack.linked.tooMany': 'One holds at most 100 releases.',
   'crossTrack.linked.remove': 'Remove {name}',
+  'crossTrack.linked.removeConfirm': 'Remove {track} {name}',
+  'crossTrack.linked.removeOutcome':
+    '{name} of {track} leaves this release across tracks: its tickets stop counting here, and its date no longer moves with this one. Only {track}’s administrators can link it again, and only while it is neither shipped nor archived.',
   'crossTrack.linked.removed': '{name} is no longer linked. Its date did not change.',
   'crossTrack.linked.removeFailed': 'The release could not be removed.',
   'crossTrack.edit.open': 'Edit',
@@ -7164,6 +7205,8 @@ export const messagesEn = {
   'release.crossTrack.add': 'Add to a release across tracks…',
   'release.crossTrack.listFailed': 'The releases across tracks could not be read.',
   'release.crossTrack.remove': 'Remove from {name}',
+  'release.crossTrack.removeOutcome':
+    '{name} of {track} leaves {crossTrack}: its tickets stop counting there, and its date no longer moves with it. Only {track}’s administrators can link it again, and only while it is neither shipped nor archived.',
   'release.crossTrack.linked': 'This release is now linked to {name}.',
   'release.crossTrack.unlinked':
     'This release is no longer linked to {name}. Its date did not change.',

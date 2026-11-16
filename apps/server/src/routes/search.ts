@@ -7,6 +7,7 @@ import { requireSiteAdmin, requireUser } from '../auth';
 import type { TrackPermission } from '../authz/permissions';
 import type { FieldCatalogs } from '../fields/catalog';
 import { customFieldViews } from '../fields/values';
+import { viewerTimeZone } from '../reports/zone';
 import { SearchError } from '../search/bind';
 import { queryCatalogue } from '../search/catalogue';
 import type { Total } from '../search/count';
@@ -244,13 +245,15 @@ export async function searchScope(
 
 /**
  * Who is searching, as a query's functions and dates need it (M1-038): the person, their time
- * zone (dates read on their clock, QRY-006), their session (`currentLogin()`) and the tracks
- * where they hold a permission (`tracksWhereUserHasPermission()`).
+ * zone (dates read on their clock, QRY-006: the account's zone, else the device's the app
+ * sends, else UTC, as `viewerTimeZone` picks it, T-280), their session (`currentLogin()`) and
+ * the tracks where they hold a permission (`tracksWhereUserHasPermission()`).
  */
 export function searchPerson(request: FastifyRequest) {
   return {
     currentUserId: request.user?.id ?? null,
-    timeZone: request.user?.timeZone ?? null,
+    // Null where no person reads (a worker's scope), so the type stays open to it.
+    timeZone: viewerTimeZone(request) as string | null,
     sessionId: request.authSession?.id ?? null,
     allowedTracks: (permission: TrackPermission) => request.authz.allowedTracks(permission),
     crossTrackSight: requestSight(request),
@@ -286,7 +289,7 @@ export function registerSearchRoutes(
       const plan = resolveQuery(query, catalogue, {
         currentUserId: user.id,
         now: new Date(),
-        timeZone: user.timeZone,
+        timeZone: viewerTimeZone(request),
       });
       const fields = new Map<string, { name: string; custom: number | null }>();
       const visit = (pred: unknown) => {
