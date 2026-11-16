@@ -5580,7 +5580,7 @@ export const messagesEs: Record<MessageId, string> = {
   'summary.filter.mine': 'Mis tickets',
   'summary.filter.clear': 'Quitar el filtro',
   'summary.filter.note':
-    'Solo tú ves este filtro. Reduce cada número y cada widget de aquí a los tickets que también coinciden, y se queda en la dirección de esta página, así que puedes guardarla en marcadores. El resumen que ven los demás no cambia.',
+    'Este filtro solo cambia tu vista: reduce cada número y cada widget de aquí a los tickets que también coinciden. Se queda en la dirección de esta página, así que puedes guardarla en marcadores o compartir el enlace; el resumen que ven los demás no cambia.',
   'summary.filter.bad':
     'Ese filtro no se lee como una búsqueda. Revísalo en la página de búsqueda.',
   'summary.filter.on': 'Solo se muestran los tickets que coinciden con {filter}.',

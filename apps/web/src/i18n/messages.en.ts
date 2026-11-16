@@ -5447,7 +5447,7 @@ export const messagesEn = {
   'summary.filter.mine': 'My tickets',
   'summary.filter.clear': 'Clear the filter',
   'summary.filter.note':
-    'Only you see this filter. It narrows every number and widget here to the tickets that also match, and stays in this page’s address, so you can bookmark it. The summary everyone else sees does not change.',
+    'This filter changes only your view: it narrows every number and widget here to the tickets that also match. It stays in this page’s address, so you can bookmark it or share the link; the summary everyone else sees does not change.',
   'summary.filter.bad': 'That filter does not read as a search. Check it on the search page.',
   'summary.filter.on': 'Showing only the tickets that match {filter}.',
   'summary.filter.sprints': 'Sprint widgets still show their whole sprint.',

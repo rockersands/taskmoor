@@ -408,7 +408,9 @@ describe('filtering a track summary for oneself (RPT-006; T-075a)', () => {
     );
     expect(within(form).getByLabelText('Only tickets that match')).toHaveValue(MINE);
     expect(within(form).getByText(`Showing only the tickets that match ${MINE}.`)).toBeVisible();
-    expect(within(form).getByText(/Only you see this filter/)).toBeVisible();
+    // Only the viewer's view changes, and the link can be shared (T-264).
+    expect(within(form).getByText(/This filter changes only your view/)).toBeVisible();
+    expect(within(form).getByText(/share the link/)).toBeVisible();
     expect(client.filters).toEqual(['', MINE]);
     // Nothing was saved for anyone.
     expect(client.saved).toEqual([]);
