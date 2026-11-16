@@ -259,6 +259,31 @@ route is new.
   level member's: it must exist, be of the kind, and be shared or the policy's track's
   (`400 fieldKey` otherwise).
 
+**As built (T-322, 2026-11-16): deleting a track, and a shared-mode track's access policy and type
+set.** Both were API-only (the scope's items (e) and (f)); no page or route is new, and the server
+is unchanged.
+
+- **Delete track (CORE-025, M1-101).** **Manage** on **Tracks** ends with **Delete track**, beside
+  Archive and for archived tracks too: a `DangerAction` (D13), `configuration/DeleteTrack.tsx`,
+  whose question names what goes to the trash with the track (tickets, releases, areas), that its
+  key stays taken and that it can be restored from Trash until its time there is up. The track
+  leaves the list, the page's heading takes the focus, and a link leads to Trash
+  (`#/admin/trash`), where configuration administrators restore tracks too. `409 in_trash`, a
+  gone track (404) and a refusal (403) are said in words, and the question stays open.
+- **Access policy and type set (CORE-005, IAM-010).** **Which sets a track uses** gains **Access
+  policy** and **Type set** for a shared-mode track, from the shared policies and type sets, with
+  no empty choice; the link to Permissions is shown to site administrators only, as only they open
+  it. A local-mode track keeps its own, and the form says so with a link to the track's own page.
+  A type set switch that the server refuses with `409 type_in_use` opens wave 22's mapping
+  question (`TypeMapping` from `sets/TypeSetForm.tsx`, which gains words of its own for a track)
+  under **Type set**: for each type the new set lacks, a kept type of its level, or why there is
+  none. Saving again sends `ticketTypeMapping`; refusals accumulate as on Configuration sets, so
+  the count of tickets that took another type comes from them. Choosing another set drops the
+  question. **Tracks** keeps its link here rather than a second picker.
+- **Tests:** unit tests and stories (both skins, with a touch-screen story for the danger action)
+  for both; `e2e/track-settings.spec.ts` on desktop and mobile: delete and restore from Trash,
+  switching a track's policy and type set with a mapped ticket, and a local-mode track's note.
+
 ### 2. Layout and density
 
 - Desktop first, and it still works on phones (ADR-033):

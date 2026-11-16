@@ -530,28 +530,40 @@ every one of those tracks.
 
 | Set | Track setting | Default on a fresh site | Managed in the web app under |
 |---|---|---|---|
-| Type set | `typeSetId` | The track type's default set | **Configuration sets** |
+| Type set | `typeSetId` | The track type's default set | **Configuration sets**; a shared-mode track's chosen on **Which sets a track uses** |
 | Field rule set | `fieldRuleSetId` | Default field rules | **Configuration sets** |
 | Layout set | `layoutSetId` | Default layouts | **Layout sets**; chosen on **Which sets a track uses** |
 | Priority set | `prioritySetId` | Default priority set | Chosen on **Which sets a track uses**; made on **Priorities** |
 | Workflow map | `workflowMapId` | Default workflow map | **Workflow maps** |
-| Access policy | `accessPolicyId` | Default access policy | **Permissions** |
+| Access policy | `accessPolicyId` | Default access policy | **Permissions**; a shared-mode track's chosen on **Which sets a track uses** |
 | Visibility policy | `visibilityPolicyId` | None | Chosen on **Which sets a track uses**; made on **Visibility policies** |
 | Notification policy | `notificationPolicyId` | The site's default | Chosen on **Which sets a track uses**; made on **Notification policies** |
 
 ### Which sets a track uses
 
 **Administration** > **Which sets a track uses** (`#/admin/track-sets`), for site and configuration
-administrators, chooses a track's **Layouts**, **Priorities**, **Visibility policy** and
-**Notifications**. Pick the **Track**, change what you want and press **Save**; only what changed is
-sent. Each list holds the shared sets and a local-mode track's own, marked **(its own)**. The first
-choice in each list is the default, which for a visibility policy means none. **Manage** on the
-**Tracks** page has a link here for that track. Under **Priorities** and **Notifications** a link
-leads to the page that makes them: [Priorities](#priorities-and-priority-sets) and
-[Notification policies](notifications.md#managing-policies).
+administrators, chooses a shared-mode track's **Access policy** and **Type set**, and every track's
+**Layouts**, **Priorities**, **Visibility policy** and **Notifications**. Pick the **Track**, change
+what you want and press **Save**; only what changed is sent. **Access policy** and **Type set** list
+the shared policies and type sets and have no empty choice. In the other lists, which hold the
+shared sets and a local-mode track's own, marked **(its own)**, the first choice is the default,
+which for a visibility policy means none. A local-mode track keeps its own access policy and type
+set: in their place the page says so, with a link to the track's own page, where its
+administrators change them. **Manage** on the **Tracks** page has a link here for that track. A link
+under a list leads to the page that makes its sets: [Configuration sets](#type-sets) under
+**Type set**, [Priorities](#priorities-and-priority-sets) and
+[Notification policies](notifications.md#managing-policies), and, for site administrators only,
+[Permissions](permissions.md) under **Access policy**.
 
-Changing the visibility policy moves tickets at a level the new policy lacks to its default level, so
-some may become visible to more people.
+Switching the access policy changes at once who may see the track and what they may do in it.
+Switching the type set asks first about tickets of a type the new set lacks: **Save** is refused
+with a line that says so, and a question opens under **Type set**. It says how many tickets have
+such a type and, for each type, offers **Tickets of** the type **become** with the new set's types
+at the same level. When the new set has no type at that level, it says the tickets have nowhere to
+go: choose another type set, or add a type of that level to the set. Choose for each, then **Save**
+again; the line says how many tickets took another type. Choosing another type set drops the
+question. Changing the visibility policy moves tickets at a level the new policy lacks to its
+default level, so some may become visible to more people.
 
 ### Who changes a set
 

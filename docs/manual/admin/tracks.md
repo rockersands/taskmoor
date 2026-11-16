@@ -1,7 +1,7 @@
 ---
 title: "Tracks"
 audience: admins
-sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/client.ts, apps/web/src/configuration/NewTrackForm.tsx, apps/web/src/tracks/TracksPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/web/src/tickets/templates/draft.ts, apps/web/src/tickets/templates/client.ts, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/form.ts, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md, apps/server/src/sprints/lifecycle.ts, apps/server/src/tracks/membership.ts, apps/server/src/routes/track-groups.ts, apps/server/src/trackgroups/access.ts, apps/web/src/trackgroups/TrackArrangement.tsx, apps/web/src/trackgroups/ShareGroupDialog.tsx, packages/db/src/migrations/0100_track_groups.ts, docs/adr/0121-personal-track-groups.md, apps/server/src/notifications/track-groups.ts, apps/server/src/trackgroups/privacy.ts, packages/db/src/migrations/0103_checklist_notices.ts, apps/server/src/notifications/checklists.ts, apps/web/src/tracks/NewTrackDialog.tsx, apps/web/src/shell/ModalDialog.tsx, apps/server/src/api/operations.ts, apps/web/src/admin/NewButton.tsx, apps/web/src/tickets/pickerSources.ts, apps/web/src/tickets/PersonPicker.tsx, apps/server/src/routes/fields.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/users.ts, apps/server/src/routes/teams.ts, apps/web/src/configuration/StatusMappingPanel.tsx, apps/web/src/areas/AreasPage.tsx, apps/web/src/areas/client.ts, apps/server/src/tickets/fields.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx
+sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/client.ts, apps/web/src/configuration/NewTrackForm.tsx, apps/web/src/tracks/TracksPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/web/src/tickets/templates/draft.ts, apps/web/src/tickets/templates/client.ts, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/form.ts, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md, apps/server/src/sprints/lifecycle.ts, apps/server/src/tracks/membership.ts, apps/server/src/routes/track-groups.ts, apps/server/src/trackgroups/access.ts, apps/web/src/trackgroups/TrackArrangement.tsx, apps/web/src/trackgroups/ShareGroupDialog.tsx, packages/db/src/migrations/0100_track_groups.ts, docs/adr/0121-personal-track-groups.md, apps/server/src/notifications/track-groups.ts, apps/server/src/trackgroups/privacy.ts, packages/db/src/migrations/0103_checklist_notices.ts, apps/server/src/notifications/checklists.ts, apps/web/src/tracks/NewTrackDialog.tsx, apps/web/src/shell/ModalDialog.tsx, apps/server/src/api/operations.ts, apps/web/src/admin/NewButton.tsx, apps/web/src/tickets/pickerSources.ts, apps/web/src/tickets/PersonPicker.tsx, apps/server/src/routes/fields.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/users.ts, apps/server/src/routes/teams.ts, apps/web/src/configuration/StatusMappingPanel.tsx, apps/web/src/areas/AreasPage.tsx, apps/web/src/areas/client.ts, apps/server/src/tickets/fields.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/web/src/configuration/DeleteTrack.tsx, apps/web/src/configuration/TrackSetsPage.tsx
 accessed: 2026-11-16
 attestation: own-words
 ---
@@ -16,8 +16,9 @@ tracks, see [concepts and terms](../concepts.md).
 
 Site and configuration administrators manage tracks in the web app under **Administration**, **Tracks**. The page adds
 tracks, renames them, chooses their workflow map, turns their sprints on or off, gives roles to
-people and groups, and archives and restores them. With no track yet, it says so and what a track
-is.
+people and groups, archives and restores them, and deletes them to the trash. A shared-mode
+track's access policy and type set, and every track's other sets, are chosen on **Which sets a
+track uses**. With no track yet, it says so and what a track is.
 
 Everything else is done through the [REST API](rest-api.md) under `/api/v1/tracks`.
 `GET /api/v1/tracks/:id` takes a track's id or key; the routes that change a track take its id. A token that changes shared configuration needs the
@@ -288,8 +289,9 @@ like any other. Giving them that role here makes it theirs, so taking the share 
 
 ### Configuration sets
 
-A track names the configuration sets it uses. `null` means the site's default. Layouts, priorities,
-visibility policy and notifications are chosen on [Which sets a track uses](fields.md#which-sets-a-track-uses).
+A track names the configuration sets it uses. `null` means the site's default. A shared-mode
+track's access policy and type set, and every track's layouts, priorities, visibility policy and
+notifications, are chosen on [Which sets a track uses](fields.md#which-sets-a-track-uses).
 
 | API field | What it chooses | Who may change it |
 |---|---|---|
@@ -313,7 +315,12 @@ tickets:
   **Cancel** keeps the map the track has. See
   [migrating tickets between workflows](workflows.md#migrating-tickets-between-workflows).
 - **Type set**: tickets of types the new set lacks need `ticketTypeMapping`, from old type id to
-  a new type at the same level. Without it the change answers `type_in_use`.
+  a new type at the same level. Without it the change answers `type_in_use`. On **Which sets a
+  track uses**, **Save** then says so, and a question opens under **Type set**: how many tickets
+  have a type the new set lacks, and for each such type, **Tickets of** the type **become** one of
+  the new set's types at its level. A type with no type of its level in the new set says it has
+  nowhere to go. Choose, then **Save** again; the line says how many tickets took another type.
+  Choosing another type set drops the question.
 - **Visibility policy**: tickets at a level the new policy lacks take its default level, or
   none.
 
@@ -482,14 +489,19 @@ lists show it only to administrators who ask for archived tracks.
 
 ## Deleting a track and the trash
 
-The web app has no delete button for tracks yet. Site and configuration administrators delete a
-track with `DELETE /api/v1/tracks/:id`. It goes to the trash with its tickets, releases and areas.
+Site and configuration administrators delete a track on **Administration**, **Tracks**: open
+**Manage** and press **Delete track**. It is in the danger colour and asks first, saying that the
+track goes to the trash with its tickets, releases and areas, that its key stays taken, and that
+it can be restored from **Trash** until its time there is up; **Delete track** and the key does
+it, **Cancel** keeps it. An archived track can be deleted too. The track leaves the list, and the
+page links to **Trash** (**Restore** and the key **from Trash**). A track already in the trash, or
+gone, is refused in words. Through the API it is `DELETE /api/v1/tracks/:id` (`409 in_trash`).
 While it is there:
 
 - nobody else sees the track or anything in it;
 - it keeps its keys, so no new track can take them;
-- site administrators restore it on **Administration**, **Trash**, under **Tracks**, with **Restore
-  track** (or `POST /api/v1/tracks/:id/undelete`).
+- site and configuration administrators restore it on **Trash** (`#/admin/trash`), under
+  **Tracks**, with **Restore track** (or `POST /api/v1/tracks/:id/undelete`).
 
 The trash keeps tracks and tickets for 30 days by default. Site administrators change this under
 **Retention**, **Days in the trash** (1 to 365). An hourly job then deletes them for good, in
