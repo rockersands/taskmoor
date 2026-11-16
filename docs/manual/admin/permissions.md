@@ -228,8 +228,9 @@ A local-mode track's own policies are on its own **Visibility policies** page: o
 **Its own configuration** (the address ends in `/manage/tracks/<id>/visibility-policies`).
 Whoever runs the track works there as above, on the policies the track owns and no other. A
 level's members may also be the people or groups in the track's own user and group fields, and
-**Find a person** looks among the people who may be named in the track; groups are offered to
-site and configuration administrators only. The page says which policy the track uses, or that
+**Find a person** looks among the people who may be named in the track. Site and configuration
+administrators, who need no role in the track, find anyone on the site instead, and only they are
+offered groups. The page says which policy the track uses, or that
 it uses a shared one or none. **Use this policy for** the track makes it use one of its own:
 tickets at a level that policy lacks take its default level, or none, so some may become visible
 to more people. Giving it a shared policy, or none, again is for site and configuration

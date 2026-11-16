@@ -67,11 +67,11 @@ export interface VisibilityClient extends TrackScopeClient {
   removeMember: (policyId: number, levelId: number, memberId: number) => Promise<void>;
   /** Makes a local-mode track use one of its own policies (`PATCH /tracks/:id`; T-322). */
   chooseFor: (trackId: number, policyId: number) => Promise<void>;
-  /** The site's roles; on a track's own page, those its runners may read (T-322). */
+  /** The site's roles (null); a track's, as those who run it may read them (T-322). */
   roles: (track: ScopeTrack | null) => Promise<Named[]>;
   /** Groups are listed for administrators only; anyone else gets none to choose from. */
   groups: () => Promise<Named[]>;
-  /** People by name; on a track's own page, the people who may be named in it (T-322). */
+  /** People by name: anyone on the site (null), or those who may be named in a track (T-322). */
   findPeople: (query: string, track: ScopeTrack | null) => Promise<Named[]>;
   /** The user and group fields field members name (T-320), a track's own too (T-322). */
   fields: (track: ScopeTrack | null) => Promise<FieldChoice[]>;
@@ -155,6 +155,24 @@ export const visibilityClient: VisibilityClient = {
     );
   },
 };
+
+/**
+ * The lists a local-mode track's own page reads (T-322; `trackFieldsClient`'s pattern). Site and
+ * configuration administrators keep the site's roles, groups and people: they may read those
+ * whatever they hold in the track, while the people who may be named in it need Browse track
+ * there, which administering it does not bring. Anyone else, who runs the track, reads its own
+ * list of roles and the people who may be named in it, and never asks for the groups, whose list
+ * is for administrators.
+ */
+export function trackVisibilityClient(client: VisibilityClient, admin: boolean): VisibilityClient {
+  return admin
+    ? {
+        ...client,
+        roles: () => client.roles(null),
+        findPeople: (query) => client.findPeople(query, null),
+      }
+    : { ...client, groups: async () => [] };
+}
 
 /** One reason a person holds a permission. */
 export type ExplainReason =

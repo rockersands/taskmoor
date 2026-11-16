@@ -129,9 +129,12 @@ under its title.
     **Visibility policies** (`#/manage/tracks/<id>/visibility-policies`) lists the policies the
     track owns (`?trackId=`), makes new ones for it, says which policy the track uses (its own,
     a shared one or none) and offers **Use this policy for** the track (`PATCH /tracks/:id`), with
-    a line on what happens to tickets at levels the policy lacks; roles come from
-    `GET /tracks/:id/roles`, people from `GET /people/mentionable`, and a group is offered only
-    to administrators, who may read the groups. On the shared pages, someone who runs tracks but
+    a line on what happens to tickets at levels the policy lacks; for whoever runs the track,
+    roles come from `GET /tracks/:id/roles` and people from `GET /people/mentionable`, and the
+    groups are never asked for. Site and configuration administrators keep the site's lists
+    (`/roles`, `/groups`, `/people/lookup`; `trackVisibilityClient`, `trackFieldsClient`'s
+    pattern): administering a track does not bring Browse track, which its own lists of people
+    need. On the shared pages, someone who runs tracks but
     is no administrator gets the links to their local-mode tracks, as elsewhere. Visibility
     policies let configuration administrators in, as the server always did: `AdminPage.setup`
     marks a page outside Tracks and setup that they use, so they see **People and access** with

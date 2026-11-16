@@ -3,7 +3,7 @@ import { stubBackend } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import { FIRST_PAGE_TRACK, SECOND_PAGE_TRACK, stubTwoTrackPages } from '../test/trackPages';
 import { fieldName, permissionsClient } from './client';
-import { explainClient, visibilityClient } from './visibilityClient';
+import { explainClient, trackVisibilityClient, visibilityClient } from './visibilityClient';
 
 describe('the permission explainer’s track choices (T-305)', () => {
   it('[IAM-012] offers every track, past the list’s first page', async () => {
@@ -91,5 +91,24 @@ describe('a local-mode track’s own visibility policies (T-322)', () => {
     ]);
     // Groups are listed for administrators only: someone who runs the track gets none.
     expect(await visibilityClient.groups()).toEqual([]);
+  });
+
+  it('[IAM-009] [IAM-011] keeps the site’s lists for administrators, and asks no groups for anyone else', async () => {
+    const calls = stubBackend({
+      'GET /roles': () => jsonResponse(200, { roles: [{ id: 7, name: 'Administrators' }] }),
+      'GET /groups': () => jsonResponse(200, { groups: [{ id: 5, name: 'Security team' }] }),
+      'GET /people/lookup?limit=8&q=sam': () =>
+        jsonResponse(200, { people: [{ id: 3, name: 'Sam Rivera' }] }),
+    });
+    // An administrator need not hold Browse track in OPS, which its own lists ask for.
+    const admin = trackVisibilityClient(visibilityClient, true);
+    expect(await admin.roles(OPS)).toEqual([{ id: 7, name: 'Administrators' }]);
+    expect(await admin.groups()).toEqual([{ id: 5, name: 'Security team' }]);
+    expect(await admin.findPeople('sam', OPS)).toEqual([{ id: 3, name: 'Sam Rivera' }]);
+    expect(calls.map((c) => c.path)).toEqual(['/roles', '/groups', '/people/lookup?limit=8&q=sam']);
+
+    calls.length = 0;
+    expect(await trackVisibilityClient(visibilityClient, false).groups()).toEqual([]);
+    expect(calls).toEqual([]);
   });
 });

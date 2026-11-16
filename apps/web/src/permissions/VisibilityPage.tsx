@@ -5,9 +5,11 @@ import {
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from 'react';
+import { useAdminAccess } from '../admin/access';
 import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
@@ -26,6 +28,7 @@ import { PageHeader } from '../shell/PageHeader';
 import { type FieldChoice, fieldName, type Grantee, type Named } from './client';
 import {
   type NewMember,
+  trackVisibilityClient,
   type VisibilityClient,
   type VisibilityLevel,
   type VisibilityMember,
@@ -82,7 +85,10 @@ interface Lists {
   /** The user and group fields of the site: a field member names one (T-320). */
   fields: FieldChoice[];
   client: VisibilityClient;
-  /** A local-mode track's own page (T-322): people are found among those it may name. */
+  /**
+   * A local-mode track's own page (T-322): people are found among those who may be named in it,
+   * or, for administrators, on the whole site (`trackVisibilityClient`).
+   */
   track: ScopeTrack | null;
 }
 
@@ -103,14 +109,15 @@ export interface VisibilityPageProps {
  *
  * Site and configuration administrators manage the shared policies, as the server lets them. On a
  * local-mode track's own page (`trackId`; T-322) whoever runs the track manages the policies it
- * owns and makes the track use one. Someone who runs tracks but is no administrator is offered
- * those pages instead (`sets/trackScope.tsx`). Which shared policy a track uses is chosen on
- * Which sets a track uses.
+ * owns and makes the track use one, reading only the lists they may (`trackVisibilityClient`).
+ * Someone who runs tracks but is no administrator is offered those pages instead
+ * (`sets/trackScope.tsx`). Which shared policy a track uses is chosen on Which sets a track uses.
  */
 export function VisibilityPage({ client = visibilityClient, trackId = null }: VisibilityPageProps) {
   const t = useT();
   const titleId = useId();
   const title = useRef<HTMLHeadingElement>(null);
+  const access = useAdminAccess();
   const scope = useSetScope(trackId, client);
   const track = scope.status === 'track' ? scope.track : null;
   useTrackPageTrail(scope, t('admin.visibility.title'));
@@ -137,6 +144,7 @@ export function VisibilityPage({ client = visibilityClient, trackId = null }: Vi
           key={track?.id ?? 'all'}
           client={client}
           track={track}
+          admin={access === 'site' || access === 'setup'}
           header={header}
           title={title}
         />
@@ -164,19 +172,26 @@ export function VisibilityPage({ client = visibilityClient, trackId = null }: Vi
 
 /** The policies the page shows: every shared one, or one track's own. */
 function Policies({
-  client,
+  client: given,
   track,
+  admin,
   header,
   title,
 }: {
   client: VisibilityClient;
   track: ScopeTrack | null;
+  /** A site or configuration administrator, who reads the site's lists on a track's page too. */
+  admin: boolean;
   header: (allowed: boolean, actions?: ReactNode) => ReactNode;
   /** The page's heading, which takes the focus when a policy goes. */
   title: RefObject<HTMLHeadingElement | null>;
 }) {
   const t = useT();
   const expired = useSessionExpiry();
+  const client = useMemo(
+    () => (track ? trackVisibilityClient(given, admin) : given),
+    [given, track, admin],
+  );
   const [state, setState] = useState<
     | { status: 'loading' }
     | {

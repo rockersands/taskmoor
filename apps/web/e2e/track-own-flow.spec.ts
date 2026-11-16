@@ -8,8 +8,10 @@ import { uniqueKey, uniqueStamp } from './unique';
  * on Visibility policies (T-322; WF-001 (3), IAM-011, IAM-030, IAM-009): a person who is no
  * administrator runs a track with its own configuration. From its Manage page they open its own
  * workflow map, give a type the track's own workflow and save; then its own visibility policies,
- * add one with a level and a member, and make the track use it. A configuration administrator
- * finds Visibility policies in Administration, adds a shared policy with a level and deletes it.
+ * add one with a level and a member, and make the track use it, without asking for the groups,
+ * whose list is for administrators. A configuration administrator finds Visibility policies in
+ * Administration, adds a shared policy with a level and deletes it, then on the own page of a
+ * local-mode track where they hold no role adds a person, found on the whole site, to a level.
  * No serious axe issue and no sideways scroll, on a desktop and a phone. Every track, person,
  * workflow and policy is the test's own; nothing shared changes. It uses the attachments
  * database (preview 4174), whose site administrator the API server made.
@@ -165,7 +167,12 @@ test('[WF-001] [IAM-011] [IAM-030] someone who runs a track changes its own work
   ).ticketTypes;
   expect(saved.find((t) => t.ticketType.name === type)?.workflow.name).toBe(ownFlow);
 
-  // Its own visibility policies: none yet, so the track's tickets have no levels.
+  // Its own visibility policies: none yet, so the track's tickets have no levels. The page never
+  // asks for the groups, which only administrators may read.
+  const askedGroups: string[] = [];
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === '/api/v1/groups') askedGroups.push(request.url());
+  });
   await visit(page, `#/manage/tracks/${trackId}`);
   await page
     .getByRole('region', { name: 'Its own configuration' })
@@ -208,19 +215,30 @@ test('[WF-001] [IAM-011] [IAM-030] someone who runs a track changes its own work
     }
   ).visibilityPolicies;
   expect(track.visibilityPolicyId).toBe(policies.find((p) => p.name === policy)?.id);
+  expect(askedGroups).toEqual([]);
 });
 
-test('[IAM-009] [IAM-011] a configuration administrator finds Visibility policies and manages a shared one', async ({
+test('[IAM-009] [IAM-011] a configuration administrator manages a shared visibility policy, and adds a person on a track’s own', async ({
   page,
 }, testInfo) => {
-  test.setTimeout(90_000);
+  test.setTimeout(120_000);
   const stamp = uniqueStamp(testInfo);
   const api = page.request;
 
   // A site administrator makes a person of the test's own a configuration administrator.
   await signInAs(api, ADMIN.email, ADMIN.password as string);
   const email = `setup.${stamp}@ownflow.test`.toLowerCase();
-  const userId = await person(api, email, `Setup ${stamp}`);
+  const name = `Setup ${stamp}`;
+  const userId = await person(api, email, name);
+  // A track with its own configuration, in which that person holds no role.
+  const key = uniqueKey('OV', testInfo);
+  const trackId = (
+    await ok<{ track: { id: number } }>(
+      api.post(`${BASE}/api/v1/tracks`, {
+        data: { key, name: `Own levels ${stamp}`, mode: 'local', type: 'business' },
+      }),
+    )
+  ).track.id;
   const { grant } = await ok<{ grant: { id: number } }>(
     api.post(`${BASE}/api/v1/global-grants`, {
       data: { permission: 'configuration_admin', grantee: 'user', userId },
@@ -266,6 +284,32 @@ test('[IAM-009] [IAM-011] a configuration administrator finds Visibility policie
       .click();
     await expect(page.getByText(`Policy ${policy} was deleted.`)).toBeVisible();
     await expect(page.getByRole('region', { name: policy })).toHaveCount(0);
+
+    // The track's own page: they administer it without being able to browse it, so a person is
+    // found among everyone on the site, as the server lets them add anyone.
+    await visit(page, `#/manage/tracks/${trackId}/visibility-policies`);
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Visibility policies' }),
+    ).toBeVisible();
+    const own = `Counsel only ${stamp}`;
+    await page.getByRole('button', { name: 'New visibility policy' }).click();
+    const addOwn = page.getByRole('form', { name: 'Add a visibility policy' });
+    await addOwn.getByLabel('Policy name').fill(own);
+    await addOwn.getByRole('button', { name: 'Add a visibility policy' }).click();
+    const ownPanel = page.getByRole('region', { name: own });
+    await expect(ownPanel).toBeVisible();
+    const ownLevel = ownPanel.getByRole('form', { name: `Add a level to ${own}` });
+    await ownLevel.getByLabel('Level name').fill('Counsel');
+    await ownLevel.getByRole('button', { name: 'Add a level' }).click();
+    await expect(page.getByText('Level Counsel was added.')).toBeVisible();
+    const member = ownPanel.getByRole('form', { name: 'Add a member to Counsel' });
+    await member.getByLabel('Who').selectOption({ label: 'A person' });
+    await member.getByLabel('Find a person').fill(name);
+    await expect(member.getByLabel('Person', { exact: true })).toHaveValue(String(userId));
+    await member.getByRole('button', { name: 'Add' }).click();
+    await expect(page.getByText(`${name} joined Counsel.`)).toBeVisible();
+    expect(await seriousAxeViolations(page)).toEqual([]);
+    expect(await sideways(page)).toEqual([]);
   } finally {
     await signInAs(api, ADMIN.email, ADMIN.password as string);
     await api.delete(`${BASE}/api/v1/global-grants/${grant.id}`);

@@ -2,9 +2,11 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { ADMIN, CONFIG_ADMIN, MEMBER, TRACK_ADMIN } from '../admin/fixtures';
+import { ApiError } from '../api/client';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
 import { type Session, SessionProvider } from '../session/SessionProvider';
+import type { ScopeTrack } from '../sets/trackScope';
 import { visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
 import { PermissionExplainerPage } from './PermissionExplainerPage';
@@ -15,8 +17,8 @@ function renderPage(
   session: Session = ADMIN,
   locale: Locale = 'en',
   trackId: number | null = null,
+  client: ReturnType<typeof fakeVisibilityClient> = fakeVisibilityClient(),
 ) {
-  const client = fakeVisibilityClient();
   render(
     <I18nProvider locale={locale}>
       <SessionProvider session={session}>
@@ -326,21 +328,59 @@ describe('a local-mode track’s own visibility policies (T-322, T-163a’s patt
     expect(within(policy).getByText('Used by OPS')).toBeVisible();
   });
 
-  it('[IAM-011] offers no group to someone who may not read the groups', async () => {
-    const client = { ...fakeVisibilityClient(), groups: async () => [] };
-    render(
-      <I18nProvider locale="en">
-        <SessionProvider session={TRACK_ADMIN}>
-          <main>
-            <VisibilityPage client={client} trackId={4} />
-          </main>
-        </SessionProvider>
-      </I18nProvider>,
-    );
+  it('[IAM-011] never asks for the groups for someone who may not read them, nor offers one', async () => {
+    const user = userEvent.setup();
+    const base = fakeVisibilityClient();
+    let asked = 0;
+    const client = {
+      ...base,
+      groups: async () => {
+        asked += 1;
+        return base.groups();
+      },
+    };
+    renderPage(TRACK_ADMIN, 'en', 4, client);
     const form = await screen.findByRole('form', { name: 'Add a member to Responders' });
     const kinds = within(within(form).getByLabelText('Who')).getAllByRole('option');
     expect(kinds.map((o) => o.textContent)).not.toContain('A group');
     expect(kinds[0]).toHaveTextContent('A role');
+    // A change reads the page again, still without the administrators' list of groups.
+    await user.selectOptions(within(form).getByLabelText('Who'), 'The assignee');
+    await user.click(within(form).getByRole('button', { name: 'Add' }));
+    expect(await screen.findByText('The assignee joined Responders.')).toBeInTheDocument();
+    expect(asked).toBe(0);
+  });
+
+  it('[IAM-009] [IAM-011] a configuration administrator finds roles, groups and people among the site’s', async () => {
+    const user = userEvent.setup();
+    const base = fakeVisibilityClient();
+    // As the server answers someone who administers OPS but holds no role in it: the track's own
+    // lists of roles and of people need more than administering it.
+    const refused = () => new ApiError(404, { error: 'not_found' });
+    const client = {
+      ...base,
+      roles: async (track: ScopeTrack | null) => {
+        if (track !== null) throw refused();
+        return base.roles(null);
+      },
+      findPeople: async (query: string, track: ScopeTrack | null) => {
+        if (track !== null) throw refused();
+        return base.findPeople(query, null);
+      },
+    };
+    renderPage(CONFIG_ADMIN, 'en', 4, client);
+    const form = await screen.findByRole('form', { name: 'Add a member to Responders' });
+    const kinds = within(within(form).getByLabelText('Who')).getAllByRole('option');
+    expect(kinds.slice(0, 3).map((o) => o.textContent)).toEqual(['A role', 'A group', 'A person']);
+    await user.selectOptions(within(form).getByLabelText('Who'), 'A person');
+    await user.type(within(form).getByLabelText('Find a person'), 'sam');
+    expect(await within(form).findByRole('option', { name: 'Sam Rivera' })).toBeInTheDocument();
+    await user.click(within(form).getByRole('button', { name: 'Add' }));
+    expect(await screen.findByText('Sam Rivera joined Responders.')).toBeInTheDocument();
+    expect(base.calls.find((c) => c.action === 'addMember')?.args[2]).toEqual({
+      grantee: 'user',
+      userId: 7,
+    });
   });
 
   it('[IAM-030] someone who runs tracks chooses one with its own configuration', async () => {
