@@ -22,7 +22,24 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: Administration pages for what was API-only, wave 1 (2026-11-16, Windows)
+### Latest: Administration controls beyond the UI-T21 list (2026-11-16, Windows)
+
+On `main` at `f0239053` after a full gate (10,380 tests, 315 e2e). No migration (the next is 0114).
+
+- T-322 (T-155): `configuration/DeleteTrack.tsx` (Delete track, a DangerAction, to the trash; refusals
+  re-read the list); Which sets a track uses chooses a shared-mode track's access policy and type set
+  (`TypeMapping` from `sets/TypeSetForm.tsx` asks where tickets go); `WorkflowMapsPage` and
+  `VisibilityPage` take a `trackId` for a local-mode track's own map and policies
+  (`trackVisibilityClient` reads only what the viewer may read); `sets/OwnTypesSection.tsx` and the Fields
+  page in track scope; `labels/LabelsPage.tsx` with the new `GET /api/v1/labels/usage` (site and
+  configuration administrators; counts include trashed tickets).
+- `fields/client.ts`: `findGroups` searches the site's groups for administrators; people who only run a
+  track use `GET /fields/:id/groups`.
+- Still API-only: a local-mode track's own access policy (the page says so). T-323 (people, second
+  factors, own token, releases) and T-321 (sharing, the backup schedule) wait for the Mac's T-359.
+- Next for Windows: T-327 (story tests never ran axe; about 35 stories fail with it on), then T-325.
+
+### Earlier: Administration pages for what was API-only, wave 1 (2026-11-16, Windows)
 
 On `main` at `fa27710c` after a full gate (10,234 tests, 300 e2e). No migration of its own (wave 21 used 0113; the next is 0114).
 
