@@ -228,6 +228,47 @@ function TypeOrder({
 }
 
 /**
+ * A refusal of a type set change (`409 type_in_use`): the dropped types the change left without a
+ * target whose tickets still need one, and how many tickets those are together.
+ */
+export interface TypesInUse {
+  typeIds: number[];
+  tickets: number;
+}
+
+/**
+ * How many tickets the given types hold, from the counts of every refusal so far: each refusal
+ * counts the types it names together, so a type is known alone once a refusal leaves it the only
+ * one not known, and a group of types once a refusal names exactly the ones not yet known. Null
+ * when the refusals do not tell.
+ */
+export function ticketsOf(refusals: readonly TypesInUse[], typeIds: readonly number[]) {
+  const known = new Map<number, number>();
+  const unknownOf = (ids: readonly number[]) => ids.filter((id) => !known.has(id));
+  const knownSum = (ids: readonly number[]) => ids.reduce((n, id) => n + (known.get(id) ?? 0), 0);
+  for (let found = true; found; ) {
+    found = false;
+    for (const refusal of refusals) {
+      const [alone, ...more] = unknownOf(refusal.typeIds);
+      if (alone !== undefined && more.length === 0) {
+        known.set(alone, refusal.tickets - knownSum(refusal.typeIds));
+        found = true;
+      }
+    }
+  }
+  let total = knownSum(typeIds);
+  let rest = unknownOf(typeIds);
+  // The newest refusal first: it counted the tickets as they are now.
+  for (const refusal of [...refusals].reverse()) {
+    const group = unknownOf(refusal.typeIds);
+    if (group.length === 0 || !group.every((id) => rest.includes(id))) continue;
+    total += refusal.tickets - knownSum(refusal.typeIds);
+    rest = rest.filter((id) => !group.includes(id));
+  }
+  return rest.length === 0 ? total : null;
+}
+
+/**
  * Where the tickets of each dropped type go (CORE-005 (2)), once the server has said that tickets
  * still have them (`type_in_use`): a kept type at the same level, or why there is none. The first
  * choice takes the keyboard when the question appears.
@@ -242,8 +283,8 @@ export function TypeMapping({
 }: {
   /** The dropped types whose tickets need another type. */
   dropped: number[];
-  /** How many tickets that is, as the server counted them. */
-  tickets: number;
+  /** How many tickets that is, as the server counted them; null when its counts do not tell. */
+  tickets: number | null;
   types: TypeChoice[];
   kept: number[];
   mapping: Readonly<Record<string, number>>;
@@ -269,7 +310,9 @@ export function TypeMapping({
   return (
     <div className="people-inline">
       <p id={`${id}-intro`} className="page-note">
-        {t('admin.sets.mappingIntro', { tickets })}
+        {tickets === null
+          ? t('admin.sets.mappingIntroUncounted')
+          : t('admin.sets.mappingIntro', { tickets })}
       </p>
       <fieldset className="sets-choices" aria-describedby={`${id}-intro`}>
         <legend>{t('admin.sets.mapping')}</legend>

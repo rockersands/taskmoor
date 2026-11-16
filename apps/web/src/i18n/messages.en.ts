@@ -3619,6 +3619,11 @@ export const messagesEn = {
     '{name} was saved; {tickets, plural, one {# ticket took another type} other {# tickets took another type}}.',
   'admin.sets.problem.mapping':
     'Each type you drop needs a type of its own level that the set keeps.',
+  // When the server's counts do not tell how many tickets the dropped types hold (T-320).
+  'admin.sets.mappingIntroUncounted':
+    'Tickets in the tracks that use this set have a type the set would drop. Choose the type they take, at the same level, then save again.',
+  'admin.sets.savedMappedUncounted':
+    '{name} was saved; the tickets of the types you dropped took another type.',
   'admin.sets.problem.defaultRequired':
     'Every kind of track has a default set: tick it on another set instead.',
   'admin.sets.problem.other': 'That did not work. Try again in a moment.',

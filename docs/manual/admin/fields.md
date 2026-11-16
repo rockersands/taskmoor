@@ -311,8 +311,11 @@ Dropping a type that tickets in the set's tracks still have is refused at first 
 and the set asks, under **Tickets of the types you drop**, which type each dropped type's tickets
 take: one the set keeps, at the same level. **Save the set** again and the tickets change type
 with the set, in one change in each ticket's history; a ticket whose status the new type's
-workflow lacks takes that workflow's initial status. When the set keeps no type at that level it
-says so: keep the type, or add one of that level. Through the API, give `ticketTypeMapping` from
+workflow lacks takes that workflow's initial status. A save that gives some dropped types a
+target and not others, or drops another type meanwhile, is refused again for the rest; the
+question keeps every dropped type with the choices made so far, until the set is saved. When the
+set keeps no type at that level it says so: keep the type, or add one of that level. Through the
+API, give `ticketTypeMapping` from
 each dropped type's id to the kept type.
 
 ## Field rules

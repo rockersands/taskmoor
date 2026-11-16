@@ -21,7 +21,13 @@ import {
   type TypeSet,
   type TypeSetChange,
 } from './client';
-import { TypeMapping, type TypeSetDraft, TypeSetFields } from './TypeSetForm';
+import {
+  TypeMapping,
+  type TypeSetDraft,
+  TypeSetFields,
+  type TypesInUse,
+  ticketsOf,
+} from './TypeSetForm';
 import {
   ownLayoutsHref,
   ownSetsHref,
@@ -417,11 +423,17 @@ function TypeSetPanel({
   const t = useT();
   const shared = set.trackId === null;
   const [draft, setDraft] = useState<TypeSetDraft>(() => draftOf(set));
-  /** The dropped types whose tickets need another type, once the server has said so. */
-  const [inUse, setInUse] = useState<{ typeIds: number[]; tickets: number } | null>(null);
+  /**
+   * Each refusal since the last save of the dropped types whose tickets need another type. A
+   * refusal names only those the change left without a target, so the question keeps every type
+   * any refusal named: one mapped before stays, with its choice, until the set is saved.
+   */
+  const [refusals, setRefusals] = useState<TypesInUse[]>([]);
   const [mapping, setMapping] = useState<Record<string, number>>({});
   // A type ticked again is no longer dropped: its tickets keep it.
-  const dropped = (inUse?.typeIds ?? []).filter((id) => !draft.ticketTypeIds.includes(id));
+  const dropped = [...new Set(refusals.flatMap((r) => r.typeIds))].filter(
+    (id) => !draft.ticketTypeIds.includes(id),
+  );
   return (
     <form
       className="people-panel"
@@ -446,18 +458,25 @@ function TypeSetPanel({
         if (mapped.length > 0) change.ticketTypeMapping = Object.fromEntries(mapped);
         client.updateTypeSet(set.id, change).then(
           (saved) => {
-            setInUse(null);
+            setRefusals([]);
             setMapping({});
+            const moved = ticketsOf(
+              refusals,
+              mapped.map(([from]) => Number(from)),
+            );
             said(
-              mapped.length > 0 && inUse
-                ? t('admin.sets.savedMapped', { name: saved.name, tickets: inUse.tickets })
-                : t('admin.sets.saved', { name: saved.name }),
+              mapped.length === 0
+                ? t('admin.sets.saved', { name: saved.name })
+                : moved === null
+                  ? t('admin.sets.savedMappedUncounted', { name: saved.name })
+                  : t('admin.sets.savedMapped', { name: saved.name, tickets: moved }),
             );
           },
           (error) => {
             const body = error instanceof ApiError ? (error.body as InUse | null) : null;
             if (body?.error === 'type_in_use') {
-              setInUse({ typeIds: body.ticketTypeIds ?? [], tickets: body.ticketCount ?? 0 });
+              const refusal = { typeIds: body.ticketTypeIds ?? [], tickets: body.ticketCount ?? 0 };
+              setRefusals((before) => [...before, refusal]);
             }
             failed(error);
           },
@@ -470,10 +489,10 @@ function TypeSetPanel({
         onChange={setDraft}
         fixedKinds={shared ? set.defaultFor : null}
       />
-      {dropped.length > 0 && inUse && (
+      {dropped.length > 0 && (
         <TypeMapping
           dropped={dropped}
-          tickets={inUse.tickets}
+          tickets={ticketsOf(refusals, dropped)}
           types={types}
           kept={draft.ticketTypeIds}
           mapping={mapping}

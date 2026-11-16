@@ -3720,6 +3720,11 @@ export const messagesEs: Record<MessageId, string> = {
     'Se guardó {name}; {tickets, plural, one {# ticket tomó otro tipo} other {# tickets tomaron otro tipo}}.',
   'admin.sets.problem.mapping':
     'Cada tipo que quitas necesita un tipo de su mismo nivel que el conjunto conserve.',
+  // When the server's counts do not tell how many tickets the dropped types hold (T-320).
+  'admin.sets.mappingIntroUncounted':
+    'Hay tickets de los tracks que usan este conjunto con un tipo que el conjunto quitaría. Elige el tipo que toman, del mismo nivel, y vuelve a guardar.',
+  'admin.sets.savedMappedUncounted':
+    'Se guardó {name}; los tickets de los tipos que quitaste tomaron otro tipo.',
   'admin.sets.problem.defaultRequired':
     'Cada clase de track tiene un conjunto por defecto: márcala en otro conjunto.',
   'admin.sets.problem.other': 'Eso no funcionó. Inténtalo de nuevo en un momento.',

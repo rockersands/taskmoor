@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { ADMIN, MEMBER, TRACK_ADMIN } from '../admin/fixtures';
@@ -234,6 +234,66 @@ describe('configuration set administration (M1-053)', () => {
       ['updateTypeSet', 1, { ticketTypeIds: [6, 7] }],
       ['updateTypeSet', 1, { ticketTypeIds: [6, 7], ticketTypeMapping: { '5': 6 } }],
     ]);
+  });
+
+  it('[CORE-005] (2) keeps a dropped type mapped before while another is mapped, and counts them all', async () => {
+    const user = userEvent.setup();
+    const client = renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Manage Software types' }));
+    const panel = screen.getByRole('form', { name: 'Settings of Software types' });
+    const save = () => user.click(within(panel).getByRole('button', { name: 'Save the set' }));
+    const mapping = () =>
+      within(panel).getByRole('group', { name: 'Tickets of the types you drop' });
+    await user.click(within(panel).getByLabelText('Bug'));
+    await user.click(within(panel).getByLabelText('Task'));
+    await save();
+    await screen.findByRole('alert');
+    expect(mapping()).toHaveAccessibleDescription(/^9 tickets in the tracks/);
+    // Only Bug's tickets are given a type: the server names Task alone the second time.
+    await user.selectOptions(within(mapping()).getByLabelText('Tickets of Bug become'), 'Story');
+    await save();
+    await waitFor(() => expect(client.calls).toHaveLength(2));
+    expect(within(mapping()).getByLabelText('Tickets of Bug become')).toHaveDisplayValue('Story');
+    expect(mapping()).toHaveAccessibleDescription(/^9 tickets in the tracks/);
+    await user.selectOptions(within(mapping()).getByLabelText('Tickets of Task become'), 'Story');
+    await save();
+    expect(
+      await screen.findByText('Software types was saved; 9 tickets took another type.'),
+    ).toBeInTheDocument();
+    expect(client.calls.map((c) => c.args[1])).toEqual([
+      // Task was the set's default type: with it dropped, the set has none.
+      { ticketTypeIds: [7], defaultTypeId: null },
+      { ticketTypeIds: [7], defaultTypeId: null, ticketTypeMapping: { '5': 7 } },
+      { ticketTypeIds: [7], defaultTypeId: null, ticketTypeMapping: { '5': 7, '6': 7 } },
+    ]);
+  });
+
+  it('[CORE-005] (2) a type dropped after the question appears joins it, keeping the earlier choice', async () => {
+    const user = userEvent.setup();
+    const client = renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Manage Software types' }));
+    const panel = screen.getByRole('form', { name: 'Settings of Software types' });
+    const save = () => user.click(within(panel).getByRole('button', { name: 'Save the set' }));
+    const mapping = () =>
+      within(panel).getByRole('group', { name: 'Tickets of the types you drop' });
+    await user.click(within(panel).getByLabelText('Bug'));
+    await save();
+    await user.selectOptions(await within(panel).findByLabelText('Tickets of Bug become'), 'Story');
+    await user.click(within(panel).getByLabelText('Task'));
+    await save();
+    await waitFor(() => expect(client.calls).toHaveLength(2));
+    expect(within(mapping()).getByLabelText('Tickets of Bug become')).toHaveDisplayValue('Story');
+    expect(mapping()).toHaveAccessibleDescription(/^9 tickets in the tracks/);
+    await user.selectOptions(within(mapping()).getByLabelText('Tickets of Task become'), 'Story');
+    await save();
+    expect(
+      await screen.findByText('Software types was saved; 9 tickets took another type.'),
+    ).toBeInTheDocument();
+    expect(client.calls.at(-1)?.args[1]).toEqual({
+      ticketTypeIds: [7],
+      defaultTypeId: null,
+      ticketTypeMapping: { '5': 7, '6': 7 },
+    });
   });
 
   it('[CORE-005] (2) says when the set keeps no type at a dropped type’s level, and forgets a type ticked again', async () => {
