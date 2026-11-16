@@ -57,7 +57,8 @@ included, is told only that it is for administrators: the labels are the whole s
 - **Merge**, or **Rename** when one label changes, asks first and says what will happen: the
   tickets that have them (at most as many as their counts add up to) get the new label in their
   place, once each. It cannot be undone. **Merge into …**, or **Rename … to …**, does it, and the
-  page says how many tickets changed.
+  page says how many tickets changed. Changing the ticks or the word while it asks puts the
+  question away: press **Merge** or **Rename** again to be asked about the merge as it is now.
 - Each ticket that changed records it in its history, as your change, and the labels merged away
   are no longer suggested.
 

@@ -184,6 +184,44 @@ describe('labels: merging and renaming (T-322)', () => {
     expect(within(mergeCard()).getByRole('button', { name: 'Rename' })).toBeDisabled();
   });
 
+  it('[CORE-017] puts the question away when the ticks or the word change, never asking about another merge', async () => {
+    const user = userEvent.setup();
+    const client = renderPage();
+    const question = () => within(mergeCard()).queryByRole('group');
+    await user.click(await within(listCard()).findByRole('checkbox', { name: 'fe' }));
+    const into = within(mergeCard()).getByLabelText('They become');
+    await user.type(into, 'frontend');
+    await user.click(within(mergeCard()).getByRole('button', { name: 'Rename' }));
+    expect(question()).toBeVisible();
+    // No tick left, nothing to merge: the question goes, and the first step waits.
+    await user.click(within(mergeCard()).getByRole('button', { name: 'Clear the ticks' }));
+    expect(question()).toBeNull();
+    expect(within(mergeCard()).getByRole('button', { name: 'Merge' })).toBeDisabled();
+
+    // Two words: the same, and the hint under the field says why.
+    await user.click(box('fe'));
+    await user.click(within(mergeCard()).getByRole('button', { name: 'Rename' }));
+    expect(question()).toBeVisible();
+    await user.type(into, ' end');
+    expect(question()).toBeNull();
+    expect(within(mergeCard()).getByRole('button', { name: 'Rename' })).toBeDisabled();
+    expect(into).toHaveAccessibleDescription(
+      'A label is one word of up to 255 characters, with no spaces.',
+    );
+
+    // Another tick: the question asks again, about the merge as it is now.
+    await user.clear(into);
+    await user.type(into, 'frontend');
+    await user.click(within(mergeCard()).getByRole('button', { name: 'Rename' }));
+    await user.click(box('FE'));
+    expect(question()).toBeNull();
+    await user.click(within(mergeCard()).getByRole('button', { name: 'Merge' }));
+    expect(
+      within(mergeCard()).getByRole('group', { name: /^Merge fe and FE into frontend\?/ }),
+    ).toBeVisible();
+    expect(client.calls.filter((c) => c.action === 'merge')).toEqual([]);
+  });
+
   it('[CORE-017] keeps the ticks while the search changes, and clears them on request', async () => {
     const user = userEvent.setup();
     renderPage();

@@ -65,6 +65,17 @@ export function LabelsPage({ client = labelsClient }: LabelsPageProps) {
   const [problem, setProblem] = useState<string | null>(null);
   /** The row whose box takes the focus once more labels are drawn, by its place in the list. */
   const [focusAt, setFocusAt] = useState<number | null>(null);
+  /**
+   * Counts the changes to the ticks and the word. The merge's question asks about the merge as it
+   * was when it opened, so any change puts it away (it is drawn again under a new key), rather
+   * than leaving a question about another merge, or none, whose answer would do nothing. While a
+   * merge runs the question stays, waiting, so it cannot be sent twice.
+   */
+  const [edits, setEdits] = useState(0);
+  const running = useRef(false);
+  const edited = () => {
+    if (!running.current) setEdits((n) => n + 1);
+  };
   // Answers that come back after a newer request are dropped.
   const reading = useRef(0);
 
@@ -135,7 +146,8 @@ export function LabelsPage({ client = labelsClient }: LabelsPageProps) {
     }
   };
 
-  const choose = (label: LabelUsage, on: boolean) =>
+  const choose = (label: LabelUsage, on: boolean) => {
+    edited();
     setChosen((now) =>
       on
         ? now.some((c) => c.name === label.name)
@@ -143,6 +155,7 @@ export function LabelsPage({ client = labelsClient }: LabelsPageProps) {
           : [...now, label]
         : now.filter((c) => c.name !== label.name),
     );
+  };
 
   const target = into.trim();
   // What the server refuses to become, besides nothing: a space or a control character inside,
@@ -175,10 +188,11 @@ export function LabelsPage({ client = labelsClient }: LabelsPageProps) {
   };
 
   const merge = async () => {
-    // The word may have changed while the question was open.
+    // Never asked: a change to the ticks or the word puts the question away (`edits`).
     if (!ready) throw new Error('not ready');
     setProblem(null);
     let done: MergedLabels;
+    running.current = true;
     try {
       done = await client.merge(
         merging.map((c) => c.name),
@@ -190,6 +204,8 @@ export function LabelsPage({ client = labelsClient }: LabelsPageProps) {
         setProblem(refusal(error));
       }
       throw error;
+    } finally {
+      running.current = false;
     }
     setChosen([]);
     setInto('');
@@ -247,7 +263,10 @@ export function LabelsPage({ client = labelsClient }: LabelsPageProps) {
                 value={into}
                 aria-invalid={notAWord || undefined}
                 aria-describedby={`${id}-into-hint`}
-                onChange={(event) => setInto(event.target.value)}
+                onChange={(event) => {
+                  edited();
+                  setInto(event.target.value);
+                }}
               />
               <p id={`${id}-into-hint`} className="form-hint">
                 {hint}
@@ -256,6 +275,7 @@ export function LabelsPage({ client = labelsClient }: LabelsPageProps) {
             <div className="form-actions">
               {/* Asks first and says what changes (D13): a merge cannot be undone. */}
               <DangerAction
+                key={edits}
                 label={single ? t('admin.labels.rename') : t('admin.labels.merge')}
                 outcome={
                   single
@@ -283,6 +303,7 @@ export function LabelsPage({ client = labelsClient }: LabelsPageProps) {
                   type="button"
                   className="button-secondary"
                   onClick={() => {
+                    edited();
                     setChosen([]);
                     // The button goes with the choice: the card's heading takes the focus.
                     mergeHeading.current?.focus();
