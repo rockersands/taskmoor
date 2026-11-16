@@ -3620,7 +3620,7 @@ export const messagesEn = {
   'admin.fields.title': 'Fields',
   'admin.fields.intro':
     'Custom fields add what tickets need to hold beyond the built-in ones. A field keeps its type; its options can change without touching tickets.',
-  'admin.fields.forbidden': 'Only administrators manage fields.',
+  'admin.fields.forbidden': 'Only site and configuration administrators manage fields.',
   'admin.fields.loading': 'Reading the fields…',
   'admin.fields.failed': 'The fields could not be read. Try again in a moment.',
   'admin.fields.none': 'There are no custom fields yet.',

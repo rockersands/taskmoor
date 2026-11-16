@@ -171,8 +171,9 @@ that a formula reads cannot be deleted until the formula changes.
 
 ### Fields of local-mode tracks
 
-A local-mode track's administrators add fields the track owns (`trackId` on create). Their
-contexts cover only that track, and nothing about them reaches another track. The guardrail
+A local-mode track's administrators add fields the track owns (`trackId` on create), through the
+REST API: the **Fields** page is for site and configuration administrators, and tells anyone else
+only that. Their contexts cover only that track, and nothing about them reaches another track. The guardrail
 **Custom fields per track** (700 by default) counts every field that reaches a track.
 
 ## Formula fields

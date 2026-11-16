@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { useNotSetupAdmin } from '../admin/access';
+import { useAdminAccess } from '../admin/access';
 import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
@@ -58,13 +58,18 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
   const descriptionId = useId();
   const typeId = useId();
   const multipleId = useId();
-  const notAdmin = useNotSetupAdmin();
-  const [state, setState] = useState<
+  const access = useAdminAccess();
+  // Everyone signed in reads the fields, the people who run a track included, but only site and
+  // configuration administrators change them here: a track's own fields are changed through the
+  // API, so the page refuses rather than offer controls the server turns down.
+  const notAdmin = access !== null && access !== 'site' && access !== 'setup';
+  const [loadState, setState] = useState<
     | { status: 'loading' }
     | { status: 'loaded'; fields: Field[] }
     | { status: 'failed' }
     | { status: 'forbidden' }
-  >(notAdmin ? { status: 'forbidden' } : { status: 'loading' });
+  >({ status: 'loading' });
+  const state = notAdmin ? ({ status: 'forbidden' } as const) : loadState;
   const [open, setOpen] = useState<number | null>(null);
   const creating = useNewForm();
   const [name, setName] = useState('');

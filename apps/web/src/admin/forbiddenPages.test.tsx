@@ -3,6 +3,8 @@ import type { ReactElement } from 'react';
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '../api/client';
 import { TrackSetsPage } from '../configuration/TrackSetsPage';
+import { FieldsAdminPage } from '../fields/FieldsAdminPage';
+import { fakeFieldsClient } from '../fields/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { fakeLayoutsClient } from '../layouts/fixtures';
 import { LayoutEditorPage } from '../layouts/LayoutEditorPage';
@@ -96,6 +98,27 @@ describe('a page someone may not use says only so (T-144)', () => {
       'Priorities',
       /^Only site and configuration administrators change priorities/,
     );
+  });
+
+  it.each([
+    ['a member', MEMBER],
+    ['someone who only runs tracks', TRACK_ADMIN],
+  ])('[NFR-005] Fields, for %s (T-320)', async (_, session) => {
+    // The list is readable to them, so the session decides: the page would otherwise offer
+    // changes to shared fields that the server refuses.
+    const container = open(<FieldsAdminPage client={fakeFieldsClient()} />, session);
+    await refusedOnly(
+      container,
+      'Fields',
+      /^Only site and configuration administrators manage fields/,
+    );
+    expect(screen.queryByRole('button', { name: 'New field' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Manage field/ })).toBeNull();
+  });
+
+  it('[NFR-005] a configuration administrator still manages fields (T-320)', async () => {
+    open(<FieldsAdminPage client={fakeFieldsClient()} />, CONFIG_ADMIN);
+    expect(await screen.findByRole('button', { name: 'Manage field Severity' })).toBeVisible();
   });
 
   it('[NFR-005] a configuration administrator still sees what Priorities is for', async () => {

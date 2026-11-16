@@ -3721,7 +3721,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.fields.title': 'Campos',
   'admin.fields.intro':
     'Los campos personalizados añaden lo que los tickets necesitan guardar además de los integrados. Un campo conserva su tipo; sus opciones pueden cambiar sin tocar los tickets.',
-  'admin.fields.forbidden': 'Solo los administradores gestionan los campos.',
+  'admin.fields.forbidden':
+    'Solo los administradores del sitio y de configuración gestionan los campos.',
   'admin.fields.loading': 'Leyendo los campos…',
   'admin.fields.failed': 'No se pudieron leer los campos. Inténtalo de nuevo en un momento.',
   'admin.fields.none': 'Aún no hay campos personalizados.',

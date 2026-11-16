@@ -201,6 +201,10 @@ already had:
   currency and percentage outputs too. **A choice list's display (dropdown, radio, checkboxes)
   stays API-only in 1.0:** the web app always shows a list, so a control would change nothing; the
   page leaves a stored one as it is, and the manual says it is kept for the API and imports.
+- **Who:** site and configuration administrators. Everyone signed in reads `GET /fields`, so the
+  session decides, as on Priorities and Ticket types: someone who only runs tracks sees only the
+  refusal, not controls on shared fields that the server refuses them and pickers that read lists
+  only administrators may read.
 - **Not here:** a local-mode track's own fields (later, with its own types) and merging labels.
 - **Tests:** page, section, option list, defaults, number format and formula words tests; a story
   per component with axe in both skins; `e2e/fields-admin.spec.ts` on desktop and mobile.
