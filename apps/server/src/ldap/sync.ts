@@ -114,6 +114,8 @@ interface Context {
 
 /** People or groups per transaction. */
 const CHUNK = 500;
+/** People per check of the create-tracks grant at the end of a run. */
+const LAPSED_CHUNK = 5000;
 const MAX_WARNINGS = 200;
 /** Listed member ids per event; the counts are complete. */
 const EVENT_IDS = 1000;
@@ -1476,11 +1478,19 @@ export async function runSync(
   await db.transaction().execute(async (trx) => {
     // The grant to create tracks that came with a role goes with the last one (T-087b): checked
     // once every change of the run is in, so someone who moved to another group that runs a
-    // track keeps it. A failed run's changes that went in count as well.
-    const lapsed =
-      directory && leftGroups.size > 0
-        ? await dropLapsedCreateTracks(trx, directory.workspace_id, [...leftGroups])
-        : [];
+    // track keeps it. A failed run's changes that went in count as well. In slices, so a run that
+    // empties a large group stays within a statement's parameters.
+    const lapsed: LapsedCreateTracks[] = [];
+    const left = [...leftGroups].sort((a, b) => a - b);
+    for (let i = 0; directory && i < left.length; i += LAPSED_CHUNK) {
+      lapsed.push(
+        ...(await dropLapsedCreateTracks(
+          trx,
+          directory.workspace_id,
+          left.slice(i, i + LAPSED_CHUNK),
+        )),
+      );
+    }
     await trx
       .updateTable('ldap_sync_run')
       .set({
