@@ -32,11 +32,18 @@ const meta = {
   component: TrackPeoplePage,
   args: { trackId: 3, client: fakeTrackPeopleClient() },
   decorators: [
-    (Story) => (
+    // The app's own main around a track's pages. The invitation page is not drawn inside the app's
+    // frame but in a frame of its own with its own main (App.tsx), so its stories go without
+    // this one: a main inside a main is two main landmarks (axe landmark-no-duplicate-main, T-327).
+    (Story, context) => (
       <SessionProvider session={MEMBER}>
-        <main>
+        {context.parameters.ownFrame ? (
           <Story />
-        </main>
+        ) : (
+          <main>
+            <Story />
+          </main>
+        )}
       </SessionProvider>
     ),
   ],
@@ -359,6 +366,7 @@ const anonymous = (children: React.ReactNode) => (
   <SessionProvider session={{ status: 'anonymous' }}>{children}</SessionProvider>
 );
 const invited = {
+  parameters: { ownFrame: true },
   beforeEach: () => {
     window.sessionStorage.clear();
     window.location.hash = '#/invite?token=story-token';
