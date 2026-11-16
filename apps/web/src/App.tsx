@@ -224,6 +224,8 @@ const OWN_NOTIFICATION_POLICIES = /^#\/manage\/tracks\/(\d{1,10})\/notification-
 /** A local-mode track's own workflow map and visibility policies, the same way (T-322). */
 const OWN_WORKFLOW_MAP = /^#\/manage\/tracks\/(\d{1,10})\/workflow-map(?:[/?]|$)/;
 const OWN_VISIBILITY = /^#\/manage\/tracks\/(\d{1,10})\/visibility-policies(?:[/?]|$)/;
+/** A local-mode track's own fields (T-322), beside its own sets. */
+const OWN_FIELDS = /^#\/manage\/tracks\/(\d{1,10})\/fields(?:[/?]|$)/;
 const CREATE_TICKET = '#/create';
 const ADMIN_WORKFLOWS = '#/admin/workflows';
 const ADMIN_USERS = '#/admin/users';
@@ -783,6 +785,9 @@ function Pages() {
   } else if (OWN_VISIBILITY.test(hash)) {
     const trackId = Number(OWN_VISIBILITY.exec(hash)?.[1]);
     content = <VisibilityPage key={`${trackId}-visibility`} trackId={trackId} />;
+  } else if (OWN_FIELDS.test(hash)) {
+    const trackId = Number(OWN_FIELDS.exec(hash)?.[1]);
+    content = <FieldsAdminPage key={`${trackId}-fields`} trackId={trackId} />;
   } else if (isRoute(hash, ADMIN_USERS)) {
     content = <UsersPage />;
   } else if (isRoute(hash, ADMIN_GROUPS)) {

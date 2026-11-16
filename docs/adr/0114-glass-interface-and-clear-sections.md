@@ -252,6 +252,43 @@ already had:
 - **Tests:** page, section, option list, defaults, number format and formula words tests; a story
   per component with axe in both skins; `e2e/fields-admin.spec.ts` on desktop and mobile.
 
+**As built (T-322, 2026-11-16): a local-mode track's own ticket types and fields.** The user
+accepted that every gap beyond the UI-T21 list gets a web control in 1.0; these two were API-only
+for the people who run a track with its own configuration (spec 01a section 1.1). Web only, on
+routes the server already had, through the track-scope pattern of section 8 (`sets/trackScope.tsx`).
+
+- **Its own ticket types:** a card above the type set on the track's own **Configuration sets**
+  (`#/manage/tracks/<id>/configuration-sets`, `sets/OwnTypesSection.tsx`). New ticket type and
+  Manage take a name, a description, a level and an icon, with the Ticket types page's own
+  `IconPicker` and `LevelSelect`; each row says its level and whether the track's type set offers
+  it, since a type is offered only once it is ticked there. Delete type is a `DangerAction` (D13);
+  the refusals say which set holds it (untick it there first) or count its tickets, and the
+  keyboard goes to the card's heading once the row goes. No preview of a level change:
+  `GET /hierarchy-levels/impact` counts tickets across tracks and is for administrators, so the
+  server's `breaks_tickets` refusal gives the counts instead. Levels stay the site's.
+- **Its own fields:** the Fields page in track scope, `#/manage/tracks/<id>/fields`, linked under
+  **Its own configuration** on the track's Manage page. It lists only the fields the track owns
+  (the shared ones that reach it still feed a formula's help and check), New field sends
+  `trackId`, and Manage is the same `FieldPanel`, `ContextsSection`, `OptionList` and
+  `FormulaEditor`. The track's name is above the title, the breadcrumb goes through the track, and
+  the line under the title leads back to its Manage page.
+- **Pickers read only what the person may read** (`trackFieldsClient`): someone who runs the track
+  gets the track's roles (`GET /tracks/:id/roles`), people who may be mentioned in it
+  (`GET /people/mentionable?track=`) and no list of groups, so a person field offers anyone or a
+  track role's holders; a group limit chosen before stays, named "the group chosen before". A
+  group field's default finds groups through the field (`GET /fields/:id/groups`), on the shared
+  page too. Site and configuration administrators on a track's page keep the site's lists, which
+  the track's own may refuse them (a configuration administrator need not run the track).
+- **Who sees the shared Fields page:** it now follows section 8 as Configuration sets does:
+  someone who runs tracks but is no administrator gets links to the tracks they run with their own
+  configuration, not the refusal of T-320, since the page no longer offers them controls on shared
+  fields; a member still gets only the refusal, which now says where a track's own fields are.
+- **Tests:** `ConfigurationSetsPage.test.tsx` and `FieldsAdminPage.test.tsx` cases for the track's
+  page (sources included), `forbiddenPages.test.tsx`, stories with axe in both skins
+  (`OwnTypesSection.stories.tsx`, the Fields page's track stories), and
+  `e2e/track-own-types-fields.spec.ts` on the desktop and mobile projects, as someone who runs the
+  track and is no administrator. The page sweep visits the new page.
+
 **As built (T-320, UI-T21 wave 1, 2026-11-16): status mapping, groups, service accounts and field
 grantees.** Four controls the manual marked as API-only are on their existing pages; no page or
 route is new.

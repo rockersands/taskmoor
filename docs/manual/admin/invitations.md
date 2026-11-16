@@ -26,9 +26,10 @@ you run that is not archived, however many there are. A track's page shows:
 - **Invitations waiting**;
 - for a track with its own configuration, **Its own configuration**: links to the track's own
   **Layout sets** (where fields appear on its forms), **Configuration sets** (its ticket types
-  and field rules), **Notification policies** (who hears of which changes in it), **Workflow
-  map** (which workflow each of its ticket types follows) and **Visibility policies** (which of
-  its tickets only some people see). See [A track's own sets](fields.md#a-tracks-own-sets).
+  and field rules), **Fields** (the custom fields it owns), **Notification policies** (who hears
+  of which changes in it), **Workflow map** (which workflow each of its ticket types follows) and
+  **Visibility policies** (which of its tickets only some people see). See [A track's own
+  sets](fields.md#a-tracks-own-sets).
 - **Notices to followers**: **Tell followers when a checklist changes**, off until you tick it. It
   saves at once and says so under the box, or says there why not and goes back. The followers of the track's tickets then hear of changes to
   checklists and their items, in their inbox and by email as each of them chooses, never of their

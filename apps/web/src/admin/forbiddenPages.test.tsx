@@ -105,13 +105,11 @@ describe('a page someone may not use says only so (T-144)', () => {
     );
   });
 
-  it.each([
-    ['a member', MEMBER],
-    ['someone who only runs tracks', TRACK_ADMIN],
-  ])('[NFR-005] Fields, for %s (T-320)', async (_, session) => {
+  it('[NFR-005] Fields, for a member (T-320)', async () => {
     // The list is readable to them, so the session decides: the page would otherwise offer
-    // changes to shared fields that the server refuses.
-    const container = open(<FieldsAdminPage client={fakeFieldsClient()} />, session);
+    // changes to shared fields that the server refuses. Someone who runs tracks is offered the
+    // tracks they run with their own configuration instead (T-322, FieldsAdminPage.test.tsx).
+    const container = open(<FieldsAdminPage client={fakeFieldsClient()} />, MEMBER);
     await refusedOnly(
       container,
       'Fields',
@@ -119,6 +117,16 @@ describe('a page someone may not use says only so (T-144)', () => {
     );
     expect(screen.queryByRole('button', { name: 'New field' })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Manage field/ })).toBeNull();
+  });
+
+  it('[NFR-005] a track’s own Fields page, for a member who runs no track (T-322)', async () => {
+    const container = open(<FieldsAdminPage client={fakeFieldsClient()} trackId={4} />, MEMBER);
+    await refusedOnly(
+      container,
+      'Fields',
+      /^Only site and configuration administrators manage fields/,
+    );
+    expect(screen.queryByRole('button', { name: 'New field' })).toBeNull();
   });
 
   it('[NFR-005] a configuration administrator still manages fields (T-320)', async () => {

@@ -3631,7 +3631,8 @@ export const messagesEn = {
   'admin.fields.title': 'Fields',
   'admin.fields.intro':
     'Custom fields add what tickets need to hold beyond the built-in ones. A field keeps its type; its options can change without touching tickets.',
-  'admin.fields.forbidden': 'Only site and configuration administrators manage fields.',
+  'admin.fields.forbidden':
+    'Only site and configuration administrators manage fields. The people who run a track with its own configuration manage its own fields from the track’s page.',
   'admin.fields.loading': 'Reading the fields…',
   'admin.fields.failed': 'The fields could not be read. Try again in a moment.',
   'admin.fields.none': 'There are no custom fields yet.',
@@ -7639,6 +7640,37 @@ export const messagesEn = {
   'ownSets.archived': '{key} is archived: its configuration changes once it is restored.',
   'ownSets.useHint':
     'From then on the track follows this set. Only site and configuration administrators can give it a shared set again.',
+  // A local-mode track's own ticket types and fields, on its own pages (T-322).
+  'ownTypes.title': 'Its own ticket types',
+  'ownTypes.intro':
+    'Ticket types only {key} has. Its type set below offers one once it is ticked there.',
+  'ownTypes.listOf': 'Ticket types of {key}',
+  'ownTypes.none': '{key} has no ticket type of its own yet.',
+  'ownTypes.noneBody': 'Add one for work only this track does. The shared types stay as they are.',
+  'ownTypes.summary':
+    '{level} level · {offered, select, yes {in its type set} other {not in its type set yet}}',
+  'ownTypes.added': '{name} was added. Tick it in the type set to offer it.',
+  'ownTypes.levelHint':
+    'Another level is refused while tickets of this type would lose the parent they need, and the page says how many.',
+  'ownTypes.problem.inTypeSet': '{name} is in {sets}: untick it there and save the set first.',
+  'ownFields.about':
+    'This track has its own configuration: the fields it owns cover it alone, and other tracks are not affected. The shared fields that reach it are for site and configuration administrators.',
+  'ownFields.intro':
+    'The fields this track owns. Shared fields are for site and configuration administrators.',
+  'ownFields.none': '{key} has no field of its own yet.',
+  'ownFields.noneBody':
+    'A field of its own holds what only this track’s tickets need, and nothing about it reaches another track.',
+  'ownFields.choose.intro':
+    'You run these tracks with their own configuration. Choose one to manage its own fields.',
+  'ownFields.choose.none':
+    'None of the tracks you run has its own configuration. Their fields are shared, and site and configuration administrators change them.',
+  'ownFields.choose.open': 'Fields of {key} · {name}',
+  'ownFields.scope.shared':
+    '{key} uses shared configuration, so its fields are shared, and site and configuration administrators change them.',
+  'admin.fields.contexts.groupChosen': 'The group chosen before',
+  'admin.fields.contexts.peopleChosenGroup':
+    'People to choose from: the members of the group chosen before',
+  'trackPeople.fieldsLink': 'Fields: the custom fields it owns',
   'layouts.loading': 'Reading the layouts…',
   'layouts.failed': 'The layout sets could not be read. Try again in a moment.',
   'layouts.setFailed': 'This layout set could not be read. Try again in a moment.',

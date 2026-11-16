@@ -374,8 +374,12 @@ describe('a local-mode track’s own configuration sets, for whoever runs the tr
     const client = renderOwn(4);
     expect(await screen.findByText('OPS · Operations')).toBeVisible();
     await user.click(await screen.findByRole('button', { name: 'Manage Operations types' }));
-    // Neither the shared type sets nor another track's.
-    expect(manageButtons()).toEqual(['Manage Operations types', 'Manage Ops rules']);
+    // Neither the shared type sets nor another track's; its own ticket type comes first (T-322).
+    expect(manageButtons()).toEqual([
+      'Manage ticket type Runbook',
+      'Manage Operations types',
+      'Manage Ops rules',
+    ]);
     expect(screen.queryByRole('form', { name: 'Add a type set' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'New type set' })).toBeNull();
     expect(
@@ -582,7 +586,182 @@ describe('a local-mode track’s own configuration sets, for whoever runs the tr
     renderOwn(4, { locale: 'en-XA' });
     const main = screen.getByRole('main');
     await within(main).findAllByRole('listitem');
-    const data = new Set(['Operations types', 'Ops rules']);
+    const data = new Set([
+      'Operations types',
+      'Ops rules',
+      'Runbook',
+      'What to do when an alarm goes off.',
+    ]);
     expect(untranslated(visibleTexts(main)).filter((t) => !data.has(t))).toEqual([]);
+  });
+});
+
+describe('a local-mode track’s own ticket types, on its own configuration sets (T-322)', () => {
+  function renderOwn(
+    options: { session?: Session; locale?: Locale; trackId?: number | null } = {},
+  ) {
+    const client = fakeSetsClient();
+    render(
+      <I18nProvider locale={options.locale ?? 'en'}>
+        <SessionProvider session={options.session ?? TRACK_ADMIN}>
+          <main>
+            <ConfigurationSetsPage
+              client={client}
+              trackId={options.trackId === undefined ? 4 : options.trackId}
+            />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    return client;
+  }
+
+  it('[CORE-005] [CORE-003] adds a type the track owns, offers it in its type set, changes it and deletes it', async () => {
+    const user = userEvent.setup();
+    const client = renderOwn();
+    const own = await screen.findByRole('region', { name: 'Its own ticket types' });
+    // Its own type says whether its type set offers it.
+    const listed = within(own).getByRole('list', { name: 'Ticket types of OPS' });
+    expect(within(listed).getByText('Standard level · in its type set')).toBeVisible();
+    expect(within(listed).getByText('What to do when an alarm goes off.')).toBeVisible();
+
+    const opener = within(own).getByRole('button', { name: 'New ticket type' });
+    await user.click(opener);
+    const form = within(own).getByRole('form', { name: 'Add a ticket type' });
+    await user.type(within(form).getByLabelText('Ticket type name'), 'Alarm');
+    await user.type(within(form).getByLabelText('Description'), 'Something paged us.');
+    expect(within(form).getByLabelText('Level')).toHaveDisplayValue('Standard');
+    await user.click(within(form).getByLabelText('Bug'));
+    await user.click(within(form).getByRole('button', { name: 'Add a ticket type' }));
+    expect(
+      await screen.findByText('Alarm was added. Tick it in the type set to offer it.'),
+    ).toBeInTheDocument();
+    expect(opener).toHaveFocus();
+    const alarm = (
+      await within(own).findByRole('button', { name: 'Manage ticket type Alarm' })
+    ).closest('li') as HTMLElement;
+    expect(within(alarm).getByText('Standard level · not in its type set yet')).toBeVisible();
+
+    // The type set offers it once it is ticked there.
+    await user.click(screen.getByRole('button', { name: 'Manage Operations types' }));
+    const set = screen.getByRole('form', { name: 'Settings of Operations types' });
+    await user.click(within(set).getByLabelText('Alarm'));
+    await user.click(within(set).getByRole('button', { name: 'Save the set' }));
+    expect(await screen.findByText('Operations types was saved.')).toBeInTheDocument();
+    expect(await within(alarm).findByText('Standard level · in its type set')).toBeVisible();
+
+    // Renamed and put at another level: the keyboard stays on Save.
+    await user.click(within(alarm).getByRole('button', { name: 'Manage ticket type Alarm' }));
+    const panel = within(alarm).getByRole('form', { name: 'Settings of Alarm' });
+    const name = within(panel).getByLabelText('Ticket type name');
+    await user.clear(name);
+    await user.type(name, 'Page');
+    await user.selectOptions(within(panel).getByLabelText('Level'), 'Outcome');
+    const save = within(panel).getByRole('button', { name: 'Save the type' });
+    await user.click(save);
+    expect(await screen.findByText('Page was saved.')).toBeInTheDocument();
+    expect(await within(alarm).findByText('Outcome level · in its type set')).toBeVisible();
+    expect(save).toHaveFocus();
+
+    // Deleting it is refused while the type set holds it, then done once it is unticked.
+    await user.click(within(panel).getByRole('button', { name: 'Delete ticket type Page' }));
+    const question = within(panel).getByRole('group', {
+      name: 'Delete Page? Nothing can use it afterwards, and this cannot be undone.',
+    });
+    await user.click(within(question).getByRole('button', { name: 'Delete ticket type Page' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Page is in Operations types: untick it there and save the set first.',
+    );
+    await user.click(within(question).getByRole('button', { name: 'Cancel' }));
+    await user.click(within(set).getByLabelText('Page'));
+    await user.click(within(set).getByRole('button', { name: 'Save the set' }));
+    expect(await screen.findByText('Operations types was saved.')).toBeInTheDocument();
+    await user.click(within(panel).getByRole('button', { name: 'Delete ticket type Page' }));
+    await user.click(
+      within(within(panel).getByRole('group', { name: /^Delete Page\?/ })).getByRole('button', {
+        name: 'Delete ticket type Page',
+      }),
+    );
+    expect(await screen.findByText('Page was deleted.')).toBeInTheDocument();
+    expect(within(own).getByRole('heading', { name: 'Its own ticket types' })).toHaveFocus();
+    await waitFor(() =>
+      expect(within(own).queryByRole('button', { name: 'Manage ticket type Page' })).toBeNull(),
+    );
+
+    const made = client.calls.filter((c) => c.action !== 'updateTypeSet');
+    expect(made.map((c) => [c.action, ...c.args])).toEqual([
+      [
+        'createType',
+        {
+          name: 'Alarm',
+          levelId: 2,
+          trackId: 4,
+          description: 'Something paged us.',
+          icon: 'bug',
+        },
+      ],
+      ['updateType', 101, { name: 'Page', levelId: 3 }],
+      ['deleteType', 101],
+      ['deleteType', 101],
+    ]);
+  });
+
+  it('[CORE-005] (2) refuses to delete a type its tickets have, saying how many', async () => {
+    const user = userEvent.setup();
+    renderOwn();
+    // Runbook leaves the type set first; its three tickets go to Bug, which the set keeps.
+    await user.click(await screen.findByRole('button', { name: 'Manage Operations types' }));
+    const set = screen.getByRole('form', { name: 'Settings of Operations types' });
+    await user.click(within(set).getByLabelText('Runbook'));
+    await user.click(within(set).getByRole('button', { name: 'Save the set' }));
+    await user.selectOptions(await screen.findByLabelText('Tickets of Runbook become'), 'Bug');
+    await user.click(within(set).getByRole('button', { name: 'Save the set' }));
+    expect(await screen.findByText(/^Operations types was saved/)).toBeInTheDocument();
+    const own = screen.getByRole('region', { name: 'Its own ticket types' });
+    expect(await within(own).findByText('Standard level · not in its type set yet')).toBeVisible();
+    await user.click(within(own).getByRole('button', { name: 'Manage ticket type Runbook' }));
+    await user.click(within(own).getByRole('button', { name: 'Delete ticket type Runbook' }));
+    await user.click(
+      within(within(own).getByRole('group', { name: /^Delete Runbook\?/ })).getByRole('button', {
+        name: 'Delete ticket type Runbook',
+      }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '3 tickets have this type, the trash included: give them another type first.',
+    );
+  });
+
+  it('[CORE-005] a name the track already uses is refused in words', async () => {
+    const user = userEvent.setup();
+    renderOwn();
+    const own = await screen.findByRole('region', { name: 'Its own ticket types' });
+    await user.click(within(own).getByRole('button', { name: 'New ticket type' }));
+    const form = within(own).getByRole('form', { name: 'Add a ticket type' });
+    await user.type(within(form).getByLabelText('Ticket type name'), 'runbook');
+    await user.click(within(form).getByRole('button', { name: 'Add a ticket type' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'There is a ticket type with that name already.',
+    );
+    // The form stays, with what was typed.
+    expect(within(form).getByLabelText('Ticket type name')).toHaveValue('runbook');
+  });
+
+  it('[CORE-005] says when the track has no type of its own yet; the shared page has no such section', async () => {
+    // An administrator on LAB's own page: LAB owns no ticket type.
+    renderOwn({ session: ADMIN, trackId: 6 });
+    expect(await screen.findByText('LAB has no ticket type of its own yet.')).toBeVisible();
+    cleanup();
+    renderOwn({ session: ADMIN, trackId: null });
+    await screen.findByRole('region', { name: 'Type sets' });
+    expect(screen.queryByRole('region', { name: 'Its own ticket types' })).toBeNull();
+  });
+
+  it('fits a small phone, in Spanish too', async () => {
+    const user = userEvent.setup();
+    setViewportWidth(375);
+    renderOwn({ locale: 'es' });
+    const own = await screen.findByRole('region', { name: 'Sus tipos de ticket propios' });
+    await user.click(within(own).getByRole('button', { name: 'Nuevo tipo de ticket' }));
+    expect(within(own).getByRole('form', { name: 'Añadir un tipo de ticket' })).toBeVisible();
   });
 });

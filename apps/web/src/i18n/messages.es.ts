@@ -3733,7 +3733,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.fields.intro':
     'Los campos personalizados añaden lo que los tickets necesitan guardar además de los integrados. Un campo conserva su tipo; sus opciones pueden cambiar sin tocar los tickets.',
   'admin.fields.forbidden':
-    'Solo los administradores del sitio y de configuración gestionan los campos.',
+    'Solo los administradores del sitio y de configuración gestionan los campos. Quienes administran un track con configuración propia gestionan sus campos propios desde la página del track.',
   'admin.fields.loading': 'Leyendo los campos…',
   'admin.fields.failed': 'No se pudieron leer los campos. Inténtalo de nuevo en un momento.',
   'admin.fields.none': 'Aún no hay campos personalizados.',
@@ -7813,6 +7813,39 @@ export const messagesEs: Record<MessageId, string> = {
   'ownSets.archived': '{key} está archivado: su configuración se puede cambiar cuando se restaure.',
   'ownSets.useHint':
     'Desde entonces el track sigue este conjunto. Solo los administradores del sitio y de la configuración pueden volver a darle uno compartido.',
+  // Los tipos de ticket y los campos propios de un track con configuración propia (T-322).
+  'ownTypes.title': 'Sus tipos de ticket propios',
+  'ownTypes.intro':
+    'Tipos de ticket que solo tiene {key}. Su conjunto de tipos, más abajo, ofrece uno cuando lo marcas allí.',
+  'ownTypes.listOf': 'Tipos de ticket de {key}',
+  'ownTypes.none': '{key} aún no tiene tipos de ticket propios.',
+  'ownTypes.noneBody':
+    'Añade uno para el trabajo que solo hace este track. Los tipos compartidos no cambian.',
+  'ownTypes.summary':
+    'Nivel {level} · {offered, select, yes {en su conjunto de tipos} other {aún no está en su conjunto de tipos}}',
+  'ownTypes.added': 'Se añadió {name}. Márcalo en el conjunto de tipos para ofrecerlo.',
+  'ownTypes.levelHint':
+    'Otro nivel se rechaza si los tickets de este tipo se quedaran sin el padre que necesitan, y la página dice cuántos.',
+  'ownTypes.problem.inTypeSet':
+    '{name} está en {sets}: desmárcalo allí y guarda antes el conjunto.',
+  'ownFields.about':
+    'Este track tiene configuración propia: los campos que le pertenecen solo lo cubren a él, y los demás tracks no se ven afectados. Los campos compartidos que le llegan son cosa de los administradores del sitio y de la configuración.',
+  'ownFields.intro':
+    'Los campos propios de este track. Los compartidos son cosa de los administradores del sitio y de la configuración.',
+  'ownFields.none': '{key} aún no tiene campos propios.',
+  'ownFields.noneBody':
+    'Un campo propio guarda lo que solo necesitan los tickets de este track, y nada de él llega a otro track.',
+  'ownFields.choose.intro':
+    'Administras estos tracks con configuración propia. Elige uno para gestionar sus campos propios.',
+  'ownFields.choose.none':
+    'Ninguno de los tracks que administras tiene configuración propia. Sus campos son compartidos, y los cambian los administradores del sitio y de la configuración.',
+  'ownFields.choose.open': 'Campos de {key} · {name}',
+  'ownFields.scope.shared':
+    '{key} usa configuración compartida, así que sus campos son compartidos, y los cambian los administradores del sitio y de la configuración.',
+  'admin.fields.contexts.groupChosen': 'El grupo elegido antes',
+  'admin.fields.contexts.peopleChosenGroup':
+    'Personas para elegir: los miembros del grupo elegido antes',
+  'trackPeople.fieldsLink': 'Campos: los campos personalizados que le pertenecen',
   'layouts.loading': 'Leyendo los diseños…',
   'layouts.failed':
     'No se pudieron leer los conjuntos de diseños. Inténtalo de nuevo en un momento.',

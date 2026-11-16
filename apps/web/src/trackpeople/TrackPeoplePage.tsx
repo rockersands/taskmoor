@@ -2,6 +2,7 @@ import { type ReactElement, useCallback, useEffect, useId, useRef, useState } fr
 import { useAdminTrail } from '../admin/AdminLayout';
 import { ApiError } from '../api/client';
 import { ownMapHref } from '../configuration/WorkflowMapsPage';
+import { ownFieldsHref } from '../fields/FieldsAdminPage';
 import { useT } from '../i18n/I18nProvider';
 import { ownPoliciesHref } from '../notifications/NotificationPoliciesPage';
 import { ownVisibilityHref } from '../permissions/VisibilityPage';
@@ -277,6 +278,9 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
             </li>
             <li>
               <a href={routeHref(ownSetsHref(track.id))}>{t('trackPeople.setsLink')}</a>
+            </li>
+            <li>
+              <a href={routeHref(ownFieldsHref(track.id))}>{t('trackPeople.fieldsLink')}</a>
             </li>
             <li>
               <a href={routeHref(ownPoliciesHref(track.id))}>

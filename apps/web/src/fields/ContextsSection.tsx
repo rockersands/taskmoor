@@ -162,9 +162,11 @@ function usePeopleLimit() {
   return (context: FieldContext, lists: ContextLists | null) => {
     const config = context.config ?? {};
     if (config.userGroupId !== undefined) {
-      return t('admin.fields.contexts.peopleGroup', {
-        name: nameOf(lists?.groups, config.userGroupId),
-      });
+      const group = lists?.groups.find((g) => g.id === config.userGroupId);
+      // Those who run a local-mode track get no list of groups (T-322).
+      return group
+        ? t('admin.fields.contexts.peopleGroup', { name: group.name })
+        : t('admin.fields.contexts.peopleChosenGroup');
     }
     if (config.userRoleId !== undefined) {
       return t('admin.fields.contexts.peopleRole', {
@@ -264,7 +266,6 @@ function ContextItem({
         field={field}
         context={context}
         client={client}
-        lists={lists}
         onField={onField}
         onChanged={onChanged}
         onProblem={onProblem}
@@ -327,6 +328,15 @@ function ContextForm({
   );
   const [groupId, setGroupId] = useState(String(config.userGroupId ?? ''));
   const [roleId, setRoleId] = useState(String(config.userRoleId ?? ''));
+  // The site's groups are listed for administrators only: on a local-mode track's own page the
+  // people who run it get no list, so a group is offered only when one is chosen already, which
+  // stays as it is (T-322).
+  const groups = lists?.groups ?? [];
+  const stored = config.userGroupId;
+  const groupChoices =
+    stored !== undefined && !groups.some((g) => g.id === stored)
+      ? [...groups, { id: stored, name: t('admin.fields.contexts.groupChosen') }]
+      : groups;
   const [missing, setMissing] = useState<MessageId | null>(null);
   // A track in the trash keeps its place in a context, but the tracks list leaves it out and the
   // server refuses a context that names one: it could be neither shown nor unticked, so saving
@@ -426,7 +436,9 @@ function ContextForm({
               onChange={(event) => setLimit(event.target.value as PeopleLimit)}
             >
               <option value="anyone">{t('admin.fields.contexts.limit.anyone')}</option>
-              <option value="group">{t('admin.fields.contexts.limit.group')}</option>
+              {groupChoices.length > 0 && (
+                <option value="group">{t('admin.fields.contexts.limit.group')}</option>
+              )}
               <option value="role">{t('admin.fields.contexts.limit.role')}</option>
             </select>
           </div>
@@ -442,7 +454,7 @@ function ContextForm({
                 onChange={(event) => setGroupId(event.target.value)}
               >
                 <option value="">{t('admin.fields.contexts.chooseOne')}</option>
-                {(lists?.groups ?? []).map((g) => (
+                {groupChoices.map((g) => (
                   <option key={g.id} value={String(g.id)}>
                     {g.name}
                   </option>
@@ -556,7 +568,6 @@ function DefaultForm({
   field,
   context,
   client,
-  lists,
   onField,
   onChanged,
   onProblem,
@@ -564,7 +575,6 @@ function DefaultForm({
   field: Field;
   context: FieldContext;
   client: FieldsClient;
-  lists: ContextLists | null;
   onField: (field: Field) => void;
   onChanged: (message: string) => void;
   onProblem: (error: unknown) => void;
@@ -673,13 +683,12 @@ function DefaultForm({
     case 'group':
     case 'team': {
       const kind = field.type === 'user' ? 'people' : field.type === 'group' ? 'groups' : 'teams';
+      // Groups are found through the field (`GET /fields/:id/groups`), which the people who
+      // run a local-mode track may read, unlike the site's list of groups (T-322).
       const search = (typed: string) => {
         if (field.type === 'user') return client.findPeople(typed);
         if (field.type === 'team') return client.findTeams(typed);
-        const lower = typed.toLowerCase();
-        return Promise.resolve(
-          (lists?.groups ?? []).filter((g) => g.name.toLowerCase().includes(lower)).slice(0, 8),
-        );
+        return client.findGroups(field.id, typed);
       };
       control = (
         <PersonPicker

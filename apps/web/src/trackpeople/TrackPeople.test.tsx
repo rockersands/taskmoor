@@ -143,6 +143,10 @@ describe('a track manager without site administration (IAM-030)', () => {
         name: 'Configuration sets: its ticket types and field rules',
       }),
     ).toHaveAttribute('href', '#/manage/tracks/4/configuration-sets');
+    // Its own fields too (T-322).
+    expect(
+      within(own).getByRole('link', { name: 'Fields: the custom fields it owns' }),
+    ).toHaveAttribute('href', '#/manage/tracks/4/fields');
     cleanup();
     // A track in shared mode owns none: its sets are the administrators'.
     show(3);
