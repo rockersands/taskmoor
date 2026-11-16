@@ -7,6 +7,11 @@ export interface AdminPage {
   href: string;
   labelId: MessageId;
   hintId: MessageId;
+  /**
+   * A configuration administrator uses this page too, though its group is not Tracks and setup:
+   * the server lets them make the change it offers (T-322).
+   */
+  setup?: true;
 }
 
 export interface AdminGroup {
@@ -70,6 +75,7 @@ export const ADMIN_GROUPS: readonly AdminGroup[] = [
         href: '#/admin/visibility',
         labelId: 'settings.visibility',
         hintId: 'settings.visibilityHint',
+        setup: true,
       },
       {
         id: 'permission-explainer',
@@ -279,10 +285,19 @@ export const ADMIN_GROUPS: readonly AdminGroup[] = [
   },
 ];
 
-/** The groups a person sees: a configuration administrator only the setup pages (ADR-114). */
+/**
+ * The groups a person sees: a configuration administrator the setup pages and, in other groups,
+ * only the pages marked `setup` (ADR-114; T-322).
+ */
 export function groupsFor(access: AdminAccess): readonly AdminGroup[] {
   if (access === 'site') return ADMIN_GROUPS;
-  if (access === 'setup') return ADMIN_GROUPS.filter((g) => g.id === 'setup' || g.id === 'tracks');
+  if (access === 'setup') {
+    return ADMIN_GROUPS.flatMap((g) => {
+      if (g.id === 'setup' || g.id === 'tracks') return [g];
+      const pages = g.pages.filter((p) => p.setup);
+      return pages.length > 0 ? [{ ...g, pages }] : [];
+    });
+  }
   return access === 'tracks' ? ADMIN_GROUPS.filter((g) => g.id === 'tracks') : [];
 }
 

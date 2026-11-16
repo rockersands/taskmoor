@@ -150,6 +150,29 @@ describe('a track manager without site administration (IAM-030)', () => {
     expect(screen.queryByRole('region', { name: 'Its own configuration' })).toBeNull();
   });
 
+  it('[IAM-030] [WF-001] [IAM-011] leads to the track’s own workflow map and visibility policies (T-322)', async () => {
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={MEMBER}>
+          <main>
+            <TrackPeoplePage trackId={4} client={fakeTrackPeopleClient()} />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    const own = await screen.findByRole('region', { name: 'Its own configuration' });
+    expect(
+      within(own).getByRole('link', {
+        name: 'Workflow map: which workflow each of its ticket types follows',
+      }),
+    ).toHaveAttribute('href', '#/manage/tracks/4/workflow-map');
+    expect(
+      within(own).getByRole('link', {
+        name: 'Visibility policies: which of its tickets only some people see',
+      }),
+    ).toHaveAttribute('href', '#/manage/tracks/4/visibility-policies');
+  });
+
   it('[CORE-015] [IAM-030] leads to the track’s areas, whatever its configuration mode (T-320)', async () => {
     renderPeople();
     const areas = await screen.findByRole('region', { name: 'Its areas' });

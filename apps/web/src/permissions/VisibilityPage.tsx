@@ -1,10 +1,25 @@
-import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
+import {
+  type FormEvent,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
-import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import {
+  ScopeNote,
+  type ScopeTrack,
+  TrackScopeLine,
+  useSetScope,
+  useTrackPageTrail,
+} from '../sets/trackScope';
 import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
@@ -67,19 +82,101 @@ interface Lists {
   /** The user and group fields of the site: a field member names one (T-320). */
   fields: FieldChoice[];
   client: VisibilityClient;
+  /** A local-mode track's own page (T-322): people are found among those it may name. */
+  track: ScopeTrack | null;
+}
+
+/** A local-mode track's own visibility policies, beside its Manage page (T-322). */
+export const ownVisibilityHref = (trackId: number) =>
+  `#/manage/tracks/${trackId}/visibility-policies`;
+
+export interface VisibilityPageProps {
+  /** Stories and tests pass their own backend; the page calls the API otherwise. */
+  client?: VisibilityClient;
+  /** A local-mode track's own page: only the policies it owns (T-322; T-163a's pattern). */
+  trackId?: number | null;
 }
 
 /**
  * Visibility policies and levels (IAM-011): which tickets only some people see. A track uses one
  * policy; a level names its members, and a ticket at a level shows only to them.
+ *
+ * Site and configuration administrators manage the shared policies, as the server lets them. On a
+ * local-mode track's own page (`trackId`; T-322) whoever runs the track manages the policies it
+ * owns and makes the track use one. Someone who runs tracks but is no administrator is offered
+ * those pages instead (`sets/trackScope.tsx`). Which shared policy a track uses is chosen on
+ * Which sets a track uses.
  */
-export function VisibilityPage({ client = visibilityClient }: { client?: VisibilityClient }) {
+export function VisibilityPage({ client = visibilityClient, trackId = null }: VisibilityPageProps) {
   const t = useT();
-  const { session } = useSession();
-  const expired = useSessionExpiry();
   const titleId = useId();
   const title = useRef<HTMLHeadingElement>(null);
-  const notAdmin = session.status === 'signed-in' && !session.user.isSiteAdmin;
+  const scope = useSetScope(trackId, client);
+  const track = scope.status === 'track' ? scope.track : null;
+  useTrackPageTrail(scope, t('admin.visibility.title'));
+  /** The purpose shows only to someone who may be here; only the policies themselves can tell. */
+  const header = (allowed: boolean, actions?: ReactNode) => (
+    <PageHeader
+      titleId={titleId}
+      titleRef={title}
+      title={t('admin.visibility.title')}
+      {...(track ? { eyebrow: t('ownSets.trackName', { key: track.key, name: track.name }) } : {})}
+      {...(allowed
+        ? {
+            purpose: t('admin.visibility.purpose'),
+            about: t(track ? 'admin.visibility.trackAbout' : 'admin.visibility.about'),
+            ...(actions ? { actions } : {}),
+          }
+        : {})}
+    />
+  );
+  return (
+    <section aria-labelledby={titleId} className="page admin-page people-page">
+      {scope.status === 'all' || track ? (
+        <Policies
+          key={track?.id ?? 'all'}
+          client={client}
+          track={track}
+          header={header}
+          title={title}
+        />
+      ) : (
+        <>
+          {header(false)}
+          <ScopeNote
+            scope={scope}
+            hrefOf={ownVisibilityHref}
+            words={{
+              chooseIntro: t('admin.visibility.choose.intro'),
+              chooseNone: t('admin.visibility.choose.none'),
+              chooseOpen: (run) =>
+                t('admin.visibility.choose.open', { key: run.key, name: run.name }),
+              shared: (shared) => t('admin.visibility.scope.shared', { key: shared.key }),
+              none: t('admin.visibility.forbidden'),
+              failed: t('admin.visibility.failed'),
+            }}
+          />
+        </>
+      )}
+    </section>
+  );
+}
+
+/** The policies the page shows: every shared one, or one track's own. */
+function Policies({
+  client,
+  track,
+  header,
+  title,
+}: {
+  client: VisibilityClient;
+  track: ScopeTrack | null;
+  header: (allowed: boolean, actions?: ReactNode) => ReactNode;
+  /** The page's heading, which takes the focus when a policy goes. */
+  title: RefObject<HTMLHeadingElement | null>;
+}) {
+  const t = useT();
+  const expired = useSessionExpiry();
   const [state, setState] = useState<
     | { status: 'loading' }
     | {
@@ -91,18 +188,21 @@ export function VisibilityPage({ client = visibilityClient }: { client?: Visibil
       }
     | { status: 'failed' }
     | { status: 'forbidden' }
-  >(notAdmin ? { status: 'forbidden' } : { status: 'loading' });
+  >({ status: 'loading' });
   const [message, setMessage] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const creating = useNewForm();
+  const owner = track?.id ?? null;
 
   const load = useCallback(async () => {
     try {
       const [policies, roles, groups, fields] = await Promise.all([
-        client.policies(),
-        client.roles(),
+        client.policies(owner),
+        // The lists only offer choices: a level's form without them still names the ticket's
+        // people (T-322).
+        client.roles(track).catch(() => []),
         client.groups(),
-        client.fields(),
+        client.fields(track).catch(() => []),
       ]);
       setState({ status: 'loaded', policies, roles, groups, fields });
     } catch (error) {
@@ -110,10 +210,10 @@ export function VisibilityPage({ client = visibilityClient }: { client?: Visibil
       if (error instanceof ApiError && error.status === 403) setState({ status: 'forbidden' });
       else setState({ status: 'failed' });
     }
-  }, [client, expired]);
+  }, [client, owner, track, expired]);
   useEffect(() => {
-    if (!notAdmin) void load();
-  }, [load, notAdmin]);
+    void load();
+  }, [load]);
 
   const said = (text: string) => {
     setMessage(text);
@@ -121,6 +221,7 @@ export function VisibilityPage({ client = visibilityClient }: { client?: Visibil
     return load();
   };
   const failed = (error: unknown) => {
+    if (expired(error)) return;
     const code =
       error instanceof ApiError ? (error.body as { error?: string } | null)?.error : undefined;
     setProblem(
@@ -136,97 +237,106 @@ export function VisibilityPage({ client = visibilityClient }: { client?: Visibil
                 ? t('admin.visibility.problem.limit')
                 : fieldRefused(error)
                   ? t('admin.permissions.problem.field')
-                  : t('admin.visibility.problem.other'),
+                  : error instanceof ApiError && (error.status === 403 || error.status === 404)
+                    ? t('admin.visibility.problem.forbidden')
+                    : t('admin.visibility.problem.other'),
     );
   };
 
-  return (
-    <section aria-labelledby={titleId} className="page admin-page people-page">
-      <PageHeader
-        titleId={titleId}
-        titleRef={title}
-        title={t('admin.visibility.title')}
-        {...(state.status === 'forbidden'
-          ? {}
-          : {
-              purpose: t('admin.visibility.purpose'),
-              about: t('admin.visibility.about'),
-              actions: (
-                <NewButton
-                  label={t('admin.visibility.newPolicy')}
-                  open={creating.open}
-                  onToggle={creating.toggle}
-                  ref={creating.button}
-                />
-              ),
-            })}
-      />
-      {state.status === 'forbidden' ? (
+  if (state.status === 'forbidden') {
+    return (
+      <>
+        {header(false)}
         <p className="page-note">{t('admin.visibility.forbidden')}</p>
-      ) : (
+      </>
+    );
+  }
+  const policies = state.status === 'loaded' ? state.policies : [];
+  const usedHere = track ? policies.find((p) => p.usedBy.some((u) => u.id === track.id)) : null;
+  return (
+    <>
+      {header(
+        true,
+        <NewButton
+          label={t('admin.visibility.newPolicy')}
+          open={creating.open}
+          onToggle={creating.toggle}
+          ref={creating.button}
+        />,
+      )}
+      {track && <TrackScopeLine track={track} intro={t('admin.visibility.trackIntro')} />}
+      {track && state.status === 'loaded' && (
+        <p className="page-note">
+          {usedHere
+            ? t('admin.visibility.trackUsesOwn', { key: track.key, name: usedHere.name })
+            : track.visibilityPolicyId == null
+              ? t('admin.visibility.trackUsesNoPolicy', { key: track.key })
+              : t('admin.visibility.trackUsesShared', { key: track.key })}
+        </p>
+      )}
+      <p role="status" className="form-status">
+        {message}
+      </p>
+      {problem && (
+        <p role="alert" className="form-error">
+          {problem}
+        </p>
+      )}
+      {state.status === 'loading' && <p className="page-note">{t('admin.visibility.loading')}</p>}
+      {state.status === 'failed' && (
+        <p role="alert" className="form-error">
+          {t('admin.visibility.failed')}
+        </p>
+      )}
+      {state.status === 'loaded' && (
         <>
-          <p role="status" className="form-status">
-            {message}
-          </p>
-          {problem && (
-            <p role="alert" className="form-error">
-              {problem}
-            </p>
+          {creating.open && (
+            <AddPolicy
+              client={client}
+              track={track}
+              said={(text) => {
+                creating.close();
+                return said(text);
+              }}
+              failed={failed}
+              onCancel={creating.close}
+            />
           )}
-          {state.status === 'loading' && (
-            <p className="page-note">{t('admin.visibility.loading')}</p>
-          )}
-          {state.status === 'failed' && (
-            <p role="alert" className="form-error">
-              {t('admin.visibility.failed')}
-            </p>
-          )}
-          {state.status === 'loaded' && (
-            <>
-              {creating.open && (
-                <AddPolicy
-                  client={client}
-                  said={(text) => {
-                    creating.close();
-                    return said(text);
-                  }}
-                  failed={failed}
-                  onCancel={creating.close}
-                />
-              )}
-              {state.policies.length === 0 ? (
-                <EmptyState title={t('admin.visibility.emptyTitle')}>
-                  {t('admin.visibility.empty')}
-                </EmptyState>
-              ) : (
-                state.policies.map((policy) => (
-                  <PolicyPanel
-                    key={policy.id}
-                    policy={policy}
-                    client={client}
-                    roles={state.roles}
-                    groups={state.groups}
-                    fields={state.fields}
-                    said={said}
-                    failed={failed}
-                    onDeleted={() => title.current?.focus()}
-                  />
-                ))
-              )}
-            </>
+          {state.policies.length === 0 ? (
+            <EmptyState title={t('admin.visibility.emptyTitle')}>
+              {track
+                ? t('admin.visibility.ownEmpty', { key: track.key })
+                : t('admin.visibility.empty')}
+            </EmptyState>
+          ) : (
+            state.policies.map((policy) => (
+              <PolicyPanel
+                key={policy.id}
+                policy={policy}
+                client={client}
+                track={track}
+                roles={state.roles}
+                groups={state.groups}
+                fields={state.fields}
+                said={said}
+                failed={failed}
+                onDeleted={() => title.current?.focus()}
+              />
+            ))
           )}
         </>
       )}
-    </section>
+    </>
   );
 }
 
 function AddPolicy({
   client,
+  track,
   said,
   failed,
   onCancel,
-}: Feedback & { client: VisibilityClient; onCancel: () => void }) {
+}: Feedback & { client: VisibilityClient; track: ScopeTrack | null; onCancel: () => void }) {
   const t = useT();
   const id = useId();
   const [name, setName] = useState('');
@@ -234,7 +344,7 @@ function AddPolicy({
     event.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return;
-    client.createPolicy({ name: trimmed }).then(() => {
+    client.createPolicy({ name: trimmed, ...(track ? { trackId: track.id } : {}) }).then(() => {
       setName('');
       said(t('admin.visibility.policyAdded', { name: trimmed }));
     }, failed);
@@ -266,6 +376,7 @@ function AddPolicy({
 function PolicyPanel({
   policy,
   client,
+  track,
   roles,
   groups,
   fields,
@@ -282,6 +393,11 @@ function PolicyPanel({
   const id = useId();
   const heading = useRef<HTMLHeadingElement>(null);
   const [levelName, setLevelName] = useState('');
+  // A track's own page offers its own policies to the track (T-322).
+  const mayUse =
+    track !== null &&
+    policy.trackId === track.id &&
+    !policy.usedBy.some((used) => used.id === track.id);
   const addLevel = (event: FormEvent) => {
     event.preventDefault();
     const trimmed = levelName.trim();
@@ -339,6 +455,7 @@ function PolicyPanel({
               level={level}
               index={index}
               client={client}
+              track={track}
               roles={roles}
               groups={groups}
               fields={fields}
@@ -368,6 +485,27 @@ function PolicyPanel({
           {t('admin.visibility.addLevel')}
         </button>
       </form>
+      {mayUse && track && (
+        <div className="sets-assign">
+          <button
+            type="button"
+            className="button-secondary"
+            aria-describedby={`${id}-use-hint`}
+            onClick={() =>
+              client.chooseFor(track.id, policy.id).then(async () => {
+                await said(t('admin.visibility.usedFor', { key: track.key, name: policy.name }));
+                // The button is gone with the change: the policy's heading takes the focus.
+                heading.current?.focus();
+              }, failed)
+            }
+          >
+            {t('admin.visibility.useFor', { key: track.key })}
+          </button>
+          <p id={`${id}-use-hint`} className="form-hint">
+            {t('admin.visibility.useHint')}
+          </p>
+        </div>
+      )}
       <div className="people-actions">
         {/* Asks first, saying what will happen (D13); a refusal keeps the question open. */}
         <DangerAction
@@ -396,6 +534,7 @@ function LevelRow({
   level,
   index,
   client,
+  track,
   roles,
   groups,
   fields,
@@ -495,6 +634,7 @@ function LevelRow({
         <AddMember
           level={level}
           client={client}
+          track={track}
           roles={roles}
           groups={groups}
           // A shared policy names shared fields; a local-mode track's own, its track's too.
@@ -634,6 +774,7 @@ function LevelRow({
 function AddMember({
   level,
   client,
+  track,
   roles,
   groups,
   fields,
@@ -644,7 +785,12 @@ function AddMember({
 }) {
   const t = useT();
   const id = useId();
-  const [kind, setKind] = useState<Grantee>('role');
+  // A role or a group is offered only with one to choose: someone who runs a track but is no
+  // administrator reads no groups (T-322).
+  const kinds = MEMBER_KINDS.filter((g) =>
+    g === 'role' ? roles.length > 0 : g === 'group' ? groups.length > 0 : true,
+  );
+  const [kind, setKind] = useState<Grantee>(() => kinds[0] ?? 'role');
   const ofKind = (of: Grantee) =>
     fields.filter((f) => f.type === (of === 'user_field' ? 'user' : 'group'));
   const firstTarget = (of: Grantee) =>
@@ -655,7 +801,7 @@ function AddMember({
         : of === 'user_field' || of === 'group_field'
           ? (ofKind(of)[0]?.key ?? '')
           : '';
-  const [target, setTarget] = useState(() => firstTarget('role'));
+  const [target, setTarget] = useState(() => firstTarget(kind));
   const [query, setQuery] = useState('');
   const [people, setPeople] = useState<Named[]>([]);
 
@@ -665,7 +811,7 @@ function AddMember({
       return;
     }
     let live = true;
-    client.findPeople(query.trim()).then(
+    client.findPeople(query.trim(), track).then(
       (found) => {
         if (!live) return;
         setPeople(found);
@@ -676,7 +822,7 @@ function AddMember({
     return () => {
       live = false;
     };
-  }, [client, kind, query]);
+  }, [client, kind, query, track]);
 
   const byField = kind === 'user_field' || kind === 'group_field';
   // Every target as a value and a name: a field's value is its key.
@@ -720,7 +866,7 @@ function AddMember({
             setTarget(firstTarget(next));
           }}
         >
-          {MEMBER_KINDS.map((g) => (
+          {kinds.map((g) => (
             <option key={g} value={g}>
               {t(`admin.permissions.granteeKind.${g}` as MessageId)}
             </option>

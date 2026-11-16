@@ -116,6 +116,31 @@ under its title.
     left out of the next change, and of a copy, with a line on the policy saying so beforehand
     and the status line after; the person choice of the rule form never keeps a person its list
     no longer shows (an emptied search, or the next rule after one is added).
+  - **As built (T-322, 2026-11-16): a local-mode track's own workflow map and visibility
+    policies, and configuration administrators on Visibility policies.** Both join the track's
+    own pages through `sets/trackScope.tsx`, as its layout sets, configuration sets and
+    notification policies did, with two more links under **Its own configuration** on the track's
+    Manage page. **Workflow map** (`#/manage/tracks/<id>/workflow-map`) opens the map the track
+    owns at once in the form **Manage** opens on Workflow maps (the default for every other type,
+    a workflow per type, Save with the status mapping step of T-320), without Delete, since the
+    map comes and goes with the track (`409 owned_by_track`). It names the shared workflows and
+    the track's own (`GET /workflows?trackId=`), the own ones marked "(KEY’s own)", for the types
+    the track offers (`GET /tracks/:id/workflow-map`) plus those the map already names.
+    **Visibility policies** (`#/manage/tracks/<id>/visibility-policies`) lists the policies the
+    track owns (`?trackId=`), makes new ones for it, says which policy the track uses (its own,
+    a shared one or none) and offers **Use this policy for** the track (`PATCH /tracks/:id`), with
+    a line on what happens to tickets at levels the policy lacks; roles come from
+    `GET /tracks/:id/roles`, people from `GET /people/mentionable`, and a group is offered only
+    to administrators, who may read the groups. On the shared pages, someone who runs tracks but
+    is no administrator gets the links to their local-mode tracks, as elsewhere. Visibility
+    policies let configuration administrators in, as the server always did: `AdminPage.setup`
+    marks a page outside Tracks and setup that they use, so they see **People and access** with
+    only **Visibility policies** in the navigation, on the group's page and in the command
+    palette. No server change. Creating and changing a track's own workflows stays in the API
+    for now: the workflow editor is not track-scoped yet. Tests: `WorkflowMapsPage.test.tsx`,
+    the track-scope cases of `VisibilityPage.test.tsx`, `forbiddenPages.test.tsx`,
+    `AdminSection.test.tsx`, stories with axe in both skins, and `e2e/track-own-flow.spec.ts` on
+    the desktop and mobile projects.
 - **As built (T-320, 2026-11-16): Priorities.** One page, `#/admin/priorities`, in Tracks and
   setup after Layout sets, for site and configuration administrators; anyone else, a track's
   manager included, sees the refusal alone, since the lists are the site's. Three cards, each with

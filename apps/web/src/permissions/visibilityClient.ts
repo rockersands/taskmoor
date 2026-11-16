@@ -1,5 +1,6 @@
 import { api } from '../api/client';
 import { everyTrack } from '../api/tracks';
+import { type ScopeTrack, type TrackScopeClient, trackScopeClient } from '../sets/trackScope';
 import {
   type FieldChoice,
   type Grantee,
@@ -39,10 +40,13 @@ export interface VisibilityPolicy {
 /** Who a new member is: a kind, and the role, group or person it names. */
 export type NewMember = Omit<NewGrant, 'permission'>;
 
-/** The endpoints the visibility page uses. Stories and tests pass their own. */
-export interface VisibilityClient {
-  policies: () => Promise<VisibilityPolicy[]>;
-  createPolicy: (body: { name: string; description?: string }) => Promise<void>;
+/**
+ * The endpoints the visibility page uses. `track` is a local-mode track's own page (T-322); null
+ * is the shared policies. Stories and tests pass their own.
+ */
+export interface VisibilityClient extends TrackScopeClient {
+  policies: (trackId: number | null) => Promise<VisibilityPolicy[]>;
+  createPolicy: (body: { name: string; description?: string; trackId?: number }) => Promise<void>;
   updatePolicy: (
     id: number,
     change: { name?: string; description?: string; defaultLevelId?: number | null },
@@ -61,18 +65,27 @@ export interface VisibilityClient {
   deleteLevel: (policyId: number, levelId: number, replaceWith?: number | 'none') => Promise<void>;
   addMember: (policyId: number, levelId: number, member: NewMember) => Promise<void>;
   removeMember: (policyId: number, levelId: number, memberId: number) => Promise<void>;
-  roles: () => Promise<Named[]>;
+  /** Makes a local-mode track use one of its own policies (`PATCH /tracks/:id`; T-322). */
+  chooseFor: (trackId: number, policyId: number) => Promise<void>;
+  /** The site's roles; on a track's own page, those its runners may read (T-322). */
+  roles: (track: ScopeTrack | null) => Promise<Named[]>;
+  /** Groups are listed for administrators only; anyone else gets none to choose from. */
   groups: () => Promise<Named[]>;
-  findPeople: (query: string) => Promise<Named[]>;
-  /** The user and group fields field members name (T-320). */
-  fields: () => Promise<FieldChoice[]>;
+  /** People by name; on a track's own page, the people who may be named in it (T-322). */
+  findPeople: (query: string, track: ScopeTrack | null) => Promise<Named[]>;
+  /** The user and group fields field members name (T-320), a track's own too (T-322). */
+  fields: (track: ScopeTrack | null) => Promise<FieldChoice[]>;
 }
 
 const path = (policyId: number, rest = '') => `/visibility-policies/${policyId}${rest}`;
 
+/** A track's own policies and fields, by its id; nothing for the shared ones. */
+const own = (trackId: number | null) => (trackId === null ? '' : `?trackId=${trackId}`);
+
 export const visibilityClient: VisibilityClient = {
-  policies: async () =>
-    (await api<{ visibilityPolicies: VisibilityPolicy[] }>('/visibility-policies'))
+  ...trackScopeClient,
+  policies: async (trackId) =>
+    (await api<{ visibilityPolicies: VisibilityPolicy[] }>(`/visibility-policies${own(trackId)}`))
       .visibilityPolicies,
   createPolicy: async (body) => {
     await api<unknown>('/visibility-policies', { method: 'POST', body });
@@ -104,12 +117,43 @@ export const visibilityClient: VisibilityClient = {
       method: 'DELETE',
     });
   },
-  roles: async () => (await api<{ roles: Named[] }>('/roles')).roles,
-  groups: async () => (await api<{ groups: Named[] }>('/groups')).groups,
-  findPeople: async (query) =>
-    (await api<{ people: Named[] }>(`/people/lookup?limit=8&q=${encodeURIComponent(query)}`))
-      .people,
-  fields: readFieldChoices,
+  chooseFor: async (trackId, policyId) => {
+    await api<unknown>(`/tracks/${trackId}`, {
+      method: 'PATCH',
+      body: { visibilityPolicyId: policyId },
+    });
+  },
+  roles: async (track) =>
+    (
+      await api<{ roles: Named[] }>(track === null ? '/roles' : `/tracks/${track.id}/roles`)
+    ).roles.map((r) => ({ id: r.id, name: r.name })),
+  groups: async () => {
+    try {
+      return (await api<{ groups: Named[] }>('/groups')).groups;
+    } catch {
+      return [];
+    }
+  },
+  findPeople: async (query, track) => {
+    const q = encodeURIComponent(query);
+    const path =
+      track === null
+        ? `/people/lookup?limit=8&q=${q}`
+        : `/people/mentionable?track=${encodeURIComponent(track.key)}&limit=8&q=${q}`;
+    return (await api<{ people: Named[] }>(path)).people;
+  },
+  // A track's own policy names the shared fields and the track's own (T-322).
+  fields: async (track) => {
+    if (track === null) return readFieldChoices();
+    const { fields } = await api<{
+      fields: { id: number; name: string; type: string; trackId: number | null }[];
+    }>(`/fields${own(track.id)}`);
+    return fields.flatMap((f) =>
+      (f.type === 'user' || f.type === 'group') && (f.trackId === null || f.trackId === track.id)
+        ? [{ key: `cf[${f.id}]`, name: f.name, type: f.type, trackId: f.trackId }]
+        : [],
+    );
+  },
 };
 
 /** One reason a person holds a permission. */
@@ -158,7 +202,7 @@ export const explainClient: ExplainClient = {
   catalogue: async () =>
     (await api<{ track: Record<string, string[]> }>('/permissions/catalogue')).track,
   tracks: () => everyTrack<{ id: number; key: string; name: string }>(),
-  findPeople: visibilityClient.findPeople,
+  findPeople: (query) => visibilityClient.findPeople(query, null),
   explain: (question) => {
     const query = new URLSearchParams({ permission: question.permission });
     if (question.userId !== undefined) query.set('userId', String(question.userId));

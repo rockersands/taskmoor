@@ -203,6 +203,12 @@ export function allRoutes(ids, source) {
       'manage-track-notification-policies',
       `#/manage/tracks/${ids.localTrackId}/notification-policies`,
     ),
+    route('admin', 'manage-track-workflow-map', `#/manage/tracks/${ids.localTrackId}/workflow-map`),
+    route(
+      'admin',
+      'manage-track-visibility-policies',
+      `#/manage/tracks/${ids.localTrackId}/visibility-policies`,
+    ),
 
     route('other', 'account', '#/account'),
     route('other', 'account-notifications', '#/account/notifications'),

@@ -1,5 +1,6 @@
 import { api } from '../api/client';
 import { everyTrack } from '../api/tracks';
+import { type TrackScopeClient, trackScopeClient } from '../sets/trackScope';
 
 export interface Named {
   id: number;
@@ -50,6 +51,22 @@ export interface WorkflowMap {
   defaultWorkflow: Named;
   entries: { ticketType: Named; workflow: Named }[];
   tracks: { id: number; key: string; name: string }[];
+  /** The local-mode track that owns the map; null or absent for a shared map (M1-028). */
+  trackId?: number | null;
+}
+
+/** A workflow a map may name: a shared one, or one a local-mode track owns (`trackId`). */
+export interface MapWorkflow extends Named {
+  trackId: number | null;
+}
+
+/**
+ * A track's map as `GET /api/v1/tracks/:id/workflow-map` reads it, with the ticket types the
+ * track offers and the workflow each follows (WF-001 (3)).
+ */
+export interface TrackWorkflowMap {
+  workflowMap: WorkflowMap;
+  ticketTypes: { ticketType: Named; workflow: Named }[];
 }
 
 /** What a change of workflows would leave behind: tickets in statuses the new workflow lacks. */
@@ -95,8 +112,11 @@ export interface NewTrack {
   copyFrom?: number;
 }
 
-/** The endpoints the configuration pages use. Stories and tests pass their own. */
-export interface ConfigurationClient {
+/**
+ * The endpoints the configuration pages use. Stories and tests pass their own. The track scope's
+ * reads serve a local-mode track's own workflow map (T-322, `sets/trackScope.tsx`).
+ */
+export interface ConfigurationClient extends TrackScopeClient {
   tracks: () => Promise<Track[]>;
   /** The track made, and the board its template made in it, if any. */
   createTrack: (body: NewTrack) => Promise<{ track: Track; board?: Named }>;
@@ -136,6 +156,10 @@ export interface ConfigurationClient {
   deleteWorkflowMap: (id: number) => Promise<void>;
   workflows: () => Promise<Named[]>;
   ticketTypes: () => Promise<Named[]>;
+  /** A track's own map, with the types it offers (T-322). */
+  trackWorkflowMap: (trackId: number) => Promise<TrackWorkflowMap>;
+  /** The workflows a local-mode track's map may name: the shared ones and its own (T-322). */
+  trackWorkflows: (trackId: number) => Promise<MapWorkflow[]>;
   /** What switching a shared-mode track to a map would do to its tickets (T-320). */
   trackMapImpact: (trackId: number, workflowMapId: number | 'default') => Promise<MappingImpact>;
   /** What a change of a map's workflows would do to the tickets of its tracks (T-320). */
@@ -156,6 +180,7 @@ export interface MapChange {
 }
 
 export const configurationClient: ConfigurationClient = {
+  ...trackScopeClient,
   tracks: () => everyTrack<Track>('archived=include'),
   createTrack: (body) => api<{ track: Track; board?: Named }>('/tracks', { method: 'POST', body }),
   updateTrack: async (id, change) =>
@@ -212,6 +237,11 @@ export const configurationClient: ConfigurationClient = {
       id: t.id,
       name: t.name,
     })),
+  trackWorkflowMap: (trackId) => api<TrackWorkflowMap>(`/tracks/${trackId}/workflow-map`),
+  trackWorkflows: async (trackId) =>
+    (await api<{ workflows: MapWorkflow[] }>(`/workflows?trackId=${trackId}`)).workflows.map(
+      (w) => ({ id: w.id, name: w.name, trackId: w.trackId ?? null }),
+    ),
   trackMapImpact: async (trackId, workflowMapId) =>
     (
       await api<{ impact: MappingImpact }>(

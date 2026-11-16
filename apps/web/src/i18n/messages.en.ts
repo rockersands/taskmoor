@@ -3405,7 +3405,8 @@ export const messagesEn = {
   'admin.maps.title': 'Workflow maps',
   'admin.maps.intro':
     'A workflow map says which workflow each ticket type follows in the tracks that use it. Types it does not name follow its default workflow.',
-  'admin.maps.forbidden': 'Only administrators manage workflow maps.',
+  'admin.maps.forbidden':
+    'Only site and configuration administrators, and the people who run a track with its own configuration, manage workflow maps.',
   'admin.maps.loading': 'Reading the workflow maps…',
   'admin.maps.failed': 'The workflow maps could not be read. Try again in a moment.',
   'admin.maps.new': 'New workflow map',
@@ -6947,7 +6948,8 @@ export const messagesEn = {
     'A level hides single tickets from everyone but its members. A track uses one policy, which holds its levels.',
   'admin.visibility.about':
     'Someone must both see the track and be a member of the level to see a ticket at that level. That holds for site administrators too. A ticket without a level is seen by everyone who sees its track.',
-  'admin.visibility.forbidden': 'Only site administrators use this page.',
+  'admin.visibility.forbidden':
+    'Only site and configuration administrators, and the people who run a track with its own configuration, manage visibility policies.',
   'admin.visibility.loading': 'Reading the policies…',
   'admin.visibility.failed': 'The policies could not be read. Try again in a moment.',
   'admin.visibility.emptyTitle': 'No visibility policies yet',
@@ -7013,6 +7015,54 @@ export const messagesEn = {
   'admin.visibility.problem.limit':
     'This goes past a limit. The Guardrails page has the limit on levels.',
   'admin.visibility.problem.other': 'That could not be done. Try again in a moment.',
+  // A local-mode track's own workflow map and visibility policies, and configuration
+  // administrators on Visibility policies (T-322).
+  'admin.visibility.problem.forbidden':
+    'You may not change this policy. Only the people who run its track, and site and configuration administrators, change it.',
+  'admin.visibility.trackAbout':
+    'This track has its own configuration, so it can have visibility policies of its own: levels for its tickets alone. Other tracks are not affected.',
+  'admin.visibility.trackIntro':
+    'The visibility policies this track owns. Shared policies are for site and configuration administrators.',
+  'admin.visibility.trackUsesOwn': '{key} uses {name}.',
+  'admin.visibility.trackUsesShared':
+    '{key} uses a shared policy now. Use one of its own to choose who sees which of its tickets.',
+  'admin.visibility.trackUsesNoPolicy':
+    '{key} uses no visibility policy now, so everyone who sees it sees all its tickets. Use one of its own to give its tickets levels.',
+  'admin.visibility.ownEmpty':
+    'Add one with New visibility policy, give it levels, then use it for {key}.',
+  'admin.visibility.useFor': 'Use this policy for {key}',
+  'admin.visibility.useHint':
+    'Tickets at a level this policy lacks take its default level, or none, so some may become visible to more people. Only site and configuration administrators can give the track a shared policy, or none, again.',
+  'admin.visibility.usedFor': '{key} now uses {name}.',
+  'admin.visibility.choose.intro':
+    'You run these tracks with their own configuration. Choose one to manage its own visibility policies.',
+  'admin.visibility.choose.none':
+    'None of the tracks you run has its own configuration. They use shared visibility policies, which site and configuration administrators change.',
+  'admin.visibility.choose.open': 'Visibility policies of {key} · {name}',
+  'admin.visibility.scope.shared':
+    '{key} uses shared configuration, so it uses a shared visibility policy, or none, which site and configuration administrators choose.',
+  'admin.maps.trackTitle': 'Workflow map',
+  'admin.maps.trackAbout':
+    'This track has its own configuration, so it has a workflow map of its own: which workflow each of its ticket types follows, its own workflows included. Other tracks are not affected.',
+  'admin.maps.trackIntro':
+    'The workflow map this track owns, made with it. Shared maps are for site and configuration administrators.',
+  'admin.maps.trackNote':
+    'Which workflow each ticket type {key} offers follows. A type the map does not name follows the workflow for every other type.',
+  'admin.maps.trackFailed': 'The track’s workflow map could not be read. Try again in a moment.',
+  'admin.maps.ownWorkflow': '{name} ({key}’s own)',
+  'admin.maps.choose.intro':
+    'You run these tracks with their own configuration. Choose one to change its own workflow map.',
+  'admin.maps.choose.none':
+    'None of the tracks you run has its own configuration. They use shared workflow maps, which site and configuration administrators change.',
+  'admin.maps.choose.open': 'Workflow map of {key} · {name}',
+  'admin.maps.scope.shared':
+    '{key} uses shared configuration, so it follows a shared workflow map, which site and configuration administrators choose and change.',
+  'admin.maps.problem.archived':
+    'The track is archived, so its map changes only once it is restored.',
+  'admin.maps.problem.forbidden':
+    'You may not change this map. Only the people who run its track, and site and configuration administrators, change it.',
+  'trackPeople.workflowMapLink': 'Workflow map: which workflow each of its ticket types follows',
+  'trackPeople.visibilityLink': 'Visibility policies: which of its tickets only some people see',
   'admin.explain.title': 'Permission explainer',
   'admin.explain.about':
     'Choose a person, then a track or a ticket and a permission. The answer says yes or no and names what decided it: a role in the track, a group, a global permission or a visibility level. It only reads; nothing changes here.',
