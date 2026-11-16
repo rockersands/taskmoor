@@ -22,7 +22,19 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: Administration controls beyond the UI-T21 list (2026-11-16, Windows)
+### Latest: Google's button as Google draws it (2026-11-16, Windows)
+
+On `main` at `083f806a` after a full gate (10,389 tests, 315 e2e). No migration (the next is 0114).
+
+- T-262 (with T-317, the user's OK to download): `apps/web/src/assets/google/google-g.svg` is the G from Google's
+  signin-assets.zip, cropped, shown by `GoogleMark` as an image; `apps/web/src/fonts/` holds Google Sans 500
+  (latin, latin-ext) with OFL.txt (emitted as `assets/OFL-<hash>.txt`); `sso.css` has the @font-face rules.
+- The single-file frontend kit (`builder-core/src/frontend.ts`) now inlines every file its stylesheet names.
+- `THIRD_PARTY_NOTICES` at the root; ADR-029, ADR-036 and ADR-119 updated; clean-room.md names the one exception
+  (another company's logo on its owner's terms, with an ADR).
+- Running: T-328 (touch stories in their own projects) on wave25; then T-327 (axe in stories).
+
+### Earlier: Administration controls beyond the UI-T21 list (2026-11-16, Windows)
 
 On `main` at `f0239053` after a full gate (10,380 tests, 315 e2e). No migration (the next is 0114).
 
