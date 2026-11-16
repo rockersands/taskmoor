@@ -56,6 +56,7 @@ import { VisibilityPage } from './permissions/VisibilityPage';
 import { PLAN_BOARD_ROUTE, PLAN_ROUTE, type PlanSection } from './plans/address';
 import { PlanPage } from './plans/PlanPage';
 import { PlansPage } from './plans/PlansPage';
+import { PrioritiesPage } from './priorities/PrioritiesPage';
 import { CrossTrackReleasePage } from './releases/CrossTrackReleasePage';
 import { CrossTrackReleasesPage } from './releases/CrossTrackReleasesPage';
 import { ReleasePage } from './releases/ReleasePage';
@@ -226,6 +227,8 @@ const ADMIN_SETS = '#/admin/configuration-sets';
 /** The layout editor (UI-T15): a set by id with `?set=`. */
 const ADMIN_LAYOUTS = '#/admin/layouts';
 const ADMIN_TRACK_SETS = '#/admin/track-sets';
+/** Priorities, priority sets and close reasons (T-320). */
+const ADMIN_PRIORITIES = '#/admin/priorities';
 const ADMIN_GUARDRAILS = '#/admin/guardrails';
 const ADMIN_TICKET_TEMPLATES = '#/admin/ticket-templates';
 const ADMIN_IMPORTS = '#/admin/imports';
@@ -610,6 +613,14 @@ function Pages() {
               },
             },
             {
+              id: 'go-priorities',
+              labelId: 'admin.priorities.title' as const,
+              keywords: ['priority', 'priority set', 'close reason', 'urgent', 'scheme'],
+              run: () => {
+                navigate(ADMIN_PRIORITIES);
+              },
+            },
+            {
               id: 'go-imports',
               labelId: 'admin.imports.title' as const,
               keywords: ['import', 'migrate', 'backup', 'csv', 'cloud', 'delta'],
@@ -758,6 +769,8 @@ function Pages() {
     content = <VisibilityPage />;
   } else if (isRoute(hash, ADMIN_EXPLAINER)) {
     content = <PermissionExplainerPage />;
+  } else if (isRoute(hash, ADMIN_PRIORITIES)) {
+    content = <PrioritiesPage />;
   } else if (isRoute(hash, ADMIN_TRACK_SETS)) {
     const trackId = Number(/[?&]track=(\d{1,10})(?:&|$)/.exec(hash)?.[1]);
     content = <TrackSetsPage {...(trackId ? { initialTrackId: trackId } : {})} />;

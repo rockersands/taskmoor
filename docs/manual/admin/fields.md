@@ -1,8 +1,8 @@
 ---
 title: "Fields, ticket types and layouts"
 audience: admins
-sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/workflows/close-reasons.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/layouts/LayoutCanvas.tsx, apps/web/src/layouts/GripMenu.tsx, apps/web/src/layouts/LayoutPreview.tsx, apps/web/src/layouts/refusal.ts, apps/web/src/layouts/model.ts, apps/web/src/layouts/client.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md, apps/server/src/tickets/priority-level.ts, packages/db/src/migrations/0095_points_field.ts, apps/web/src/sets/trackScope.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/server/src/workflows/board-managed.ts, apps/web/src/layouts/createForm.ts, apps/web/src/tickets/form.ts, apps/server/src/fields/values.ts, apps/server/src/import/load.ts
-accessed: 2026-11-14
+sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/workflows/close-reasons.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/layouts/LayoutCanvas.tsx, apps/web/src/layouts/GripMenu.tsx, apps/web/src/layouts/LayoutPreview.tsx, apps/web/src/layouts/refusal.ts, apps/web/src/layouts/model.ts, apps/web/src/layouts/client.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md, apps/server/src/tickets/priority-level.ts, packages/db/src/migrations/0095_points_field.ts, apps/web/src/sets/trackScope.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/server/src/workflows/board-managed.ts, apps/web/src/layouts/createForm.ts, apps/web/src/tickets/form.ts, apps/server/src/fields/values.ts, apps/server/src/import/load.ts, apps/web/src/priorities/PrioritiesPage.tsx, apps/web/src/priorities/PrioritySetsSection.tsx, apps/web/src/priorities/client.ts
+accessed: 2026-11-16
 attestation: own-words
 ---
 # Fields, ticket types and layouts
@@ -12,7 +12,8 @@ types and hierarchy levels, and the configuration sets that tell each track whic
 priorities, rules and forms it uses.
 
 In the web app, site and configuration administrators use **Administration**, **Fields**,
-**Administration**, **Configuration sets** and **Administration**, **Layout sets**. The people
+**Administration**, **Configuration sets**, **Administration**, **Layout sets** and
+**Administration**, [**Priorities**](#priorities-and-priority-sets). The people
 who run a track with its own configuration (local mode) change that track's own sets on its own
 pages; see [A track's own sets](#a-tracks-own-sets). The rest is done through the
 [REST API](rest-api.md); a token that changes shared configuration needs the `admin` scope
@@ -340,13 +341,48 @@ Fields asked for on a transition are set on the transition itself; see
 
 ## Priorities and priority sets
 
-Priorities are the site's ordered list: Urgent, High, Normal, Low and Very low on a fresh site. There is
-no web page for them yet.
+Priorities are the site's ordered list: Urgent, High, Normal, Low and Very low on a fresh site.
+Site and configuration administrators keep them on **Administration** > **Priorities**
+(`#/admin/priorities`), in the **Tracks and setup** group. Others who open the page are told only
+that it is for administrators. The page has three cards: the priorities, the priority sets and the
+close reasons. Each card has its **New** button at its head and says what it did, or why not,
+under its own form.
+
+**Priorities, most urgent first** lists them in order, each with its icon:
+
+- **New priority** asks for a name and an optional description. A new priority joins the
+  default priority set and goes to the end of the list.
+- **Up** and **Down** move a priority one place. The icon comes from the place in the list, the
+  most urgent icon at the top and the least at the bottom, so moving a priority changes its icon
+  and that of the one it trades places with; adding or deleting one can change the others'. When
+  the list changed elsewhere since the page read it, nothing moves: the page says so and reads it
+  again.
+- **Change** renames a priority or changes its description. A name another priority has is
+  refused.
+- **Delete** asks first. When tickets have the priority, the page then says how many and asks
+  which priority they get instead (**Instead, give them**); the tickets take it, with a line in
+  their history, and the priority sets that offered the old one offer the replacement, and give
+  it to new tickets where they gave the old one. A priority no ticket has is deleted at once.
+- The page has no icon or colour controls: a priority's stored `icon` and `color` do not change
+  what lists draw.
+
+**Priority sets** chooses which priorities a track offers:
+
+- Each set shows what it offers, what new tickets get and how many tracks use it. The default
+  set is marked **Default set**; its count includes the tracks that choose no set.
+- **New priority set** asks for a name, an optional description, **Priorities it offers** (at
+  least one) and **New tickets get**: one of those, or **The middle of what it offers**.
+- **Manage** opens the same form to change a set, **Make this the default set**, and **Delete**.
+  Deleting asks first and says how many tracks go back to the default set. The default set has
+  no **Delete**; make another set the default first.
+- A link goes to [Which sets a track uses](#which-sets-a-track-uses), where a track chooses its
+  set; that page links back here.
+
+Through the API:
 
 - `/api/v1/priorities`: `name`, `description`, `icon`, `color`; `PUT /api/v1/priorities/order`
-  lists every id in the new order. A new priority joins the default priority set. The list, and a
-  ticket's `priority`, also give `level`, from 1 to 6: which icon it shows, from its place in the
-  order. The stored `icon` and `color` of a priority do not change what lists draw.
+  lists every id in the new order. The list, and a ticket's `priority`, also give `level`, from 1
+  to 6: which icon it shows, from its place in the order.
 - A ticket always has a priority. A new ticket takes its track's set's `defaultPriorityId`; a set
   with no default gives the middle of what it offers. `priorityId: null` means the same when
   creating, and an edit that sends it is refused. Only imports leave it empty, as their source
@@ -362,12 +398,20 @@ no web page for them yet.
 ## Close reasons
 
 Close reasons are the site's ordered list: Completed, Not planned, Duplicate and Not reproducible
-on a fresh site. They are managed through `/api/v1/close-reasons` (`name`, `description`), with
-`PUT /api/v1/close-reasons/order`, and a deleted reason in use needs `?replacementId=`. A reason in
-use means tickets have it, or a workflow's published version or draft sets it, as the default
-workflow's Closed sets Completed. Without a replacement that is refused (`409 in_use`, or
-`409 used_by_workflow` naming the workflows); with one, the workflows that set it get a new version
-that sets the replacement.
+on a fresh site. The **Close reasons** card of **Administration** > **Priorities** keeps them as
+the priorities card does: **New close reason**, **Up** and **Down**, **Change** and **Delete**.
+Their order is the order of the lists people choose a reason from.
+
+A reason is in use when tickets were closed with it, or a workflow's published version or draft
+sets it, as the default workflow's Closed sets Completed. **Delete** says so before anything is
+sent. When the reason is in use, the page then says how many tickets have it, or names the
+workflows that set it, and asks which reason takes its place. With that choice the tickets take
+the replacement, and each workflow that set the old reason gets a new version that sets the
+replacement.
+
+Through the API they are managed with `/api/v1/close-reasons` (`name`, `description`), with
+`PUT /api/v1/close-reasons/order`, and a deleted reason in use needs `?replacementId=`. Without
+one the delete is refused (`409 in_use`, or `409 used_by_workflow` naming the workflows).
 
 Free moves close with the reason named Completed, or with what the default workflow sets on
 entering Closed when no reason has that name, so a replacement of Completed stays the closing
@@ -390,7 +434,7 @@ every one of those tracks.
 | Type set | `typeSetId` | The track type's default set | **Configuration sets** |
 | Field rule set | `fieldRuleSetId` | Default field rules | **Configuration sets** |
 | Layout set | `layoutSetId` | Default layouts | **Layout sets**; chosen on **Which sets a track uses** |
-| Priority set | `prioritySetId` | Default priority set | Chosen on **Which sets a track uses**; made through the API |
+| Priority set | `prioritySetId` | Default priority set | Chosen on **Which sets a track uses**; made on **Priorities** |
 | Workflow map | `workflowMapId` | Default workflow map | **Workflow maps** |
 | Access policy | `accessPolicyId` | Default access policy | **Permissions** |
 | Visibility policy | `visibilityPolicyId` | None | Chosen on **Which sets a track uses**; made on **Visibility policies** |
