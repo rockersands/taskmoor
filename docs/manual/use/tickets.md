@@ -2,7 +2,7 @@
 title: "Working with tickets"
 audience: users
 sources: apps/web/src/tickets/view/drafts.tsx, apps/server/src/routes/tickets.ts, apps/web/src/richtext/slashTools.ts, apps/web/src/richtext/BlockPrompt.tsx, packages/richtext/src/schema.ts, packages/richtext/src/adf.ts, apps/web/src/tickets/tools/ChecklistsPanel.tsx, apps/server/src/routes/checklists.ts, apps/server/src/notifications/checklists.ts, apps/web/src/tickets/tools/SubticketsPanel.tsx, apps/web/src/tickets/tools/client.ts, apps/server/src/routes/subtickets.ts, apps/web/src/tickets/tools/LinksPanel.tsx, apps/web/src/tickets/tools/TicketPicker.tsx, docs/adr/0120-ticket-tools.md, apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/shell/OverlayLayer.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/server/src/routes/activity.ts, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md, apps/web/src/shell/NavList.tsx, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/HelpTip.tsx, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/tickets/view/TicketPopup.tsx, apps/web/src/routing/router.ts, apps/web/src/tickets/templates/TemplatePicker.tsx, apps/web/src/tickets/templates/start.ts, apps/server/src/routes/ticket-templates.ts, docs/adr/0113-ticket-templates.md, apps/web/src/tracks/recentTracks.ts, apps/server/src/tracks/membership.ts, apps/web/src/tutorial/FirstRunOffer.tsx, apps/web/src/attachments/FileDrop.tsx, apps/web/src/richtext/expandView.ts, apps/web/src/tickets/tools/ChildStatusMenu.tsx, apps/web/src/tickets/view/StatusMenu.tsx, apps/web/src/styles/print.css, apps/web/src/skins/skins.ts, apps/web/src/styles/ticket-view.css, docs/plan/page-review-findings.md, apps/web/src/tickets/PersonPicker.tsx, apps/web/src/shell/TrackSelect.tsx, apps/web/src/tickets/form.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/rich-text.ts, apps/server/src/privacy/export.ts, apps/server/src/tickets/checklists.ts, apps/server/src/import/load-checklists.ts, apps/web/src/bulk/client.ts, apps/web/src/styles/tickets.css, apps/web/src/styles/shell.css, apps/server/src/routes/fields.ts, apps/server/src/routes/teams.ts, apps/server/src/fields/values.ts, apps/web/src/i18n/days.ts, apps/web/src/tickets/refusedFields.ts, apps/web/src/tickets/customFieldNames.ts
-accessed: 2026-11-14
+accessed: 2026-11-16
 attestation: own-words
 ---
 # Working with tickets
@@ -149,9 +149,11 @@ track's summary page links to its templates, under **Ticket templates**, for any
 
 When the server refuses a value, the message shows next to the field, for example **This field
 is required.**, or **This release or area is archived. Choose another.** for one archived after
-the form opened. A release, area, priority or ticket type that is not the track's own, in a field
-of its own or a custom field, says **This track does not offer this choice. Choose one of its
-own.** If there is no track you may create tickets in, the form says so.
+the form opened. A release that is not the track's own, in a field of its own or a custom release
+field, says **This release is not in this track. Choose one of its releases.**, and an area says
+**This area is not in this track. Choose one of its areas.** A priority or ticket type the track
+does not offer says **This track does not offer this choice. Choose one of its own.** If there is
+no track you may create tickets in, the form says so.
 
 Boards' backlogs and a track's list can also make a ticket from a summary alone: see
 [the backlog](boards.md#the-backlog) and [the list view](views.md#the-list-view).
@@ -232,9 +234,11 @@ Each change saves at once and the page says **Saved.** If someone changed the ti
 opened it, the page says so: read it again and retry. A choice the track does not offer, or a
 release or area archived meanwhile, is refused with the create form's words: **This track does
 not offer this choice. Choose one of its own.** or **This release or area is archived. Choose
-another.** Any refused value is named by its field's label, a custom field by its name, each with
-the reason: **Check these values. Priority: This track does not offer this choice. Choose one of
-its own.** A move whose form asks for fields the page cannot fill in names them the same way. A
+another.** A release or area of the ticket's own fields that is not the track's says which it is,
+as on the create form (**This release is not in this track. Choose one of its releases.**); a
+custom field's keeps the general words. Any refused value is named by its field's label, a custom
+field by its name, each with the reason: **Check these values. Priority: This track does not
+offer this choice. Choose one of its own.** A move whose form asks for fields the page cannot fill in names them the same way. A
 custom field that is not on the ticket's form is named from the track's list of fields, looked up
 the first time a message needs it; only when that list cannot be read does the message say **A
 custom field** instead.
@@ -525,7 +529,8 @@ result for every ticket stay readable for 14 days after it finishes. The web app
 ending in `bulk/` and the operation's number: how many tickets were changed, not changed,
 skipped or waiting, a **Cancel the rest** button while it runs, and every ticket that was not
 changed with the reason; a value the ticket's track does not offer, or an archived release or
-area, is named as the create form names it. Above the progress, a line says what the change was: each field it set
+area, is named as the create form names it, a release or area of the ticket's own fields saying
+which it is (**This area is not in this track. Choose one of its areas.**). Above the progress, a line says what the change was: each field it set
 and the new value (**The change: Priority set to High.**), the track a move went to, or the
 status a transition took the tickets to (**The change: moved to the Done status.**). Once it
 finishes, **Tickets that were changed** links each changed ticket (for a clone, each copy), and

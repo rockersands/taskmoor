@@ -168,17 +168,45 @@ describe('the ticket template form names why a save was refused (CORE-029, T-291
     expect(within(form).getByRole('textbox', { name: 'Name' })).not.toHaveAttribute('aria-invalid');
   });
 
-  it('[CORE-029] reads the API’s refusals by body path', () => {
+  it('[CORE-029] [CORE-015] [CORE-016] reads the API’s refusals by body path, naming a release or area (T-286)', () => {
     const draft = draftOf(RELEASE_TEMPLATE, TEMPLATE_OPTIONS.fields);
     const refused = (fields: Record<string, string>) =>
-      saveRefusalOf(new ApiError(400, { error: 'invalid_fields', fields }), draft);
+      saveRefusalOf(
+        new ApiError(400, { error: 'invalid_fields', fields }),
+        draft,
+        TEMPLATE_OPTIONS.fields,
+      );
     expect(refused({ 'defaults.areaIds.1': 'archived', 'ticketTypeIds.0': 'not_found' })).toEqual({
       message: 'tickets.templates.problem.marked',
       at: { areaIds: 'tickets.error.archived', ticketTypeIds: 'tickets.error.notFound' },
     });
-    expect(refused({ 'defaults.fields.12.0': 'not_in_track' }).at).toEqual({
-      'field:12': 'tickets.error.notInTrack',
+    // A release or area the track does not have says which it is; a choice list's does not
+    // (T-286).
+    expect(
+      refused({
+        'defaults.fields.12.0': 'not_in_track',
+        'defaults.areaIds.0': 'not_in_track',
+        'defaults.targetReleaseIds.1': 'not_in_track',
+        'defaults.fields.7': 'not_in_track',
+        'defaults.priorityId': 'not_in_track',
+      }).at,
+    ).toEqual({
+      'field:12': 'tickets.error.releaseNotInTrack',
+      areaIds: 'tickets.error.areaNotInTrack',
+      targetReleaseIds: 'tickets.error.releaseNotInTrack',
+      'field:7': 'tickets.error.notInTrack',
+      priority: 'tickets.error.notInTrack',
     });
+    // Without the fields' types, a custom one keeps the general words.
+    expect(
+      saveRefusalOf(
+        new ApiError(400, {
+          error: 'invalid_fields',
+          fields: { 'defaults.fields.12.0': 'not_in_track' },
+        }),
+        draft,
+      ).at,
+    ).toEqual({ 'field:12': 'tickets.error.notInTrack' });
     expect(refused({ 'subtickets.5.summary': 'invalid' })).toEqual({
       message: 'tickets.templates.problem.invalid',
       at: {},

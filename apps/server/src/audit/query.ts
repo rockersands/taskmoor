@@ -163,23 +163,33 @@ interface AuditDetails {
   details: unknown;
 }
 
-/** The people whose capacity a `plan.capacity_set` record changed, by id. */
+/** Whether a side of a capacity change holds a note's words. */
+const worded = (side: unknown) =>
+  typeof (side as { note?: unknown } | null)?.note === 'string' &&
+  (side as { note: string }).note !== '';
+
+/**
+ * The people whose capacity a `plan.capacity_set` record changed, by id, where the record holds
+ * a note's words about it. Records written since T-259 hold none (`auditDetails`), so only older
+ * ones are ever masked.
+ */
 function capacityPeople(view: AuditDetails): number[] {
   if (view.action !== 'plan.capacity_set') return [];
   const changes = (view.details as { changes?: unknown } | null)?.changes;
   if (!Array.isArray(changes)) return [];
-  return changes.flatMap((c: { subject?: unknown }) => {
+  return changes.flatMap((c: { subject?: unknown; from?: unknown; to?: unknown }) => {
     const match = typeof c?.subject === 'string' ? /^user:([0-9]{1,9})$/.exec(c.subject) : null;
-    return match ? [Number(match[1])] : [];
+    return match && (worded(c.from) || worded(c.to)) ? [Number(match[1])] : [];
   });
 }
 
 /**
  * Capacity notes about erased people, shown empty (T-089j; ADR-111, ADR-122): the erasure
- * clears them from the plans' events, but the audit log is never rewritten, so its
- * `plan.capacity_set` records are masked wherever they are read (search, export, syslog and a
- * personal data download), as records about an erased person are. A record it changed is a new
- * object; the others are returned as they came.
+ * clears them from the plans' events, but the audit log is never rewritten, so the
+ * `plan.capacity_set` records written before T-259, which kept the notes' words, are masked
+ * wherever they are read (search, export, syslog and a personal data download), as records about
+ * an erased person are. Records written since keep no words (`auditDetails`). A record it changed
+ * is a new object; the others are returned as they came.
  */
 export async function withoutErasedCapacityNotes<T extends AuditDetails>(
   db: Kysely<Database>,

@@ -321,6 +321,11 @@ take on.
   masks an erased person's name (`audit/query.ts`), and in a personal data download's
   `audit.ndjson`, whoever downloads it; `audit-verify` still checks the stored
   records. Notes should still say "Leave", not why: until the erasure they are as typed.
+  **As built since T-259 (answered on 2026-11-16):** the audit record of `plan.capacity_set` no
+  longer holds the notes' words at all (`audit/subscriber.ts` `auditDetails`): it keeps the
+  actor, the plan, each subject and period and the amounts before and after, so the record of
+  who changed what stays, and nothing about why someone was away reaches the stored log, its
+  retention or a syslog server. The masking above stays for records written before.
 - Teams, the unit and the periods are fields of `PATCH /api/v1/plans/:id` (`teams`,
   `capacityUnit`, `period`), in `plan.updated`.
 - Both routes are internal in the API document, as the other plan routes. Token scopes: read for

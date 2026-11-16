@@ -2796,6 +2796,10 @@ export const messagesEn = {
   'tickets.error.otherTrack': 'A subticket stays in its parent’s track.',
   'tickets.error.archived': 'This release or area is archived. Choose another.',
   'tickets.error.notInTrack': 'This track does not offer this choice. Choose one of its own.',
+  // A release or area the track does not have names which it is (T-286).
+  'tickets.error.releaseNotInTrack':
+    'This release is not in this track. Choose one of its releases.',
+  'tickets.error.areaNotInTrack': 'This area is not in this track. Choose one of its areas.',
   'tickets.create.withheld':
     'You may not set this field on a new ticket. The ticket is created only if a default or the workflow fills it in; if not, ask a track administrator.',
   'tickets.create.parentHint': 'Type a ticket’s key or words from its summary.',
@@ -3074,7 +3078,7 @@ export const messagesEn = {
   'trackPeople.roleGivenWithTracks': '{name} now holds {role} and can create tracks.',
   'trackPeople.createTracks': 'Also let them create tracks',
   'trackPeople.createTracksHint':
-    'A permission for the whole site, not only this track. Taking the role away later does not remove it; a site administrator can, on the Permissions page.',
+    'A permission for the whole site, not only this track. It goes with the role: once they run no track, it goes too. To let them keep it, a site administrator gives it on the Permissions page.',
   'trackPeople.pending': 'Invitations waiting',
   'trackPeople.noPending': 'No invitations are waiting.',
   'trackPeople.pendingMeta': '{role}, invited by {who}.',
@@ -4387,6 +4391,10 @@ export const messagesEn = {
   'workflow.problem.unknown_close_reason': '{where}: the close reason it sets no longer exists.',
   'workflow.problem.invalid_pattern': '{where}: {pattern} is not a valid regular expression.',
   'workflow.problem.guards_too_deep': '{where}: the guards nest too deep.',
+  // A workflow with no transitions whose every status closes, with no close reason to close
+  // with, would be live with no move at all (T-260).
+  'workflow.problem.no_moves':
+    'No ticket could ever move in it: it has no transitions, every status is in the closed stage, and there is no close reason for a move to close with. Add a close reason named Completed, make the default workflow set a reason when it closes a ticket, add a status outside the closed stage, or draw the transitions yourself.',
   'workflow.problem.onCreate': 'Creating a ticket',
   'workflow.problem.refused': 'The server refused the definition.',
   'workflow.problem.mappingRequired': 'Choose where the tickets of each dropped status go.',
@@ -4403,7 +4411,7 @@ export const messagesEn = {
     '{count, plural, one {The draft has # warning; it can still be published.} other {The draft has # warnings; it can still be published.}}',
   'admin.workflow.publishPanel.dropped': 'Statuses this version drops',
   'admin.workflow.publishPanel.freeMoves':
-    'This version has no transitions, so publishing gives each of its statuses a move from any status, as a new workflow gets.',
+    'This version has no transitions, so publishing gives its statuses a move from any status, as a new workflow gets. A closed-stage status gets one only when there is a close reason to close with; if no status can get one, the publish is refused and says why.',
   'admin.workflow.publishPanel.moveTo':
     'Move the {count, plural, one {# ticket} other {# tickets}} in {status} to',
   'admin.workflow.publishPanel.empty': '{status}: no tickets to move.',
@@ -5447,7 +5455,7 @@ export const messagesEn = {
   'summary.filter.mine': 'My tickets',
   'summary.filter.clear': 'Clear the filter',
   'summary.filter.note':
-    'Only you see this filter. It narrows every number and widget here to the tickets that also match, and stays in this page’s address, so you can bookmark it. The summary everyone else sees does not change.',
+    'This filter changes only your view: it narrows every number and widget here to the tickets that also match. It stays in this page’s address, so you can bookmark it or share the link; the summary everyone else sees does not change.',
   'summary.filter.bad': 'That filter does not read as a search. Check it on the search page.',
   'summary.filter.on': 'Showing only the tickets that match {filter}.',
   'summary.filter.sprints': 'Sprint widgets still show their whole sprint.',

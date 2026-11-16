@@ -2,7 +2,7 @@
 title: "List, calendar, timeline and outcomes"
 audience: users
 sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/list/GroupSection.tsx, apps/web/src/shell/seededNames.ts, apps/web/src/shell/priorityName.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/touch.ts, apps/web/src/styles/timeline.css, apps/web/src/styles/views.css, apps/web/src/timeline/dependencies.ts, apps/web/src/timeline/refusal.ts, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, docs/plan/page-review-findings.md, apps/web/src/shell/Popover.tsx, docs/plan/decisions.csv, apps/web/src/styles/dashboards.css, apps/web/src/tracks/outcomeManager.ts, apps/web/src/styles/surfaces.css, apps/server/src/routes/tickets.ts, apps/web/src/tickets/refusedFields.ts, apps/web/src/tickets/customFieldNames.ts
-accessed: 2026-11-14
+accessed: 2026-11-16
 attestation: own-words
 ---
 # List, calendar, timeline and outcomes
@@ -44,8 +44,8 @@ the page says which filter is on. Each number still opens the search that finds 
 tickets, with your filter in it. Sprint widgets (burndown, sprint health, days remaining) read a
 whole sprint rather than a query, so they stay as they are, and the page says so.
 
-The filter is yours alone. It is kept in the page's address (`tracks/PAY?filter=...`), so it
-survives a reload and you can bookmark the filtered summary or send yourself the link; anyone who
+The filter changes only your view. It is kept in the page's address (`tracks/PAY?filter=...`),
+so it survives a reload and you can bookmark the filtered summary or share the link; anyone who
 opens that link sees the summary filtered the same way, as far as they may see. Nothing is saved
 on the server, and the summary the owner set up does not change. Pressing **Customise** shows the
 widgets unfiltered, as everyone will see them.

@@ -259,21 +259,57 @@ const ERRORS: Record<string, MessageId> = {
   other_track: 'tickets.error.otherTrack',
   // A release or area archived since it was offered (the create route's placement check; T-276).
   archived: 'tickets.error.archived',
-  // A release or area of another track, in a field of its own or a custom one; a priority, ticket
-  // type or visibility level the track does not offer (T-282).
+  // A priority, ticket type or visibility level the track does not offer, or a release or area
+  // of another track where the page cannot tell which (T-282).
   not_in_track: 'tickets.error.notInTrack',
 };
-export const errorMessage = (code: string): MessageId =>
-  (Object.hasOwn(ERRORS, code) ? ERRORS[code] : undefined) ?? 'tickets.error.other';
+
+/** What a field holds that a refusal names by itself: a release or an area (T-286). */
+export type TrackThing = 'release' | 'area';
+
+/** The keys a form or a ticket route names the system release and area fields by. */
+const TRACK_THINGS: Readonly<Record<string, TrackThing>> = {
+  targetRelease: 'release',
+  foundInRelease: 'release',
+  area: 'area',
+  targetReleaseIds: 'release',
+  foundInReleaseIds: 'release',
+  areaIds: 'area',
+};
+
+/**
+ * Whether a field holds releases or areas (T-286): a system field by the key a form or a refusal
+ * names it by, a custom one by its type where the page knows it; null for any other field.
+ */
+export function trackThingOf(key: string, customType?: string): TrackThing | null {
+  if (customType === 'release' || customType === 'area') return customType;
+  return Object.hasOwn(TRACK_THINGS, key) ? (TRACK_THINGS[key] ?? null) : null;
+}
+
+const NOT_IN_TRACK: Readonly<Record<TrackThing, MessageId>> = {
+  release: 'tickets.error.releaseNotInTrack',
+  area: 'tickets.error.areaNotInTrack',
+};
+
+/**
+ * A field refusal's message. A release or area the track does not have says which it is
+ * (T-286), so the person knows what to choose again; any other refusal has its code's words.
+ */
+export const errorMessage = (code: string, thing: TrackThing | null = null): MessageId =>
+  code === 'not_in_track' && thing
+    ? NOT_IN_TRACK[thing]
+    : ((Object.hasOwn(ERRORS, code) ? ERRORS[code] : undefined) ?? 'tickets.error.other');
 
 /**
  * The message for a refusal outside the create form (the ticket page's edits, a bulk change's
  * tickets) whose fields name a choice the track does not offer or an archived release or area,
- * as the create form names them (T-287); null for any other refusal.
+ * as the create form names them (T-287), by the first such field (T-286); null for any other
+ * refusal.
  */
 export function placementRefusal(fields: Record<string, string> | undefined): MessageId | null {
-  const codes = Object.values(fields ?? {});
-  if (codes.includes('not_in_track')) return ERRORS.not_in_track ?? null;
-  if (codes.includes('archived')) return ERRORS.archived ?? null;
+  const refused = Object.entries(fields ?? {});
+  const notInTrack = refused.find(([, code]) => code === 'not_in_track');
+  if (notInTrack) return errorMessage('not_in_track', trackThingOf(notInTrack[0]));
+  if (refused.some(([, code]) => code === 'archived')) return ERRORS.archived ?? null;
   return null;
 }

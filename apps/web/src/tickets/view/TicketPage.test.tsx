@@ -207,7 +207,7 @@ describe('the ticket view (M1-051)', () => {
     expect(alert).not.toHaveTextContent('The workflow does not let');
   });
 
-  it('[CORE-022][CORE-015] names a choice the track does not offer, or an archived one, as the create form does (T-287)', async () => {
+  it('[CORE-022][CORE-015][CORE-016] names a choice the track does not offer, or an archived one, as the create form does (T-287, T-286)', async () => {
     const user = userEvent.setup();
     const { client } = renderPage();
     await heading();
@@ -221,6 +221,21 @@ describe('the ticket view (M1-051)', () => {
     await user.click(screen.getByRole('option', { name: 'Highest' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'This track does not offer this choice. Choose one of its own.',
+    );
+    // A release or an area says which it is (T-286); the priority keeps the general words.
+    client.edit = async () => {
+      throw new ApiError(400, {
+        error: 'invalid_fields',
+        fields: { targetReleaseIds: 'not_in_track', areaIds: 'not_in_track' },
+      });
+    };
+    await user.click(within(details()).getByRole('combobox', { name: 'Priority' }));
+    await user.click(screen.getByRole('option', { name: 'Medium' }));
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Target releases: This release is not in this track. Choose one of its releases. ' +
+          'Areas: This area is not in this track. Choose one of its areas.',
+      ),
     );
     refuse('archived');
     await user.click(within(details()).getByRole('combobox', { name: 'Priority' }));

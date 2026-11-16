@@ -60,7 +60,7 @@ COPY packages/workflow/package.json packages/workflow/
 # this changes what is installed (the lockfile is frozen and every package is checked against its
 # hash), and the arguments are declared here, after the manifests, so a changed value runs this
 # step again but keeps every layer above it. pnpm does not ask the registry for a newer pnpm.
-ARG PNPM_INSTALL_TIMEOUT=1800
+ARG PNPM_INSTALL_TIMEOUT=3600
 ARG PNPM_INSTALL_FETCH_TIMEOUT=60
 ARG PNPM_INSTALL_FETCH_RETRIES=5
 ARG PNPM_INSTALL_NETWORK_CONCURRENCY=8
@@ -79,7 +79,7 @@ RUN --mount=type=secret,id=build_ca,required=false \
       --filter @taskmoor/server... --filter @taskmoor/web... || { \
       status=$?; \
       if [ $(($(date +%s) - start)) -ge "$PNPM_INSTALL_TIMEOUT" ]; then \
-        echo "pnpm install: stopped after $PNPM_INSTALL_TIMEOUT s, before every dependency was downloaded. What it fetched is kept for the next build. On a slow link, build again with a longer limit (--build-arg PNPM_INSTALL_TIMEOUT=3600) or fewer downloads at once (--build-arg PNPM_INSTALL_NETWORK_CONCURRENCY=4)" >&2; \
+        echo "pnpm install: stopped after $PNPM_INSTALL_TIMEOUT s, before every dependency was downloaded. What it fetched is kept for the next build. On a slow link, build again with a longer limit (--build-arg PNPM_INSTALL_TIMEOUT=7200) or fewer downloads at once (--build-arg PNPM_INSTALL_NETWORK_CONCURRENCY=4)" >&2; \
       fi; \
       exit "$status"; \
     }

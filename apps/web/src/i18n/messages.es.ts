@@ -2880,6 +2880,9 @@ export const messagesEs: Record<MessageId, string> = {
   'tickets.error.otherTrack': 'Un subticket se queda en el track de su padre.',
   'tickets.error.archived': 'Esta versión o área está archivada. Elige otra.',
   'tickets.error.notInTrack': 'Este track no ofrece esta opción. Elige una de las suyas.',
+  'tickets.error.releaseNotInTrack':
+    'Esta versión no es de este track. Elige una de sus versiones.',
+  'tickets.error.areaNotInTrack': 'Esta área no es de este track. Elige una de sus áreas.',
   'tickets.create.withheld':
     'No puedes definir este campo en un ticket nuevo. El ticket solo se crea si lo rellena un valor predeterminado o el flujo de trabajo; si no, pídeselo a un administrador del track.',
   'tickets.create.parentHint': 'Escribe la clave de un ticket o palabras de su resumen.',
@@ -3163,7 +3166,7 @@ export const messagesEs: Record<MessageId, string> = {
   'trackPeople.roleGivenWithTracks': '{name} ahora tiene {role} y puede crear tracks.',
   'trackPeople.createTracks': 'Permitir también crear tracks',
   'trackPeople.createTracksHint':
-    'Es un permiso para todo el sitio, no solo para este track. Quitar el rol después no lo retira; un administrador del sitio puede hacerlo en la página Permisos.',
+    'Es un permiso para todo el sitio, no solo para este track. Va con el rol: cuando ya no dirija ningún track, se retira también. Para que lo conserve, un administrador del sitio lo da en la página Permisos.',
   'trackPeople.pending': 'Invitaciones en espera',
   'trackPeople.noPending': 'No hay invitaciones en espera.',
   'trackPeople.pendingMeta': '{role}, invitación de {who}.',
@@ -4503,6 +4506,8 @@ export const messagesEs: Record<MessageId, string> = {
     '{where}: el motivo de cierre que establece ya no existe.',
   'workflow.problem.invalid_pattern': '{where}: {pattern} no es una expresión regular válida.',
   'workflow.problem.guards_too_deep': '{where}: las condiciones se anidan demasiado.',
+  'workflow.problem.no_moves':
+    'Ningún ticket podría moverse nunca en él: no tiene transiciones, todos sus estados están en la etapa cerrada y no hay ningún motivo de cierre con el que cerrar. Añade un motivo de cierre llamado Completed, haz que el flujo de trabajo predeterminado defina un motivo al cerrar un ticket, añade un estado fuera de la etapa cerrada o dibuja tú las transiciones.',
   'workflow.problem.onCreate': 'Crear un ticket',
   'workflow.problem.refused': 'El servidor rechazó la definición.',
   'workflow.problem.mappingRequired': 'Elige adónde van los tickets de cada estado que se quita.',
@@ -4520,7 +4525,7 @@ export const messagesEs: Record<MessageId, string> = {
     '{count, plural, one {El borrador tiene # aviso; aun así se puede publicar.} other {El borrador tiene # avisos; aun así se puede publicar.}}',
   'admin.workflow.publishPanel.dropped': 'Estados que quita esta versión',
   'admin.workflow.publishPanel.freeMoves':
-    'Esta versión no tiene transiciones, así que al publicarla cada uno de sus estados recibe una transición desde cualquier estado, como un flujo de trabajo nuevo.',
+    'Esta versión no tiene transiciones, así que al publicarla sus estados reciben una transición desde cualquier estado, como un flujo de trabajo nuevo. Un estado de la etapa cerrada solo la recibe si hay un motivo de cierre con el que cerrar; si ningún estado puede recibirla, la publicación se rechaza y dice por qué.',
   'admin.workflow.publishPanel.moveTo':
     'Mover {count, plural, one {el # ticket} other {los # tickets}} de {status} a',
   'admin.workflow.publishPanel.empty': '{status}: no hay tickets que mover.',
@@ -5580,7 +5585,7 @@ export const messagesEs: Record<MessageId, string> = {
   'summary.filter.mine': 'Mis tickets',
   'summary.filter.clear': 'Quitar el filtro',
   'summary.filter.note':
-    'Solo tú ves este filtro. Reduce cada número y cada widget de aquí a los tickets que también coinciden, y se queda en la dirección de esta página, así que puedes guardarla en marcadores. El resumen que ven los demás no cambia.',
+    'Este filtro solo cambia tu vista: reduce cada número y cada widget de aquí a los tickets que también coinciden. Se queda en la dirección de esta página, así que puedes guardarla en marcadores o compartir el enlace; el resumen que ven los demás no cambia.',
   'summary.filter.bad':
     'Ese filtro no se lee como una búsqueda. Revísalo en la página de búsqueda.',
   'summary.filter.on': 'Solo se muestran los tickets que coinciden con {filter}.',

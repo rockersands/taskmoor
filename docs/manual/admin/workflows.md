@@ -1,8 +1,8 @@
 ---
 title: "Workflows"
 audience: admins
-sources: packages/workflow/src/model.ts, packages/workflow/src/pattern.ts, apps/server/src/workflows/transfer.ts, apps/server/src/workflows/transfer-store.ts, docs/adr/0073-workflow-files.md, packages/workflow/src/engine.ts, apps/server/src/workflows/model.ts, apps/server/src/workflows/fields.ts, apps/server/src/workflows/locks.ts, apps/server/src/workflows/maps.ts, apps/server/src/workflows/migration.ts, apps/server/src/workflows/state.ts, apps/server/src/workflows/store.ts, apps/server/src/routes/workflows.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/tracks.ts, apps/web/src/workflow/WorkflowsPage.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/workflow/definition.ts, apps/web/src/workflow/StatusesSection.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/PublishPanel.tsx, apps/web/src/workflow/VersionHistory.tsx, apps/web/src/workflow/lint.ts, apps/web/src/workflow/catalogue.ts, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0024_workflows.ts, packages/db/src/migrations/0042_workflow_maps.ts, packages/db/src/migrations/0089_seamless_default_workflow.ts, packages/db/src/migrations/0104_default_workflow_left_strict.ts, packages/db/src/migrations/0107_workflows_left_without_moves.ts, apps/server/src/workflows/free-moving.ts, apps/server/src/workflows/free-moves.ts, apps/server/src/cli.ts, apps/server/src/workflows/close-reasons.ts, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0042-edit-locks.md, docs/adr/0045-workflow-maps.md, docs/specs/01a-core-work-tracking.md, apps/server/src/workflows/board-managed.ts, docs/adr/0079-board-managed-workflows.md, docs/adr/0116-one-place-per-track.md, apps/web/src/workflow/client.ts, apps/web/src/workflow/WorkflowDiagram.tsx, apps/web/src/workflow/diagram.ts, apps/web/src/workflow/StructureLists.tsx, apps/web/src/admin/NewButton.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/shell/NotFoundPage.tsx, apps/web/src/admin/ActionSlot.tsx
-accessed: 2026-11-14
+sources: packages/workflow/src/model.ts, packages/workflow/src/pattern.ts, apps/server/src/workflows/transfer.ts, apps/server/src/workflows/transfer-store.ts, docs/adr/0073-workflow-files.md, packages/workflow/src/engine.ts, apps/server/src/workflows/model.ts, apps/server/src/workflows/fields.ts, apps/server/src/workflows/locks.ts, apps/server/src/workflows/maps.ts, apps/server/src/workflows/migration.ts, apps/server/src/workflows/state.ts, apps/server/src/workflows/store.ts, apps/server/src/routes/workflows.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/tracks.ts, apps/web/src/workflow/WorkflowsPage.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/workflow/definition.ts, apps/web/src/workflow/StatusesSection.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/PublishPanel.tsx, apps/web/src/workflow/VersionHistory.tsx, apps/web/src/workflow/lint.ts, apps/web/src/workflow/catalogue.ts, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0024_workflows.ts, packages/db/src/migrations/0042_workflow_maps.ts, packages/db/src/migrations/0089_seamless_default_workflow.ts, packages/db/src/migrations/0104_default_workflow_left_strict.ts, packages/db/src/migrations/0107_workflows_left_without_moves.ts, apps/server/src/workflows/free-moving.ts, apps/server/src/workflows/free-moves.ts, apps/server/src/cli.ts, apps/server/src/workflows/close-reasons.ts, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0042-edit-locks.md, docs/adr/0045-workflow-maps.md, docs/specs/01a-core-work-tracking.md, apps/server/src/workflows/board-managed.ts, docs/adr/0079-board-managed-workflows.md, docs/adr/0116-one-place-per-track.md, apps/web/src/workflow/client.ts, apps/web/src/workflow/WorkflowDiagram.tsx, apps/web/src/workflow/diagram.ts, apps/web/src/workflow/StructureLists.tsx, apps/web/src/admin/NewButton.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/shell/NotFoundPage.tsx, apps/web/src/admin/ActionSlot.tsx, apps/web/src/workflow/describe.ts
+accessed: 2026-11-16
 attestation: own-words
 ---
 # Workflows
@@ -289,8 +289,16 @@ transition from any status into each of its statuses, as a new workflow gets, an
 version** says so before you publish. The moves are added only when the publish goes through: a
 publish refused, for example to ask where the tickets of a dropped status go, leaves the draft as
 it was. A draft with a rule, and the workflow of a board that manages it, are published as they
-are. So is a draft whose only statuses are closed-stage ones when no close reason exists to set:
-it is published with no transitions, and `cli.mjs workflow-moves` lists it until you add some.
+are.
+
+A closed-stage status gets its move only when there is a close reason for the move to set: the
+reason named **Completed** (in any case), or else the reason the default workflow sets when it
+closes a ticket. A draft whose only statuses are closed-stage ones, when there is no such reason,
+could get no move at all, so its publish is refused and says how to fix it: add a close reason
+named Completed, make the default workflow set a reason when it closes a ticket, add a status
+outside the closed stage, or draw the transitions yourself. The draft stays as you saved it.
+**Publish version** tells you before you publish that a closed-stage status gets its move only
+when there is a reason to close with.
 
 A workflow left with no transitions by an earlier version of Taskmoor got those moves when the
 server was upgraded, as a new published version; a draft you had saved stays as you saved it,
@@ -309,7 +317,10 @@ as **The next draft** of an existing one, to check in the editor and publish.
 
 A file whose workflow has no transitions at all imports with a transition from any status into
 each of its statuses, as a new workflow gets; a file with transitions or rules keeps them as they
-are.
+are. A file with no transitions whose only statuses are closed-stage ones, when there is no
+close reason for the moves to set (see above), is refused as a new workflow, which would be live
+at once with no move, and nothing it would have made is kept; as the next draft it is accepted,
+and its publish is refused until you fix it.
 
 The import matches statuses by name, ignoring case, and creates those this site lacks.
 Everything else must already exist with the same name. Whatever cannot be found never lets

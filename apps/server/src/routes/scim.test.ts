@@ -508,6 +508,59 @@ describe('SCIM 2.0 service (M1-083)', () => {
       expect(on.json().active).toBe(true);
     });
 
+    it('[IAM-006] [IAM-033] a manager turned off and on again keeps the create-tracks grant that came with the role (T-259)', async () => {
+      const bea = Number((await createUser({ userName: 'bea@example.com' })).id);
+      const track = await admin('POST', '/api/v1/tracks', {
+        key: 'BEA',
+        name: 'Bea runs it',
+        mode: 'shared',
+      });
+      expect(track.statusCode, track.body).toBe(201);
+      const administrators = await database.db
+        .selectFrom('role')
+        .select('id')
+        .where('name', '=', 'Administrators')
+        .executeTakeFirstOrThrow();
+      const given = await admin(
+        'PUT',
+        `/api/v1/tracks/${track.json().track.id}/roles/${administrators.id}/users/${bea}`,
+        { createTracks: true },
+      );
+      expect(given.statusCode, given.body).toBe(204);
+      const grants = () =>
+        database.db
+          .selectFrom('global_grant')
+          .select('id')
+          .where('permission', '=', 'create_local_tracks')
+          .where('grantee', '=', 'user')
+          .where('user_id', '=', bea)
+          .execute();
+      const held = await grants();
+      expect(held).toHaveLength(1);
+      // Suspended and restored by the identity provider: the role stays, and so does the grant.
+      const off = await scim('PATCH', `/Users/${bea}`, {
+        schemas: [PATCH_OP],
+        Operations: [{ op: 'replace', value: { active: false } }],
+      });
+      expect(off.json().active).toBe(false);
+      expect(await grants()).toEqual(held);
+      expect((await lastEvent('scim.user_updated')).payload).not.toHaveProperty(
+        'createTracksGrantsRemoved',
+      );
+      const on = await scim('PATCH', `/Users/${bea}`, {
+        schemas: [PATCH_OP],
+        Operations: [{ op: 'replace', path: 'active', value: true }],
+      });
+      expect(on.json().active).toBe(true);
+      expect(await grants()).toEqual(held);
+      // Deprovisioned: deactivated, the role kept, and the grant with it.
+      expect((await scim('DELETE', `/Users/${bea}`)).statusCode).toBe(204);
+      expect(await grants()).toEqual(held);
+      expect((await lastEvent('scim.user_removed')).payload).not.toHaveProperty(
+        'createTracksGrantsRemoved',
+      );
+    });
+
     it('[IAM-006] deprovisions with DELETE: the account stays, deactivated, keeping its work', async () => {
       const ada = await createUser({ userName: 'ada@example.com' });
       const track = await admin('POST', '/api/v1/tracks', {

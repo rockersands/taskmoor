@@ -1,4 +1,5 @@
 import { API_BASE, ApiError, api } from '../api/client';
+import { everyTeam } from '../api/teams';
 import { everyTrack } from '../api/tracks';
 import { type CalendarClient, type CalendarTicket, calendarClient } from '../calendar/client';
 import type {
@@ -509,9 +510,11 @@ export const planClient: PlanClient = {
     }
   },
   teamOptions: async () =>
-    (await api<{ teams: { id: number; name: string; memberCount: number }[] }>('/teams')).teams.map(
-      (t) => ({ id: t.id, name: t.name, memberCount: t.memberCount }),
-    ),
+    (await everyTeam<{ id: number; name: string; memberCount: number }>()).map((t) => ({
+      id: t.id,
+      name: t.name,
+      memberCount: t.memberCount,
+    })),
   linkTypeOptions: async () =>
     (await api<{ linkTypes: LinkTypeOption[] }>('/link-types')).linkTypes.map((l) => ({
       id: l.id,

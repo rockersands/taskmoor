@@ -11,6 +11,7 @@ import { type Kysely, sql, type Transaction } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { storesOf } from '../attachments/stores';
+import { appendAudit } from '../audit/chain';
 import { exportAudit, searchAudit } from '../audit/query';
 import { SESSION_COOKIE } from '../auth';
 import { Authorizer } from '../authz/authorizer';
@@ -900,6 +901,56 @@ describe('teams and capacity in a plan (PLN-005, PLN-009)', () => {
         .flatMap((c) => [c.from?.note, c.to?.note])
         .filter((n): n is string => n !== undefined);
 
+    it('[IAM-013] [IAM-033] [PLN-005] the audit log records who set whose capacity and the amounts, never the notes’ words (T-259)', async () => {
+      await setCapacity('admin', [
+        { teamId: teams.Web, period: null, amount: 22, note: 'Web on call' },
+        { userId: users.bo?.id, period: null, amount: 2, note: 'Away for a family matter' },
+      ]);
+      await work();
+      const last = await database.db
+        .selectFrom('audit_event')
+        .select(['actor_id', 'subject_type', 'subject_id', 'details'])
+        .where('action', '=', 'plan.capacity_set')
+        .orderBy('seq', 'desc')
+        .executeTakeFirstOrThrow();
+      // Who, whose capacity, in which plan, and the amounts: the words stay with the plan.
+      expect(last.actor_id).toBe(users.admin?.id);
+      expect([last.subject_type, String(last.subject_id)]).toEqual(['plan', String(planId)]);
+      const changes = (last.details as { changes: Record<string, unknown>[] }).changes;
+      expect(changes).toContainEqual(
+        expect.objectContaining({ subject: `user:${users.bo?.id}`, to: { amount: 2 } }),
+      );
+      expect(changes).toContainEqual(
+        expect.objectContaining({ subject: `team:${teams.Web}`, to: { amount: 22 } }),
+      );
+      const stored = JSON.stringify(
+        await database.db
+          .selectFrom('audit_event')
+          .select('details')
+          .where('action', '=', 'plan.capacity_set')
+          .execute(),
+      );
+      expect(stored).not.toContain('Away for a family matter');
+      expect(stored).not.toContain('Web on call');
+      expect(stored).not.toContain('"note"');
+      // The plan's own event keeps them, for the plan's history (and an erasure empties them).
+      const event = await database.db
+        .selectFrom('domain_event')
+        .select('payload')
+        .where('type', '=', 'plan.capacity_set')
+        .orderBy('id', 'desc')
+        .executeTakeFirstOrThrow();
+      expect(JSON.stringify(event.payload)).toContain('Away for a family matter');
+      // Nothing to mask in a record that holds no words.
+      const { records } = await searchAudit(
+        database.db,
+        1,
+        { action: 'plan.capacity_set' },
+        { limit: 1 },
+      );
+      expect(records[0]?.masked).toBeUndefined();
+    });
+
     it('[PLN-005] [IAM-008] erasing a person empties their capacity notes in the plans’ events and in the audit log', async () => {
       const ana = `user:${users.ana?.id}`;
       const web = `team:${teams.Web}`;
@@ -908,6 +959,32 @@ describe('teams and capacity in a plan (PLN-005, PLN-009)', () => {
         { userId: users.ana?.id, period: null, amount: 9, note: 'Part time after surgery' },
       ]);
       await work();
+      // A record written before T-259, when the audit log still kept the notes' words.
+      await appendAudit(database.db, [
+        {
+          workspaceId: 1,
+          action: 'plan.capacity_set',
+          actorId: users.admin?.id as number,
+          subjectType: 'plan',
+          subjectId: planId,
+          details: {
+            changes: [
+              {
+                subject: web,
+                period: null,
+                from: null,
+                to: { amount: 21, note: 'Web keeps this' },
+              },
+              {
+                subject: ana,
+                period: null,
+                from: { amount: 8, note: 'Leave' },
+                to: { amount: 9, note: 'Part time after surgery' },
+              },
+            ],
+          },
+        },
+      ]);
       const capacityEvents = () =>
         database.db
           .selectFrom('domain_event')
@@ -947,13 +1024,17 @@ describe('teams and capacity in a plan (PLN-005, PLN-009)', () => {
         to: { amount: 9, note: '' },
       });
 
-      // The audit log is never rewritten: its records keep the words, and it shows them empty.
+      // The audit log is never rewritten: a record written before T-259 keeps the words, and
+      // the log shows them empty. Records written since never held them.
       const stored = await database.db
         .selectFrom('audit_event')
-        .select('details')
+        .select(['details', 'source_event_id'])
         .where('action', '=', 'plan.capacity_set')
         .execute();
       expect(JSON.stringify(stored)).toContain('Part time after surgery');
+      expect(
+        JSON.stringify(stored.filter((r) => r.source_event_id !== null).map((r) => r.details)),
+      ).not.toContain('"note"');
       const { records } = await searchAudit(
         database.db,
         1,
