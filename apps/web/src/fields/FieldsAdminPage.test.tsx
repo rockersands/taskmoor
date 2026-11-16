@@ -1,10 +1,10 @@
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ADMIN } from '../admin/fixtures';
+import { ADMIN, TRACK_ADMIN } from '../admin/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
-import { SessionProvider } from '../session/SessionProvider';
+import { type Session, SessionProvider } from '../session/SessionProvider';
 import { untranslated, visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
 import { FieldsAdminPage } from './FieldsAdminPage';
@@ -291,5 +291,184 @@ describe('field administration (M1-053, T-320)', () => {
     ]);
     const texts = visibleTexts(main).filter((t) => !data.has(t));
     expect(untranslated(texts)).toEqual([]);
+  });
+});
+
+describe('a local-mode track’s own fields, for whoever runs the track (T-322)', () => {
+  function renderOwn(
+    trackId: number | null,
+    options: {
+      session?: Session;
+      locale?: Locale;
+      client?: ReturnType<typeof fakeFieldsClient>;
+    } = {},
+  ) {
+    const client = options.client ?? fakeFieldsClient();
+    render(
+      <I18nProvider locale={options.locale ?? 'en'}>
+        <SessionProvider session={options.session ?? TRACK_ADMIN}>
+          <main>
+            <FieldsAdminPage client={client} trackId={trackId} />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    return client;
+  }
+
+  it('[CORE-003] [IAM-030] lists only the fields the track owns, and adds one that covers it alone', async () => {
+    const user = userEvent.setup();
+    const client = renderOwn(4);
+    expect(await screen.findByText('OPS · Operations')).toBeVisible();
+    expect(await screen.findByRole('button', { name: 'Manage field Components' })).toBeVisible();
+    // Shared fields reach OPS, but they are the administrators'.
+    expect(screen.queryByRole('button', { name: 'Manage field Severity' })).toBeNull();
+    expect(screen.queryByText('One track')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Back to managing OPS.' })).toHaveAttribute(
+      'href',
+      '#/manage/tracks/4',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'New field' }));
+    const form = screen.getByRole('form', { name: 'Add a field' });
+    await user.type(within(form).getByLabelText('Field name'), 'Shift');
+    await user.click(within(form).getByRole('button', { name: 'Add a field' }));
+    expect(await screen.findByText('Shift was added.')).toBeInTheDocument();
+    expect(client.calls[0]).toEqual({
+      action: 'createField',
+      args: [{ name: 'Shift', type: 'text', trackId: 4 }],
+    });
+    // Its context covers OPS only, and the form says so instead of listing tracks.
+    await user.click(await screen.findByRole('button', { name: 'Change context Default' }));
+    const change = screen.getByRole('form', { name: 'Change context Default' });
+    expect(
+      within(change).getByText('It covers Operations only: the field belongs to that track.'),
+    ).toBeVisible();
+    expect(within(change).queryByRole('group', { name: 'Tracks' })).toBeNull();
+  });
+
+  it('[CORE-009] a person field of the track offers its roles and its people, never the site’s lists', async () => {
+    const user = userEvent.setup();
+    const client = renderOwn(4);
+    await user.click(await screen.findByRole('button', { name: 'New field' }));
+    const form = screen.getByRole('form', { name: 'Add a field' });
+    await user.type(within(form).getByLabelText('Field name'), 'On call');
+    await user.selectOptions(within(form).getByLabelText('Type'), 'user');
+    await user.click(within(form).getByRole('button', { name: 'Add a field' }));
+    await user.click(await screen.findByRole('button', { name: 'Change context Default' }));
+    const change = screen.getByRole('form', { name: 'Change context Default' });
+    const offer = within(change).getByLabelText('Offer');
+    // No list of groups for those who run a track: only anyone, or a track role's holders.
+    expect(within(offer).queryByRole('option', { name: 'The members of a group' })).toBeNull();
+    await user.selectOptions(offer, 'role');
+    await user.selectOptions(within(change).getByLabelText('Track role'), 'Members');
+    await user.click(within(change).getByRole('button', { name: 'Save the context' }));
+    expect(await screen.findByText('The context Default was saved.')).toBeInTheDocument();
+    expect(
+      screen.getByText('People to choose from: whoever holds Members in the ticket’s track'),
+    ).toBeVisible();
+    // The default person is found among the people of the track.
+    const fallback = screen.getByRole('form', { name: 'Default value in Default' });
+    await user.type(within(fallback).getByLabelText('Default value'), 'Ana');
+    await user.click(await within(fallback).findByRole('button', { name: 'Ana Ruiz' }));
+    await user.click(within(fallback).getByRole('button', { name: 'Save the default' }));
+    expect(await screen.findByText('The default in Default was saved.')).toBeInTheDocument();
+    expect(client.reads).toContain('trackRoles 4');
+    expect(client.reads).toContain('findTrackPeople OPS');
+    expect(
+      client.reads.filter((r) => ['groups', 'roles', 'findPeople', 'tracks'].includes(r)),
+    ).toEqual([]);
+  });
+
+  it('[CORE-009] a person field limited to a group before keeps it, by its words', async () => {
+    const user = userEvent.setup();
+    const client = fakeFieldsClient();
+    const made = await client.createField({ name: 'Approver', type: 'user', trackId: 4 });
+    const context = made.contexts[0]?.id as number;
+    await client.updateContext(made.id, context, { config: { userGroupId: 21 } });
+    client.calls.length = 0;
+    renderOwn(4, { client });
+    await user.click(await screen.findByRole('button', { name: 'Manage field Approver' }));
+    expect(
+      await screen.findByText('People to choose from: the members of the group chosen before'),
+    ).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Change context Default' }));
+    const change = screen.getByRole('form', { name: 'Change context Default' });
+    expect(within(change).getByLabelText('Offer')).toHaveDisplayValue('The members of a group');
+    expect(within(change).getByLabelText('Group')).toHaveDisplayValue('The group chosen before');
+    await user.click(within(change).getByRole('button', { name: 'Save the context' }));
+    expect(await screen.findByText('The context Default was saved.')).toBeInTheDocument();
+    expect(client.calls.at(-1)?.args[2]).toMatchObject({
+      config: { userGroupId: 21, userRoleId: null },
+    });
+  });
+
+  it('[CORE-009] an administrator on the track’s page keeps the site’s lists', async () => {
+    const user = userEvent.setup();
+    const client = renderOwn(4, { session: ADMIN });
+    await user.click(await screen.findByRole('button', { name: 'Manage field Components' }));
+    await screen.findByRole('button', { name: 'Change context OPS' });
+    expect(client.reads).not.toContain('tracks');
+    await user.click(screen.getByRole('button', { name: 'New field' }));
+    const form = screen.getByRole('form', { name: 'Add a field' });
+    await user.type(within(form).getByLabelText('Field name'), 'Owner');
+    await user.selectOptions(within(form).getByLabelText('Type'), 'user');
+    await user.click(within(form).getByRole('button', { name: 'Add a field' }));
+    await user.click(await screen.findByRole('button', { name: 'Change context Default' }));
+    const offer = within(
+      screen.getByRole('form', { name: 'Change context Default' }),
+    ).getByLabelText('Offer');
+    expect(
+      within(offer).getByRole('option', { name: 'The members of a group' }),
+    ).toBeInTheDocument();
+    expect(client.reads).toContain('groups');
+    expect(client.reads).toContain('roles');
+  });
+
+  it('[IAM-030] on the shared page offers someone who runs tracks only those with their own configuration', async () => {
+    renderOwn(null);
+    expect(await screen.findByRole('link', { name: 'Fields of OPS · Operations' })).toHaveAttribute(
+      'href',
+      '#/manage/tracks/4/fields',
+    );
+    expect(screen.queryByRole('link', { name: /PAY/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'New field' })).toBeNull();
+  });
+
+  it('[IAM-030] says a track in shared mode owns no fields, and refuses a track they do not run', async () => {
+    renderOwn(1);
+    expect(
+      await screen.findByText(
+        'PAY uses shared configuration, so its fields are shared, and site and configuration administrators change them.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'New field' })).toBeNull();
+  });
+
+  it('says when the track owns no field yet', async () => {
+    const client = fakeFieldsClient();
+    await client.deleteField(3);
+    renderOwn(4, { client });
+    expect(await screen.findByText('OPS has no field of its own yet.')).toBeVisible();
+  });
+
+  it('fits a small phone, in Spanish too', async () => {
+    setViewportWidth(375);
+    renderOwn(4, { locale: 'es' });
+    expect(
+      await screen.findByRole('button', { name: 'Gestionar el campo Components' }),
+    ).toBeVisible();
+  });
+
+  it('[NFR-006] passes every string through the pseudo-locale', async () => {
+    const user = userEvent.setup();
+    renderOwn(4, { locale: 'en-XA' });
+    const main = screen.getByRole('main');
+    await within(main).findAllByRole('listitem');
+    const components = within(main).getByText('Components').closest('li') as HTMLElement;
+    await user.click(within(components).getAllByRole('button')[0] as HTMLElement);
+    await within(main).findAllByRole('form');
+    const data = new Set(['Components', 'OPS']);
+    expect(untranslated(visibleTexts(main)).filter((t) => !data.has(t))).toEqual([]);
   });
 });

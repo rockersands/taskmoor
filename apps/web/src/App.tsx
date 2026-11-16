@@ -221,6 +221,8 @@ const ADMIN_NOTIFICATION_POLICIES = '#/admin/notification-policies';
 const ADMIN_EMAIL = '#/admin/email';
 /** A local-mode track's own notification policies, beside its own sets (T-163a's pattern). */
 const OWN_NOTIFICATION_POLICIES = /^#\/manage\/tracks\/(\d{1,10})\/notification-policies(?:[/?]|$)/;
+/** A local-mode track's own fields (T-322), beside its own sets. */
+const OWN_FIELDS = /^#\/manage\/tracks\/(\d{1,10})\/fields(?:[/?]|$)/;
 const CREATE_TICKET = '#/create';
 const ADMIN_WORKFLOWS = '#/admin/workflows';
 const ADMIN_USERS = '#/admin/users';
@@ -774,6 +776,9 @@ function Pages() {
   } else if (OWN_NOTIFICATION_POLICIES.test(hash)) {
     const trackId = Number(OWN_NOTIFICATION_POLICIES.exec(hash)?.[1]);
     content = <NotificationPoliciesPage key={`${trackId}-notifications`} trackId={trackId} />;
+  } else if (OWN_FIELDS.test(hash)) {
+    const trackId = Number(OWN_FIELDS.exec(hash)?.[1]);
+    content = <FieldsAdminPage key={`${trackId}-fields`} trackId={trackId} />;
   } else if (isRoute(hash, ADMIN_USERS)) {
     content = <UsersPage />;
   } else if (isRoute(hash, ADMIN_GROUPS)) {

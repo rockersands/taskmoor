@@ -1,10 +1,26 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useAdminAccess } from '../admin/access';
 import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import {
+  ScopeNote,
+  type ScopeTrack,
+  TrackScopeLine,
+  useSetScope,
+  useTrackPageTrail,
+} from '../sets/trackScope';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import {
@@ -16,6 +32,7 @@ import {
   type FormulaProblem,
   fieldsClient,
   MULTIPLE_TYPES,
+  trackFieldsClient,
 } from './client';
 import { FieldPanel } from './FieldPanel';
 import { FieldSettings, SETTINGS_TYPES } from './FieldSettings';
@@ -24,7 +41,12 @@ import { FormulaEditor, formulaConfig } from './FormulaEditor';
 export interface FieldsAdminPageProps {
   /** Stories and tests pass their own backend; the page calls the API otherwise. */
   client?: FieldsClient;
+  /** A local-mode track's own page: only the fields it owns (T-322; T-163a's pattern). */
+  trackId?: number | null;
 }
+
+/** A local-mode track's own Fields page, beside its Manage page (T-322). */
+export const ownFieldsHref = (trackId: number) => `#/manage/tracks/${trackId}/fields`;
 
 /** The refusals the fields page words, by the server's code. */
 const REFUSALS: Readonly<Record<string, MessageId>> = {
@@ -48,28 +70,100 @@ const REFUSALS: Readonly<Record<string, MessageId>> = {
  * type settings; Manage one (`FieldPanel`) to change its name, description, settings or formula,
  * where it applies, each context's default and options, and to delete it once no ticket holds a
  * value. A choice list's display setting stays API-only in 1.0: the web app always shows a list.
+ *
+ * On a local-mode track's own page (`trackId`; T-322), whoever runs the track does the same with
+ * the fields the track owns, which cover that track only; its contexts and defaults read only what
+ * they may (`trackFieldsClient`). Everyone signed in reads the shared fields, so the session
+ * decides who sees the shared page: someone who runs tracks but is no administrator is offered the
+ * tracks they run with their own configuration instead (`sets/trackScope.tsx`), and anyone else
+ * only the refusal.
  */
-export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps) {
+export function FieldsAdminPage({ client = fieldsClient, trackId = null }: FieldsAdminPageProps) {
   const t = useT();
-  const expired = useSessionExpiry();
   const titleId = useId();
   const title = useRef<HTMLHeadingElement>(null);
+  const access = useAdminAccess();
+  const scope = useSetScope(trackId, client);
+  const track = scope.status === 'track' ? scope.track : null;
+  useTrackPageTrail(scope, t('admin.fields.title'));
+  /** The purpose shows only to someone who may be here; only the fields themselves can tell. */
+  const header = (allowed: boolean, actions?: ReactNode) => (
+    <PageHeader
+      titleId={titleId}
+      titleRef={title}
+      title={t('admin.fields.title')}
+      {...(track ? { eyebrow: t('ownSets.trackName', { key: track.key, name: track.name }) } : {})}
+      {...(allowed
+        ? {
+            purpose: t('settings.fieldsHint'),
+            about: t(track ? 'ownFields.about' : 'admin.fields.intro'),
+            ...(actions ? { actions } : {}),
+          }
+        : {})}
+    />
+  );
+  return (
+    <section aria-labelledby={titleId} className="page admin-page people-page">
+      {scope.status === 'all' || track ? (
+        <Fields
+          key={track?.id ?? 'all'}
+          client={client}
+          track={track}
+          admin={access === 'site' || access === 'setup'}
+          header={header}
+          title={title}
+        />
+      ) : (
+        <>
+          {header(false)}
+          <ScopeNote
+            scope={scope}
+            hrefOf={ownFieldsHref}
+            words={{
+              chooseIntro: t('ownFields.choose.intro'),
+              chooseNone: t('ownFields.choose.none'),
+              chooseOpen: (run) => t('ownFields.choose.open', { key: run.key, name: run.name }),
+              shared: (shared) => t('ownFields.scope.shared', { key: shared.key }),
+              none: t('admin.fields.forbidden'),
+              failed: t('admin.fields.failed'),
+            }}
+          />
+        </>
+      )}
+    </section>
+  );
+}
+
+/** The fields the page shows: every one, or those a local-mode track owns. */
+function Fields({
+  client: given,
+  track,
+  admin,
+  header,
+  title,
+}: {
+  client: FieldsClient;
+  track: ScopeTrack | null;
+  admin: boolean;
+  header: (allowed: boolean, actions?: ReactNode) => ReactNode;
+  title: RefObject<HTMLHeadingElement | null>;
+}) {
+  const t = useT();
+  const expired = useSessionExpiry();
   const nameId = useId();
   const descriptionId = useId();
   const typeId = useId();
   const multipleId = useId();
-  const access = useAdminAccess();
-  // Everyone signed in reads the fields, the people who run a track included, but only site and
-  // configuration administrators change them here: a track's own fields are changed through the
-  // API, so the page refuses rather than offer controls the server turns down.
-  const notAdmin = access !== null && access !== 'site' && access !== 'setup';
-  const [loadState, setState] = useState<
+  const client = useMemo(
+    () => (track ? trackFieldsClient(given, track, admin) : given),
+    [given, track, admin],
+  );
+  const [state, setState] = useState<
     | { status: 'loading' }
     | { status: 'loaded'; fields: Field[] }
     | { status: 'failed' }
     | { status: 'forbidden' }
   >({ status: 'loading' });
-  const state = notAdmin ? ({ status: 'forbidden' } as const) : loadState;
   const [open, setOpen] = useState<number | null>(null);
   const creating = useNewForm();
   const [name, setName] = useState('');
@@ -93,8 +187,8 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
     }
   }, [client, expired]);
   useEffect(() => {
-    if (!notAdmin) void load();
-  }, [load, notAdmin]);
+    void load();
+  }, [load]);
 
   const refusal = useCallback(
     (error: unknown, about?: 'context') => {
@@ -138,32 +232,26 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
     setRefused(null);
   };
   const fields = state.status === 'loaded' ? state.fields : [];
+  // On a track's own page the list holds its own fields; the shared ones that reach it still
+  // count for a formula's help and check.
+  const listed = track ? fields.filter((f) => f.trackId === track.id) : fields;
 
   return (
-    <section aria-labelledby={titleId} className="page admin-page people-page">
-      <PageHeader
-        titleId={titleId}
-        titleRef={title}
-        title={t('admin.fields.title')}
-        {...(state.status === 'forbidden'
-          ? {}
-          : {
-              purpose: t('settings.fieldsHint'),
-              about: t('admin.fields.intro'),
-              actions: (
-                <NewButton
-                  label={t('admin.fields.new')}
-                  open={creating.open}
-                  onToggle={creating.toggle}
-                  ref={creating.button}
-                />
-              ),
-            })}
-      />
+    <>
+      {header(
+        state.status !== 'forbidden',
+        <NewButton
+          label={t('admin.fields.new')}
+          open={creating.open}
+          onToggle={creating.toggle}
+          ref={creating.button}
+        />,
+      )}
       {state.status === 'forbidden' ? (
         <p className="page-note">{t('admin.fields.forbidden')}</p>
       ) : (
         <>
+          {track && <TrackScopeLine track={track} intro={t('ownFields.intro')} />}
           {creating.open && (
             <form
               className="glass-card people-card people-form"
@@ -272,7 +360,7 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
                   onChange={setConfig}
                   fields={fields}
                   check={client.checkFormula}
-                  trackId={null}
+                  trackId={track?.id ?? null}
                   refused={refused}
                 />
               )}
@@ -300,17 +388,24 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
               {t('admin.fields.failed')}
             </p>
           )}
-          {state.status === 'loaded' && state.fields.length === 0 && (
-            <EmptyState title={t('admin.fields.none')}>{t('empty.fields.body')}</EmptyState>
-          )}
-          {state.status === 'loaded' && state.fields.length > 0 && (
+          {state.status === 'loaded' &&
+            listed.length === 0 &&
+            (track ? (
+              <EmptyState title={t('ownFields.none', { key: track.key })}>
+                {t('ownFields.noneBody')}
+              </EmptyState>
+            ) : (
+              <EmptyState title={t('admin.fields.none')}>{t('empty.fields.body')}</EmptyState>
+            ))}
+          {state.status === 'loaded' && listed.length > 0 && (
             <ul className="people-list">
-              {state.fields.map((f) => (
+              {listed.map((f) => (
                 <li key={f.id} className="people-item people-group">
                   <div className="people-main">
                     <p className="people-name">
                       {f.name}
-                      {f.trackId !== null && (
+                      {/* On a track's own page every field is the track's. */}
+                      {f.trackId !== null && !track && (
                         <span className="people-badge">{t('admin.fields.local')}</span>
                       )}
                     </p>
@@ -353,6 +448,6 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
           )}
         </>
       )}
-    </section>
+    </>
   );
 }
