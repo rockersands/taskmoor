@@ -100,6 +100,8 @@ describe('the create form data (M1-012)', () => {
       'foundInRelease',
       'targetReleaseIds',
       'foundInReleaseIds',
+      'target-release',
+      'found-in-release',
     ]) {
       expect(trackThingOf(key), key).toBe('release');
       expect(errorMessage('not_in_track', trackThingOf(key)), key).toBe(

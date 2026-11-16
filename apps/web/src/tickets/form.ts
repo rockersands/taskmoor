@@ -268,7 +268,11 @@ const ERRORS: Record<string, MessageId> = {
 /** What a field holds that a refusal names by itself: a release or an area (T-286). */
 export type TrackThing = 'release' | 'area';
 
-/** The keys a form or a ticket route names the system release and area fields by. */
+/**
+ * The keys a form or a ticket route names the system release and area fields by: the create
+ * form's, the edit route's, and a transition screen's (`target-release`, `found-in-release`,
+ * `area`).
+ */
 const TRACK_THINGS: Readonly<Record<string, TrackThing>> = {
   targetRelease: 'release',
   foundInRelease: 'release',
@@ -276,6 +280,8 @@ const TRACK_THINGS: Readonly<Record<string, TrackThing>> = {
   targetReleaseIds: 'release',
   foundInReleaseIds: 'release',
   areaIds: 'area',
+  'target-release': 'release',
+  'found-in-release': 'release',
 };
 
 /**

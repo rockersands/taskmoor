@@ -239,8 +239,8 @@ opened it, the page says so: read it again and retry. A choice the track does no
 release or area archived meanwhile, is refused with the create form's words: **This track does
 not offer this choice. Choose one of its own.** or **This release or area is archived. Choose
 another.** A release or area of the ticket's own fields that is not the track's says which it is,
-as on the create form (**This release is not in this track. Choose one of its releases.**); a
-custom field's keeps the general words. Any refused value is named by its field's label, a custom
+as on the create form (**This release is not in this track. Choose one of its releases.**), in a
+change here and on a move's screen alike; a custom field's keeps the general words. Any refused value is named by its field's label, a custom
 field by its name, each with the reason: **Check these values. Priority: This track does not
 offer this choice. Choose one of its own.** A move whose form asks for fields the page cannot fill in names them the same way. A
 custom field that is not on the ticket's form is named from the track's list of fields, looked up
