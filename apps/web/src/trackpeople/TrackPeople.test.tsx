@@ -545,6 +545,9 @@ describe('the permission to create tracks with the role that runs the track (IAM
     expect(screen.getByLabelText('Role')).toHaveDisplayValue('Administrators');
     expect(box()).toBeChecked();
     expect(box()).toHaveAccessibleDescription(/permission for the whole site/);
+    // The permission goes with the role (T-087b, S3-TR-1): the hint never says it stays.
+    expect(box()).toHaveAccessibleDescription(/It goes with the role: once they run no track/);
+    expect(box()).not.toHaveAccessibleDescription(/does not remove it/);
     await user.type(screen.getByLabelText('Find a person by name'), 'ana');
     await user.click(
       await screen.findByRole('button', { name: 'Give Administrators to Ana Duarte' }),

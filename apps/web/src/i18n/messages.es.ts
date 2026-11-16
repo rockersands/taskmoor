@@ -3166,7 +3166,7 @@ export const messagesEs: Record<MessageId, string> = {
   'trackPeople.roleGivenWithTracks': '{name} ahora tiene {role} y puede crear tracks.',
   'trackPeople.createTracks': 'Permitir también crear tracks',
   'trackPeople.createTracksHint':
-    'Es un permiso para todo el sitio, no solo para este track. Quitar el rol después no lo retira; un administrador del sitio puede hacerlo en la página Permisos.',
+    'Es un permiso para todo el sitio, no solo para este track. Va con el rol: cuando ya no dirija ningún track, se retira también. Para que lo conserve, un administrador del sitio lo da en la página Permisos.',
   'trackPeople.pending': 'Invitaciones en espera',
   'trackPeople.noPending': 'No hay invitaciones en espera.',
   'trackPeople.pendingMeta': '{role}, invitación de {who}.',

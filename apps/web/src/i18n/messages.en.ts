@@ -3078,7 +3078,7 @@ export const messagesEn = {
   'trackPeople.roleGivenWithTracks': '{name} now holds {role} and can create tracks.',
   'trackPeople.createTracks': 'Also let them create tracks',
   'trackPeople.createTracksHint':
-    'A permission for the whole site, not only this track. Taking the role away later does not remove it; a site administrator can, on the Permissions page.',
+    'A permission for the whole site, not only this track. It goes with the role: once they run no track, it goes too. To let them keep it, a site administrator gives it on the Permissions page.',
   'trackPeople.pending': 'Invitations waiting',
   'trackPeople.noPending': 'No invitations are waiting.',
   'trackPeople.pendingMeta': '{role}, invited by {who}.',

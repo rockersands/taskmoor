@@ -316,15 +316,18 @@ describe('directory sync (M1-082)', () => {
     });
   });
 
-  it('[IAM-033] a person the directory disables loses the create-tracks grant that came with a role, for good', async () => {
-    // T-087b (ADR-118): as a deactivation in Administration does; one given separately stays.
+  it('[IAM-033] a person the directory disables keeps the create-tracks grant while their role does, and loses one whose roles are gone (T-259)', async () => {
+    // T-087b (ADR-118): a grant that came with a role goes with the last role, not with the
+    // account; one given separately stays. Deactivation keeps the roles, so it keeps the grant.
     const fake = await server({ flavour: 'openldap' });
     const kit = fake.addUser({ username: 'kit-grant' });
     const lee = fake.addUser({ username: 'lee-grant' });
+    const mel = fake.addUser({ username: 'mel-grant' });
     const id = await directory(fake);
     await sync(id);
     const k = (await account('kit-grant@example.com'))?.id as number;
     const l = (await account('lee-grant@example.com'))?.id as number;
+    const m = (await account('mel-grant@example.com'))?.id as number;
     const grant = (userId: number) =>
       db
         .insertInto('global_grant')
@@ -343,45 +346,80 @@ describe('directory sync (M1-082)', () => {
         .where('permission', '=', 'create_local_tracks')
         .where('user_id', '=', userId)
         .execute();
-    // Kit was given it with a manager role, since gone; Lee on the Permissions page.
+    // Kit was given it with a manager role, since gone; Lee on the Permissions page; Mel with
+    // the role that runs a track, which she still holds.
     const kits = await grant(k);
     const lees = await grant(l);
+    const mels = await grant(m);
+    const policy = await db
+      .selectFrom('access_policy')
+      .select('id')
+      .where('name', '=', 'Default access policy')
+      .executeTakeFirstOrThrow();
+    const track = await db
+      .insertInto('track')
+      .values({ workspace_id: 1, key: 'MEL', name: 'Mel runs it', access_policy_id: policy.id })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const administrators = await db
+      .selectFrom('role')
+      .select('id')
+      .where('name', '=', 'Administrators')
+      .executeTakeFirstOrThrow();
     await db
-      .insertInto('domain_event')
-      .values({
-        workspace_id: 1,
-        type: 'track_role.actor_added',
-        subject_type: 'track',
-        subject_id: '1',
-        payload: JSON.stringify({
-          roleId: 1,
-          userId: k,
-          groupId: null,
-          createTracksGrantId: kits.id,
-        }),
-      })
+      .insertInto('track_role_actor')
+      .values({ workspace_id: 1, track_id: track.id, role_id: administrators.id, user_id: m })
       .execute();
+    for (const [userId, grantId] of [
+      [k, kits.id],
+      [m, mels.id],
+    ] as const) {
+      await db
+        .insertInto('domain_event')
+        .values({
+          workspace_id: 1,
+          type: 'track_role.actor_added',
+          subject_type: 'track',
+          subject_id: String(track.id),
+          payload: JSON.stringify({
+            roleId: 1,
+            userId,
+            groupId: null,
+            createTracksGrantId: grantId,
+          }),
+        })
+        .execute();
+    }
 
     fake.setDisabled(kit, true);
     fake.setDisabled(lee, true);
+    fake.setDisabled(mel, true);
     const run = await sync(id);
     expect((await account('kit-grant@example.com'))?.deactivated_at).not.toBeNull();
+    expect((await account('mel-grant@example.com'))?.deactivated_at).not.toBeNull();
     expect(await grantsOf(k)).toEqual([]);
     expect(await grantsOf(l)).toEqual([{ id: lees.id }]);
+    // Mel still holds her role, so she keeps the grant, worth nothing while she is disabled.
+    expect(await grantsOf(m)).toEqual([{ id: mels.id }]);
     const updates = (await events(run.runId)).filter((e) => e.type === 'directory.user_updated');
     expect(updates.find((e) => e.subject_id === String(k))?.payload).toMatchObject({
       changes: { active: { from: true, to: false } },
       createTracksGrantsRemoved: [{ userId: k, grantId: kits.id }],
     });
-    expect(updates.find((e) => e.subject_id === String(l))?.payload).not.toHaveProperty(
-      'createTracksGrantsRemoved',
-    );
+    for (const userId of [l, m]) {
+      expect(updates.find((e) => e.subject_id === String(userId))?.payload).not.toHaveProperty(
+        'createTracksGrantsRemoved',
+      );
+    }
 
-    // Enabled again, Kit is back without it.
+    // Enabled again, Kit is back without it, and Mel has it with her role.
     fake.setDisabled(kit, false);
+    fake.setDisabled(mel, false);
     await sync(id);
     expect((await account('kit-grant@example.com'))?.deactivated_at).toBeNull();
     expect(await grantsOf(k)).toEqual([]);
+    expect((await account('mel-grant@example.com'))?.deactivated_at).toBeNull();
+    expect(await grantsOf(m)).toEqual([{ id: mels.id }]);
   });
 
   it('[IAM-005] never deactivates break-glass accounts or the last active site administrator', async () => {

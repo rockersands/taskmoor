@@ -206,16 +206,24 @@ that came with it goes too:
 - **When.** Once the person runs no track: they hold `administer_track` on no live track through a
   role (their own, a group's, nested groups included, or one a shared track group gave), a grant
   to them, a group of theirs, every signed-in person or anyone, or as an owner (the ways
-  `trackKeepsAdministrator` counts), or they are deactivated. Someone who still runs another track keeps it: they are still a manager.
+  `trackKeepsAdministrator` counts), or they are erased. Someone who still runs another track keeps it: they are still a manager.
+  **Deactivation keeps it** (T-259, answered on 2026-11-16, replacing "or they are deactivated"):
+  deactivation keeps the person's roles and groups, so it keeps the grant that came with them. It
+  gives a deactivated person nothing, since the authorizer gives them no permission at all, and
+  reactivation (Administration, SCIM `active: true`, or a directory entry enabled again) gives it
+  back with the roles. It still goes with the person's last role, deactivated or not, and at
+  erasure. A deactivation still removes one whose roles were already gone (a lapsed grant left by
+  an older path).
 - **Where.** Every change that can take that last role away, in its own transaction: taking a
   person's or a group's role on the People page, withdrawing an invitation that gave the role at
-  once, removing someone from a group, taking a group out of another, deleting a group, deactivating
-  a person (Administration, SCIM `active: false` or DELETE, and every directory deactivation: an
-  entry removed or disabled, an account linked to a disabled entry, a directory deleted, all through
-  `ldap/accounts.ts` `deactivateAccount`), a SCIM group's members or deletion, every take-back of
-  what shared track groups gave (a share taken back, a group left or deleted, a track moved out of
-  a shared group, and an erasure, through `trackgroups/access.ts` `releaseShares`; ADR-121), and the
-  erasure of the person themselves, who is deactivated with it.
+  once, removing someone from a group, taking a group out of another, deleting a group, a SCIM
+  group's members or deletion, every take-back of what shared track groups gave (a share taken
+  back, a group left or deleted, a track moved out of a shared group, and an erasure, through
+  `trackgroups/access.ts` `releaseShares`; ADR-121), and the erasure of the person themselves, who
+  is marked erased first and so runs no track. Deactivating a person (Administration, SCIM
+  `active: false` or DELETE, and every directory deactivation: an entry removed or disabled, an
+  account linked to a disabled entry, a directory deleted, all through `ldap/accounts.ts`
+  `deactivateAccount`) still makes the check, which removes only a lapsed grant.
 - **One event.** The change's own event lists what went, `createTracksGrantsRemoved: [{ userId,
   grantId }]`, on `track_role.actor_removed`, `track_invitation.revoked`, `group.member_removed`,
   `group.unnested`, `group.deleted`, `user.deactivated`, `user.erased`, `scim.user_updated`,
@@ -223,7 +231,9 @@ that came with it goes too:
   `directory.user_updated`, `directory.user_created`, `directory.deleted`, `track_group.unshared`,
   `track_group.left`, `track_group.deleted`, `track_group.created` and `track_group.track_moved`,
   and so its audit record; no `global_grant.removed` beside it (M1-005). Optional, so older
-  events still match.
+  events still match. The deactivation events (`user.deactivated`, `scim.user_updated`,
+  `scim.user_removed` and the `directory.*` ones for a deactivation) carry it only for a lapsed
+  grant since T-259.
 - **Cost.** The check reads the events only for a person who holds a grant of their own and runs
   no track any more; it scans `domain_event` by type, which a site with many events may notice on
   those rare changes. A column on `global_grant` saying where it came from would make it one read;
@@ -232,7 +242,7 @@ that came with it goes too:
   in an access policy, a track moved to another policy, a track deleted, a role deleted, and a
   directory sync's or single sign-on's group changes for a person who stays active. Those leave the
   grant until the person's next change of the kinds above or a site administrator removes it.
-  Reactivating a person does not give it back.
+  Grants removed by deactivations before T-259 are not restored; nothing had been released.
 
 ## Options considered
 
@@ -243,6 +253,9 @@ that came with it goes too:
 | Only site administrators give the Administrators role | Simplest and strictest | The user changed this on 2026-11-03: managers appoint by default |
 | Keep every invitation pending, also for existing accounts | No leak through the role list | The user asked for the role at once |
 | Create the account at invitation time | Simpler accept | Junk accounts for every typo; the People page lists people who never came |
+| Deactivation keeps the create-tracks grant with the roles (chosen, T-259) | Reactivation brings back everything deactivation kept; a directory or identity provider turning people off and on (leave, a sync) no longer loses it for good; no security cost, since a deactivated person has no permission at all | A deactivated former manager's grant stays in the table until their last role goes or they are erased |
+| Deactivation removes it, reactivation restores it from the deactivation's event | The table holds no grant for a deactivated person | Code in four reactivation paths and a new kind of grant event, for the same result |
+| Deactivation removes it for good (T-087b as first built) | The grant leaves at once | Reactivation restores every role but this; giving it again on Global permissions makes it a separate grant that never goes with the role again |
 | Sign in directly after redeeming, as password links do | One step fewer in code | Skips two-factor, which breaks the external-people rule |
 | Create tracks: anyone who gives the manager role may tick the box (rejected) | Fewer refusals | A manager could hand on a site-wide permission they do not hold |
 | Create tracks: a migration removes everyone's grant on upgrade (rejected) | One default everywhere | Takes an ability away from people on an upgraded site; the user asked only about new sites |

@@ -1,7 +1,7 @@
 ---
 title: "People, groups and teams"
 audience: admins
-sources: apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/api/pages.ts, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, apps/server/src/tracks/membership.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, apps/web/src/api/teams.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx, apps/server/src/security/alerts.ts, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, apps/server/src/security/refusals.ts, apps/server/src/routes/security-alerts.ts, apps/server/src/audit/record.ts, apps/web/src/admin/SecurityAlertsForm.tsx, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/privacy/erase.ts, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, apps/server/src/audit/query.ts, apps/web/src/people/EraseUserForm.tsx, apps/web/src/account/PersonalDataSection.tsx, docs/adr/0111-personal-data-and-database-tls.md, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md, apps/web/src/shell/DangerAction.tsx, apps/server/src/authz/create-tracks.ts, apps/server/src/trackgroups/access.ts, docs/adr/0122-multi-track.md, docs/adr/0118-track-invitations.md
+sources: apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/api/pages.ts, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, apps/server/src/tracks/membership.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, apps/web/src/api/teams.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx, apps/server/src/security/alerts.ts, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, apps/server/src/security/refusals.ts, apps/server/src/routes/security-alerts.ts, apps/server/src/audit/record.ts, apps/web/src/admin/SecurityAlertsForm.tsx, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/privacy/erase.ts, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, apps/server/src/audit/query.ts, apps/server/src/audit/subscriber.ts, apps/web/src/people/EraseUserForm.tsx, apps/web/src/account/PersonalDataSection.tsx, docs/adr/0111-personal-data-and-database-tls.md, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md, apps/web/src/shell/DangerAction.tsx, apps/server/src/authz/create-tracks.ts, apps/server/src/trackgroups/access.ts, docs/adr/0122-multi-track.md, docs/adr/0118-track-invitations.md
 accessed: 2026-11-16
 attestation: own-words
 ---
@@ -124,8 +124,9 @@ first, saying what will happen; **Deactivate** and their name in that question d
 
 - All their sessions end at once and their unused password links stop working.
 - They hold no permissions while deactivated, and their API tokens are refused.
-- A permission to create tracks that came with a role that runs a track goes for good; one you
-  gave on the Permissions page stays (see
+- A permission to create tracks that came with a role that runs a track stays with the role,
+  which deactivation keeps: it does nothing while they are deactivated, and they have it again
+  when you reactivate them. It still goes if their last role goes (see
   [Letting a manager create tracks](invitations.md#letting-a-manager-create-tracks)).
 - You cannot deactivate yourself, nor the last active site administrator.
 
@@ -183,8 +184,8 @@ permanently** then:
   it. Someone sharing a group with the person while the erasure runs either finishes
   first, and the erasure removes that share too, or is refused as for anyone deactivated;
 - removes a permission to create tracks that came with a role, from the person and from anyone the
-  roles taken back leave running no track, as deactivating does; one given on the Permissions page
-  stays;
+  roles taken back leave running no track, as losing the last role does; one given on the
+  Permissions page stays;
 - deactivates the account for good: it cannot be edited, reactivated or signed in to.
 
 It cannot be undone, so download the person's data first when they asked for it. Taskmoor
@@ -199,7 +200,12 @@ searched, exported or sent to syslog it hides the name, email and addresses thos
 about the erased person, and shows their capacity notes in a plan's records empty (they are
 marked as masked). Those notes are empty in anyone's data download too, for example that of the
 person who typed them. The stored records leave with the audit
-retention period. Both the download and the erasure are audited (`personal_data.export_requested`
+retention period. Since this version the audit log keeps no capacity note's words at all: its
+record of a capacity change says who changed whose capacity, in which plan and period, and the
+amounts, while the words stay with the plan, where an erasure empties them; only records written
+by an earlier version still hold them. Copies of the audit log already sent to a syslog server
+before the erasure, and database backups, keep what they held: deal with those yourself, under
+your own retention rules. Both the download and the erasure are audited (`personal_data.export_requested`
 and `user.erased`).
 
 ## Two-factor authentication
