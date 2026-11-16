@@ -43,6 +43,7 @@ import {
   resolveLocale,
 } from './i18n/locale';
 import { InboxPage } from './inbox/InboxPage';
+import { LabelsPage } from './labels/LabelsPage';
 import { LayoutEditorPage } from './layouts/LayoutEditorPage';
 import { ListPage } from './list/ListPage';
 import type { MetaClient } from './meta/client';
@@ -240,6 +241,8 @@ const ADMIN_LAYOUTS = '#/admin/layouts';
 const ADMIN_TRACK_SETS = '#/admin/track-sets';
 /** Priorities, priority sets and close reasons (T-320). */
 const ADMIN_PRIORITIES = '#/admin/priorities';
+/** Merging and renaming labels (T-322). */
+const ADMIN_LABELS = '#/admin/labels';
 const ADMIN_GUARDRAILS = '#/admin/guardrails';
 const ADMIN_TICKET_TEMPLATES = '#/admin/ticket-templates';
 const ADMIN_IMPORTS = '#/admin/imports';
@@ -658,6 +661,14 @@ function Pages() {
               },
             },
             {
+              id: 'go-labels',
+              labelId: 'admin.labels.title' as const,
+              keywords: ['label', 'tag', 'merge labels', 'rename label'],
+              run: () => {
+                navigate(ADMIN_LABELS);
+              },
+            },
+            {
               id: 'go-imports',
               labelId: 'admin.imports.title' as const,
               keywords: ['import', 'migrate', 'backup', 'csv', 'cloud', 'delta'],
@@ -815,6 +826,8 @@ function Pages() {
     content = <PermissionExplainerPage />;
   } else if (isRoute(hash, ADMIN_PRIORITIES)) {
     content = <PrioritiesPage />;
+  } else if (isRoute(hash, ADMIN_LABELS)) {
+    content = <LabelsPage />;
   } else if (isRoute(hash, ADMIN_TRACK_SETS)) {
     const trackId = Number(/[?&]track=(\d{1,10})(?:&|$)/.exec(hash)?.[1]);
     content = <TrackSetsPage {...(trackId ? { initialTrackId: trackId } : {})} />;
