@@ -82,8 +82,9 @@ a scan that misses a package, fails or is cut short under a full gate's load lea
 be met mid-run. With the scan switched off, a cold run on the Mac reloaded three times and
 failed every story in flight, then hung.
 
-The stories' config (`storiesProject()` in `apps/web/vitest.stories.config.ts`, which makes both
-skins, `stories` and `stories-dark`, ADR-036) therefore lists every package a full run optimizes
+The stories' config (`storiesProject()` in `apps/web/vitest.stories.config.ts`, which makes every
+story project: both skins, `stories` and `stories-dark` (ADR-036), and their touch twins, below)
+therefore lists every package a full run optimizes
 in `optimizeDeps.include` (`STORY_DEPS`), so the first bundle does not depend on the scan. A
 package the web app reaches only through another one is named with the one that brings it
 (`@taskmoor/richtext > mdast-util-gfm-table`): Vite resolves each entry from `apps/web` and skips
@@ -93,11 +94,40 @@ bundled nothing mid-run and passed, as did cold runs of one skin and of both tog
 the scan alone and once from the list alone, and fails on a listed package that was not bundled
 or a scanned file the list does not cover.
 
-Each skin also keeps its optimized dependencies in a folder of its own
-(`apps/web/node_modules/.vite/stories-<skin>`). The Storybook plugin points every project made
-from one `.storybook` folder at a single folder, and the two skins, which start together, both
-optimized into it: the later one moved the earlier one's finished folder aside while its browser
-could be loading from it.
+Each story project also keeps its optimized dependencies in a folder of its own
+(`apps/web/node_modules/.vite/stories-<skin>`, `stories-<skin>-touch` for the touch projects).
+The Storybook plugin points every project made from one `.storybook` folder at a single folder,
+and the two skins, which start together, both optimized into it: the later one moved the earlier
+one's finished folder aside while its browser could be loading from it.
+
+### Touch stories on a touch screen from the start (T-328, 2026-11-16)
+
+A story that measures what a finger gets (44 px targets, ADR-033) needs `(pointer: coarse)` to
+hold for the whole page, so every touch rule stays where its sheet has it (T-255). Its
+`beforeEach` used to switch Chromium's touch emulation on through Vitest's `cdp()` and an
+`afterAll` switched it off. In full story runs such a story sometimes timed out at 15 s and
+passed alone: the switch was a round trip from the page to Vitest's main thread, a new DevTools
+session for each file (never detached) and the Emulation command, with no time limit of its own
+and all of it inside the story's 15 s. Under a full gate's load it sometimes outlasted them.
+
+Touch is now the browser's, not the story's:
+
+- A touch story carries a literal `tags: ['touch']` (Storybook reads tags from the source, so no
+  spread or import) and keeps `beforeEach: onARealTouchScreen`.
+- Two more projects, `stories-touch` and `stories-dark-touch`, run only those stories, on
+  Playwright contexts with `hasTouch`: the same emulation, sent when the page is made, so the
+  pointer is coarse from the first frame. `stories` and `stories-dark` leave them out by the tag.
+  Each story still runs once per skin, and the four projects together run as many story tests as
+  the two did.
+- A touch project loads only the story files with a touch story (`touchStoryFiles()`) and runs
+  them on one page (`browser.fileParallelism: false`). A page count of its own would need a
+  `sequence.groupOrder` of its own, which Vitest runs after every other project.
+- `onARealTouchScreen` only checks: in a story test whose browser has a mouse it fails, naming
+  the missing tag. Storybook's own page falls back to `asOnATouchScreen`.
+- `vitest.stories.config.test.ts` reads every story file with Storybook's CSF parser: every story
+  tagged `touch` must be in a file the touch projects load, and every story that asks for a real
+  touch screen must carry the tag. The design guard asks the same of the story that checks a
+  dragged-whole element (T-290).
 
 ## Consequences
 
