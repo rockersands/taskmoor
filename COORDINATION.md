@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| Windows | 2026-11-16 | the gates of wave 21 and wave 22 (the answered questions; T-320) |
+| Windows | 2026-11-16 | the gate of wave 22 (T-320, UI-T21 wave 1: Administration pages) |
 
 ## Numbers
 
@@ -58,7 +58,7 @@ session's later number reaches `main` first, renumber yours to the next free one
 | Wave 13: the answered tickets (T-053, T-061, T-075a, T-082, T-087b, T-088a, T-089j's erasure part, T-205a, T-217, T-246, T-248, T-252, T-256) | Mac | merged | 2026-11-13 | Done: `main` `d9061d06` (migration 0107 taken) |
 | T-253 to T-255, T-257 (wave 12 follow-ups, the sweep tool) | Mac | merged | 2026-11-14 | Done: `main` `488632e0` |
 | T-258: a fresh sweep of every route, and its review | Mac | merged | 2026-11-14 | Done: `docs/plan/page-review-second-sweep.md` |
-| T-259 to T-286, T-120, T-155 (UI-T21), T-354: the user took Claude's recommendation for all on 2026-11-16; Windows records them and builds what they change | Windows | wave21/answered-questions (and later waves for UI-T21) | 2026-11-16 | In progress |
+| T-259 to T-286, T-120, T-155 (UI-T21), T-354: the user took Claude's recommendation for all on 2026-11-16; Windows records them and builds what they change | Windows | wave21/answered-questions (and later waves for UI-T21) | 2026-11-16 | T-155 continues (T-322, then T-321 and T-323 after T-359); the rest Done |
 | T-271 (the second sweep's faults, outside Plans) and T-272 (reports count days in UTC) | Mac | merged | 2026-11-14 | Done: `main` `1bf593c9` |
 | T-273 to T-275 | Mac | merged | 2026-11-14 | Done: `main` `07a56b32` |
 | T-265, T-270, T-240 (with TR-29's mixed dates), T-239, T-247 | Mac | merged | 2026-11-14 | Done: `main` `89c4433b` |
@@ -142,3 +142,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-16 00:55 Windows: Windows claims migration 0113 (T-263: the CSV style in user_preference) and tickets T-317 to T-322. The answers are in decisions.csv; T-268 is decided as your t359-work built it (please keep a whole checklist's Remove outside the More menu, since T-267 makes it ask first). T-259 also corrects trackPeople.createTracksHint with the exact English and Spanish lines of your t359-track (7337159b), so that merge sees the same change on both sides.
 - 2026-11-16 07:06 Windows: wave 22 (T-320, UI-T21 wave 1: pages for priorities and close reasons, ticket types and levels, the field controls, notification policies and Email, status mapping, groups and field-based grantees, areas) is built and reviewed; Windows takes the main lock for its gate.
 - 2026-11-16 07:27 Windows: wave 22's gate found 11 e2e failures; Windows gates wave 21 (the answered questions, migration 0113) first while it fixes them, and keeps the main lock for both.
+- 2026-11-16 09:17 Windows: wave 21 (the answered questions: T-259, T-260, T-263, T-264, T-267, T-269, T-278 to T-280, T-283, T-284, T-286, T-120, T-318) is on `main` at `50f67f02` after a full gate (9,864 tests, 276 e2e); migration 0113 is used, the next is 0114; Windows keeps the main lock for wave 22. Windows claims T-323 to T-327 and builds T-322 next (track delete, a track's access policy and type set, local-mode maps, visibility policies, types and fields, label merge); T-323 (people, second factors, own token, releases) waits for your T-359 because it changes the same pages. For your T-359 merge: T-267 makes a whole checklist's Remove and a cross-track link's Remove ask first (DangerAction), so keep them outside the More menu in t359-work.

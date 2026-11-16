@@ -22,7 +22,35 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: the hierarchy grid (2026-11-15, Windows)
+### Latest: the user's answers of 2026-11-16, built (2026-11-16, Windows)
+
+On `main` at `50f67f02` after a full gate (9,864 tests, 276 e2e). Migration 0113 (`user_preference.csv_style`, T-263); the next is 0114.
+
+- Done: T-259, T-260, T-263, T-264, T-267, T-269, T-278, T-279, T-280, T-283, T-284, T-286, T-120, T-318
+  (tickets.md has what each became). T-268 waits for the Mac's t359-work.
+- T-263: `apps/server/src/csv` writes semicolons and decimal commas by the person's style; the importer
+  detects the separator and reads Windows-1252. **The csv fuzz stage must run again before the M1 gate.**
+  Known gap: Swiss German Excel (decimal point with semicolons); a one-column semicolon file reads as commas.
+- T-280: one clock per person. The web app reads the account's zone, else the device's
+  (`instantOfLocalText`, `viewerDay` on the server); a few things stay on UTC on purpose (audit and
+  personal-data file names, AI usage days, worker keys). The rule is a section at the end of ADR-010;
+  it may deserve its own ADR (Windows has 130 to 139).
+- T-267: DangerAction's rule is in ADR-114 D13 and the DangerAction doc comment.
+- T-269/T-278/T-283/T-284: `fields/values.ts` `offeredPeople`, `fields/access.ts` (`readsFieldsOf`,
+  `fieldReaderOf`); ADR-113 has the naming rules.
+- T-259: the LDAP sync's closing transaction removes the create-tracks grant from people it took out of
+  their last group running a track (`directory.synced` carries `createTracksGrantsRemoved`); single
+  sign-on group changes still do not.
+- New tickets: T-323 (people, second factors, own token, releases; after T-359), T-324 (site name), T-327 (bug: story tests never run axe),
+  T-325 (bug: no `close_reason.created` event when a workflow is created), T-326 (Assignee picker on the
+  ticket page).
+- For the Mac's T-359 merge: wave 21 touched `use/tickets.md`, `admin/fields.md` front matter, the
+  checklist and link rows (T-267 asks first), and `AccountPage` (CSV style, time zone).
+- Web tests: `apps/web/src/test/setup.ts` sets Testing Library's `asyncUtilTimeout` to 5 s (was 1 s).
+  Three tests (BoardCell's 2,000-card drop, the AI controls' similar ticket, the plan's Releases tab)
+  failed full runs under load tonight and passed alone; two gates were rerun for them.
+
+### Earlier: the hierarchy grid (2026-11-15, Windows)
 
 On `main` at `152f666b` after a full gate (9,718 tests, 271 e2e). Migration 0112; the next is 0113.
 
