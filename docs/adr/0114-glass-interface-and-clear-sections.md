@@ -83,6 +83,43 @@ under its title.
   light and dark toggle and a **Help** menu: Tutorials, Keyboard shortcuts and the Manual.
 - **Names** follow `docs/specs/00-terminology.md`. No Atlassian term appears in the interface.
 
+**As built (T-320, UI-T21 fields, 2026-11-16): the Fields page's API-only controls.** The user
+accepted the recommendation that every UI-T21 row gets a web control in 1.0. For fields, on the
+existing **Administration** > **Fields** page (`#/admin/fields`), web only, on routes the server
+already had:
+
+- **New field** offers every type, Formula included, with a **Description** and the type's settings;
+  **Manage** splits into `FieldPanel` (name and description; settings or formula; delete),
+  `ContextsSection` (where it applies, whom a person field offers, the default), `OptionList`
+  (options, child options of a two-level list, Up and Down), `FormulaEditor` with `formulaWords.ts`,
+  and `FieldSettings`.
+- **Contexts:** each says its reach and, for a person field, whom it offers. Change sets the name,
+  every track or ticked ones, every ticket type or ticked ones, and anyone, a group's members or a
+  track role's holders (`config` with a null for the limit not chosen). A local-mode track's field
+  covers its own track only and the form does not list others. Delete asks first (D13) and says
+  when it is the last context, after which the field applies nowhere.
+- **Defaults:** per context; release, area, read-only text and formula fields take none and the
+  page says so. The create form now starts each custom field it sets with its context's default
+  (the form model already carried it), and sends `null` for one the person emptied, since the
+  server fills in a default for a field left out. A template's or a copied ticket's values go over
+  the defaults; a field locked for the person keeps the server's own filling.
+- **Options:** child options under each option of a two-level list; Up and Down send every option at
+  that level (`PUT .../options/order`), and the keyboard stays on the moved option (section 7).
+- **Formulas:** a check while typing (`GET /formulas/check`, after a pause) says what the formula
+  gives and reads, or where it is wrong by line and column in the reader's language: every code of
+  `packages/formula/src/errors.ts` has its own words, never the server's English. A refused save
+  says the same. The help lists the fields it can read, in braces, and its functions.
+- **Type settings:** a paragraph's most characters, and a number's format, decimals and currency,
+  built together with their display, as recommended: the ticket page's number facts (and a line
+  under the box for those who may change it) and the cells of search results and a plan's Grid
+  show numbers by them (`fields/numberFormat.ts`, `Intl.NumberFormat`), a formula's number,
+  currency and percentage outputs too. **A choice list's display (dropdown, radio, checkboxes)
+  stays API-only in 1.0:** the web app always shows a list, so a control would change nothing; the
+  page leaves a stored one as it is, and the manual says it is kept for the API and imports.
+- **Not here:** a local-mode track's own fields (later, with its own types) and merging labels.
+- **Tests:** page, section, option list, defaults, number format and formula words tests; a story
+  per component with axe in both skins; `e2e/fields-admin.spec.ts` on desktop and mobile.
+
 ### 2. Layout and density
 
 - Desktop first, and it still works on phones (ADR-033):
