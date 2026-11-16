@@ -73,18 +73,45 @@ machines on every change, which is how this project verifies work.
 - **Any impact fails a story**: the addon's `'error'` mode does not filter by impact, so a
   moderate or minor violation fails a story too. The page pass in Playwright (above) still
   counts serious and critical ones.
-- **axe loads with the story file, not inside a story**: the addon imports axe-core when its
-  first check runs, in the afterEach of the first story of each file, so that story paid inside
-  its 15 s for the 1.4 MB bundle. The first full gate with axe on timed out the first story of
-  the first touch files (TicketPage's All In Pages, TimelinePage's On A Touch Screen, BoardPage's
-  Grips On A Touch Screen), each passing alone. Measured on All In Pages: 1.2 s alone (render
-  0.4 s, play 0.15 s, axe 0.6 s, of which the import was 0.3 s and the check of the page's 590
-  elements 0.26 s); with a full stories run in the same Node process 2.4 s, the import 0.7 s of
-  it. The play waits on nothing slow and `onARealTouchScreen` costs nothing. The setup file
-  (`.storybook/vitest.setup.ts`) now imports axe-core, so it loads with each file's own imports:
-  All In Pages 0.77 s alone, and its axe step 0.3 to 0.4 s under that load instead of 1.0 to
-  1.1 s; the first Timeline story 0.5 s to 0.3 s alone. The work is small, so no story has a
-  longer timeout.
+- **Why full gates timed out stories, measured**: with axe on, the gate's story tests timed out
+  at 15 s stories that pass alone in about a second, mostly the first story of a file (TicketPage's
+  All In Pages, the touch projects' first file). Probes in the setup file and in Vitest's main
+  process, over the gate's own lint, types and tests (`pnpm verify`), found why. Two runs each
+  timed out All In Pages in both touch projects, and one other story (SignInPage's Google For A
+  Gmail Address, TrackPeople's Manager). Each had started its render or play and then waited
+  with its page idle (no long task, its timers on time) for a request to its Vite server: a
+  module the first render imports (react-dom's client, through Storybook's renderer), or an
+  image. The main Vitest process, which serves every project's pages, ran no event loop for
+  12.3 s then 6.1 s in one run and 9.6, 6.7 and 3.0 s in the other, 24 to 44 s into it. A CPU
+  profile of that window: 16.0 of 20 s in the browser connection's message handler, 15.5 s of it
+  parsing the task updates the story pages send. Each carries the test's meta, where the a11y
+  addon puts axe's whole result, every passing, incomplete and inapplicable rule with its
+  elements: 0.78 to 1.07 MB for a ticket page story, 25 MB for the 64 tests of three files.
+  Early in a run the mouse projects finish stories in many pages at once.
+- **The fix: story tests report violations only**: the setup file gives axe its own `no-passes`
+  reporter, for story tests only. Every rule still runs on every element, a violation still
+  fails the story and is reported with all its elements; the passing, incomplete and inapplicable
+  lists are left out, and Storybook's own page keeps the whole result. The 64 tests now send
+  0.12 MB; All In Pages' report is 766 bytes. `storyAxe.test.tsx` fails if the lists come back
+  or a violation loses an element. One element per rule (axe's `resultTypes: ['violations']`)
+  still sent 4.6 MB: that run passed, but with a 7.8 s pause and All In Pages at 13.6 s.
+- **With the fix, under the gate's load**: tests passed (10,398, none failed). All In Pages took
+  2.2 s and 1.2 s, and the slowest of the run's 2,790 story tests 9.7 s. The main process still
+  paused once for 6.4 s, 24 s in, with the machine's 16 threads at 100 % and little of it
+  running: a CPU profile shows no single cause, so it is the machine's share, not a fix to make
+  here. The 191 story tests that ran across that pause took at most 7.5 s. Alone, All In Pages
+  takes 0.73 to 1.1 s, and Timeline's On A Touch Screen and Board's Grips On A Touch Screen
+  0.18 to 0.21 s.
+- **What stays inside a story's 15 s**: the first story of each file still imports the renderer's
+  part of react-dom from the Vite server (Storybook imports it on the first render; it does not
+  resolve from the web app, so the setup file cannot load it first). It waited up to 6 s during
+  the remaining pause. The setup file does load axe-core with each file, so the first story no
+  longer fetches it inside its 15 s (that wait reached 3.3 s in a full run). On its own that did
+  not help: a run with it and the whole reports timed out as before.
+- **Not shown**: earlier gates also timed out TimelinePage's On A Touch Screen and BoardPage's
+  Grips On A Touch Screen. Those runs left no log. In the probed runs neither ran at the stall,
+  and both took 0.4 to 1.1 s; that they waited on the stalled server is likely but not proven.
+- No story has a longer timeout and no axe rule is off.
 - **Fixed by the product, not the rules** (44 stories in 15 files had failed, the same in both
   skins):
   - Names that did not contain the visible words (2.5.3, `label-content-name-mismatch`) now
