@@ -230,6 +230,9 @@ test('[IAM-009] [IAM-011] a configuration administrator finds Visibility policie
   try {
     await signInAs(api, email, PASSWORD);
     await visit(page, '#/admin');
+    // The app reads the session once it has loaded: until then there is neither the overview nor
+    // the bar, and isVisible() does not wait for them.
+    await expect(page.getByRole('heading', { level: 1, name: 'Administration' })).toBeVisible();
     // On a phone the list of pages is a closed bar first.
     const bar = page.getByText('Administration pages', { exact: true });
     if (await bar.isVisible()) await bar.click();
