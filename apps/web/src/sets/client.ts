@@ -1,4 +1,11 @@
 import { api } from '../api/client';
+import {
+  type Level,
+  type NewTicketType,
+  type TicketType,
+  type TicketTypeChange,
+  ticketTypesClient,
+} from '../tickettypes/client';
 import { type TrackScopeClient, trackScopeClient } from './trackScope';
 
 export interface Named {
@@ -110,6 +117,14 @@ export interface SetsClient extends TrackScopeClient {
   deleteRuleSet: (id: number) => Promise<void>;
   /** Makes a track use one of its own rule sets (`PATCH /api/v1/tracks/:id`). */
   assignRuleSet: (trackId: number, setId: number) => Promise<void>;
+  /** Every hierarchy level: where a local-mode track's own type sits (T-322). */
+  levels: () => Promise<Level[]>;
+  /** The ticket types a local-mode track owns, top level first (T-322). */
+  ownTypes: (trackId: number) => Promise<TicketType[]>;
+  /** A type the track owns; its administrators change it as administrators change shared ones. */
+  createType: (body: NewTicketType & { trackId: number }) => Promise<TicketType>;
+  updateType: (id: number, change: TicketTypeChange) => Promise<TicketType>;
+  deleteType: (id: number) => Promise<void>;
 }
 
 export const setsClient: SetsClient = {
@@ -165,4 +180,12 @@ export const setsClient: SetsClient = {
   assignRuleSet: async (trackId, setId) => {
     await api<unknown>(`/tracks/${trackId}`, { method: 'PATCH', body: { fieldRuleSetId: setId } });
   },
+  levels: ticketTypesClient.levels,
+  ownTypes: async (trackId) =>
+    (
+      await api<{ ticketTypes: TicketType[] }>(`/ticket-types?trackId=${trackId}`)
+    ).ticketTypes.filter((type) => type.trackId === trackId),
+  createType: ticketTypesClient.createType,
+  updateType: ticketTypesClient.updateType,
+  deleteType: ticketTypesClient.deleteType,
 };

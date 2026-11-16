@@ -1,7 +1,7 @@
 ---
 title: "Administration"
 audience: admins
-sources: docs/adr/0114-glass-interface-and-clear-sections.md, docs/plan/page-review-findings.md, apps/web/src/admin/sections.ts, apps/web/src/admin/access.ts, apps/web/src/admin/AdminLayout.tsx, apps/web/src/styles/admin.css, apps/web/src/sets/trackScope.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/admin/AdminOverviewPage.tsx, apps/web/src/admin/AdminGroupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/App.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/session.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/EmptyState.tsx, apps/web/src/webhooks/WebhooksPage.tsx, apps/web/src/admin/AiLimitsPage.tsx, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/admin/NewButton.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/tokens/ServiceAccountsPage.tsx, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/TeamsPage.tsx, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/directories/DirectoriesPage.tsx, apps/web/src/sso/IdentityProvidersPage.tsx, apps/web/src/admin/FrontendsPage.tsx, apps/web/src/admin/AiSettingsPage.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/priorities/PrioritiesPage.tsx
+sources: docs/adr/0114-glass-interface-and-clear-sections.md, docs/plan/page-review-findings.md, apps/web/src/admin/sections.ts, apps/web/src/admin/access.ts, apps/web/src/admin/AdminLayout.tsx, apps/web/src/styles/admin.css, apps/web/src/sets/trackScope.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/admin/AdminOverviewPage.tsx, apps/web/src/admin/AdminGroupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/App.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/session.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/EmptyState.tsx, apps/web/src/webhooks/WebhooksPage.tsx, apps/web/src/admin/AiLimitsPage.tsx, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/admin/NewButton.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/tokens/ServiceAccountsPage.tsx, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/TeamsPage.tsx, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/directories/DirectoriesPage.tsx, apps/web/src/sso/IdentityProvidersPage.tsx, apps/web/src/admin/FrontendsPage.tsx, apps/web/src/admin/AiSettingsPage.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/priorities/PrioritiesPage.tsx, apps/web/src/labels/LabelsPage.tsx
 accessed: 2026-11-16
 attestation: own-words
 ---
@@ -54,7 +54,7 @@ and how it gets there. Someone who may not use a page is told so, without the re
 | You are | You see |
 |---|---|
 | A **site administrator** | Every group below |
-| A **configuration administrator** | Only **Tracks and setup** |
+| A **configuration administrator** | **Tracks and setup**, and of **People and access** only **Visibility policies** |
 | Anyone else | No **Administration** in the sidebar. An address that leads there says only administrators can use it |
 
 What the sidebar shows follows what the server allows; the server still checks every request. See
@@ -79,7 +79,8 @@ administrators.
 
 Each panel reads on its own, so one that fails says so and the others still show.
 
-A configuration administrator sees the list of setup pages instead.
+A configuration administrator sees the list of their pages instead: the setup pages and
+**Visibility policies**.
 
 ## Finding a page
 
@@ -104,7 +105,7 @@ of pages did not change, so links you saved keep working.
 | Group | Pages |
 |---|---|
 | **People and access** | **People**, **Groups**, **Teams**, **Permissions** (roles, access policies, global permissions), **Visibility policies**, **Permission explainer** |
-| **Tracks and setup** | **Tracks**, **Workflows**, **Workflow maps**, **Fields**, **Ticket types**, **Configuration sets**, **Layout sets**, **Priorities**, **Which sets a track uses**, **Notification policies** |
+| **Tracks and setup** | **Tracks**, **Workflows**, **Workflow maps**, **Fields**, **Ticket types**, **Configuration sets**, **Layout sets**, **Priorities**, **Labels** (merging and renaming labels; see [Fields](fields.md#merging-and-renaming-labels)), **Which sets a track uses**, **Notification policies** |
 | **Sign-in and security** | **Security**, **Single sign-on**, **LDAP and Active Directory**, **Network access**, **Audit log** |
 | **Integrations and AI** | **API tokens**, **Service accounts**, **MCP server**, **Frontends**, **Webhooks**, **AI**, **AI usage**, **AI limits and prices** |
 | **System** | **System status**, which also shows backups, **API usage and limits**, **Imports**, **Trash**, **Guardrails**, **Email** (whether mail can go out, the batch window and the digest hour; see [Email and notification policies](notifications.md#the-email-page)) |

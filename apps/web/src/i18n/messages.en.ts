@@ -3423,7 +3423,8 @@ export const messagesEn = {
   'admin.maps.title': 'Workflow maps',
   'admin.maps.intro':
     'A workflow map says which workflow each ticket type follows in the tracks that use it. Types it does not name follow its default workflow.',
-  'admin.maps.forbidden': 'Only administrators manage workflow maps.',
+  'admin.maps.forbidden':
+    'Only site and configuration administrators, and the people who run a track with its own configuration, manage workflow maps.',
   'admin.maps.loading': 'Reading the workflow maps…',
   'admin.maps.failed': 'The workflow maps could not be read. Try again in a moment.',
   'admin.maps.new': 'New workflow map',
@@ -3648,7 +3649,8 @@ export const messagesEn = {
   'admin.fields.title': 'Fields',
   'admin.fields.intro':
     'Custom fields add what tickets need to hold beyond the built-in ones. A field keeps its type; its options can change without touching tickets.',
-  'admin.fields.forbidden': 'Only site and configuration administrators manage fields.',
+  'admin.fields.forbidden':
+    'Only site and configuration administrators manage fields. The people who run a track with its own configuration manage its own fields from the track’s page.',
   'admin.fields.loading': 'Reading the fields…',
   'admin.fields.failed': 'The fields could not be read. Try again in a moment.',
   'admin.fields.none': 'There are no custom fields yet.',
@@ -4217,6 +4219,54 @@ export const messagesEn = {
     '{count, plural, one {The workflow {workflows} sets {name}.} other {The workflows {workflows} set {name}.}} Choose the reason to set instead: each of them gets a new version that sets it.',
   'admin.priorities.reasonNoOther': 'There is no other close reason to choose. Add one first.',
   'admin.priorities.reasonDeletedInto': '{name} was deleted; {into} takes its place.',
+  // Labels: merging several into one, which also renames one (T-322; CORE-017; ADR-114).
+  'settings.labels': 'Labels',
+  'settings.labelsHint':
+    'Merge labels that mean the same thing, or rename one, on every ticket at once.',
+  'admin.labels.title': 'Labels',
+  'admin.labels.about':
+    'Labels are free words on tickets, suggested from every label in use as people type. When people write one idea in several ways, such as front-end, frontend and FE, merge them: every ticket that has one of them gets the label they become, once, and its history records the change. Merging one label into a new word renames it. The counts include tickets in the trash, which a merge changes too.',
+  'admin.labels.forbidden': 'Only site and configuration administrators merge and rename labels.',
+  'admin.labels.merging': 'Merge or rename',
+  'admin.labels.mergingNote':
+    'Tick labels in the list below, then type the label they become: one already in use, to merge them into it, or a new word, to rename them.',
+  'admin.labels.nothingTicked': 'No label is ticked yet.',
+  'admin.labels.chosen': 'Ticked: {labels}.',
+  'admin.labels.withCount':
+    '{name} ({count, plural, =0 {no tickets} one {# ticket} other {# tickets}})',
+  'admin.labels.into': 'They become',
+  'admin.labels.intoHint':
+    'One word, with no spaces. Case counts: FE and fe are two labels, and merging one into the other makes them one.',
+  'admin.labels.oneWord': 'A label is one word of up to 255 characters, with no spaces.',
+  'admin.labels.chooseOther':
+    'The ticked labels are already {into}: tick another label, or type another word.',
+  'admin.labels.tooMany': 'Tick at most {max} labels at a time.',
+  'admin.labels.merge': 'Merge',
+  'admin.labels.rename': 'Rename',
+  'admin.labels.mergeInto': 'Merge into {into}',
+  'admin.labels.renameTo': 'Rename {label} to {into}',
+  'admin.labels.confirmMerge':
+    '{count, plural, =0 {Merge {labels} into {into}? No ticket has them now, so only the suggestions change.} one {Merge {labels} into {into}? The ticket that has them gets {into} in their place, and its history records it.} other {Merge {labels} into {into}? The tickets that have them, # at most, get {into} in their place, once each, and their history records it.}} This cannot be undone.',
+  'admin.labels.confirmRename':
+    '{count, plural, =0 {Rename {label} to {into}? No ticket has it now, so only the suggestions change.} one {Rename {label} to {into}? Its ticket gets {into} in its place, and its history records it.} other {Rename {label} to {into}? Its # tickets get {into} in its place, and their history records it.}} If {into} is already a label, the two become one. This cannot be undone.',
+  'admin.labels.done':
+    '{count, plural, =0 {{labels} became {into}; no ticket changed.} one {{labels} became {into} on # ticket.} other {{labels} became {into} on # tickets.}}',
+  'admin.labels.clear': 'Clear the ticks',
+  'admin.labels.list': 'Labels on this site',
+  'admin.labels.search': 'Find labels that start with',
+  'admin.labels.count': '{count, plural, =0 {No tickets} one {# ticket} other {# tickets}}',
+  'admin.labels.loading': 'Reading the labels…',
+  'admin.labels.failed': 'The labels could not be read. Try again in a moment.',
+  'admin.labels.emptyTitle': 'No labels yet',
+  'admin.labels.empty':
+    'A label shows here once a ticket has it. People add labels on a ticket, and imports bring theirs.',
+  'admin.labels.noneMatchTitle': 'No label starts with {q}',
+  'admin.labels.noneMatch': 'Try fewer letters, or empty the search to see every label.',
+  'admin.labels.more': 'Show more labels',
+  'admin.labels.moreFailed': 'More labels could not be read. Try again in a moment.',
+  'admin.labels.problem.labels':
+    'Those labels cannot be merged: tick at most {max}, other than the one they become.',
+  'admin.labels.problem.other': 'The labels could not be merged. Try again in a moment.',
   'ticketView.editLabels': 'Edit labels',
   'ticketView.save': 'Save',
   'ticketView.cancel': 'Cancel',
@@ -6973,7 +7023,8 @@ export const messagesEn = {
     'A level hides single tickets from everyone but its members. A track uses one policy, which holds its levels.',
   'admin.visibility.about':
     'Someone must both see the track and be a member of the level to see a ticket at that level. That holds for site administrators too. A ticket without a level is seen by everyone who sees its track.',
-  'admin.visibility.forbidden': 'Only site administrators use this page.',
+  'admin.visibility.forbidden':
+    'Only site and configuration administrators, and the people who run a track with its own configuration, manage visibility policies.',
   'admin.visibility.loading': 'Reading the policies…',
   'admin.visibility.failed': 'The policies could not be read. Try again in a moment.',
   'admin.visibility.emptyTitle': 'No visibility policies yet',
@@ -7039,6 +7090,54 @@ export const messagesEn = {
   'admin.visibility.problem.limit':
     'This goes past a limit. The Guardrails page has the limit on levels.',
   'admin.visibility.problem.other': 'That could not be done. Try again in a moment.',
+  // A local-mode track's own workflow map and visibility policies, and configuration
+  // administrators on Visibility policies (T-322).
+  'admin.visibility.problem.forbidden':
+    'You may not change this policy. Only the people who run its track, and site and configuration administrators, change it.',
+  'admin.visibility.trackAbout':
+    'This track has its own configuration, so it can have visibility policies of its own: levels for its tickets alone. Other tracks are not affected.',
+  'admin.visibility.trackIntro':
+    'The visibility policies this track owns. Shared policies are for site and configuration administrators.',
+  'admin.visibility.trackUsesOwn': '{key} uses {name}.',
+  'admin.visibility.trackUsesShared':
+    '{key} uses a shared policy now. Use one of its own to choose who sees which of its tickets.',
+  'admin.visibility.trackUsesNoPolicy':
+    '{key} uses no visibility policy now, so everyone who sees it sees all its tickets. Use one of its own to give its tickets levels.',
+  'admin.visibility.ownEmpty':
+    'Add one with New visibility policy, give it levels, then use it for {key}.',
+  'admin.visibility.useFor': 'Use this policy for {key}',
+  'admin.visibility.useHint':
+    'Tickets at a level this policy lacks take its default level, or none, so some may become visible to more people. Only site and configuration administrators can give the track a shared policy, or none, again.',
+  'admin.visibility.usedFor': '{key} now uses {name}.',
+  'admin.visibility.choose.intro':
+    'You run these tracks with their own configuration. Choose one to manage its own visibility policies.',
+  'admin.visibility.choose.none':
+    'None of the tracks you run has its own configuration. They use shared visibility policies, which site and configuration administrators change.',
+  'admin.visibility.choose.open': 'Visibility policies of {key} · {name}',
+  'admin.visibility.scope.shared':
+    '{key} uses shared configuration, so it uses a shared visibility policy, or none, which site and configuration administrators choose.',
+  'admin.maps.trackTitle': 'Workflow map',
+  'admin.maps.trackAbout':
+    'This track has its own configuration, so it has a workflow map of its own: which workflow each of its ticket types follows, its own workflows included. Other tracks are not affected.',
+  'admin.maps.trackIntro':
+    'The workflow map this track owns, made with it. Shared maps are for site and configuration administrators.',
+  'admin.maps.trackNote':
+    'Which workflow each ticket type {key} offers follows. A type the map does not name follows the workflow for every other type.',
+  'admin.maps.trackFailed': 'The track’s workflow map could not be read. Try again in a moment.',
+  'admin.maps.ownWorkflow': '{name} ({key}’s own)',
+  'admin.maps.choose.intro':
+    'You run these tracks with their own configuration. Choose one to change its own workflow map.',
+  'admin.maps.choose.none':
+    'None of the tracks you run has its own configuration. They use shared workflow maps, which site and configuration administrators change.',
+  'admin.maps.choose.open': 'Workflow map of {key} · {name}',
+  'admin.maps.scope.shared':
+    '{key} uses shared configuration, so it follows a shared workflow map, which site and configuration administrators choose and change.',
+  'admin.maps.problem.archived':
+    'The track is archived, so its map changes only once it is restored.',
+  'admin.maps.problem.forbidden':
+    'You may not change this map. Only the people who run its track, and site and configuration administrators, change it.',
+  'trackPeople.workflowMapLink': 'Workflow map: which workflow each of its ticket types follows',
+  'trackPeople.visibilityLink': 'Visibility policies: which of its tickets only some people see',
   'admin.explain.title': 'Permission explainer',
   'admin.explain.about':
     'Choose a person, then a track or a ticket and a permission. The answer says yes or no and names what decided it: a role in the track, a group, a global permission or a visibility level. It only reads; nothing changes here.',
@@ -7246,12 +7345,12 @@ export const messagesEn = {
   'admin.aiLimits.savePrice': 'Save the rate',
   'settings.trackSets': 'Which sets a track uses',
   'settings.trackSetsHint':
-    'Choose a track’s layouts, priorities, visibility policy and notifications.',
+    'Choose a track’s access policy, type set, layouts, priorities, visibility policy and notifications.',
   'admin.trackSets.title': 'Which sets a track uses',
   'admin.trackSets.purpose':
-    'Choose a track’s layouts, priorities, visibility policy and notifications from the sets that exist.',
+    'Choose a track’s access policy, type set, layouts, priorities, visibility policy and notifications from the sets that exist.',
   'admin.trackSets.about':
-    'This page only chooses. Layout sets, priority sets, visibility policies and notification policies are made on pages of their own. Type sets, field rule sets and workflow maps are chosen where they are made.',
+    'This page only chooses. Access policies, type sets, layout sets, priority sets, visibility policies and notification policies are made on pages of their own. Field rule sets and workflow maps are chosen where they are made. A track with its own configuration keeps its own access policy and type set.',
   'admin.trackSets.forbidden':
     'Only site and configuration administrators choose a track’s sets here.',
   'admin.trackSets.loading': 'Reading…',
@@ -7287,6 +7386,47 @@ export const messagesEn = {
     'You may not choose that for this track. A site or configuration administrator can.',
   'admin.trackSets.problem.other': 'That could not be saved. Try again in a moment.',
   'admin.tracks.setsLink': 'Choose the sets {key} uses',
+  // Deleting a track to the trash, and a shared-mode track's access policy and type set (T-322).
+  'admin.tracks.delete': 'Delete track',
+  'admin.tracks.deleteOf': 'Delete track {key}',
+  'admin.tracks.deleteOutcome':
+    '{key} goes to the trash with its tickets, releases and areas. Nobody sees it there, and its key stays taken. It can be restored from Trash until its time there is up; then it is deleted for good.',
+  'admin.tracks.deletedSaid': 'Track {key} is in the trash.',
+  'admin.tracks.trashLink': 'Restore {key} from Trash',
+  'admin.tracks.problem.inTrash': 'Track {key} is in the trash already.',
+  'admin.tracks.problem.gone': 'Track {key} is gone, or you may no longer see it.',
+  'admin.trackSets.access': 'Access policy',
+  'admin.trackSets.accessHint':
+    'Who may see the track and what they may do in it. Switching it changes that at once for everyone.',
+  'admin.trackSets.accessLink': 'Make and change access policies on Permissions.',
+  'admin.trackSets.typeSet': 'Type set',
+  'admin.trackSets.typeSetHint':
+    'The ticket types the track offers. When tickets have a type the new set lacks, saving asks which type they take.',
+  'admin.trackSets.typeSetLink': 'Make and change type sets on Configuration sets.',
+  'admin.trackSets.choose': 'Choose one',
+  'admin.trackSets.ownKept':
+    '{key} has its own access policy and type set. Its administrators change the type set on its own Configuration sets page, and the access policy through the API.',
+  'admin.trackSets.ownLink': 'Open the configuration sets of {key}',
+  'admin.trackSets.mapping': 'Tickets of the types {set} lacks',
+  'admin.trackSets.mappingIntro':
+    '{tickets, plural, one {# ticket in {key} has} other {# tickets in {key} have}} a type {set} lacks. Choose the type they take, at the same level, then save again.',
+  'admin.trackSets.mappingIntroUncounted':
+    'Tickets in {key} have a type {set} lacks. Choose the type they take, at the same level, then save again.',
+  'admin.trackSets.mappingNowhere':
+    '{set} has no type at the {level} level, so tickets of {name} have nowhere to go: choose another type set, or add a type of that level to {set}.',
+  'admin.trackSets.savedMapped':
+    '{key} was saved; {tickets, plural, one {# ticket took another type} other {# tickets took another type}}.',
+  'admin.trackSets.savedMappedUncounted':
+    '{key} was saved; the tickets of the types it lacked took another type.',
+  'admin.trackSets.problem.typeInUse':
+    'Tickets in {key} have a type {set} lacks: choose the type they take, then save again.',
+  'admin.trackSets.problem.mapping':
+    'Each type {set} lacks needs a type of the same level that {set} has.',
+  'admin.trackSets.problem.archived':
+    '{key} is archived: restore it on Tracks before changing what it uses.',
+  'admin.trackSets.problem.gone':
+    'A set you chose is gone, or belongs to a track of its own. Open the page again and choose another.',
+  'admin.trackSets.problem.trackGone': '{key} is gone, or you may no longer see it.',
   'summary.templates': 'Ticket templates',
   'settings.ticketTemplates': 'Ticket templates',
   'settings.ticketTemplatesHint': 'Templates offered when a ticket is created in any track.',
@@ -7582,6 +7722,37 @@ export const messagesEn = {
   'ownSets.archived': '{key} is archived: its configuration changes once it is restored.',
   'ownSets.useHint':
     'From then on the track follows this set. Only site and configuration administrators can give it a shared set again.',
+  // A local-mode track's own ticket types and fields, on its own pages (T-322).
+  'ownTypes.title': 'Its own ticket types',
+  'ownTypes.intro':
+    'Ticket types only {key} has. Its type set below offers one once it is ticked there.',
+  'ownTypes.listOf': 'Ticket types of {key}',
+  'ownTypes.none': '{key} has no ticket type of its own yet.',
+  'ownTypes.noneBody': 'Add one for work only this track does. The shared types stay as they are.',
+  'ownTypes.summary':
+    '{level} level · {offered, select, yes {in its type set} other {not in its type set yet}}',
+  'ownTypes.added': '{name} was added. Tick it in the type set to offer it.',
+  'ownTypes.levelHint':
+    'Another level is refused while tickets of this type would lose the parent they need, and the page says how many.',
+  'ownTypes.problem.inTypeSet': '{name} is in {sets}: untick it there and save the set first.',
+  'ownFields.about':
+    'This track has its own configuration: the fields it owns cover it alone, and other tracks are not affected. The shared fields that reach it are for site and configuration administrators.',
+  'ownFields.intro':
+    'The fields this track owns. Shared fields are for site and configuration administrators.',
+  'ownFields.none': '{key} has no field of its own yet.',
+  'ownFields.noneBody':
+    'A field of its own holds what only this track’s tickets need, and nothing about it reaches another track.',
+  'ownFields.choose.intro':
+    'You run these tracks with their own configuration. Choose one to manage its own fields.',
+  'ownFields.choose.none':
+    'None of the tracks you run has its own configuration. Their fields are shared, and site and configuration administrators change them.',
+  'ownFields.choose.open': 'Fields of {key} · {name}',
+  'ownFields.scope.shared':
+    '{key} uses shared configuration, so its fields are shared, and site and configuration administrators change them.',
+  'admin.fields.contexts.groupChosen': 'The group chosen before',
+  'admin.fields.contexts.peopleChosenGroup':
+    'People to choose from: the members of the group chosen before',
+  'trackPeople.fieldsLink': 'Fields: the custom fields it owns',
   'layouts.loading': 'Reading the layouts…',
   'layouts.failed': 'The layout sets could not be read. Try again in a moment.',
   'layouts.setFailed': 'This layout set could not be read. Try again in a moment.',

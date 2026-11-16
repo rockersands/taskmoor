@@ -54,6 +54,18 @@
   justify-self: start;
 }
 
+/*
+ * A label is one word of up to 255 characters (T-322): each line and button of the Labels page
+ * that names one breaks inside the word rather than push a phone's page sideways.
+ */
+.labels-page :is(.page-note, .form-status, .form-error, .empty-state-title, .button-danger) {
+  overflow-wrap: anywhere;
+}
+
+.labels-page .button-danger {
+  max-width: 100%;
+}
+
 .people-filters {
   display: flex;
   flex-wrap: wrap;

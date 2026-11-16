@@ -199,12 +199,32 @@ describe('Administration (ADR-114)', () => {
     renderOverview(CONFIG_ADMIN);
     expect(within(pagesNav()).getByRole('button', { name: 'Tracks and setup' })).toBeVisible();
     expect(within(pagesNav()).getByRole('button', { name: 'Your tracks' })).toBeVisible();
-    expect(within(pagesNav()).getAllByRole('button')).toHaveLength(2);
+    // Of People and access, only Visibility policies, which the server lets them change (T-322).
+    expect(within(pagesNav()).getByRole('button', { name: 'People and access' })).toBeVisible();
+    expect(within(pagesNav()).getAllByRole('button')).toHaveLength(3);
+    expect(within(pagesNav()).getByRole('link', { name: 'Visibility policies' })).toHaveAttribute(
+      'href',
+      '#/admin/visibility',
+    );
     expect(within(pagesNav()).queryByRole('link', { name: 'People' })).toBeNull();
+    expect(within(pagesNav()).queryByRole('link', { name: 'Permission explainer' })).toBeNull();
     expect(within(pagesNav()).queryByRole('link', { name: 'System status' })).toBeNull();
     expect(screen.queryByRole('region', { name: 'System health' })).toBeNull();
     const page = screen.getByRole('region', { name: 'Administration' });
     expect(within(page).getByRole('link', { name: 'Workflow maps' })).toBeVisible();
+    expect(within(page).getByRole('link', { name: 'Visibility policies' })).toBeVisible();
+  });
+
+  it('[IAM-009] lists only Visibility policies on People and access for a configuration administrator (T-322)', () => {
+    const people = ADMIN_GROUPS.find((g) => g.id === 'people') as (typeof ADMIN_GROUPS)[number];
+    renderAt('#/admin/group/people', CONFIG_ADMIN, null, <AdminGroupPage group={people} />);
+    const page = screen.getByRole('region', { name: 'People and access' });
+    expect(
+      within(page)
+        .getAllByRole('link')
+        .map((a) => a.textContent),
+    ).toEqual(['Visibility policies']);
+    expect(screen.queryByText(/^Only site and configuration administrators/)).toBeNull();
   });
 
   it('[IAM-009] opens a setup page for a configuration administrator, not a site page', () => {

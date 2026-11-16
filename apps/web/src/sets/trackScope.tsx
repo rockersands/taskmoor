@@ -17,6 +17,8 @@ export interface ScopeTrack {
   typeSetId: number | null;
   fieldRuleSetId: number | null;
   layoutSetId: number | null;
+  /** The visibility policy it uses, shared, its own or none (T-322); the server always says. */
+  visibilityPolicyId?: number | null;
 }
 
 /** A track the person runs (`GET /api/v1/me/managed-tracks`). */

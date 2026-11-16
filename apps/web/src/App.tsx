@@ -45,6 +45,7 @@ import {
 } from './i18n/locale';
 import { knownTimeZone } from './i18n/zone';
 import { InboxPage } from './inbox/InboxPage';
+import { LabelsPage } from './labels/LabelsPage';
 import { LayoutEditorPage } from './layouts/LayoutEditorPage';
 import { ListPage } from './list/ListPage';
 import type { MetaClient } from './meta/client';
@@ -223,6 +224,11 @@ const ADMIN_NOTIFICATION_POLICIES = '#/admin/notification-policies';
 const ADMIN_EMAIL = '#/admin/email';
 /** A local-mode track's own notification policies, beside its own sets (T-163a's pattern). */
 const OWN_NOTIFICATION_POLICIES = /^#\/manage\/tracks\/(\d{1,10})\/notification-policies(?:[/?]|$)/;
+/** A local-mode track's own workflow map and visibility policies, the same way (T-322). */
+const OWN_WORKFLOW_MAP = /^#\/manage\/tracks\/(\d{1,10})\/workflow-map(?:[/?]|$)/;
+const OWN_VISIBILITY = /^#\/manage\/tracks\/(\d{1,10})\/visibility-policies(?:[/?]|$)/;
+/** A local-mode track's own fields (T-322), beside its own sets. */
+const OWN_FIELDS = /^#\/manage\/tracks\/(\d{1,10})\/fields(?:[/?]|$)/;
 const CREATE_TICKET = '#/create';
 const ADMIN_WORKFLOWS = '#/admin/workflows';
 const ADMIN_USERS = '#/admin/users';
@@ -242,6 +248,8 @@ const ADMIN_LAYOUTS = '#/admin/layouts';
 const ADMIN_TRACK_SETS = '#/admin/track-sets';
 /** Priorities, priority sets and close reasons (T-320). */
 const ADMIN_PRIORITIES = '#/admin/priorities';
+/** Merging and renaming labels (T-322). */
+const ADMIN_LABELS = '#/admin/labels';
 const ADMIN_GUARDRAILS = '#/admin/guardrails';
 const ADMIN_TICKET_TEMPLATES = '#/admin/ticket-templates';
 const ADMIN_IMPORTS = '#/admin/imports';
@@ -660,6 +668,14 @@ function Pages() {
               },
             },
             {
+              id: 'go-labels',
+              labelId: 'admin.labels.title' as const,
+              keywords: ['label', 'tag', 'merge labels', 'rename label'],
+              run: () => {
+                navigate(ADMIN_LABELS);
+              },
+            },
+            {
               id: 'go-imports',
               labelId: 'admin.imports.title' as const,
               keywords: ['import', 'migrate', 'backup', 'csv', 'cloud', 'delta'],
@@ -776,6 +792,15 @@ function Pages() {
   } else if (OWN_NOTIFICATION_POLICIES.test(hash)) {
     const trackId = Number(OWN_NOTIFICATION_POLICIES.exec(hash)?.[1]);
     content = <NotificationPoliciesPage key={`${trackId}-notifications`} trackId={trackId} />;
+  } else if (OWN_WORKFLOW_MAP.test(hash)) {
+    const trackId = Number(OWN_WORKFLOW_MAP.exec(hash)?.[1]);
+    content = <WorkflowMapsPage key={`${trackId}-workflow-map`} trackId={trackId} />;
+  } else if (OWN_VISIBILITY.test(hash)) {
+    const trackId = Number(OWN_VISIBILITY.exec(hash)?.[1]);
+    content = <VisibilityPage key={`${trackId}-visibility`} trackId={trackId} />;
+  } else if (OWN_FIELDS.test(hash)) {
+    const trackId = Number(OWN_FIELDS.exec(hash)?.[1]);
+    content = <FieldsAdminPage key={`${trackId}-fields`} trackId={trackId} />;
   } else if (isRoute(hash, ADMIN_USERS)) {
     content = <UsersPage />;
   } else if (isRoute(hash, ADMIN_GROUPS)) {
@@ -817,6 +842,8 @@ function Pages() {
     content = <PermissionExplainerPage />;
   } else if (isRoute(hash, ADMIN_PRIORITIES)) {
     content = <PrioritiesPage />;
+  } else if (isRoute(hash, ADMIN_LABELS)) {
+    content = <LabelsPage />;
   } else if (isRoute(hash, ADMIN_TRACK_SETS)) {
     const trackId = Number(/[?&]track=(\d{1,10})(?:&|$)/.exec(hash)?.[1]);
     content = <TrackSetsPage {...(trackId ? { initialTrackId: trackId } : {})} />;

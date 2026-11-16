@@ -1,4 +1,5 @@
 import { ApiError } from '../api/client';
+import type { Level, TicketType } from '../tickettypes/client';
 import type { Named, RuleSet, SetsClient, TypeChoice, TypeSet } from './client';
 import type { RunTrack, ScopeTrack } from './trackScope';
 
@@ -7,12 +8,26 @@ export interface FakeSetsClient extends SetsClient {
 }
 
 type Owned = Named & { trackId: number | null };
+/** The three built-in levels, top first. */
+const LEVELS: Level[] = [
+  { id: 3, kind: 'outcome', rank: 1, name: 'Outcome', description: '' },
+  { id: 2, kind: 'standard', rank: 0, name: 'Standard', description: '' },
+  { id: 1, kind: 'subticket', rank: -1, name: 'Subticket', description: '' },
+];
 const STANDARD = { id: 2, name: 'Standard' };
-const TYPES: (TypeChoice & Owned)[] = [
-  { id: 5, name: 'Bug', trackId: null, level: STANDARD },
-  { id: 6, name: 'Task', trackId: null, level: STANDARD },
-  { id: 7, name: 'Story', trackId: null, level: STANDARD },
-  { id: 9, name: 'Runbook', trackId: 4, level: STANDARD },
+type FakeType = TypeChoice & Owned & { description: string; icon: string | null };
+const TYPES: FakeType[] = [
+  { id: 5, name: 'Bug', trackId: null, level: STANDARD, description: '', icon: null },
+  { id: 6, name: 'Task', trackId: null, level: STANDARD, description: '', icon: null },
+  { id: 7, name: 'Story', trackId: null, level: STANDARD, description: '', icon: null },
+  {
+    id: 9,
+    name: 'Runbook',
+    trackId: 4,
+    level: STANDARD,
+    description: 'What to do when an alarm goes off.',
+    icon: 'chore',
+  },
 ];
 /** Tickets per type in each track: SHOP has bugs and tasks, OPS runbooks. */
 const TICKETS: Readonly<Record<number, Readonly<Record<number, number>>>> = {
@@ -70,9 +85,31 @@ const RUNS: RunTrack[] = SETS_TRACKS.filter((t) => t.key !== 'LAB').map(
  * are used by SHOP and are not deleted; the default rule set holds a rule for bugs only. OPS
  * owns a type set and an unused rule set; LAB owns a type set and the rule set it uses. SHOP has
  * seven bugs and two tasks, so its type set drops neither without saying where their tickets go.
+ * OPS owns the ticket type Runbook (T-322), which its type set holds and three tickets have.
  */
 export function fakeSetsClient(options: { runs?: RunTrack[] } = {}): FakeSetsClient {
   const tracks = structuredClone(SETS_TRACKS);
+  let types = structuredClone(TYPES);
+  const typeView = (type: FakeType): TicketType => {
+    const level = LEVELS.find((l) => l.id === type.level.id) as Level;
+    return {
+      id: type.id,
+      name: type.name,
+      description: type.description,
+      icon: type.icon,
+      level: { id: level.id, rank: level.rank, name: level.name },
+      trackId: type.trackId,
+    };
+  };
+  const findType = (id: number) => {
+    const type = types.find((t) => t.id === id);
+    if (!type) throw new ApiError(404, { error: 'not_found' });
+    return type;
+  };
+  const nameTaken = (name: string, trackId: number | null, id?: number) =>
+    types.some(
+      (t) => t.id !== id && t.trackId === trackId && t.name.toLowerCase() === name.toLowerCase(),
+    );
   const own = (trackId: number) => {
     const track = tracks.find((t) => t.id === trackId) as ScopeTrack;
     return [{ id: track.id, key: track.key, name: track.name }];
@@ -84,7 +121,7 @@ export function fakeSetsClient(options: { runs?: RunTrack[] } = {}): FakeSetsCli
       description: '',
       trackId: null,
       defaultTypeId: 6,
-      ticketTypes: TYPES.filter((type) => type.trackId === null).map(named),
+      ticketTypes: types.filter((type) => type.trackId === null).map(named),
       defaultFor: ['software'],
       tracks: [{ id: 3, key: 'SHOP', name: 'Shop' }],
     },
@@ -94,7 +131,7 @@ export function fakeSetsClient(options: { runs?: RunTrack[] } = {}): FakeSetsCli
       description: '',
       trackId: 4,
       defaultTypeId: 5,
-      ticketTypes: [TYPES[0], TYPES[3]].map((type) => named(type as Owned)),
+      ticketTypes: [types[0], types[3]].map((type) => named(type as Owned)),
       defaultFor: [],
       tracks: own(4),
     },
@@ -104,7 +141,7 @@ export function fakeSetsClient(options: { runs?: RunTrack[] } = {}): FakeSetsCli
       description: '',
       trackId: 6,
       defaultTypeId: 6,
-      ticketTypes: [named(TYPES[1] as Owned)],
+      ticketTypes: [named(types[1] as Owned)],
       defaultFor: [],
       tracks: own(6),
     },
@@ -160,7 +197,10 @@ export function fakeSetsClient(options: { runs?: RunTrack[] } = {}): FakeSetsCli
   const log = (action: string, ...args: unknown[]) => calls.push({ action, args });
   // In the order asked for, as the set keeps them.
   const typesOf = (ids: number[]) =>
-    ids.map((id) => named(TYPES.find((type) => type.id === id) as Owned));
+    ids.map((id) => named(types.find((type) => type.id === id) as Owned));
+  /** A set as read: its types under the names they have now. */
+  const fresh = (set: TypeSet): TypeSet =>
+    structuredClone({ ...set, ticketTypes: typesOf(set.ticketTypes.map((type) => type.id)) });
   const reaches = (trackId: number | null) => (item: Owned) =>
     item.trackId === null || item.trackId === trackId;
   /** A kind of track has one default set: a set that takes it over takes it from the others. */
@@ -172,13 +212,13 @@ export function fakeSetsClient(options: { runs?: RunTrack[] } = {}): FakeSetsCli
   return {
     calls,
     ticketTypes: async (trackId) =>
-      TYPES.filter(reaches(trackId)).map(({ id, name, level }) => ({ id, name, level })),
+      types.filter(reaches(trackId)).map(({ id, name, level }) => ({ id, name, level })),
     customFields: async (trackId) => FIELDS.filter(reaches(trackId)).map(named),
-    typeSets: async () => structuredClone(typeSets.filter((s) => s.trackId === null)),
+    typeSets: async () => typeSets.filter((s) => s.trackId === null).map(fresh),
     typeSet: async (id) => {
       const set = typeSets.find((s) => s.id === id);
       if (!set) throw new ApiError(404, { error: 'not_found' });
-      return structuredClone(set);
+      return fresh(set);
     },
     createTypeSet: async (body) => {
       log('createTypeSet', body);
@@ -223,7 +263,7 @@ export function fakeSetsClient(options: { runs?: RunTrack[] } = {}): FakeSetsCli
         });
       }
       for (const [from, to] of Object.entries(change.ticketTypeMapping ?? {})) {
-        const level = (typeId: number) => TYPES.find((type) => type.id === typeId)?.level.id;
+        const level = (typeId: number) => types.find((type) => type.id === typeId)?.level.id;
         if (!kept.includes(to) || level(to) !== level(Number(from))) {
           throw new ApiError(400, {
             error: 'invalid_mapping',
@@ -297,5 +337,52 @@ export function fakeSetsClient(options: { runs?: RunTrack[] } = {}): FakeSetsCli
       return structuredClone(track);
     },
     managedTracks: async () => structuredClone(options.runs ?? RUNS),
+    levels: async () => structuredClone(LEVELS),
+    ownTypes: async (trackId) => types.filter((t) => t.trackId === trackId).map(typeView),
+    createType: async (body) => {
+      log('createType', body);
+      if (nameTaken(body.name, body.trackId)) throw new ApiError(409, { error: 'name_taken' });
+      const level = LEVELS.find((l) => l.id === body.levelId);
+      if (!level) throw new ApiError(400, { error: 'invalid_request', detail: 'levelId' });
+      const made: FakeType = {
+        id: ++next,
+        name: body.name,
+        trackId: body.trackId,
+        level: { id: level.id, name: level.name },
+        description: body.description ?? '',
+        icon: body.icon ?? null,
+      };
+      types = [...types, made];
+      return typeView(made);
+    },
+    updateType: async (id, change) => {
+      log('updateType', id, change);
+      const type = findType(id);
+      if (change.name !== undefined && nameTaken(change.name, type.trackId, id)) {
+        throw new ApiError(409, { error: 'name_taken' });
+      }
+      if (change.name !== undefined) type.name = change.name;
+      if (change.description !== undefined) type.description = change.description;
+      if (change.icon !== undefined) type.icon = change.icon;
+      if (change.levelId !== undefined) {
+        const level = LEVELS.find((l) => l.id === change.levelId) as Level;
+        type.level = { id: level.id, name: level.name };
+      }
+      return typeView(type);
+    },
+    deleteType: async (id) => {
+      log('deleteType', id);
+      const type = findType(id);
+      const holding = typeSets.filter((s) => s.ticketTypes.some((member) => member.id === id));
+      if (holding.length > 0) {
+        throw new ApiError(409, {
+          error: 'in_type_sets',
+          typeSets: holding.map(({ id: setId, name }) => ({ id: setId, name })),
+        });
+      }
+      const tickets = tracks.reduce((n, track) => n + (TICKETS[track.id]?.[id] ?? 0), 0);
+      if (tickets > 0) throw new ApiError(409, { error: 'has_tickets', ticketCount: tickets });
+      types = types.filter((t) => t !== type);
+    },
   };
 }

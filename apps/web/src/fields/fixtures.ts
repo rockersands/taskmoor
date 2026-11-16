@@ -1,4 +1,5 @@
 import { ApiError } from '../api/client';
+import type { RunTrack, ScopeTrack } from '../sets/trackScope';
 import type {
   ChildOption,
   Field,
@@ -12,12 +13,39 @@ import type {
 
 export interface FakeFieldsClient extends FieldsClient {
   calls: { action: string; args: unknown[] }[];
+  /** The lists and searches read, apart from the changes in `calls`: whose sources a page uses. */
+  reads: string[];
 }
 
 const TRACKS: NamedTrack[] = [
   { id: 1, key: 'PAY', name: 'Payments' },
   { id: 4, key: 'OPS', name: 'Operations' },
 ];
+/** PAY is in shared mode; OPS has its own configuration and owns the field Components (T-322). */
+const SCOPE_TRACKS: ScopeTrack[] = [
+  {
+    id: 1,
+    key: 'PAY',
+    name: 'Payments',
+    mode: 'shared',
+    archived: false,
+    typeSetId: 1,
+    fieldRuleSetId: null,
+    layoutSetId: null,
+  },
+  {
+    id: 4,
+    key: 'OPS',
+    name: 'Operations',
+    mode: 'local',
+    archived: false,
+    typeSetId: 30,
+    fieldRuleSetId: null,
+    layoutSetId: null,
+  },
+];
+/** The tracks the person of the track administrator's stories runs: both. */
+const RUNS: RunTrack[] = SCOPE_TRACKS.map(({ id, key, name, mode }) => ({ id, key, name, mode }));
 const TYPES: Named[] = [
   { id: 11, name: 'Bug' },
   { id: 12, name: 'Feature' },
@@ -266,14 +294,16 @@ export function sampleFields(): Field[] {
  * context for Payments bugs, and Low starts its new tickets; Region is a two-level list; Reviewer
  * a person field limited to a group; Cost a number shown as euros; Days left a formula; Office a
  * two-level list whose default is Madrid, Floor 1. Deleting an option a default names leaves the
- * context with none, as the server does.
+ * context with none, as the server does. OPS, a track with its own configuration, owns Components
+ * (T-322); `runs` are the tracks the person runs.
  */
-export function fakeFieldsClient(): FakeFieldsClient {
+export function fakeFieldsClient(options: { runs?: RunTrack[] } = {}): FakeFieldsClient {
   let fields: Field[] = sampleFields();
   const inUse = new Set([202, 403]);
   let next = 1000;
   const calls: FakeFieldsClient['calls'] = [];
   const log = (action: string, ...args: unknown[]) => calls.push({ action, args });
+  const reads: string[] = [];
   const find = (id: number) => {
     const field = fields.find((f) => f.id === id);
     if (!field) throw new ApiError(404, { error: 'not_found' });
@@ -352,10 +382,18 @@ export function fakeFieldsClient(): FakeFieldsClient {
   const contextConfig = (config: { userGroupId?: number | null; userRoleId?: number | null }) =>
     Object.fromEntries(Object.entries(config).filter(([, v]) => v !== null && v !== undefined));
 
+  /** As `GET /fields?trackId=`: the shared fields a context of which covers it, and its own. */
+  const reaches = (trackId: number | undefined) => (field: Field) =>
+    trackId === undefined ||
+    field.trackId === trackId ||
+    (field.trackId === null &&
+      field.contexts.some((c) => c.trackIds === null || c.trackIds.includes(trackId)));
+
   return {
     calls,
-    fields: async () =>
-      structuredClone(fields).map((f) => ({
+    reads,
+    fields: async (trackId) =>
+      structuredClone(fields.filter(reaches(trackId))).map((f) => ({
         ...f,
         contexts: f.contexts.map(({ options: _, ...c }) => c),
       })),
@@ -377,12 +415,13 @@ export function fakeFieldsClient(): FakeFieldsClient {
         type: body.type,
         multiple: body.multiple ?? false,
         config: body.config ?? {},
-        trackId: null,
+        trackId: body.trackId ?? null,
         contexts: [
           {
             id: ++next,
             name: 'Default',
-            trackIds: null,
+            // A local field's first context covers its track (`routes/fields.ts`).
+            trackIds: body.trackId === undefined ? null : [body.trackId],
             ticketTypeIds: null,
             config: {},
             defaultValue: null,
@@ -497,14 +536,47 @@ export function fakeFieldsClient(): FakeFieldsClient {
       log('checkFormula', expression, output);
       return check(expression, fields);
     },
-    tracks: async () => structuredClone(TRACKS),
+    tracks: async () => {
+      reads.push('tracks');
+      return structuredClone(TRACKS);
+    },
     ticketTypes: async () => structuredClone(TYPES),
-    groups: async () => structuredClone(GROUPS),
-    roles: async () => structuredClone(ROLES),
-    findPeople: async (typed) =>
-      PEOPLE.filter((p) => p.name.toLowerCase().includes(typed.toLowerCase())),
+    groups: async () => {
+      reads.push('groups');
+      return structuredClone(GROUPS);
+    },
+    roles: async () => {
+      reads.push('roles');
+      return structuredClone(ROLES);
+    },
+    findPeople: async (typed) => {
+      reads.push('findPeople');
+      return PEOPLE.filter((p) => p.name.toLowerCase().includes(typed.toLowerCase()));
+    },
     findTeams: async (typed) =>
       TEAMS.filter((p) => p.name.toLowerCase().includes(typed.toLowerCase())),
+    findGroups: async (_fieldId, typed) => {
+      reads.push('findGroups');
+      return GROUPS.filter((g) => g.name.toLowerCase().includes(typed.toLowerCase()));
+    },
+    findFieldGroups: async (fieldId, typed) => {
+      reads.push(`findFieldGroups ${fieldId}`);
+      return GROUPS.filter((g) => g.name.toLowerCase().includes(typed.toLowerCase()));
+    },
+    trackRoles: async (trackId) => {
+      reads.push(`trackRoles ${trackId}`);
+      return structuredClone(ROLES);
+    },
+    findTrackPeople: async (trackKey, typed) => {
+      reads.push(`findTrackPeople ${trackKey}`);
+      return PEOPLE.filter((p) => p.name.toLowerCase().includes(typed.toLowerCase()));
+    },
+    track: async (id) => {
+      const track = SCOPE_TRACKS.find((t) => t.id === id);
+      if (!track) throw new ApiError(404, { error: 'not_found' });
+      return structuredClone(track);
+    },
+    managedTracks: async () => structuredClone(options.runs ?? RUNS),
   };
 }
 

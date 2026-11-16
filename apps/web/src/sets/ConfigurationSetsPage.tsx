@@ -8,6 +8,7 @@ import { routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import { DangerAction } from '../shell/DangerAction';
 import { PageHeader } from '../shell/PageHeader';
+import type { Level, TicketType } from '../tickettypes/client';
 import {
   FIXED_FIELDS,
   type FieldRule,
@@ -21,6 +22,7 @@ import {
   type TypeSet,
   type TypeSetChange,
 } from './client';
+import { OwnTypesSection } from './OwnTypesSection';
 import {
   TypeMapping,
   type TypeSetDraft,
@@ -59,10 +61,11 @@ export interface ConfigurationSetsPageProps {
  * show.
  *
  * Site and configuration administrators see the shared sets. On a local-mode track's own page
- * (`trackId`; T-163a), whoever runs the track changes the types of its own type set (which is
- * neither added nor deleted there, as the server holds) and adds, changes, uses and deletes the
- * rule sets it owns, with the fields that reach it. Someone who runs tracks but is no
- * administrator is offered those pages instead (`sets/trackScope.tsx`).
+ * (`trackId`; T-163a), whoever runs the track adds, changes and deletes the ticket types it owns
+ * (`OwnTypesSection`, T-322), changes the types of its own type set (which is neither added nor
+ * deleted there, as the server holds) and adds, changes, uses and deletes the rule sets it owns,
+ * with the fields that reach it. Someone who runs tracks but is no administrator is offered those
+ * pages instead (`sets/trackScope.tsx`).
  */
 export function ConfigurationSetsPage({
   client = setsClient,
@@ -128,6 +131,9 @@ function Sets({
         fields: Named[];
         typeSets: TypeSet[];
         ruleSets: RuleSetSummary[];
+        /** On a track's own page: the levels, and the ticket types the track owns (T-322). */
+        levels: Level[];
+        ownTypes: TicketType[];
       }
     | { status: 'failed' }
     | { status: 'forbidden' }
@@ -139,7 +145,7 @@ function Sets({
 
   const load = useCallback(async () => {
     try {
-      const [types, fields, typeSets, ruleSets] = await Promise.all([
+      const [types, fields, typeSets, ruleSets, levels, ownTypes] = await Promise.all([
         client.ticketTypes(owner),
         client.customFields(owner),
         // A track's own page shows the type set it owns, which it reads by its id.
@@ -149,8 +155,10 @@ function Sets({
             ? Promise.resolve([])
             : client.typeSet(ownTypeSet).then((set) => (set.trackId === owner ? [set] : [])),
         client.ruleSets(owner),
+        owner === null ? Promise.resolve([]) : client.levels(),
+        owner === null ? Promise.resolve([]) : client.ownTypes(owner),
       ]);
-      setState({ status: 'loaded', types, fields, typeSets, ruleSets });
+      setState({ status: 'loaded', types, fields, typeSets, ruleSets, levels, ownTypes });
     } catch (error) {
       if (expired(error)) return;
       if (error instanceof ApiError && error.status === 403) setState({ status: 'forbidden' });
@@ -218,6 +226,19 @@ function Sets({
       )}
       {state.status === 'loaded' && (
         <>
+          {track && (
+            <OwnTypesSection
+              client={client}
+              track={track}
+              levels={[...state.levels].sort((a, b) => b.rank - a.rank)}
+              types={state.ownTypes}
+              offered={
+                new Set(state.typeSets.flatMap((set) => set.ticketTypes.map((type) => type.id)))
+              }
+              said={said}
+              refused={(text) => setProblem(text)}
+            />
+          )}
           <TypeSetsSection
             client={client}
             track={track}

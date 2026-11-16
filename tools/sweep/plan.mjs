@@ -198,10 +198,17 @@ export function allRoutes(ids, source) {
       'manage-track-configuration-sets',
       `#/manage/tracks/${ids.localTrackId}/configuration-sets`,
     ),
+    route('admin', 'manage-track-fields', `#/manage/tracks/${ids.localTrackId}/fields`),
     route(
       'admin',
       'manage-track-notification-policies',
       `#/manage/tracks/${ids.localTrackId}/notification-policies`,
+    ),
+    route('admin', 'manage-track-workflow-map', `#/manage/tracks/${ids.localTrackId}/workflow-map`),
+    route(
+      'admin',
+      'manage-track-visibility-policies',
+      `#/manage/tracks/${ids.localTrackId}/visibility-policies`,
     ),
 
     route('other', 'account', '#/account'),
