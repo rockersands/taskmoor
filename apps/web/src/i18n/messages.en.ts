@@ -1314,7 +1314,7 @@ export const messagesEn = {
   'notificationPolicies.useHint':
     'From then on the track follows this policy. Only site and configuration administrators can give it a shared one again.',
   'notificationPolicies.usedFor': '{key} now uses {name}.',
-  'notificationPolicies.delete': 'Delete policy',
+  'notificationPolicies.delete': 'Delete',
   'notificationPolicies.deleteOf': 'Delete {name}',
   'notificationPolicies.confirmDelete':
     '{name} and its rules are deleted for good. No track uses it, so nobody hears less.',
@@ -3568,7 +3568,7 @@ export const messagesEn = {
   'admin.ticketTypes.retypePreview':
     '{tickets, plural, =0 {No ticket of this type changes level.} one {# ticket of this type changes level.} other {# tickets of this type change level.}}',
   'admin.ticketTypes.retypeRefused': 'This level would be refused: {why}.',
-  'admin.ticketTypes.deleteType': 'Delete type',
+  'admin.ticketTypes.deleteType': 'Delete ticket type',
   'admin.ticketTypes.deleteTypeOf': 'Delete ticket type {name}',
   'admin.ticketTypes.confirmDelete':
     'Delete {name}? Nothing can use it afterwards, and this cannot be undone.',

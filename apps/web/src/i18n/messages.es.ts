@@ -1351,7 +1351,7 @@ export const messagesEs: Record<MessageId, string> = {
   'notificationPolicies.useHint':
     'Desde entonces el track sigue esta política. Solo los administradores del sitio y de la configuración pueden volver a darle una compartida.',
   'notificationPolicies.usedFor': '{key} usa ahora {name}.',
-  'notificationPolicies.delete': 'Eliminar política',
+  'notificationPolicies.delete': 'Eliminar',
   'notificationPolicies.deleteOf': 'Eliminar {name}',
   'notificationPolicies.confirmDelete':
     '{name} y sus reglas se eliminan para siempre. Ningún track la usa, así que nadie deja de enterarse de nada.',
@@ -3668,7 +3668,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.ticketTypes.retypePreview':
     '{tickets, plural, =0 {Ningún ticket de este tipo cambia de nivel.} one {# ticket de este tipo cambia de nivel.} other {# tickets de este tipo cambian de nivel.}}',
   'admin.ticketTypes.retypeRefused': 'Este nivel se rechazaría: {why}.',
-  'admin.ticketTypes.deleteType': 'Eliminar el tipo',
+  'admin.ticketTypes.deleteType': 'Eliminar el tipo de ticket',
   'admin.ticketTypes.deleteTypeOf': 'Eliminar el tipo de ticket {name}',
   'admin.ticketTypes.confirmDelete':
     '¿Eliminar {name}? Después nada podrá usarlo, y no se puede deshacer.',

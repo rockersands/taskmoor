@@ -6,6 +6,7 @@ import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
 import { type Session, SessionProvider } from '../session/SessionProvider';
 import { untranslated, visibleTexts } from '../test/backend';
+import { labelInName } from '../test/labelInName';
 import { setViewportWidth } from '../test/viewport';
 import { type FakeTicketTypesClient, fakeTicketTypesClient } from './fixtures';
 import { TicketTypesPage } from './TicketTypesPage';
@@ -375,6 +376,22 @@ describe('ticket types and levels (T-320)', () => {
       expect(refused.calls).toEqual([]);
     }
     expect(client.calls).toEqual([]);
+  });
+
+  it('[CORE-005] Delete’s visible words are part of its name, in English and Spanish (WCAG 2.5.3)', async () => {
+    for (const [locale, manage, remove] of [
+      ['en', 'Manage ticket type Bug', 'Delete ticket type Bug'],
+      ['es', 'Gestionar el tipo de ticket Bug', 'Eliminar el tipo de ticket Bug'],
+    ] as const) {
+      const user = userEvent.setup();
+      renderPage({ locale });
+      await user.click(await screen.findByRole('button', { name: manage }));
+      // Someone who says what they see reaches it (axe: label-content-name-mismatch).
+      expect(labelInName(screen.getByRole('button', { name: remove }))).toMatchObject({
+        contained: true,
+      });
+      cleanup();
+    }
   });
 
   it('[NFR-005] fits a small phone, in Spanish too', async () => {
