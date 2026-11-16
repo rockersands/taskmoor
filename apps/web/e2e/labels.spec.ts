@@ -82,14 +82,16 @@ test('[CORE-017] the administrator merges labels into one and renames another', 
   await list.getByLabel('Find labels that start with').fill(stamp);
   const boxes = list.getByRole('checkbox');
   await expect(boxes).toHaveCount(4);
-  await expect(list.getByRole('checkbox', { name: frontEnd })).toHaveAccessibleDescription(
-    '2 tickets',
+  await expect(
+    list.getByRole('checkbox', { name: frontEnd, exact: true }),
+  ).toHaveAccessibleDescription('2 tickets');
+  await expect(list.getByRole('checkbox', { name: fe, exact: true })).toHaveAccessibleDescription(
+    '1 ticket',
   );
-  await expect(list.getByRole('checkbox', { name: fe })).toHaveAccessibleDescription('1 ticket');
 
   // Two ways of writing it go into the third, after the question.
-  await list.getByRole('checkbox', { name: frontEnd }).check();
-  await list.getByRole('checkbox', { name: fe }).check();
+  await list.getByRole('checkbox', { name: frontEnd, exact: true }).check();
+  await list.getByRole('checkbox', { name: fe, exact: true }).check();
   await merge.getByLabel('They become').fill(frontend);
   await expect(
     merge.getByText(`Ticked: ${frontEnd} (2 tickets) and ${fe} (1 ticket).`),
@@ -108,24 +110,24 @@ test('[CORE-017] the administrator merges labels into one and renames another', 
   expect(await labelsOf(page.request, two)).toEqual([frontend]);
   expect(await labelsOf(page.request, three)).toEqual([frontend]);
   await expect(boxes).toHaveCount(2);
-  await expect(list.getByRole('checkbox', { name: frontend })).toHaveAccessibleDescription(
-    '3 tickets',
-  );
+  await expect(
+    list.getByRole('checkbox', { name: frontend, exact: true }),
+  ).toHaveAccessibleDescription('3 tickets');
 
   // One label and a new word: a rename.
   const renamed = `${stamp}-interface`;
-  await list.getByRole('checkbox', { name: ui }).check();
+  await list.getByRole('checkbox', { name: ui, exact: true }).check();
   await merge.getByLabel('They become').fill(renamed);
   await merge.getByRole('button', { name: 'Rename', exact: true }).click();
   await merge.getByRole('button', { name: `Rename ${ui} to ${renamed}` }).click();
   await expect(merge.getByText(`${ui} became ${renamed} on 1 ticket.`)).toBeVisible();
   expect(await labelsOf(page.request, one)).toEqual([frontend, renamed]);
-  await expect(list.getByRole('checkbox', { name: renamed })).toBeVisible();
-  await expect(list.getByRole('checkbox', { name: ui })).toHaveCount(0);
+  await expect(list.getByRole('checkbox', { name: renamed, exact: true })).toBeVisible();
+  await expect(list.getByRole('checkbox', { name: ui, exact: true })).toHaveCount(0);
 
   expect(await fitsWidth(page)).toBe(true);
   if (testInfo.project.name === 'mobile') {
-    await list.getByRole('checkbox', { name: renamed }).check();
+    await list.getByRole('checkbox', { name: renamed, exact: true }).check();
     for (const target of [
       list.locator('label.form-field-inline').first(),
       merge.getByRole('button', { name: 'Clear the ticks' }),
