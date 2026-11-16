@@ -1,7 +1,7 @@
 ---
 title: "Fields, ticket types and layouts"
 audience: admins
-sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/workflows/close-reasons.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/layouts/LayoutCanvas.tsx, apps/web/src/layouts/GripMenu.tsx, apps/web/src/layouts/LayoutPreview.tsx, apps/web/src/layouts/refusal.ts, apps/web/src/layouts/model.ts, apps/web/src/layouts/client.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md, apps/server/src/tickets/priority-level.ts, packages/db/src/migrations/0095_points_field.ts, apps/web/src/sets/trackScope.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/server/src/workflows/board-managed.ts, apps/web/src/layouts/createForm.ts, apps/web/src/tickets/form.ts, apps/server/src/fields/values.ts, apps/server/src/import/load.ts, apps/web/src/priorities/PrioritiesPage.tsx, apps/web/src/priorities/PrioritySetsSection.tsx, apps/web/src/priorities/client.ts, apps/web/src/sets/TypeSetForm.tsx, apps/web/src/tickettypes/TicketTypesPage.tsx, apps/web/src/tickettypes/client.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/fields/FieldPanel.tsx, apps/web/src/fields/ContextsSection.tsx, apps/web/src/fields/OptionList.tsx, apps/web/src/fields/FormulaEditor.tsx, apps/web/src/fields/formulaWords.ts, apps/web/src/fields/FieldSettings.tsx, apps/web/src/fields/numberFormat.ts, apps/web/src/fields/defaultValue.ts, apps/web/src/tickets/defaults.ts, apps/web/src/search/columns.ts, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/notifications/NotificationPoliciesPage.tsx
+sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/workflows/close-reasons.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/layouts/LayoutCanvas.tsx, apps/web/src/layouts/GripMenu.tsx, apps/web/src/layouts/LayoutPreview.tsx, apps/web/src/layouts/refusal.ts, apps/web/src/layouts/model.ts, apps/web/src/layouts/client.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md, apps/server/src/tickets/priority-level.ts, packages/db/src/migrations/0095_points_field.ts, apps/web/src/sets/trackScope.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/server/src/workflows/board-managed.ts, apps/web/src/layouts/createForm.ts, apps/web/src/tickets/form.ts, apps/server/src/fields/values.ts, apps/server/src/import/load.ts, apps/web/src/priorities/PrioritiesPage.tsx, apps/web/src/priorities/PrioritySetsSection.tsx, apps/web/src/priorities/client.ts, apps/web/src/sets/TypeSetForm.tsx, apps/web/src/tickettypes/TicketTypesPage.tsx, apps/web/src/tickettypes/client.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/fields/FieldPanel.tsx, apps/web/src/fields/ContextsSection.tsx, apps/web/src/fields/OptionList.tsx, apps/web/src/fields/FormulaEditor.tsx, apps/web/src/fields/formulaWords.ts, apps/web/src/fields/FieldSettings.tsx, apps/web/src/fields/numberFormat.ts, apps/web/src/fields/defaultValue.ts, apps/web/src/tickets/defaults.ts, apps/web/src/search/columns.ts, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/notifications/NotificationPoliciesPage.tsx, apps/web/src/labels/LabelsPage.tsx, apps/web/src/labels/client.ts
 accessed: 2026-11-16
 attestation: own-words
 ---
@@ -13,8 +13,9 @@ priorities, rules and forms it uses.
 
 In the web app, site and configuration administrators use **Administration**, **Fields**,
 **Administration**, **Ticket types**, **Administration**, **Configuration sets**,
-**Administration**, **Layout sets** and **Administration**,
-[**Priorities**](#priorities-and-priority-sets). The people
+**Administration**, **Layout sets**, **Administration**,
+[**Priorities**](#priorities-and-priority-sets) and **Administration**,
+[**Labels**](#merging-and-renaming-labels). The people
 who run a track with its own configuration (local mode) change that track's own sets on its own
 pages; see [A track's own sets](#a-tracks-own-sets). The rest is done through the
 [REST API](rest-api.md); a token that changes shared configuration needs the `admin` scope
@@ -33,9 +34,37 @@ The summary is always required and always shown: one line of up to 255 character
 have fields that people do not fill in on forms: key, track, ticket type, status, Closed, creator,
 created, updated, rank, time spent, visibility level, followers and votes.
 
-Labels are free words, suggested from every label in use as people type. Administrators merge
-labels into one with `POST /api/v1/labels/merge` (`{ "labels": [...], "into": "..." }`), which
-also renames a label.
+Labels are free words, suggested from every label in use as people type. Site and configuration
+administrators merge and rename them on **Administration** > **Labels**.
+
+### Merging and renaming labels
+
+When people write one idea in several ways, such as `front-end`, `frontend` and `FE`, merge them.
+Site and configuration administrators do it on **Administration** > **Labels** (`#/admin/labels`),
+in the **Tracks and setup** group. Anyone else who opens the page, someone who runs a track
+included, is told only that it is for administrators: the labels are the whole site's.
+
+- **Labels on this site** lists the labels people are offered, in the order the suggestions show
+  them, 50 at a time with **Show more labels**, each with how many tickets have it. The count
+  includes tickets in the trash, which a merge changes too. A label no ticket has any more shows
+  **No tickets** and is still suggested until you merge it into another. **Find labels that start
+  with** narrows the list, ignoring case.
+- Tick the labels to change, then type under **They become** the label they turn into: one already
+  in use, to merge them into it, or a new word, to rename them. A label is one word of up to 255
+  characters, with no spaces. Case counts: `FE` and `fe` are two labels, and merging one into the
+  other makes them one. Ticks stay while you search, so labels found by different beginnings go
+  into one merge; **Clear the ticks** takes them all off. One merge takes at most 100 labels.
+- **Merge**, or **Rename** when one label changes, asks first and says what will happen: the
+  tickets that have them (at most as many as their counts add up to) get the new label in their
+  place, once each. It cannot be undone. **Merge into …**, or **Rename … to …**, does it, and the
+  page says how many tickets changed.
+- Each ticket that changed records it in its history, as your change, and the labels merged away
+  are no longer suggested.
+
+Through the API, `POST /api/v1/labels/merge` with `{ "labels": [...], "into": "..." }` does the
+same and answers with the labels merged and the `ticketCount`; `GET /api/v1/labels/usage` (`q`,
+`after`, `limit` up to 100) lists the labels with their `ticketCount`, a page at a time. Both are
+for site and configuration administrators.
 
 ## Custom fields
 

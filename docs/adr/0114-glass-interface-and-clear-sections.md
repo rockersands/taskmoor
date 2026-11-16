@@ -74,7 +74,7 @@ under its title.
   - People and access: People, Groups, Teams, Invitations, Access policies, Visibility policies and
     the permission explainer.
   - Tracks and setup: Tracks, Workflows, Workflow maps, Fields, Ticket types, Configuration sets,
-    Layout sets, Priorities, Notification policies, and which sets a track uses.
+    Layout sets, Priorities, Labels, Notification policies, and which sets a track uses.
   - Sign-in and security: Security, Identity providers, Directories, Network access, Audit log.
   - Integrations and AI: API tokens, Service accounts, MCP, Frontends, Webhooks, AI, AI usage,
     limits and prices.
@@ -134,7 +134,36 @@ under its title.
   - No icon or colour controls for priorities: neither changes what is drawn, as the icon follows
     the place in the list. Names show as stored, as on the other configuration pages.
   - Which sets a track uses links its priority picker here, and this page links back. Merging
-    labels (`POST /labels/merge`) stays in the API for now: its own sub-ticket of T-155.
+    labels (`POST /labels/merge`) stayed in the API then: T-322 gives it a page (below).
+- **As built (T-322, 2026-11-16): Labels.** One page, `#/admin/labels` (`labels/LabelsPage.tsx`), in
+  Tracks and setup after Priorities, for site and configuration administrators; anyone else, a
+  track's manager included, sees the refusal alone and the page reads nothing for them, since the
+  labels are the site's. The user accepted a web control for merging labels (CORE-017 (2)) in 1.0;
+  of the two places the scope offered, a section of Fields or a page of its own, it is a page:
+  labels are a built-in field with nothing on the Fields page, and that page also opens in a
+  track's scope, where the site's labels do not belong.
+  - Two cards. **Merge or rename** comes first: the ticked labels with their counts, **They
+    become** (one word, checked as typed: a space, a word the ticked labels already are, or more
+    than 100 labels says why under the field and keeps the action off), and the merge as a
+    `DangerAction` (D13), whose first step reads **Merge**, or **Rename** when one label changes,
+    and whose question says how many tickets change, at most the sum of the counts. Then **Labels
+    on this site**: a search by how labels start, as the suggestions match them, and the labels 50
+    at a time, a box each with the tickets that have it as its description. **Show more labels**
+    gives the keyboard to the first label it adds.
+  - Ticks stay while the search changes, so labels found by different beginnings go into one
+    merge; **Clear the ticks** gives the keyboard to the card's heading. After a merge the ticks
+    and the word clear, the list is read again, the status line says how many tickets changed,
+    and the keyboard stays on the first step.
+  - One server addition: `GET /api/v1/labels/usage` (`q`, `after`, `limit`), for site and
+    configuration administrators, in the suggestions' order with each label's `ticketCount`,
+    tickets in the trash included since a merge changes them. `GET /api/v1/labels` stays names
+    only, for everyone, while typing.
+  - A label is one word of up to 255 characters, so every line and the confirm button of the page
+    wrap inside the word (`.labels-page` in `people.css`).
+  - Tests: `LabelsPage.test.tsx` and `labels/client.test.ts` with a fake backend, the refusal in
+    `forbiddenPages.test.tsx`, stories with axe in both skins (a 255-character label at phone width,
+    and touch sizes), the route's case in `ticket-fields.test.ts`, and `e2e/labels.spec.ts` on the
+    desktop and mobile projects, with its own track and labels.
 - Each administration page has a breadcrumb back to its group, and admin routes keep their paths.
 - **The top bar** keeps New ticket, the command palette and the person's menu. It gains a
   light and dark toggle and a **Help** menu: Tutorials, Keyboard shortcuts and the Manual.
