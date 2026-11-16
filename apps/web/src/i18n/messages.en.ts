@@ -7220,12 +7220,12 @@ export const messagesEn = {
   'admin.aiLimits.savePrice': 'Save the rate',
   'settings.trackSets': 'Which sets a track uses',
   'settings.trackSetsHint':
-    'Choose a track’s layouts, priorities, visibility policy and notifications.',
+    'Choose a track’s access policy, type set, layouts, priorities, visibility policy and notifications.',
   'admin.trackSets.title': 'Which sets a track uses',
   'admin.trackSets.purpose':
-    'Choose a track’s layouts, priorities, visibility policy and notifications from the sets that exist.',
+    'Choose a track’s access policy, type set, layouts, priorities, visibility policy and notifications from the sets that exist.',
   'admin.trackSets.about':
-    'This page only chooses. Layout sets, priority sets, visibility policies and notification policies are made on pages of their own. Type sets, field rule sets and workflow maps are chosen where they are made.',
+    'This page only chooses. Access policies, type sets, layout sets, priority sets, visibility policies and notification policies are made on pages of their own. Field rule sets and workflow maps are chosen where they are made. A track with its own configuration keeps its own access policy and type set.',
   'admin.trackSets.forbidden':
     'Only site and configuration administrators choose a track’s sets here.',
   'admin.trackSets.loading': 'Reading…',
@@ -7261,6 +7261,47 @@ export const messagesEn = {
     'You may not choose that for this track. A site or configuration administrator can.',
   'admin.trackSets.problem.other': 'That could not be saved. Try again in a moment.',
   'admin.tracks.setsLink': 'Choose the sets {key} uses',
+  // Deleting a track to the trash, and a shared-mode track's access policy and type set (T-322).
+  'admin.tracks.delete': 'Delete track',
+  'admin.tracks.deleteOf': 'Delete track {key}',
+  'admin.tracks.deleteOutcome':
+    '{key} goes to the trash with its tickets, releases and areas. Nobody sees it there, and its key stays taken. It can be restored from Trash until its time there is up; then it is deleted for good.',
+  'admin.tracks.deletedSaid': 'Track {key} is in the trash.',
+  'admin.tracks.trashLink': 'Restore {key} from Trash',
+  'admin.tracks.problem.inTrash': 'Track {key} is in the trash already.',
+  'admin.tracks.problem.gone': 'Track {key} is gone, or you may no longer see it.',
+  'admin.trackSets.access': 'Access policy',
+  'admin.trackSets.accessHint':
+    'Who may see the track and what they may do in it. Switching it changes that at once for everyone.',
+  'admin.trackSets.accessLink': 'Make and change access policies on Permissions.',
+  'admin.trackSets.typeSet': 'Type set',
+  'admin.trackSets.typeSetHint':
+    'The ticket types the track offers. When tickets have a type the new set lacks, saving asks which type they take.',
+  'admin.trackSets.typeSetLink': 'Make and change type sets on Configuration sets.',
+  'admin.trackSets.choose': 'Choose one',
+  'admin.trackSets.ownKept':
+    '{key} has its own access policy and type set, which its administrators change on its own pages.',
+  'admin.trackSets.ownLink': 'Open the page of {key}',
+  'admin.trackSets.mapping': 'Tickets of the types {set} lacks',
+  'admin.trackSets.mappingIntro':
+    '{tickets, plural, one {# ticket in {key} has} other {# tickets in {key} have}} a type {set} lacks. Choose the type they take, at the same level, then save again.',
+  'admin.trackSets.mappingIntroUncounted':
+    'Tickets in {key} have a type {set} lacks. Choose the type they take, at the same level, then save again.',
+  'admin.trackSets.mappingNowhere':
+    '{set} has no type at the {level} level, so tickets of {name} have nowhere to go: choose another type set, or add a type of that level to {set}.',
+  'admin.trackSets.savedMapped':
+    '{key} was saved; {tickets, plural, one {# ticket took another type} other {# tickets took another type}}.',
+  'admin.trackSets.savedMappedUncounted':
+    '{key} was saved; the tickets of the types it lacked took another type.',
+  'admin.trackSets.problem.typeInUse':
+    'Tickets in {key} have a type {set} lacks: choose the type they take, then save again.',
+  'admin.trackSets.problem.mapping':
+    'Each type {set} lacks needs a type of the same level that {set} has.',
+  'admin.trackSets.problem.archived':
+    '{key} is archived: restore it on Tracks before changing what it uses.',
+  'admin.trackSets.problem.gone':
+    'A set you chose is gone, or belongs to a track of its own. Open the page again and choose another.',
+  'admin.trackSets.problem.trackGone': '{key} is gone, or you may no longer see it.',
   'summary.templates': 'Ticket templates',
   'settings.ticketTemplates': 'Ticket templates',
   'settings.ticketTemplatesHint': 'Templates offered when a ticket is created in any track.',

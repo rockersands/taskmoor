@@ -1,7 +1,7 @@
 ---
 title: "Permissions and access"
 audience: admins
-sources: apps/web/src/admin/sections.ts, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/permissions/visibilityClient.ts, apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx, apps/server/src/authz/track-admins.ts, apps/server/src/authz/create-tracks.ts, apps/server/src/routes/setup.ts, docs/adr/0118-track-invitations.md, apps/web/src/admin/NewButton.tsx, apps/web/src/permissions/client.ts, apps/server/src/routes/fields.ts
+sources: apps/web/src/admin/sections.ts, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/permissions/visibilityClient.ts, apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx, apps/server/src/authz/track-admins.ts, apps/server/src/authz/create-tracks.ts, apps/server/src/routes/setup.ts, docs/adr/0118-track-invitations.md, apps/web/src/admin/NewButton.tsx, apps/web/src/permissions/client.ts, apps/server/src/routes/fields.ts, apps/web/src/configuration/TrackSetsPage.tsx
 accessed: 2026-11-16
 attestation: own-words
 ---
@@ -143,8 +143,11 @@ To work with policies under **Access policies**:
 One permission may go to at most 50 grantees in one policy. The **Guardrails** page changes
 that limit (`grants_per_permission`).
 
-A shared-mode track switches policy with `PATCH /api/v1/tracks/:id` and `accessPolicyId`, by a
-site or configuration administrator.
+Site and configuration administrators switch a shared-mode track's policy on
+[Which sets a track uses](fields.md#which-sets-a-track-uses), under **Access policy**, which lists
+the shared policies. Once saved, the new policy applies at once to everyone in the track. Through
+the API it is `PATCH /api/v1/tracks/:id` with `accessPolicyId`. A local-mode track keeps its own
+policy, and the page says so.
 
 ### Track permissions
 

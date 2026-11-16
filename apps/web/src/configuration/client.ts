@@ -110,6 +110,8 @@ export interface ConfigurationClient {
     },
   ) => Promise<Track>;
   archiveTrack: (id: number, archive: boolean) => Promise<void>;
+  /** Moves the track to the trash with everything in it, to be restored from Trash (M1-101). */
+  deleteTrack: (id: number) => Promise<void>;
   /** The track's board, or null while it has none (one is made when the track is first opened). */
   trackBoard: (trackId: number) => Promise<TrackBoard | null>;
   roles: () => Promise<Named[]>;
@@ -160,6 +162,9 @@ export const configurationClient: ConfigurationClient = {
     (await api<{ track: Track }>(`/tracks/${id}`, { method: 'PATCH', body: change })).track,
   archiveTrack: async (id, archive) => {
     await api<unknown>(`/tracks/${id}/${archive ? 'archive' : 'restore'}`, { method: 'POST' });
+  },
+  deleteTrack: async (id) => {
+    await api<unknown>(`/tracks/${id}`, { method: 'DELETE' });
   },
   // The list reads without making a board, as opening the track would (ADR-116).
   trackBoard: async (trackId) => {

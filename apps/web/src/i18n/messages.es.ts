@@ -7383,12 +7383,12 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.aiLimits.savePrice': 'Guardar la tarifa',
   'settings.trackSets': 'Qué conjuntos usa un track',
   'settings.trackSetsHint':
-    'Elegir los diseños, prioridades, política de visibilidad y notificaciones de un track.',
+    'Elegir la política de acceso, el conjunto de tipos, los diseños, prioridades, política de visibilidad y notificaciones de un track.',
   'admin.trackSets.title': 'Qué conjuntos usa un track',
   'admin.trackSets.purpose':
-    'Elige los diseños, prioridades, política de visibilidad y notificaciones de un track entre los conjuntos que existen.',
+    'Elige la política de acceso, el conjunto de tipos, los diseños, prioridades, política de visibilidad y notificaciones de un track entre los conjuntos que existen.',
   'admin.trackSets.about':
-    'Esta página solo elige. Los conjuntos de diseños, los conjuntos de prioridades, las políticas de visibilidad y las políticas de notificaciones se crean en sus propias páginas. Los conjuntos de tipos, de reglas de campos y los mapas de flujos se eligen donde se crean.',
+    'Esta página solo elige. Las políticas de acceso, los conjuntos de tipos, de diseños y de prioridades, las políticas de visibilidad y las de notificaciones se crean en sus propias páginas. Los conjuntos de reglas de campos y los mapas de flujos se eligen donde se crean. Un track con configuración propia conserva su propia política de acceso y su conjunto de tipos.',
   'admin.trackSets.forbidden':
     'Solo los administradores del sitio y de la configuración eligen aquí los conjuntos de un track.',
   'admin.trackSets.loading': 'Leyendo…',
@@ -7425,6 +7425,48 @@ export const messagesEs: Record<MessageId, string> = {
     'No puedes elegir eso para este track. Un administrador del sitio o de la configuración puede.',
   'admin.trackSets.problem.other': 'No se pudo guardar. Inténtalo de nuevo en un momento.',
   'admin.tracks.setsLink': 'Elegir los conjuntos que usa {key}',
+  // Deleting a track to the trash, and a shared-mode track's access policy and type set (T-322).
+  'admin.tracks.delete': 'Eliminar el track',
+  'admin.tracks.deleteOf': 'Eliminar el track {key}',
+  'admin.tracks.deleteOutcome':
+    '{key} va a la papelera con sus tickets, versiones y áreas. Allí nadie lo ve, y su clave sigue ocupada. Se puede restaurar desde Papelera hasta que se cumpla su tiempo allí; después se elimina para siempre.',
+  'admin.tracks.deletedSaid': 'El track {key} está en la papelera.',
+  'admin.tracks.trashLink': 'Restaurar {key} desde Papelera',
+  'admin.tracks.problem.inTrash': 'El track {key} ya está en la papelera.',
+  'admin.tracks.problem.gone': 'El track {key} ya no existe, o ya no puedes verlo.',
+  'admin.trackSets.access': 'Política de acceso',
+  'admin.trackSets.accessHint':
+    'Quién puede ver el track y qué puede hacer en él. Al cambiarla, eso cambia al momento para todos.',
+  'admin.trackSets.accessLink': 'Crea y cambia las políticas de acceso en Permisos.',
+  'admin.trackSets.typeSet': 'Conjunto de tipos',
+  'admin.trackSets.typeSetHint':
+    'Los tipos de ticket que ofrece el track. Si hay tickets de un tipo que el nuevo conjunto no tiene, al guardar se pregunta qué tipo toman.',
+  'admin.trackSets.typeSetLink':
+    'Crea y cambia los conjuntos de tipos en Conjuntos de configuración.',
+  'admin.trackSets.choose': 'Elige uno',
+  'admin.trackSets.ownKept':
+    '{key} tiene su propia política de acceso y su propio conjunto de tipos, que sus administradores cambian en sus propias páginas.',
+  'admin.trackSets.ownLink': 'Abrir la página de {key}',
+  'admin.trackSets.mapping': 'Tickets de los tipos que {set} no tiene',
+  'admin.trackSets.mappingIntro':
+    '{tickets, plural, one {# ticket de {key} tiene} other {# tickets de {key} tienen}} un tipo que {set} no tiene. Elige el tipo que toman, del mismo nivel, y vuelve a guardar.',
+  'admin.trackSets.mappingIntroUncounted':
+    'Hay tickets de {key} con un tipo que {set} no tiene. Elige el tipo que toman, del mismo nivel, y vuelve a guardar.',
+  'admin.trackSets.mappingNowhere':
+    '{set} no tiene ningún tipo del nivel {level}, así que los tickets de {name} no tienen adónde ir: elige otro conjunto de tipos, o añade a {set} un tipo de ese nivel.',
+  'admin.trackSets.savedMapped':
+    'Se guardó {key}; {tickets, plural, one {# ticket tomó otro tipo} other {# tickets tomaron otro tipo}}.',
+  'admin.trackSets.savedMappedUncounted':
+    'Se guardó {key}; los tickets de los tipos que faltaban tomaron otro tipo.',
+  'admin.trackSets.problem.typeInUse':
+    'Hay tickets de {key} con un tipo que {set} no tiene: elige el tipo que toman y vuelve a guardar.',
+  'admin.trackSets.problem.mapping':
+    'Cada tipo que {set} no tiene necesita un tipo del mismo nivel que {set} sí tenga.',
+  'admin.trackSets.problem.archived':
+    '{key} está archivado: restáuralo en Tracks antes de cambiar lo que usa.',
+  'admin.trackSets.problem.gone':
+    'Un conjunto que elegiste ya no existe, o es de un track con configuración propia. Vuelve a abrir la página y elige otro.',
+  'admin.trackSets.problem.trackGone': '{key} ya no existe, o ya no puedes verlo.',
   'summary.templates': 'Plantillas de ticket',
   'settings.ticketTemplates': 'Plantillas de ticket',
   'settings.ticketTemplatesHint':
