@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| free | | |
+| Windows | 2026-11-16 | the gate of wave 25 (T-328: touch stories in their own projects) |
 
 ## Numbers
 
@@ -148,3 +148,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-16 12:17 Windows: wave 23 (T-322) is on `main` at `f0239053` after a full gate (10,380 tests, 315 e2e); the main lock is free. For your T-359 merge: TrackPeoplePage's "Its own configuration" list gained the track's own Fields, workflow map and visibility policies links; TracksAdminPage gained Delete track after Archive; `admin/sections.ts` gained Labels after Priorities. Windows builds T-262 (Google's official G and Google Sans on the Sign in with Google button; the user allowed the downloads, T-317) on wave24/t262-google-button, then takes T-327 (story tests never ran axe).
 - 2026-11-16 13:08 Windows: wave 24 (T-262) is built and reviewed; Windows takes the main lock for its gate.
 - 2026-11-16 13:34 Windows: wave 24 (T-262, Google's G and Google Sans on the Google button) is on `main` at `083f806a` after a full gate; the main lock is free. New: THIRD_PARTY_NOTICES at the root, apps/web/src/fonts, and the frontend kit inlines files its stylesheet names. Windows builds T-328 (touch stories) next, then T-327.
+- 2026-11-16 13:48 Windows: wave 25 (T-328) is built and reviewed; Windows takes the main lock for its gate. Heads-up for your T-359 branches: after it lands, every story that calls onARealTouchScreen needs a literal tags: ['touch'] (the config test and the design guard say which).
