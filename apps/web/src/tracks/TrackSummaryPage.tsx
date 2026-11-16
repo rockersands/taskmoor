@@ -243,6 +243,12 @@ export function TrackSummaryPage({
               >
                 {t('summary.templates')}
               </a>
+              <a
+                className="button-quiet"
+                href={routeHref(`#/tracks/${encodeURIComponent(read.track.key)}/areas`)}
+              >
+                {t('areas.title')}
+              </a>
               {read.mayCustomize && (
                 <button type="button" className="button-primary" onClick={customize}>
                   {t('summary.customize')}

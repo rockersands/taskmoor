@@ -1,7 +1,7 @@
 ---
 title: "Tracks"
 audience: admins
-sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/client.ts, apps/web/src/configuration/NewTrackForm.tsx, apps/web/src/tracks/TracksPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/web/src/tickets/templates/draft.ts, apps/web/src/tickets/templates/client.ts, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/form.ts, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md, apps/server/src/sprints/lifecycle.ts, apps/server/src/tracks/membership.ts, apps/server/src/routes/track-groups.ts, apps/server/src/trackgroups/access.ts, apps/web/src/trackgroups/TrackArrangement.tsx, apps/web/src/trackgroups/ShareGroupDialog.tsx, packages/db/src/migrations/0100_track_groups.ts, docs/adr/0121-personal-track-groups.md, apps/server/src/notifications/track-groups.ts, apps/server/src/trackgroups/privacy.ts, packages/db/src/migrations/0103_checklist_notices.ts, apps/server/src/notifications/checklists.ts, apps/web/src/tracks/NewTrackDialog.tsx, apps/web/src/shell/ModalDialog.tsx, apps/server/src/api/operations.ts, apps/web/src/admin/NewButton.tsx, apps/web/src/tickets/pickerSources.ts, apps/web/src/tickets/PersonPicker.tsx, apps/server/src/routes/fields.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/users.ts, apps/server/src/routes/teams.ts, apps/web/src/configuration/StatusMappingPanel.tsx
+sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/client.ts, apps/web/src/configuration/NewTrackForm.tsx, apps/web/src/tracks/TracksPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/web/src/tickets/templates/draft.ts, apps/web/src/tickets/templates/client.ts, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/form.ts, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md, apps/server/src/sprints/lifecycle.ts, apps/server/src/tracks/membership.ts, apps/server/src/routes/track-groups.ts, apps/server/src/trackgroups/access.ts, apps/web/src/trackgroups/TrackArrangement.tsx, apps/web/src/trackgroups/ShareGroupDialog.tsx, packages/db/src/migrations/0100_track_groups.ts, docs/adr/0121-personal-track-groups.md, apps/server/src/notifications/track-groups.ts, apps/server/src/trackgroups/privacy.ts, packages/db/src/migrations/0103_checklist_notices.ts, apps/server/src/notifications/checklists.ts, apps/web/src/tracks/NewTrackDialog.tsx, apps/web/src/shell/ModalDialog.tsx, apps/server/src/api/operations.ts, apps/web/src/admin/NewButton.tsx, apps/web/src/tickets/pickerSources.ts, apps/web/src/tickets/PersonPicker.tsx, apps/server/src/routes/fields.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/users.ts, apps/server/src/routes/teams.ts, apps/web/src/configuration/StatusMappingPanel.tsx, apps/web/src/areas/AreasPage.tsx, apps/web/src/areas/client.ts, apps/server/src/tickets/fields.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx
 accessed: 2026-11-16
 attestation: own-words
 ---
@@ -321,17 +321,49 @@ A ticket keeps a priority its track stops offering until someone changes it.
 
 ### Areas
 
-There is no web page for areas yet. A track's administrators manage them through the API:
+An area is a part of a track's work, such as "API" or "Billing" (see
+[concepts](../concepts.md#areas)). A track's areas are on its page **Areas** (the address ends in
+`/tracks/KEY/areas`), linked from the track's summary and from its page under **Tracks you run**.
+It sits under the track's tab bar, titled **Areas** under the track's name. Everyone who can see
+the track reads it: each area with its description, its owner, its owner team and who gets its new
+tickets, and the archived ones apart under **Archived areas**. The track's administrators
+("Administer track"), and site and configuration administrators, change them. Anyone else reads
+**Only the administrators of this track can change its areas.**, and on an archived track the
+page says its areas cannot change.
 
-- `GET` and `POST /api/v1/tracks/:id/areas`, with `name`, `description`, `ownerId`,
-  `ownerTeamId` (the [team](people-and-groups.md#teams) that owns the area) and
-  `defaultAssignee`: `area_owner`, `track_owner` or `unassigned` (the default).
+**New area**, under the page's title and its line, opens the form above the list; **Change** on
+an area opens the same form for it, and Cancel or saving gives the focus back to that **Change**.
+The form asks for:
+
+| Field | What it does |
+|---|---|
+| **Name** | Required; unique among the track's areas, ignoring case |
+| **Description** | What the area covers |
+| **Owner** | A person found by name, those who can see the track first; **Remove** takes them off |
+| **Owner team** | A [team](people-and-groups.md#teams) found by name |
+| **New tickets with no assignee go to** | **The area owner**, **The track owner**, or **Nobody: they stay unassigned** (the default) |
+
+When a new ticket names no assignee, the first of its areas whose rule names someone decides: the
+ticket goes to that person if they may be given tickets in the track, and stays unassigned if not.
+An area whose rule names its owner but that has none names nobody, and the form says so.
+
+**Archive** moves an area under **Archived areas**: it stays on its tickets but is not offered
+anew. **Restore** brings it back. A track holds as many areas that are not archived as the
+`areas_per_track` [guardrail](#configuration-guardrails) allows; past it the form says so.
+
+**Delete**, in the danger colour, asks first: an area cannot be brought back. When tickets are in
+it, the row then says how many, links to them in search, and asks where they go: **Move them to**
+another area of the track that is not archived, or **No area**, which takes the area off them.
+The ticket history records the change.
+
+Through the API:
+
+- `GET` and `POST /api/v1/tracks/:id/areas` (`?archived=include` or `only` lists archived ones),
+  with `name`, `description`, `ownerId`, `ownerTeamId` and `defaultAssignee`: `area_owner`,
+  `track_owner` or `unassigned` (the default).
 - `PATCH /api/v1/areas/:id`, and `POST /api/v1/areas/:id/archive` or `/restore`.
 - `DELETE /api/v1/areas/:id`: an area tickets use needs `replacementId` or
-  `removeFromTickets=true`.
-
-When a new ticket names no assignee, the first of its areas whose rule names someone who may be
-assigned gives it that person. Archived areas stay on tickets but are not offered anew.
+  `removeFromTickets=true`; without either it answers `409 in_use` with the `ticketCount`.
 
 ### Releases
 
