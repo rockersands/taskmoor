@@ -1,4 +1,11 @@
 import * as a11yAddonAnnotations from '@storybook/addon-a11y/preview';
+// axe itself, loaded with each story file, not inside its first story (T-327). The addon imports
+// axe only when its first check runs, in the afterEach of the first story in a file, so that story
+// paid inside its 15 s for fetching axe's 1.4 MB bundle from the project's Vite server and
+// evaluating it: 0.3 s alone, 0.7 s while a full stories run shared the same Node process. The
+// first story of the first touch files is where a full gate's timeouts fell (ADR-024). The addon
+// then finds the same module, already evaluated.
+import 'axe-core';
 import { setProjectAnnotations } from '@storybook/react-vite';
 import { beforeAll } from 'vitest';
 import * as previewAnnotations from './preview';

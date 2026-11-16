@@ -73,6 +73,18 @@ machines on every change, which is how this project verifies work.
 - **Any impact fails a story**: the addon's `'error'` mode does not filter by impact, so a
   moderate or minor violation fails a story too. The page pass in Playwright (above) still
   counts serious and critical ones.
+- **axe loads with the story file, not inside a story**: the addon imports axe-core when its
+  first check runs, in the afterEach of the first story of each file, so that story paid inside
+  its 15 s for the 1.4 MB bundle. The first full gate with axe on timed out the first story of
+  the first touch files (TicketPage's All In Pages, TimelinePage's On A Touch Screen, BoardPage's
+  Grips On A Touch Screen), each passing alone. Measured on All In Pages: 1.2 s alone (render
+  0.4 s, play 0.15 s, axe 0.6 s, of which the import was 0.3 s and the check of the page's 590
+  elements 0.26 s); with a full stories run in the same Node process 2.4 s, the import 0.7 s of
+  it. The play waits on nothing slow and `onARealTouchScreen` costs nothing. The setup file
+  (`.storybook/vitest.setup.ts`) now imports axe-core, so it loads with each file's own imports:
+  All In Pages 0.77 s alone, and its axe step 0.3 to 0.4 s under that load instead of 1.0 to
+  1.1 s; the first Timeline story 0.5 s to 0.3 s alone. The work is small, so no story has a
+  longer timeout.
 - **Fixed by the product, not the rules** (44 stories in 15 files had failed, the same in both
   skins):
   - Names that did not contain the visible words (2.5.3, `label-content-name-mismatch`) now
