@@ -168,14 +168,16 @@ test('[WF-001] [IAM-011] [IAM-030] someone who runs a track changes its own work
   expect(saved.find((t) => t.ticketType.name === type)?.workflow.name).toBe(ownFlow);
 
   // Its own visibility policies: none yet, so the track's tickets have no levels. The page never
-  // asks for the groups, which only administrators may read.
+  // asks for the groups, which only administrators may read. Requests are counted once the Manage
+  // page has drawn, so only the Visibility policies page's own count.
+  await visit(page, `#/manage/tracks/${trackId}`);
+  const ownConfiguration = page.getByRole('region', { name: 'Its own configuration' });
+  await expect(ownConfiguration).toBeVisible();
   const askedGroups: string[] = [];
   page.on('request', (request) => {
     if (new URL(request.url()).pathname === '/api/v1/groups') askedGroups.push(request.url());
   });
-  await visit(page, `#/manage/tracks/${trackId}`);
-  await page
-    .getByRole('region', { name: 'Its own configuration' })
+  await ownConfiguration
     .getByRole('link', { name: 'Visibility policies: which of its tickets only some people see' })
     .click();
   await expect(page).toHaveURL(new RegExp(`/manage/tracks/${trackId}/visibility-policies$`));
