@@ -42,7 +42,8 @@ import { holdWorkflow } from '../workflows/store';
  *   type's new workflow lacks needs `statusMapping` (or per type `typeStatusMapping`), answers
  *   409 `status_mapping_required` with the statuses and their ticket counts otherwise, and moves
  *   them in the background (`workflows/migration.ts`); `POST .../impact` shows what a change
- *   would do first. Progress is at `GET /api/v1/workflow-migrations/:id`.
+ *   would do first, with the statuses each new workflow offers as targets. Progress is at
+ *   `GET /api/v1/workflow-migrations/:id`.
  * - People who may read a track's workflow read its map at `GET /api/v1/tracks/:id/workflow-map`.
  *
  * Every successful mutation emits exactly one domain event in its transaction (ADR-015).
@@ -203,6 +204,22 @@ async function impactView(
     lost.map((l) => l.statusId),
   );
   const workflow = (wid: number) => ({ id: wid, name: impact.workflows.get(wid)?.name ?? '' });
+  // The new workflows of the lost statuses, with the statuses their tickets may move to, in the
+  // site's order of statuses: what a status mapping chooses from (T-320).
+  const targetIds = [...new Set(lost.map((l) => l.workflowId))].sort((a, b) => a - b);
+  const allowed = new Set(
+    targetIds.flatMap((wid) => [...(impact.workflows.get(wid)?.statuses ?? [])]),
+  );
+  const ordered =
+    allowed.size === 0
+      ? []
+      : await db
+          .selectFrom('status')
+          .select(['id', 'name'])
+          .where('id', 'in', [...allowed])
+          .orderBy('sort_order')
+          .orderBy('id')
+          .execute();
   return {
     tracks,
     types: [...types.values()]
@@ -219,6 +236,15 @@ async function impactView(
       ticketCount: l.ticketCount,
       workflow: workflow(l.workflowId),
     })),
+    targetWorkflows: targetIds.map((wid) => {
+      const statuses = impact.workflows.get(wid)?.statuses ?? new Set<number>();
+      return {
+        ...workflow(wid),
+        statuses: ordered
+          .filter((s) => statuses.has(s.id))
+          .map((s) => ({ id: s.id, name: s.name })),
+      };
+    }),
     ticketCount: lost.reduce((n, l) => n + l.ticketCount, 0),
   };
 }
