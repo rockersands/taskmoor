@@ -45,7 +45,8 @@ import '../src/builder/builder.css';
 
 const preview: Preview = {
   parameters: {
-    // Every story is an accessibility test: a serious or critical axe violation fails it.
+    // Every story is an accessibility test: any axe violation fails it, whatever its impact
+    // (ADR-024, T-327).
     a11y: { test: 'error' },
     layout: 'fullscreen',
   },

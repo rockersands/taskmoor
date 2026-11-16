@@ -32,8 +32,8 @@ machines on every change, which is how this project verifies work.
 - Target: WCAG 2.1 AA. Semantic HTML first; roles and names are what tests query, so an element
   without an accessible name fails a test before it fails a user.
 - Every story in Storybook runs as a browser test through the Vitest addon with the a11y
-  addon's axe checks; a serious or critical violation fails `pnpm verify`. New components must
-  come with stories.
+  addon's axe checks; any violation, whatever its impact, fails `pnpm verify` (T-327, below).
+  New components must come with stories.
 - Keyboard: every control reachable and operable with the keyboard, visible focus, focus traps
   only in modal dialogs with Escape to close and focus restored afterwards (the shell's drawer
   is the pattern).
@@ -60,6 +60,46 @@ machines on every change, which is how this project verifies work.
 - **Fixed by the pass**: links whose accessible name did not contain their visible text now
   start with it (2.5.3): track summary counts, release stages, the timeline's "No dates". The
   MCP connection snippet wraps instead of scrolling, which would need focus.
+
+## Story tests run axe again (T-327)
+
+- **What was wrong**: `apps/web/.storybook/vitest.setup.ts` called `setProjectAnnotations` with
+  the preview's annotations alone. A setup file that calls it turns off the Storybook plugin's
+  own provisioning, so the a11y addon's annotations were never loaded and no story ran axe,
+  although the preview asked for `a11y.test: 'error'`. The setup now lists the addon's
+  annotations before the preview's, `@storybook/addon-a11y/preview` is among the dependencies
+  Vite optimises before a run, and `apps/web/src/test/storyAxe.test.tsx` fails if a story with a
+  nameless button, an image without `alt` and an unlabelled input passes again.
+- **Any impact fails a story**: the addon's `'error'` mode does not filter by impact, so a
+  moderate or minor violation fails a story too. The page pass in Playwright (above) still
+  counts serious and critical ones.
+- **Fixed by the product, not the rules** (44 stories in 15 files had failed, the same in both
+  skins):
+  - Names that did not contain the visible words (2.5.3, `label-content-name-mismatch`) now
+    start with them: a directory's Sync now, Full sync, Move up, Move down and Sync and remove;
+    a SAML provider's metadata link, named with the address it shows; a workflow version's
+    Restore as draft; a service account's Hide tokens; a priority set's Make this the default
+    set; a webhook delivery's Send again.
+  - Landmarks of one kind with one name (`landmark-unique`): a grouped list names each group's
+    result table after its group, and AI usage names its tables' scrollers apart from the cards
+    around them.
+  - The advanced search's query box is a textarea, which may not take the combobox role
+    (`aria-allowed-role`); it is a text box with `aria-autocomplete="list"`.
+  - A webhook's deliveries panel is titled with an h2 under the page's h1 (`heading-order`).
+  - Two story files built a page the app never draws: a story that wrapped the Administration
+    layout inside the file's own, and invitation pages inside the main the file's decorator
+    gives the track pages. The stories now draw what the app draws.
+- **Harness exceptions**: an axe rule is turned off only for a violation that Storybook's
+  harness makes and the app cannot, in the narrowest place, with a comment saying why, and is
+  listed here:
+  - `apps/web/src/shell/StandaloneFrame.stories.tsx` draws the sign-in page's frame beside a link
+    page's to compare their header rows, so its canvas holds two banners and two mains. The file
+    turns off `landmark-no-duplicate-banner`, `landmark-no-duplicate-main` and
+    `landmark-unique`; every other rule checks both pages, and the pages that use the frame
+    check those rules in their own stories.
+  - The two render-budget stories, `PlanPage.stories.tsx` (10,000 tickets on a plan's Timeline)
+    and `TimelinePage.stories.tsx` (2,000 dated tickets), set `a11y.test: 'off'`: axe's run
+    would sit inside the time they measure. Their components' other stories run axe.
 
 ## Completeness, right to left and a second language (M1-116)
 
