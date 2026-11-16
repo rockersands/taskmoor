@@ -700,6 +700,26 @@ describe('the ticket view (M1-051)', () => {
     expect(screen.queryByRole('spinbutton', { name: 'Points' })).toBeNull();
   });
 
+  it('[CORE-010] shows a number by its field’s format: an amount, its decimals (T-320)', async () => {
+    const cost = {
+      id: 32,
+      name: 'Cost',
+      locked: false,
+      show: { style: 'currency' as const, currency: 'EUR', decimals: 2 },
+    };
+    renderPage({ ticket: { ...SHOP_41, fields: { 32: 1234.5 } }, numberFields: [cost] });
+    const box = await screen.findByRole('spinbutton', { name: 'Cost' });
+    // The box holds the number as typed; under it, how it reads.
+    expect(box).toHaveValue(1234.5);
+    expect(box).toHaveAccessibleDescription('€1,234.50');
+    cleanup();
+    renderPage({
+      ticket: { ...SHOP_41, mayEdit: false, fields: { 32: 40 } },
+      numberFields: [{ ...cost, show: { style: 'percentage' as const } }],
+    });
+    expect(await screen.findByText('40%')).toBeVisible();
+  });
+
   it('[CORE-014] sets the priority with icon and name; someone who may not edit sees the value', async () => {
     const user = userEvent.setup();
     const { client } = renderPage();

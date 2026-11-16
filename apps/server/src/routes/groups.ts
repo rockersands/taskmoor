@@ -161,7 +161,7 @@ export function registerGroupRoutes(
       db
         .selectFrom('group_member as m')
         .innerJoin('app_user as u', 'u.id', 'm.user_id')
-        .select(USER_COLUMNS.map((c) => `u.${c}` as const))
+        .select([...USER_COLUMNS.map((c) => `u.${c}` as const), 'u.kind'])
         .where('m.group_id', '=', group.id)
         .where('m.workspace_id', '=', ws)
         .orderBy(sql`lower(u.name)`)
@@ -186,7 +186,8 @@ export function registerGroupRoutes(
     const managed = await directories.group(ws, group.id);
     return {
       group: { id: group.id, name: group.name, description: group.description },
-      members: members.map(toUserView),
+      // A member is a person or a service account (IAM-007): the page marks the second (T-320).
+      members: members.map((m) => ({ ...toUserView(m), kind: m.kind })),
       children,
       parents,
       directory: managed

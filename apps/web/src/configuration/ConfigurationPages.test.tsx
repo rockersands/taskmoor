@@ -155,14 +155,194 @@ describe('track and workflow map administration (M1-053)', () => {
     ]);
   });
 
-  it('[WF-001] switches a track to another workflow map, and says when tickets need a mapping', async () => {
+  it('[WF-001] switches a track to a map at once when no ticket needs a new status', async () => {
     const user = userEvent.setup();
-    renderPage('tracks', { refuseMapping: true });
+    const client = renderPage('tracks');
     await user.click(await screen.findByRole('button', { name: 'Manage track SHOP' }));
     await user.selectOptions(await screen.findByRole('combobox', { name: 'Workflow map' }), '22');
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      '12 tickets are in statuses the new workflows lack.',
+    expect(await screen.findByText('Track SHOP uses Bugs apart now.')).toBeInTheDocument();
+    expect(screen.queryByRole('form', { name: 'Switch SHOP to Bugs apart' })).toBeNull();
+    expect(client.calls.map((c) => [c.action, ...c.args])).toEqual([
+      ['trackMapImpact', 3, 22],
+      ['switchWorkflowMap', 3, 22, undefined],
+    ]);
+  });
+
+  it('[WF-001] [WF-002] asks where tickets go before switching a track’s map, then moves them (T-320)', async () => {
+    const user = userEvent.setup();
+    const client = renderPage('tracks', { refuseMapping: true });
+    await user.click(await screen.findByRole('button', { name: 'Manage track SHOP' }));
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Workflow map' }), '22');
+    const step = await screen.findByRole('form', { name: 'Switch SHOP to Bugs apart' });
+    expect(within(step).getByRole('heading', { name: 'Switch SHOP to Bugs apart' })).toHaveFocus();
+    expect(step).toHaveTextContent(
+      '15 tickets are in statuses the new workflows lack. Choose where they go',
     );
+    // Nothing is chosen for the person: the switch waits for every choice.
+    await user.click(within(step).getByRole('button', { name: 'Switch and move the tickets' }));
+    expect(within(step).getByRole('alert')).toHaveTextContent(
+      'Choose a status for each, then confirm.',
+    );
+    const review = within(step).getByRole('combobox', {
+      name: 'Move the 12 Bug tickets in In review to',
+    });
+    expect(review).toHaveAttribute('aria-invalid', 'true');
+    expect(review).toHaveAccessibleDescription(
+      'A status of Bug workflow, the new workflow of Bug.',
+    );
+    expect(
+      within(review)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['Choose a status', 'Open', 'Fixing', 'Closed']);
+    await user.selectOptions(review, 'Fixing');
+    await user.selectOptions(
+      within(step).getByRole('combobox', { name: 'Move the 3 Bug tickets in Waiting to' }),
+      'Open',
+    );
+    await user.click(within(step).getByRole('button', { name: 'Switch and move the tickets' }));
+    expect(
+      await screen.findByText(
+        'Track SHOP uses Bugs apart now. 15 tickets moved to their new statuses.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('form', { name: 'Switch SHOP to Bugs apart' })).toBeNull();
+    expect(screen.getByRole('combobox', { name: 'Workflow map' })).toHaveFocus();
+    expect(client.calls.at(-1)).toEqual({
+      action: 'switchWorkflowMap',
+      args: [3, 22, { '5': { '3': 11, '4': 10 } }],
+    });
+  });
+
+  it('[WF-001] cancels the mapping step and keeps the track’s map (T-320)', async () => {
+    const user = userEvent.setup();
+    const client = renderPage('tracks', { refuseMapping: true });
+    await user.click(await screen.findByRole('button', { name: 'Manage track SHOP' }));
+    const select = await screen.findByRole('combobox', { name: 'Workflow map' });
+    await user.selectOptions(select, '22');
+    const step = await screen.findByRole('form', { name: 'Switch SHOP to Bugs apart' });
+    await user.click(within(step).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('form', { name: 'Switch SHOP to Bugs apart' })).toBeNull();
+    expect(select).toHaveValue('20');
+    expect(select).toHaveFocus();
+    expect(client.calls.map((c) => c.action)).toEqual(['trackMapImpact']);
+  });
+
+  it('[WF-001] shows the progress of tickets that move in the background (T-320)', async () => {
+    const user = userEvent.setup();
+    renderPage('tracks', { refuseMapping: true, moving: true });
+    await user.click(await screen.findByRole('button', { name: 'Manage track SHOP' }));
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Workflow map' }), '22');
+    const step = await screen.findByRole('form', { name: 'Switch SHOP to Bugs apart' });
+    for (const box of within(step).getAllByRole('combobox')) await user.selectOptions(box, 'Open');
+    await user.click(within(step).getByRole('button', { name: 'Switch and move the tickets' }));
+    expect(
+      await screen.findByText(
+        'Track SHOP uses Bugs apart now. 15 tickets are moving to their new statuses.',
+      ),
+    ).toBeInTheDocument();
+    const bar = screen.getByRole('progressbar', { name: 'Tickets moved: 0 of 15' });
+    expect(bar).toHaveAttribute('value', '0');
+    expect(
+      await screen.findByText('All 15 tickets have moved.', {}, { timeout: 4000 }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Tickets moved: 15 of 15' })).toBeVisible();
+  });
+
+  it('[WF-001] asks again when tickets changed after the preview (T-320)', async () => {
+    const user = userEvent.setup();
+    const client = renderPage('tracks', { refuseMapping: true, changedAfterPreview: true });
+    await user.click(await screen.findByRole('button', { name: 'Manage track SHOP' }));
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Workflow map' }), '22');
+    const step = await screen.findByRole('form', { name: 'Switch SHOP to Bugs apart' });
+    for (const box of within(step).getAllByRole('combobox'))
+      await user.selectOptions(box, 'Closed');
+    await user.click(within(step).getByRole('button', { name: 'Switch and move the tickets' }));
+    expect(await within(step).findByRole('alert')).toHaveTextContent(
+      'Tickets changed since this was read. Check where each goes, then confirm again.',
+    );
+    // The choices stay; confirming again goes through.
+    await user.click(within(step).getByRole('button', { name: 'Switch and move the tickets' }));
+    expect(
+      await screen.findByText(
+        'Track SHOP uses Bugs apart now. 15 tickets moved to their new statuses.',
+      ),
+    ).toBeInTheDocument();
+    expect(client.calls.filter((c) => c.action === 'trackMapImpact')).toHaveLength(2);
+  });
+
+  it('[WF-001] asks where tickets go before saving a map a track uses (T-320)', async () => {
+    const user = userEvent.setup();
+    const client = renderPage('maps', { refuseMapping: true });
+    await user.click(await screen.findByRole('button', { name: 'Manage Default workflow map' }));
+    const map = await screen.findByRole('form', { name: 'Workflows in Default workflow map' });
+    await user.selectOptions(
+      within(map).getByRole('combobox', { name: 'Workflow for every other type' }),
+      '2',
+    );
+    await user.click(within(map).getByRole('button', { name: 'Save the map' }));
+    const step = await screen.findByRole('form', { name: 'Save Default workflow map' });
+    for (const box of within(step).getAllByRole('combobox'))
+      await user.selectOptions(box, 'Fixing');
+    await user.click(within(step).getByRole('button', { name: 'Save and move the tickets' }));
+    expect(
+      await screen.findByText(
+        'Default workflow map was saved. 15 tickets moved to their new statuses.',
+      ),
+    ).toBeInTheDocument();
+    expect(within(map).getByRole('button', { name: 'Save the map' })).toHaveFocus();
+    expect(client.calls.at(-1)).toEqual({
+      action: 'updateWorkflowMap',
+      args: [
+        20,
+        { defaultWorkflowId: 2, entries: [], typeStatusMapping: { '5': { '3': 11, '4': 11 } } },
+      ],
+    });
+  });
+
+  it('[WF-001] a change to the map while its mapping step is open closes the step, and Save previews it anew (T-320)', async () => {
+    const user = userEvent.setup();
+    const client = renderPage('maps', { refuseMapping: true });
+    await user.click(await screen.findByRole('button', { name: 'Manage Default workflow map' }));
+    const map = await screen.findByRole('form', { name: 'Workflows in Default workflow map' });
+    await user.selectOptions(
+      within(map).getByRole('combobox', { name: 'Workflow for every other type' }),
+      '2',
+    );
+    await user.click(within(map).getByRole('button', { name: 'Save the map' }));
+    await screen.findByRole('form', { name: 'Save Default workflow map' });
+    // Task gets its own line: the step was for the map without it.
+    await user.selectOptions(
+      within(map).getByRole('combobox', { name: 'Give a type its own workflow' }),
+      'Task',
+    );
+    await user.click(within(map).getByRole('button', { name: 'Add' }));
+    expect(screen.queryByRole('form', { name: 'Save Default workflow map' })).toBeNull();
+    await user.click(within(map).getByRole('button', { name: 'Save the map' }));
+    const step = await screen.findByRole('form', { name: 'Save Default workflow map' });
+    for (const box of within(step).getAllByRole('combobox'))
+      await user.selectOptions(box, 'Fixing');
+    await user.click(within(step).getByRole('button', { name: 'Save and move the tickets' }));
+    await screen.findByText(/^Default workflow map was saved\./);
+    const change = { defaultWorkflowId: 2, entries: [{ ticketTypeId: 6, workflowId: 2 }] };
+    expect(client.calls).toEqual([
+      { action: 'workflowMapImpact', args: [20, { defaultWorkflowId: 2, entries: [] }] },
+      { action: 'workflowMapImpact', args: [20, change] },
+      {
+        action: 'updateWorkflowMap',
+        args: [20, { ...change, typeStatusMapping: { '5': { '3': 11, '4': 11 } } }],
+      },
+    ]);
+  });
+
+  it('[WF-001] saves a map no track uses without a preview (T-320)', async () => {
+    const user = userEvent.setup();
+    const client = renderPage('maps', { refuseMapping: true });
+    await user.click(await screen.findByRole('button', { name: 'Manage Bugs apart' }));
+    const map = await screen.findByRole('form', { name: 'Workflows in Bugs apart' });
+    await user.click(within(map).getByRole('button', { name: 'Save the map' }));
+    expect(await screen.findByText('Bugs apart was saved.')).toBeInTheDocument();
+    expect(client.calls.map((c) => c.action)).toEqual(['updateWorkflowMap']);
   });
 
   it("[CORE-002] turns a track's sprints off and on again", async () => {

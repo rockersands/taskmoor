@@ -839,6 +839,17 @@ details[open] > summary.admin-disclosure::after,
   }
 }
 
+/* A link alone on its line under a choice, such as the way from Which sets a track uses to the
+   page that makes those sets (T-320): no sentence to keep tight, so on a touch screen the link
+   itself is as tall as a finger. */
+@media (pointer: coarse) {
+  .admin-page .form-hint-link a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--hit-target-touch);
+  }
+}
+
 /* MCP: the command breaks between its words, not inside the port, and both cards are as wide
    (AD-35). */
 .mcp-page .mcp-snippet {

@@ -41,6 +41,13 @@ export interface CustomField {
    * its picker asks the field for them. Absent in older fixtures.
    */
   restricted?: boolean;
+  /** Its type settings, such as how a number shows (T-320). Absent in older fixtures. */
+  config?: { format?: string; output?: string; decimals?: number; currency?: string };
+  /**
+   * The context's default, as REST shows a value (options and people with their names): the
+   * create form starts with it (T-320). Null or absent for none.
+   */
+  defaultValue?: unknown;
 }
 export interface TicketForm {
   layout: { operation: string; tabs: FormTab[] };
@@ -189,6 +196,8 @@ function customValue(
 /**
  * The create request a form makes: values left empty are not sent. Rich text fields come as
  * the editor's documents (`rich`, by field key; null when empty), or as plain text in `values`.
+ * A custom field in `emptied` that has no value is sent as null: the person emptied the default it
+ * started with, and the server would fill that default in for a field left out (T-320).
  */
 export function createBody(
   track: string,
@@ -196,6 +205,7 @@ export function createBody(
   form: TicketForm,
   values: FormValues,
   rich: Readonly<Record<string, unknown>> = {},
+  emptied: ReadonlySet<string> = new Set(),
 ): Record<string, unknown> {
   const body: Record<string, unknown> = { track, ticketTypeId };
   const custom: Record<string, unknown> = {};
@@ -205,6 +215,7 @@ export function createBody(
       const field = form.customFields.find((f) => f.id === id);
       const value = field ? customValue(field, values, key.key, rich) : undefined;
       if (value !== undefined) custom[id] = value;
+      else if (emptied.has(key.key)) custom[id] = null;
       continue;
     }
     const name = SYSTEM_FIELDS[key.key]?.body ?? key.key;

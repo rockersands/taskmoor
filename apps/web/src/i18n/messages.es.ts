@@ -1239,6 +1239,169 @@ export const messagesEs: Record<MessageId, string> = {
     'Alguien comparte contigo un grupo de tracks o te lo asigna',
   'notifications.event.checklist_changed':
     'Cambia una lista de comprobación de un ticket que sigues',
+  // Políticas de notificaciones (NTF-001) y Correo (NTF-002, NTF-004) en Administración (T-155).
+  'settings.notificationPolicies': 'Políticas de notificaciones',
+  'settings.notificationPoliciesHint':
+    'Quién se entera de qué cambios en los tickets, en los tracks que usan cada política.',
+  'settings.email': 'Correo',
+  'settings.emailHint':
+    'Si el correo puede salir, cuánto esperan los cambios para llegar juntos y la hora del resumen.',
+  'notificationPolicies.title': 'Políticas de notificaciones',
+  'notificationPolicies.about':
+    'Una política de notificaciones empareja eventos, como un comentario añadido, con quién se entera de ellos: el responsable, los seguidores, una persona, un grupo, un rol del track o las personas de un campo. Cada track usa una política, o la predeterminada si no nombra ninguna, y cada persona elige después si un evento le llega a su bandeja de entrada, a su correo o a ambos. La política que usa un track se elige en Qué conjuntos usa un track.',
+  'notificationPolicies.trackAbout':
+    'Este track tiene su propia configuración, así que puede tener sus propias políticas de notificaciones: quién se entera de qué cambios solo en este track. Los demás tracks no se ven afectados.',
+  'notificationPolicies.trackIntro':
+    'Las políticas de notificaciones propias de este track. Las compartidas son cosa de los administradores del sitio y de la configuración.',
+  'notificationPolicies.forbidden':
+    'Solo los administradores del sitio y de la configuración, y quienes llevan un track con configuración propia, gestionan las políticas de notificaciones.',
+  'notificationPolicies.choose.intro':
+    'Llevas estos tracks con configuración propia. Elige uno para gestionar sus propias políticas de notificaciones.',
+  'notificationPolicies.choose.none':
+    'Ninguno de los tracks que llevas tiene configuración propia. Usan políticas de notificaciones compartidas, que cambian los administradores del sitio y de la configuración.',
+  'notificationPolicies.choose.open': 'Políticas de notificaciones de {key} · {name}',
+  'notificationPolicies.scope.shared':
+    '{key} usa configuración compartida, así que usa una política de notificaciones compartida, que cambian los administradores del sitio y de la configuración.',
+  'notificationPolicies.loading': 'Leyendo las políticas de notificaciones…',
+  'notificationPolicies.failed':
+    'No se pudieron leer las políticas de notificaciones. Inténtalo de nuevo en un momento.',
+  'notificationPolicies.new': 'Nueva política',
+  'notificationPolicies.addPolicy': 'Añadir política',
+  'notificationPolicies.cancelNew': 'Cancelar',
+  'notificationPolicies.name': 'Nombre de la política',
+  'notificationPolicies.description': 'Descripción',
+  'notificationPolicies.startWith': 'Empezar con',
+  'notificationPolicies.startEmpty': 'Sin reglas',
+  'notificationPolicies.startCopy': 'Las reglas de {name}',
+  'notificationPolicies.startHint':
+    'Una política sin reglas no avisa a nadie de nada, así que empezar con una copia suele ser más rápido.',
+  'notificationPolicies.added': 'Se añadió la política {name}.',
+  'notificationPolicies.sharedList': 'Políticas compartidas',
+  'notificationPolicies.ownList': 'Políticas de {key}',
+  'notificationPolicies.chooseNote':
+    'La política que usa un track se elige con sus otros conjuntos:',
+  'notificationPolicies.chooseLink': 'Qué conjuntos usa un track',
+  'notificationPolicies.trackUsesOwn': '{key} usa {name}.',
+  'notificationPolicies.trackUsesShared':
+    '{key} usa ahora una política compartida. Usa una propia para cambiar quién se entera de qué en él.',
+  'notificationPolicies.emptyTitle': 'Aún no hay políticas',
+  'notificationPolicies.empty': 'Añade una con Nueva política y úsala para {key}.',
+  'notificationPolicies.emptyShared':
+    'Añade una con Nueva política y elígela para los tracks en Qué conjuntos usa un track.',
+  'notificationPolicies.default': 'Predeterminada',
+  'notificationPolicies.defaultUse': 'La usan los tracks que no nombran otra política.',
+  'notificationPolicies.usedBy': 'La usan {tracks}.',
+  'notificationPolicies.unused': 'Ningún track la usa.',
+  'notificationPolicies.moreTracks': '{tracks} y {count} más',
+  'notificationPolicies.ruleCount':
+    '{count, plural, =0 {Sin reglas.} one {# regla.} other {# reglas.}}',
+  'notificationPolicies.manage': 'Gestionar',
+  'notificationPolicies.manageOf': 'Gestionar {name}',
+  'notificationPolicies.rulesOf': 'Quién se entera de qué en {name}',
+  'notificationPolicies.noRules': 'Aún no hay reglas',
+  'notificationPolicies.noRulesBody':
+    'Nadie se entera de nada por esta política hasta que tenga una regla. Las menciones siguen llegando a las personas mencionadas.',
+  'notificationPolicies.remove': 'Quitar',
+  'notificationPolicies.removeRule': 'Quitar {recipient} de {event}',
+  'notificationPolicies.ruleRemoved': 'Regla quitada en {event}: {recipient}.',
+  'notificationPolicies.ruleAdded': 'Regla añadida en {event}: {recipient}.',
+  'notificationPolicies.addRuleTo': 'Añadir una regla a {name}',
+  'notificationPolicies.event': 'Evento',
+  'notificationPolicies.builtInEvents': 'Eventos de todos los tracks',
+  'notificationPolicies.transitionEvents': 'Eventos que lanzan las transiciones',
+  'notificationPolicies.otherEvent': 'Otro evento de transición…',
+  'notificationPolicies.eventName': 'Nombre del evento de transición',
+  'notificationPolicies.eventNameHint':
+    'Como lo nombra el flujo de trabajo de la transición: hasta 100 letras, dígitos, espacios, puntos, guiones y guiones bajos.',
+  'notificationPolicies.eventNameInvalid':
+    'Escribe el nombre del evento: hasta 100 letras, dígitos, espacios, puntos, guiones y guiones bajos.',
+  'notificationPolicies.customEvent': 'Evento de transición «{name}»',
+  'notificationPolicies.recipientKind': 'Quién se entera',
+  'notificationPolicies.findPerson': 'Buscar a una persona',
+  'notificationPolicies.person': 'Persona',
+  'notificationPolicies.personEmpty': 'Escribe un nombre arriba para buscar a alguien',
+  'notificationPolicies.group': 'Grupo',
+  'notificationPolicies.role': 'Rol del track',
+  'notificationPolicies.userField': 'Campo de usuario',
+  'notificationPolicies.groupField': 'Campo de grupo',
+  'notificationPolicies.addRule': 'Añadir regla',
+  'notificationPolicies.duplicate': 'Esa regla ya existe.',
+  'notificationPolicies.pickTarget': 'Elige primero a quién nombra la regla.',
+  'notificationPolicies.gone': 'algo que ya se eliminó',
+  'notificationPolicies.recipient.assignee': 'El responsable',
+  'notificationPolicies.recipient.requester': 'El solicitante',
+  'notificationPolicies.recipient.follower': 'Los seguidores',
+  'notificationPolicies.recipient.area_owner': 'Los propietarios de las áreas del ticket',
+  'notificationPolicies.recipient.track_owner': 'El propietario del track',
+  'notificationPolicies.recipient.current_user': 'La persona que hizo el cambio',
+  'notificationPolicies.recipient.user': '{name}',
+  'notificationPolicies.recipient.group': 'Miembros de {name}',
+  'notificationPolicies.recipient.role': 'Personas con el rol {name}',
+  'notificationPolicies.recipient.user_field': 'Personas en {name}',
+  'notificationPolicies.recipient.group_field': 'Miembros de los grupos en {name}',
+  'notificationPolicies.kind.user': 'Una persona',
+  'notificationPolicies.kind.group': 'Los miembros de un grupo',
+  'notificationPolicies.kind.role': 'Las personas con un rol del track',
+  'notificationPolicies.kind.user_field': 'Las personas de un campo de usuario',
+  'notificationPolicies.kind.group_field': 'Los miembros de los grupos de un campo de grupo',
+  'notificationPolicies.detailsOf': 'Nombre y descripción de {name}',
+  'notificationPolicies.saveDetails': 'Guardar nombre y descripción',
+  'notificationPolicies.detailsSaved': 'Se guardó {name}.',
+  'notificationPolicies.useFor': 'Usar esta política para {key}',
+  'notificationPolicies.useHint':
+    'Desde entonces el track sigue esta política. Solo los administradores del sitio y de la configuración pueden volver a darle una compartida.',
+  'notificationPolicies.usedFor': '{key} usa ahora {name}.',
+  'notificationPolicies.delete': 'Eliminar',
+  'notificationPolicies.deleteOf': 'Eliminar {name}',
+  'notificationPolicies.confirmDelete':
+    '{name} y sus reglas se eliminan para siempre. Ningún track la usa, así que nadie deja de enterarse de nada.',
+  'notificationPolicies.deleted': 'Se eliminó la política {name}.',
+  'notificationPolicies.defaultStays':
+    'La política predeterminada no se puede eliminar: la usan los tracks que no nombran otra.',
+  'notificationPolicies.inUseStays':
+    'Hay tracks que usan esta política, así que no se puede eliminar hasta que usen otra.',
+  'notificationPolicies.problem.nameTaken':
+    'Ya existe una política con ese nombre. Elige otro nombre.',
+  'notificationPolicies.problem.inUse':
+    'Hay tracks que usan esta política ({tracks}), así que no se eliminó. Elige antes otra política para ellos.',
+  'notificationPolicies.problem.default': 'La política predeterminada no se puede eliminar.',
+  'notificationPolicies.problem.invalid':
+    'No se guardó: una regla nombra algo que ya no existe, o un campo de otro tipo. Vuelve a leer la página y revisa la regla.',
+  'notificationPolicies.problem.forbidden': 'Ya no puedes cambiar esta política.',
+  'notificationPolicies.problem.other': 'No se pudo guardar. Inténtalo de nuevo en un momento.',
+  // A rule naming a field since deleted (T-155): it reaches nobody and goes with the next change.
+  'notificationPolicies.goneRulesNote':
+    '{count, plural, one {Una regla nombra un campo ya eliminado, así que no avisa} other {# reglas nombran campos ya eliminados, así que no avisan}} a nadie. El próximo cambio en estas reglas {count, plural, one {la quita} other {las quita}}.',
+  'notificationPolicies.goneRulesRemoved':
+    '{count, plural, one {También se quitó la regla que nombraba un campo ya eliminado} other {También se quitaron # reglas que nombraban campos ya eliminados}}.',
+  'emailSettings.title': 'Correo',
+  'emailSettings.about':
+    'Taskmoor envía las notificaciones por correo a través de un servidor SMTP indicado donde se ejecuta (TASKMOOR_SMTP_URL y las variables que lo acompañan) o en el formulario de la primera configuración; su contraseña solo sale del entorno, nunca de esta página. Aquí ves si hay un servidor configurado y eliges cuánto esperan los cambios de un ticket para llegar en un solo correo, y a qué hora salen los resúmenes.',
+  'emailSettings.forbidden': 'Solo los administradores del sitio cambian los ajustes de correo.',
+  'emailSettings.loading': 'Leyendo los ajustes de correo…',
+  'emailSettings.failed':
+    'No se pudieron leer los ajustes de correo. Inténtalo de nuevo en un momento.',
+  'emailSettings.outgoing': 'Correo saliente',
+  'emailSettings.server': 'Servidor de correo',
+  'emailSettings.serverOn': 'Configurado',
+  'emailSettings.serverOff': 'Sin configurar',
+  'emailSettings.serverOnNote':
+    'Taskmoor puede enviar correo. El servidor y sus credenciales se cambian donde se ejecuta Taskmoor, no en esta página.',
+  'emailSettings.serverOffNote':
+    'El correo espera sin enviarse, y las notificaciones siguen llegando a la bandeja de entrada. Indica un servidor SMTP donde se ejecuta Taskmoor (TASKMOOR_SMTP_URL) y lo que espera sale.',
+  'emailSettings.formLabel': 'Cuándo sale el correo',
+  'emailSettings.window': 'Espera antes de enviar los cambios de un ticket, en minutos',
+  'emailSettings.windowHint':
+    'Los cambios de un ticket dentro de este tiempo llegan en un solo correo. De 0 a 60; por defecto, 2.',
+  'emailSettings.windowInvalid': 'Indica un número de minutos de 0 a 60.',
+  'emailSettings.digestHour': 'Hora del resumen',
+  'emailSettings.digestHourHint':
+    'Los resúmenes diarios salen a esta hora en la zona horaria guardada en la cuenta de cada persona (UTC para quien la tenga en Automática, porque no hay ningún dispositivo cuando se envían), y los semanales los lunes a la misma hora.',
+  'emailSettings.hour': '{hour}:00',
+  'emailSettings.save': 'Guardar los ajustes de correo',
+  'emailSettings.saved': 'Se guardaron los ajustes de correo.',
+  'emailSettings.saveFailed':
+    'No se pudieron guardar los ajustes de correo. Inténtalo de nuevo en un momento.',
   'unsubscribe.title': 'Darse de baja',
   'unsubscribe.checking': 'Comprobando el enlace…',
   'unsubscribe.noToken':
@@ -3151,6 +3314,8 @@ export const messagesEs: Record<MessageId, string> = {
   'trackPeople.ownConfigIntro': '{key} tiene configuración propia, y puedes cambiarla aquí:',
   'trackPeople.layoutsLink': 'Conjuntos de diseños: dónde aparecen los campos en sus formularios',
   'trackPeople.setsLink': 'Conjuntos de configuración: sus tipos de ticket y reglas de campos',
+  'trackPeople.notificationsLink':
+    'Políticas de notificaciones: quién se entera de qué cambios en él',
   'trackPeople.invite': 'Invitar personas',
   'trackPeople.inviteOff':
     'Las invitaciones están desactivadas en este track. Un administrador del sitio puede activarlas.',
@@ -3344,7 +3509,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.tracks.archivedSaid': 'Se archivó el track {key}.',
   'admin.tracks.restored': 'Se restauró el track {key}.',
   'admin.tracks.problem.mapping':
-    '{tickets, plural, one {# ticket está} other {# tickets están}} en estados que los nuevos flujos de trabajo no tienen. Da una correspondencia de estados mediante la API y luego cambia.',
+    '{tickets, plural, one {# ticket está} other {# tickets están}} en estados que los nuevos flujos de trabajo no tienen. Vuelve a elegir el mapa de flujos para decir adónde van.',
   'admin.tracks.problem.migrating':
     'Los tickets aún se están moviendo tras un cambio anterior. Inténtalo de nuevo cuando haya terminado.',
   'admin.tracks.problem.key': 'Esa clave está ocupada o no es una clave válida.',
@@ -3384,7 +3549,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.maps.confirmDelete':
     '¿Eliminar {name}? Ningún track podrá usarlo después, y no se puede deshacer.',
   'admin.maps.problem.mapping':
-    '{tickets, plural, one {# ticket está} other {# tickets están}} en estados que los nuevos flujos de trabajo no tienen. Da una correspondencia de estados mediante la API y luego guarda.',
+    '{tickets, plural, one {# ticket está} other {# tickets están}} en estados que los nuevos flujos de trabajo no tienen. Vuelve a guardar el mapa para decir adónde van.',
   'admin.maps.problem.migrating':
     'Los tickets aún se están moviendo tras un cambio anterior. Inténtalo de nuevo cuando haya terminado.',
   'admin.maps.problem.nameTaken': 'Ya hay un mapa con ese nombre.',
@@ -3453,16 +3618,136 @@ export const messagesEs: Record<MessageId, string> = {
     '{tracks, plural, one {# track usa} other {# tracks usan}} este conjunto: dales otro primero.',
   'admin.sets.problem.default': 'Un conjunto predeterminado no se elimina.',
   'admin.sets.problem.typeInUse':
-    'Hay tickets con un tipo que el conjunto quitaría: muévelos antes a otro tipo mediante la API.',
+    'Hay tickets con un tipo que el conjunto quitaría: elige abajo el tipo que toman y vuelve a guardar.',
   'admin.sets.problem.nameTaken': 'Ya hay un conjunto con ese nombre.',
   'admin.sets.problem.invalid':
     'Esa combinación no está permitida: un campo nunca es obligatorio y oculto a la vez, ni obligatorio solo para algunos editores.',
   'admin.sets.problem.forbidden': 'No puedes cambiar este conjunto.',
+  // Tipos de ticket y niveles, y los ajustes de los conjuntos de tipos (T-320; UI-T21).
+  'settings.ticketTypes': 'Tipos de ticket',
+  'settings.ticketTypesHint':
+    'Las clases de ticket, y los niveles que dicen qué ticket puede ser padre de cuál.',
+  'admin.ticketTypes.title': 'Tipos de ticket',
+  'admin.ticketTypes.intro':
+    'Cada tipo de ticket está en un nivel, y el padre de un ticket está justo un nivel más arriba; un subticket siempre tiene padre. Los tres niveles incorporados se renombran, pero nunca se mueven ni se quitan. Los niveles que añades van por encima de Objetivo. Los tipos que ofrece un track salen de su conjunto de tipos, en Conjuntos de configuración.',
+  'admin.ticketTypes.forbidden':
+    'Solo los administradores del sitio y de configuración gestionan los tipos de ticket y los niveles.',
+  'admin.ticketTypes.loading': 'Leyendo los tipos de ticket…',
+  'admin.ticketTypes.failed':
+    'No se pudieron leer los tipos de ticket. Inténtalo de nuevo en un momento.',
+  'admin.ticketTypes.newType': 'Nuevo tipo de ticket',
+  'admin.ticketTypes.newLevel': 'Nuevo nivel',
+  'admin.ticketTypes.addType': 'Añadir un tipo de ticket',
+  'admin.ticketTypes.addLevel': 'Añadir un nivel',
+  'admin.ticketTypes.cancelNew': 'Cancelar',
+  'admin.ticketTypes.typeName': 'Nombre del tipo de ticket',
+  'admin.ticketTypes.levelName': 'Nombre del nivel',
+  'admin.ticketTypes.description': 'Descripción',
+  'admin.ticketTypes.level': 'Nivel',
+  'admin.ticketTypes.place': 'Dónde va',
+  'admin.ticketTypes.placeAbove': 'Encima de {name}',
+  'admin.ticketTypes.placeHint':
+    'Los tickets del nuevo nivel pueden ser padres de los tickets del nivel justo debajo.',
+  'admin.ticketTypes.icon': 'Icono',
+  'admin.ticketTypes.icon.outcome': 'Objetivo',
+  'admin.ticketTypes.icon.feature': 'Funcionalidad',
+  'admin.ticketTypes.icon.bug': 'Error',
+  'admin.ticketTypes.icon.chore': 'Tarea',
+  'admin.ticketTypes.icon.toDo': 'Pendiente',
+  'admin.ticketTypes.icon.idea': 'Idea',
+  'admin.ticketTypes.icon.subticket': 'Subticket',
+  'admin.ticketTypes.icon.plain': 'Hexágono simple',
+  'admin.ticketTypes.levelBuiltin': 'Incorporado: se puede renombrar, no mover ni quitar.',
+  'admin.ticketTypes.levelAdded': 'Añadido: se puede renombrar, mover y quitar.',
+  'admin.ticketTypes.noTypes': 'Ningún tipo de ticket está en este nivel.',
+  'admin.ticketTypes.typesAt': 'Tipos de ticket en {name}',
+  'admin.ticketTypes.manage': 'Gestionar',
+  'admin.ticketTypes.manageOf': 'Gestionar el tipo de ticket {name}',
+  'admin.ticketTypes.settingsOf': 'Ajustes de {name}',
+  'admin.ticketTypes.save': 'Guardar el tipo',
+  'admin.ticketTypes.renameLevel': 'Renombrar',
+  'admin.ticketTypes.renameLevelOf': 'Renombrar el nivel {name}',
+  'admin.ticketTypes.saveLevel': 'Guardar el nivel',
+  'admin.ticketTypes.up': 'Subir',
+  'admin.ticketTypes.down': 'Bajar',
+  'admin.ticketTypes.moveUp': 'Subir el nivel {name}',
+  'admin.ticketTypes.moveDown': 'Bajar el nivel {name}',
+  'admin.ticketTypes.removeLevel': 'Quitar el nivel',
+  'admin.ticketTypes.removeLevelOf': 'Quitar el nivel {name}',
+  'admin.ticketTypes.confirmRemove':
+    '¿Quitar {name}? {types, plural, =0 {{own, plural, =0 {Ningún tipo de ticket está en él.} one {# tipo de ticket de un track con su propia configuración pasa al nivel {standard}.} other {# tipos de ticket de tracks con su propia configuración pasan al nivel {standard}.}}} one {Su tipo, {names}, pasa al nivel {standard}{own, plural, =0 {.} one {, y también # tipo de ticket de un track con su propia configuración.} other {, y también # tipos de ticket de tracks con su propia configuración.}}} other {Sus tipos, {names}, pasan al nivel {standard}{own, plural, =0 {.} one {, y también # tipo de ticket de un track con su propia configuración.} other {, y también # tipos de ticket de tracks con su propia configuración.}}}} {known, select, yes {{tickets, plural, =0 {Ningún ticket cambia de nivel.} one {# ticket cambia de nivel.} other {# tickets cambian de nivel.}}} other {}} No se puede deshacer.',
+  'admin.ticketTypes.breaks':
+    '{links, plural, =0 {no se rompería ningún vínculo con un padre} one {se rompería # vínculo con un padre} other {se romperían # vínculos con un padre}}, y {orphans, plural, =0 {ningún ticket quedaría sin el padre que necesita un subticket} one {# ticket quedaría sin el padre que necesita un subticket} other {# tickets quedarían sin el padre que necesita un subticket}}',
+  'admin.ticketTypes.cannotRemove':
+    '{name} no se puede quitar ahora: {why}. Cambia antes los padres de esos tickets.',
+  'admin.ticketTypes.retypePreview':
+    '{tickets, plural, =0 {Ningún ticket de este tipo cambia de nivel.} one {# ticket de este tipo cambia de nivel.} other {# tickets de este tipo cambian de nivel.}}',
+  'admin.ticketTypes.retypeRefused': 'Este nivel se rechazaría: {why}.',
+  'admin.ticketTypes.deleteType': 'Eliminar el tipo de ticket',
+  'admin.ticketTypes.deleteTypeOf': 'Eliminar el tipo de ticket {name}',
+  'admin.ticketTypes.confirmDelete':
+    '¿Eliminar {name}? Después nada podrá usarlo, y no se puede deshacer.',
+  'admin.ticketTypes.typeAdded': 'Se añadió {name}.',
+  'admin.ticketTypes.typeSaved': 'Se guardó {name}.',
+  'admin.ticketTypes.typeDeleted': 'Se eliminó {name}.',
+  'admin.ticketTypes.levelCreated': 'Se añadió el nivel {name}.',
+  'admin.ticketTypes.levelSaved': 'Se guardó el nivel {name}.',
+  'admin.ticketTypes.levelMovedUp': '{name} subió.',
+  'admin.ticketTypes.levelMovedDown': '{name} bajó.',
+  'admin.ticketTypes.levelRemoved': 'Se quitó el nivel {name}.',
+  'admin.ticketTypes.problem.breaks':
+    'No cambió nada: {why}. Cambia antes los padres de esos tickets.',
+  'admin.ticketTypes.problem.typeNameTaken': 'Ya hay un tipo de ticket con ese nombre.',
+  'admin.ticketTypes.problem.levelNameTaken': 'Ya hay un nivel con ese nombre.',
+  'admin.ticketTypes.problem.inTypeSets':
+    '{name} está en los conjuntos de tipos {sets}: quítalo antes de ellos en Conjuntos de configuración.',
+  'admin.ticketTypes.problem.hasTickets':
+    '{tickets, plural, one {# ticket tiene} other {# tickets tienen}} este tipo, la papelera incluida: dales antes otro tipo.',
+  'admin.ticketTypes.problem.builtin':
+    'Un nivel incorporado se renombra, pero nunca se mueve ni se quita.',
+  'admin.ticketTypes.problem.rank': 'Un nivel que añades va por encima de Objetivo.',
+  'admin.ticketTypes.problem.forbidden': 'No puedes cambiar los tipos de ticket ni los niveles.',
+  'admin.ticketTypes.problem.invalid': 'No se aceptó: revisa el nombre y el nivel.',
+  'admin.ticketTypes.problem.other': 'Eso no funcionó. Inténtalo de nuevo en un momento.',
+  'admin.sets.order': 'Orden en el conjunto',
+  'admin.sets.orderHint': 'El formulario de creación ofrece los tipos en este orden.',
+  'admin.sets.up': 'Subir',
+  'admin.sets.down': 'Bajar',
+  'admin.sets.moveUp': 'Subir {name}',
+  'admin.sets.moveDown': 'Bajar {name}',
+  'admin.sets.preselected': 'Tipo preseleccionado',
+  'admin.sets.preselectedFirst': 'Ninguno: el primer tipo del orden',
+  'admin.sets.defaultForLegend': 'Conjunto por defecto de los nuevos tracks de estas clases',
+  'admin.sets.defaultForHint':
+    'Cada clase de track tiene un conjunto por defecto. Para dejar de serlo, márcala en otro conjunto.',
+  'admin.sets.kindChoice.software': 'Tracks de desarrollo de software',
+  'admin.sets.kindChoice.business': 'Tracks de negocio',
+  'admin.sets.kindChoice.service': 'Tracks de servicio',
+  'admin.sets.kindChoice.discovery': 'Tracks de descubrimiento',
+  'admin.sets.mapping': 'Tickets de los tipos que quitas',
+  'admin.sets.mappingIntro':
+    '{tickets, plural, one {# ticket de los tracks que usan este conjunto tiene} other {# tickets de los tracks que usan este conjunto tienen}} un tipo que el conjunto quitaría. Elige el tipo que toman, del mismo nivel, y vuelve a guardar.',
+  'admin.sets.mappingFor': 'Los tickets de {name} pasan a ser',
+  'admin.sets.mappingChoose': 'Elige un tipo',
+  'admin.sets.mappingNowhere':
+    'El conjunto no conserva ningún tipo del nivel {level}, así que los tickets de {name} no tienen adónde ir: conserva {name}, o añade un tipo de ese nivel.',
+  'admin.sets.savedMapped':
+    'Se guardó {name}; {tickets, plural, one {# ticket tomó otro tipo} other {# tickets tomaron otro tipo}}.',
+  'admin.sets.problem.mapping':
+    'Cada tipo que quitas necesita un tipo de su mismo nivel que el conjunto conserve.',
+  // When the server's counts do not tell how many tickets the dropped types hold (T-320).
+  'admin.sets.mappingIntroUncounted':
+    'Hay tickets de los tracks que usan este conjunto con un tipo que el conjunto quitaría. Elige el tipo que toman, del mismo nivel, y vuelve a guardar.',
+  'admin.sets.savedMappedUncounted':
+    'Se guardó {name}; los tickets de los tipos que quitaste tomaron otro tipo.',
+  'admin.sets.problem.defaultRequired':
+    'Cada clase de track tiene un conjunto por defecto: márcala en otro conjunto.',
   'admin.sets.problem.other': 'Eso no funcionó. Inténtalo de nuevo en un momento.',
   'admin.fields.title': 'Campos',
   'admin.fields.intro':
     'Los campos personalizados añaden lo que los tickets necesitan guardar además de los integrados. Un campo conserva su tipo; sus opciones pueden cambiar sin tocar los tickets.',
-  'admin.fields.forbidden': 'Solo los administradores gestionan los campos.',
+  'admin.fields.forbidden':
+    'Solo los administradores del sitio y de configuración gestionan los campos.',
   'admin.fields.loading': 'Leyendo los campos…',
   'admin.fields.failed': 'No se pudieron leer los campos. Inténtalo de nuevo en un momento.',
   'admin.fields.none': 'Aún no hay campos personalizados.',
@@ -3473,14 +3758,12 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.fields.typeLabel': 'Tipo',
   'admin.fields.multiple': 'Admite varios valores',
   'admin.fields.added': 'Se añadió {name}.',
-  'admin.fields.saved': 'Se cambió el nombre de {name}.',
+  'admin.fields.saved': 'Se guardó {name}.',
   'admin.fields.deleted': 'Se eliminó {name}.',
   'admin.fields.local': 'Un track',
   'admin.fields.summaryMultiple': '{type}, varios valores',
   'admin.fields.manage': 'Gestionar',
   'admin.fields.manageOf': 'Gestionar el campo {name}',
-  'admin.fields.renameOf': 'Cambiar el nombre de {name}',
-  'admin.fields.rename': 'Cambiar el nombre',
   'admin.fields.optionsOf': 'Opciones en {context}',
   'admin.fields.noOptions': 'Aún no hay opciones.',
   'admin.fields.newOption': 'Opción nueva',
@@ -3504,7 +3787,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.fields.optionDelete': 'Eliminar',
   'admin.fields.optionDeleteOf': 'Eliminar {value}',
   'admin.fields.optionDeleteOutcome':
-    '{children, plural, =0 {} one {Eliminar {value} también elimina su opción de segundo nivel, que esta página no muestra. } other {Eliminar {value} también elimina sus # opciones de segundo nivel, que esta página no muestra. }}{isDefault, select, yes {Los tickets nuevos de {context} empiezan con {value}: cuando se vaya empezarán vacíos, y esta página no puede volver a ponerlo. } other {}}No se puede deshacer.',
+    '{children, plural, =0 {¿Eliminar {value}? Sale de esta lista para siempre.} one {¿Eliminar {value} y su opción hija? Salen de esta lista para siempre.} other {¿Eliminar {value} y sus # opciones hijas? Salen de esta lista para siempre.}} {isDefault, select, yes {Los tickets nuevos de {context} empiezan con {value}: cuando se vaya empezarán vacíos hasta que se guarde otro valor por defecto. } other {}}{children, plural, =0 {Una opción que tenga un ticket no se elimina: deja de ofrecerla.} other {Las opciones que tenga un ticket no se eliminan: deja de ofrecerlas.}} No se puede deshacer.',
   'admin.fields.delete': 'Eliminar el campo',
   'admin.fields.deleteOf': 'Eliminar el campo {name}',
   'admin.fields.confirmDelete':
@@ -3532,6 +3815,179 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.fields.problem.valueTaken': 'Ya hay una opción con ese nombre.',
   'admin.fields.problem.forbidden': 'No puedes cambiar este campo.',
   'admin.fields.problem.other': 'Eso no funcionó. Inténtalo de nuevo en un momento.',
+  // Campos: descripciones, ajustes, fórmulas, contextos, valores por defecto y orden (T-320).
+  'admin.fields.description': 'Descripción',
+  'admin.fields.descriptionHint':
+    'Los formularios la muestran bajo el campo, salvo que una regla de campo dé su propio texto de ayuda.',
+  'admin.fields.detailsOf': 'Nombre y descripción de {name}',
+  'admin.fields.saveDetails': 'Guardar el nombre y la descripción',
+  'admin.fields.settings.titleOf': 'Ajustes de {name}',
+  'admin.fields.settings.save': 'Guardar los ajustes',
+  'admin.fields.settings.saved': 'Se guardaron los ajustes de {name}.',
+  'admin.fields.settings.maxChars': 'Máximo de caracteres',
+  'admin.fields.settings.maxCharsHint':
+    'Si lo dejas vacío, un párrafo admite hasta {usual} caracteres; puedes permitir hasta {most}.',
+  'admin.fields.settings.numberLegend': 'Cómo se muestran los valores',
+  'admin.fields.settings.format': 'Se muestra como',
+  'admin.fields.settings.format.number': 'Número',
+  'admin.fields.settings.format.currency': 'Moneda',
+  'admin.fields.settings.format.percentage': 'Porcentaje (40 significa 40 %)',
+  'admin.fields.settings.decimals': 'Decimales',
+  'admin.fields.settings.decimalsAny': 'Como se escriban',
+  'admin.fields.settings.currency': 'Código de moneda',
+  'admin.fields.settings.currencyHint': 'Tres letras, como EUR o USD.',
+  'admin.fields.settings.sample': '{plain} se muestra como {shown} en los tickets y en las listas.',
+  'admin.fields.formula.titleOf': 'Fórmula de {name}',
+  'admin.fields.formula.legend': 'Fórmula',
+  'admin.fields.formula.expression': 'Expresión',
+  'admin.fields.formula.hint':
+    'Escribe los nombres de los campos entre llaves y llama a las funciones por su nombre. La línea de abajo la comprueba mientras escribes.',
+  'admin.fields.formula.output': 'Resultado',
+  'admin.fields.formula.output.number': 'Número',
+  'admin.fields.formula.output.currency': 'Moneda',
+  'admin.fields.formula.output.percentage': 'Porcentaje (40 significa 40 %)',
+  'admin.fields.formula.output.date': 'Fecha',
+  'admin.fields.formula.output.duration': 'Duración',
+  'admin.fields.formula.output.text': 'Texto',
+  'admin.fields.formula.save': 'Guardar la fórmula',
+  'admin.fields.formula.at': 'Línea {line}, columna {column}: {problem}',
+  'admin.fields.formula.gives.number': 'Da un número.',
+  'admin.fields.formula.gives.date': 'Da una fecha.',
+  'admin.fields.formula.gives.duration': 'Da una duración.',
+  'admin.fields.formula.gives.text': 'Da texto.',
+  'admin.fields.formula.gives.boolean': 'Da sí o no.',
+  'admin.fields.formula.reads': 'Lee {fields}.',
+  'admin.fields.formula.readsNothing': 'No lee ningún campo.',
+  'admin.fields.formula.help': 'Qué puede usar una fórmula',
+  'admin.fields.formula.helpFields': 'Campos que puede leer',
+  'admin.fields.formula.helpFunctions': 'Funciones',
+  'admin.fields.formula.helpMore':
+    'La página del manual sobre los campos explica más en Campos de fórmula: operadores, tickets hijos y días laborables.',
+  'admin.fields.formula.problem.too_long':
+    'La fórmula es demasiado larga: puede tener como mucho 4000 caracteres.',
+  'admin.fields.formula.problem.too_deep':
+    'La fórmula anida demasiados niveles: divídela en partes más sencillas.',
+  'admin.fields.formula.problem.too_complex': 'La fórmula tiene demasiadas partes: acórtala.',
+  'admin.fields.formula.problem.empty': 'Escribe una fórmula.',
+  'admin.fields.formula.problem.unexpected_character': '{text} no se puede usar en una fórmula.',
+  'admin.fields.formula.problem.unexpected_token':
+    '{text} está fuera de lugar aquí: puede que falte algo antes.',
+  'admin.fields.formula.problem.unexpected_end':
+    'La fórmula termina demasiado pronto: falta algo al final.',
+  'admin.fields.formula.problem.unterminated_string':
+    'Un texto entre comillas no tiene la comilla de cierre.',
+  'admin.fields.formula.problem.unterminated_field':
+    'Un nombre de campo entre llaves no tiene la llave de cierre.',
+  'admin.fields.formula.problem.empty_field': 'Un par de llaves no nombra ningún campo.',
+  'admin.fields.formula.problem.invalid_number': '{text} no es un número que las fórmulas lean.',
+  'admin.fields.formula.problem.unknown_name':
+    '{text} no es una función ni una palabra que las fórmulas conozcan: el nombre de un campo va entre llaves.',
+  'admin.fields.formula.problem.unknown_function': 'Ninguna función se llama {text}.',
+  'admin.fields.formula.problem.arity': '{text} recibe un número de valores que no le corresponde.',
+  'admin.fields.formula.problem.unknown_field':
+    'Ningún campo se llama {text}, o una fórmula de aquí no puede verlo.',
+  'admin.fields.formula.problem.ambiguous_field':
+    'Varios campos se llaman {text}: nombra el que quieres por su número, como cf[12] entre llaves.',
+  'admin.fields.formula.problem.unsupported_field':
+    'Las fórmulas aún no pueden leer {text}: leen números, fechas, texto, direcciones web y otras fórmulas.',
+  'admin.fields.formula.problem.type_mismatch':
+    '{text} no encaja aquí: su valor es de otra clase, como un texto donde va un número.',
+  'admin.fields.formula.problem.children_misplaced':
+    '{text} solo funciona dentro de sum, avg, min, max o count.',
+  'admin.fields.formula.problem.output_mismatch':
+    'Lo que da la fórmula no encaja con el resultado elegido: elige otro resultado o cambia la fórmula.',
+  'admin.fields.formula.problem.cycle':
+    'Unos campos de fórmula necesitarían los valores de otros aquí, a través de {text}.',
+  'admin.fields.formula.problem.other': 'Algo no está bien aquí.',
+  'admin.fields.contexts.title': 'Dónde se aplica {name}',
+  'admin.fields.contexts.hint':
+    'Cada contexto cubre tracks y tipos de ticket y tiene su propio valor por defecto y sus opciones. En un ticket gana el más concreto: track y tipo, luego track, luego tipo y luego el de todos.',
+  'admin.fields.contexts.none': 'Este campo no se aplica en ningún sitio.',
+  'admin.fields.contexts.noneBody': 'Añade un contexto para ofrecerlo de nuevo en los tickets.',
+  'admin.fields.contexts.reach': '{tracks}; {types}',
+  'admin.fields.contexts.everyTrack': 'Todos los tracks',
+  'admin.fields.contexts.someTracks': 'Tracks: {names}',
+  'admin.fields.contexts.everyType': 'todos los tipos de ticket',
+  'admin.fields.contexts.someTypes': 'tipos de ticket: {names}',
+  'admin.fields.contexts.peopleAnyone': 'Personas para elegir: cualquiera',
+  'admin.fields.contexts.peopleGroup': 'Personas para elegir: los miembros de {name}',
+  'admin.fields.contexts.peopleRole':
+    'Personas para elegir: quien tenga {name} en el track del ticket',
+  'admin.fields.contexts.change': 'Cambiar',
+  'admin.fields.contexts.changeOf': 'Cambiar el contexto {name}',
+  'admin.fields.contexts.save': 'Guardar el contexto',
+  'admin.fields.contexts.saved': 'Se guardó el contexto {name}.',
+  'admin.fields.contexts.new': 'Nuevo contexto',
+  'admin.fields.contexts.add': 'Añadir un contexto',
+  'admin.fields.contexts.added': 'Se añadió el contexto {name}.',
+  'admin.fields.contexts.name': 'Nombre del contexto',
+  'admin.fields.contexts.tracks': 'Tracks',
+  'admin.fields.contexts.allTracks': 'Todos los tracks',
+  'admin.fields.contexts.chosenTracks': 'Solo estos tracks',
+  'admin.fields.contexts.types': 'Tipos de ticket',
+  'admin.fields.contexts.allTypes': 'Todos los tipos de ticket',
+  'admin.fields.contexts.chosenTypes': 'Solo estos tipos de ticket',
+  'admin.fields.contexts.ownTrack': 'Solo cubre {name}: el campo pertenece a ese track.',
+  'admin.fields.contexts.people': 'Personas para elegir',
+  'admin.fields.contexts.peopleFrom': 'Ofrecer',
+  'admin.fields.contexts.limit.anyone': 'Cualquiera',
+  'admin.fields.contexts.limit.group': 'Los miembros de un grupo',
+  'admin.fields.contexts.limit.role': 'Quienes tengan un rol del track',
+  'admin.fields.contexts.group': 'Grupo',
+  'admin.fields.contexts.role': 'Rol del track',
+  'admin.fields.contexts.chooseOne': 'Elige uno',
+  'admin.fields.contexts.chooseTrack': 'Marca al menos un track, o elige Todos los tracks.',
+  'admin.fields.contexts.chooseType':
+    'Marca al menos un tipo de ticket, o elige Todos los tipos de ticket.',
+  'admin.fields.contexts.choosePeople': 'Elige el grupo o el rol cuyas personas ofrece.',
+  'admin.fields.contexts.delete': 'Eliminar',
+  'admin.fields.contexts.deleteOf': 'Eliminar el contexto {name}',
+  'admin.fields.contexts.confirmDelete':
+    '¿Eliminar {name}? Su valor por defecto y sus opciones se van con él, y sus tracks y tipos de ticket pasan a los otros contextos del campo. No se puede deshacer.',
+  'admin.fields.contexts.confirmDeleteLast':
+    '¿Eliminar {name}? Es el último contexto del campo, así que el campo no se aplicará en ningún sitio hasta que añadas otro. No se puede deshacer.',
+  'admin.fields.contexts.deleted': 'Se eliminó el contexto {name}.',
+  'admin.fields.default.label': 'Valor por defecto',
+  'admin.fields.default.of': 'Valor por defecto en {name}',
+  'admin.fields.default.child': 'Opción hija por defecto',
+  'admin.fields.default.unset': 'Sin valor por defecto',
+  'admin.fields.default.clear': 'Quitar el valor por defecto',
+  'admin.fields.default.save': 'Guardar el valor por defecto',
+  'admin.fields.default.saved': 'Se guardó el valor por defecto en {name}.',
+  'admin.fields.default.removed': '{name} ya no tiene valor por defecto.',
+  'admin.fields.default.labelsHint': 'Separa las etiquetas con espacios.',
+  'admin.fields.default.notTaken': 'Un campo de tipo {type} no admite valor por defecto.',
+  'admin.fields.defaultBadge': 'Por defecto',
+  'admin.fields.optionUp': 'Subir',
+  'admin.fields.optionDown': 'Bajar',
+  'admin.fields.optionUpOf': 'Subir {value}',
+  'admin.fields.optionDownOf': 'Bajar {value}',
+  'admin.fields.optionMoved': 'Se movió {value}.',
+  'admin.fields.childOptionsOf': 'Opciones hijas de {parent}',
+  'admin.fields.noChildOptions': '{parent} aún no tiene opciones hijas.',
+  'admin.fields.newChildOption': 'Opción hija nueva',
+  'admin.fields.addChild': 'Añadir la opción hija',
+  'admin.fields.addChildTo': 'Añadir una opción hija a {parent}',
+  'admin.fields.childAdded': 'Se añadió {value} bajo {parent}.',
+  'admin.fields.problem.optionsInUse':
+    '{tickets, plural, one {# ticket contiene} other {# tickets contienen}} una de sus opciones, la papelera incluida. En su lugar, deja de ofrecerlas.',
+  'admin.fields.problem.contextNameTaken': 'Este campo ya tiene un contexto con ese nombre.',
+  'admin.fields.problem.overlap':
+    'Otro contexto de este campo ya cubre uno de esos tracks con uno de esos tipos de ticket. Acota uno de los dos primero.',
+  'admin.fields.problem.invalidDefault':
+    'Ese valor por defecto no encaja con el campo: revisa el valor o elige una opción que aún ofrezca.',
+  'admin.fields.problem.listChanged':
+    'Algo elegido aquí ya no existe. Vuelve a cargar la página para tener las listas al día.',
+  'admin.fields.problem.trackArchived':
+    'El track del campo está archivado, así que sus campos no cambian hasta que se restaure.',
+  'admin.fields.problem.limit':
+    'Eso superaría uno de los límites del sitio. Un administrador del sitio puede subirlo en la página Salvaguardas.',
+  'admin.fields.problem.invalid': 'No se aceptaron esos ajustes. Revísalos e inténtalo de nuevo.',
+  // La página Campos tras la revisión (T-320).
+  'admin.fields.default.notOffered':
+    'El valor por defecto aún nombra {values}, que ya no se ofrece aquí, así que al guardarlo se deja fuera.',
+  'admin.fields.contexts.goneTracks':
+    '{count, plural, one {Un track que nombra está} other {# tracks que nombra están}} en la papelera, así que al guardar {count, plural, one {queda} other {quedan}} fuera de este contexto.',
   'admin.permissions.title': 'Permisos',
   'admin.permissions.intro':
     'Los roles nombran lo que las personas hacen en un track; las políticas de acceso dicen qué puede hacer cada rol, grupo o persona en los tracks que las usan; los permisos globales se aplican en todas partes.',
@@ -3612,6 +4068,56 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.permissions.granteeKind.anyone': 'Cualquiera, con sesión iniciada o no',
   'admin.permissions.granteeKind.requester': 'El solicitante',
   'admin.permissions.granteeKind.assignee': 'El responsable',
+  // T-320 (UI-T21): beneficiarios de campo, el paso de correspondencia de estados, renombrar
+  // grupos y cuentas de servicio, y cuentas de servicio en grupos.
+  'admin.permissions.granteeKind.user_field': 'Personas en un campo de usuario',
+  'admin.permissions.granteeKind.group_field': 'Grupos en un campo de grupo',
+  'admin.permissions.pickUserField': 'Campo de usuario',
+  'admin.permissions.pickGroupField': 'Campo de grupo',
+  'admin.permissions.pickFieldEmpty': 'Aún no hay ningún campo de este tipo',
+  'admin.permissions.problem.field': 'Ese campo ya no existe o no es de este tipo. Elige otro.',
+  'statusMapping.lead':
+    '{count, plural, one {# ticket está} other {# tickets están}} en estados que los nuevos flujos de trabajo no tienen. Elige adónde van: se mueven cuando confirmes.',
+  'statusMapping.changed':
+    'Los tickets cambiaron desde que se leyó esto. Revisa adónde va cada uno y vuelve a confirmar.',
+  'statusMapping.legend': 'Adónde van los tickets',
+  'statusMapping.moveTo':
+    'Mover {count, plural, one {el # ticket de tipo {type}} other {los # tickets de tipo {type}}} de {status} a',
+  'statusMapping.choose': 'Elige un estado',
+  'statusMapping.of': 'Un estado de {workflow}, el nuevo flujo de trabajo de {type}.',
+  'statusMapping.missing': 'Elige un estado para cada uno y luego confirma.',
+  'statusMapping.cancel': 'Cancelar',
+  'statusMapping.moved':
+    '{count, plural, one {# ticket pasó a su nuevo estado.} other {# tickets pasaron a sus nuevos estados.}}',
+  'statusMapping.moving':
+    '{count, plural, one {# ticket está pasando a su nuevo estado.} other {# tickets están pasando a sus nuevos estados.}}',
+  'statusMapping.progress': 'Tickets movidos: {moved, number} de {total, number}',
+  'statusMapping.done':
+    '{total, plural, one {El ticket ya se movió.} other {Los # tickets ya se movieron.}}',
+  'statusMapping.progressFailed':
+    'No se pudo leer cuánto han avanzado los tickets. Siguen moviéndose: vuelve a mirar en un momento.',
+  'admin.tracks.mappingTitle': 'Cambiar {key} a {map}',
+  'admin.tracks.mappingConfirm': 'Cambiar y mover los tickets',
+  'admin.maps.mappingTitle': 'Guardar {name}',
+  'admin.maps.mappingConfirm': 'Guardar y mover los tickets',
+  'admin.groups.editOf': 'Nombre y descripción de {name}',
+  'admin.groups.save': 'Guardar',
+  'admin.groups.saved': 'Se guardó {name}.',
+  'admin.groups.directoryName':
+    'El directorio {directory} gestiona el nombre de este grupo: renómbralo allí. La descripción la puedes cambiar tú.',
+  'admin.groups.serviceAccount': 'Cuenta de servicio',
+  'admin.groups.addServiceAccount': 'Añadir una cuenta de servicio',
+  'admin.groups.addServiceAccountHint':
+    'Una cuenta de servicio en un grupo recibe los permisos del grupo, como una persona.',
+  'admin.groups.pickServiceAccount': 'Elige una cuenta de servicio',
+  'admin.groups.addServiceAccountShort': 'Añadir la cuenta',
+  'admin.serviceAccounts.change': 'Cambiar',
+  'admin.serviceAccounts.changeNamed': 'Cambiar el nombre y la descripción de {name}',
+  'admin.serviceAccounts.save': 'Guardar',
+  'admin.serviceAccounts.saved': 'Se guardó {name}.',
+  'admin.serviceAccounts.cancelChange': 'Cancelar',
+  'admin.serviceAccounts.saveFailed':
+    'No se pudo guardar la cuenta de servicio. Inténtalo de nuevo en un momento.',
   'admin.permissions.problem.roleInUse':
     'Hay políticas de acceso o tracks que todavía usan este rol: quítalo antes de ellos.',
   'admin.permissions.problem.policyInUse':
@@ -3710,6 +4216,112 @@ export const messagesEs: Record<MessageId, string> = {
   'closeReason.name.notPlanned': 'No planificado',
   'closeReason.name.duplicate': 'Duplicado',
   'closeReason.name.notReproducible': 'No reproducible',
+  // Prioridades, conjuntos de prioridades y motivos de cierre (T-320; CORE-014; ADR-114).
+  'settings.priorities': 'Prioridades',
+  'settings.prioritiesHint':
+    'Las prioridades y los motivos de cierre entre los que eligen los tickets, y qué prioridades ofrece cada track.',
+  'admin.priorities.title': 'Prioridades',
+  'admin.priorities.purpose':
+    'Mantén las prioridades y los motivos de cierre del sitio, y los conjuntos de prioridades que deciden qué prioridades ofrece un track.',
+  'admin.priorities.about':
+    'Todo ticket tiene una prioridad. Un track ofrece las prioridades de su conjunto de prioridades, y un ticket nuevo recibe la predeterminada de ese conjunto salvo que alguien elija otra. Un motivo de cierre dice por qué se cerró un ticket; los flujos de trabajo definen uno al cerrar un ticket. Una prioridad o un motivo de cierre en uso solo se elimina cuando eliges cuál ocupa su lugar.',
+  'admin.priorities.forbidden':
+    'Solo los administradores del sitio y de configuración cambian las prioridades y los motivos de cierre.',
+  'admin.priorities.loading': 'Leyendo las prioridades…',
+  'admin.priorities.failed':
+    'No se pudieron leer las prioridades. Inténtalo de nuevo en un momento.',
+  'admin.priorities.name': 'Nombre',
+  'admin.priorities.description': 'Descripción (opcional)',
+  'admin.priorities.up': 'Subir',
+  'admin.priorities.down': 'Bajar',
+  'admin.priorities.change': 'Cambiar',
+  'admin.priorities.manage': 'Gestionar',
+  'admin.priorities.delete': 'Eliminar',
+  'admin.priorities.save': 'Guardar',
+  'admin.priorities.cancel': 'Cancelar',
+  'admin.priorities.added': 'Se añadió {name}.',
+  'admin.priorities.saved': 'Se guardó {name}.',
+  'admin.priorities.deleted': 'Se eliminó {name}.',
+  'admin.priorities.movedUp': '{name} subió.',
+  'admin.priorities.movedDown': '{name} bajó.',
+  'admin.priorities.replaceOf': 'Qué ocupa el lugar de {name}',
+  'admin.priorities.replaceWith': 'En su lugar, darles',
+  'admin.priorities.problem.nameTaken': 'Ese nombre ya existe. Elige otro.',
+  'admin.priorities.problem.defaultSet':
+    'El conjunto predeterminado no se elimina. Primero haz predeterminado otro conjunto.',
+  'admin.priorities.problem.limit':
+    'Un conjunto de prioridades ofrece como mucho {limit} prioridades en este sitio.',
+  'admin.priorities.problem.listChanged':
+    'La lista cambió desde que esta página la leyó, así que nada se movió. Se ha leído de nuevo: inténtalo otra vez.',
+  'admin.priorities.problem.gone': 'Eso ya no existe. La página se ha leído de nuevo.',
+  'admin.priorities.problem.forbidden':
+    'Ya no puedes cambiar esto. Un administrador del sitio puede darte Cambiar la configuración.',
+  'admin.priorities.problem.other': 'No se pudo guardar. Inténtalo de nuevo en un momento.',
+  'admin.priorities.priorities': 'Prioridades, de la más urgente a la menos',
+  'admin.priorities.new': 'Nueva prioridad',
+  'admin.priorities.add': 'Añadir una prioridad',
+  'admin.priorities.note':
+    'Una prioridad nueva entra en el conjunto de prioridades predeterminado. El icono de una prioridad sale de su lugar en esta lista, de la más urgente arriba a la menos urgente abajo, así que moverla cambia su icono.',
+  'admin.priorities.emptyTitle': 'No hay prioridades.',
+  'admin.priorities.empty': 'Todo ticket necesita una: añade la primera.',
+  'admin.priorities.moveUp': 'Subir la prioridad {name}',
+  'admin.priorities.moveDown': 'Bajar la prioridad {name}',
+  'admin.priorities.changeOf': 'Cambiar la prioridad {name}',
+  'admin.priorities.deleteOf': 'Eliminar la prioridad {name}',
+  'admin.priorities.confirmDelete':
+    '¿Eliminar {name}? Si hay tickets que la tienen, eliges a continuación qué prioridad reciben en su lugar, y los conjuntos de prioridades que ofrecen {name} ofrecerán esa. No se puede deshacer.',
+  'admin.priorities.inUse':
+    '{count, plural, one {# ticket tiene {name}.} other {# tickets tienen {name}.}} Elige la prioridad que reciben en su lugar. Los conjuntos de prioridades que ofrecen {name} la ofrecerán, y los que dan {name} a los tickets nuevos darán esa.',
+  'admin.priorities.noOther': 'No hay otra prioridad que darles. Añade una primero.',
+  'admin.priorities.deletedInto': 'Se eliminó {name}; sus tickets tienen ahora {into}.',
+  'admin.priorities.sets': 'Conjuntos de prioridades',
+  'admin.priorities.newSet': 'Nuevo conjunto de prioridades',
+  'admin.priorities.addSet': 'Añadir un conjunto de prioridades',
+  'admin.priorities.setsNote':
+    'Un track ofrece las prioridades del conjunto que usa, y un track que no elige ninguno usa el conjunto predeterminado. Un ticket conserva una prioridad que su track deja de ofrecer hasta que alguien la cambia.',
+  'admin.priorities.setsLink': 'Elige el conjunto de un track en Qué conjuntos usa un track.',
+  'admin.priorities.setName': 'Nombre del conjunto',
+  'admin.priorities.offers': 'Prioridades que ofrece',
+  'admin.priorities.newTickets': 'Los tickets nuevos reciben',
+  'admin.priorities.middle': 'La del medio de las que ofrece',
+  'admin.priorities.newTicketsHint':
+    'Quien crea un ticket puede elegir aún otra prioridad que ofrezca el conjunto.',
+  'admin.priorities.defaultSet': 'Conjunto predeterminado',
+  'admin.priorities.setSummary':
+    'Ofrece {priorities}. Los tickets nuevos reciben {priority}. {tracks, plural, =0 {Ningún track lo usa.} one {# track lo usa.} other {# tracks lo usan.}}',
+  'admin.priorities.setSummaryMiddle':
+    'Ofrece {priorities}. Los tickets nuevos reciben la del medio. {tracks, plural, =0 {Ningún track lo usa.} one {# track lo usa.} other {# tracks lo usan.}}',
+  'admin.priorities.manageSetOf': 'Gestionar el conjunto de prioridades {name}',
+  'admin.priorities.setChangeOf': 'Cambiar el conjunto de prioridades {name}',
+  'admin.priorities.defaultSetNote':
+    'Los tracks que no eligen conjunto usan este. El conjunto predeterminado no se elimina: para eliminarlo, primero haz predeterminado otro conjunto.',
+  'admin.priorities.makeDefault': 'Hacer este el conjunto predeterminado',
+  'admin.priorities.makeDefaultOf': 'Hacer {name} el conjunto predeterminado',
+  'admin.priorities.madeDefault':
+    '{name} es ahora el conjunto predeterminado. Los tracks que no eligen conjunto ofrecen sus prioridades.',
+  'admin.priorities.deleteSetOf': 'Eliminar el conjunto de prioridades {name}',
+  'admin.priorities.confirmDeleteSet':
+    '¿Eliminar {name}? {tracks, plural, =0 {Ningún track lo usa.} one {El # track que lo usa vuelve al conjunto predeterminado, {fallback}.} other {Los # tracks que lo usan vuelven al conjunto predeterminado, {fallback}.}} No se puede deshacer.',
+  'admin.priorities.reasons': 'Motivos de cierre',
+  'admin.priorities.newReason': 'Nuevo motivo de cierre',
+  'admin.priorities.addReason': 'Añadir un motivo de cierre',
+  'admin.priorities.reasonsNote':
+    'Por qué se cerró un ticket. Los flujos de trabajo definen uno al cerrar un ticket, o lo piden; sus listas siguen este orden.',
+  'admin.priorities.reasonsEmptyTitle': 'No hay motivos de cierre.',
+  'admin.priorities.reasonsEmpty':
+    'Añade uno para que los flujos de trabajo tengan un motivo que definir al cerrar un ticket.',
+  'admin.priorities.reasonMoveUp': 'Subir el motivo de cierre {name}',
+  'admin.priorities.reasonMoveDown': 'Bajar el motivo de cierre {name}',
+  'admin.priorities.reasonChangeOf': 'Cambiar el motivo de cierre {name}',
+  'admin.priorities.reasonDeleteOf': 'Eliminar el motivo de cierre {name}',
+  'admin.priorities.reasonConfirmDelete':
+    '¿Eliminar {name}? Si hay tickets que se cerraron con él, o un flujo de trabajo lo define, eliges a continuación qué motivo ocupa su lugar, y cada flujo de trabajo que define {name} recibe una versión nueva que define ese. No se puede deshacer.',
+  'admin.priorities.reasonInUse':
+    '{count, plural, one {# ticket se cerró con {name}.} other {# tickets se cerraron con {name}.}} Elige el motivo que reciben en su lugar. Un flujo de trabajo que define {name} recibe una versión nueva que define ese también.',
+  'admin.priorities.reasonUsedBy':
+    '{count, plural, one {El flujo de trabajo {workflows} define {name}.} other {Los flujos de trabajo {workflows} definen {name}.}} Elige el motivo que definen en su lugar: cada uno recibe una versión nueva que lo define.',
+  'admin.priorities.reasonNoOther': 'No hay otro motivo de cierre que elegir. Añade uno primero.',
+  'admin.priorities.reasonDeletedInto': 'Se eliminó {name}; {into} ocupa su lugar.',
   'ticketView.editLabels': 'Editar las etiquetas',
   'ticketView.save': 'Guardar',
   'ticketView.cancel': 'Cancelar',
@@ -5851,6 +6463,85 @@ export const messagesEs: Record<MessageId, string> = {
   'releases.create.submit': 'Añadir la versión',
   'releases.create.taken': 'Este track ya tiene una versión con ese nombre.',
   'releases.create.failed': 'No se pudo añadir la versión.',
+  // Las áreas de un track (CORE-015, T-320): su página y los enlaces a ella desde el track.
+  'areas.title': 'Áreas',
+  'areas.purpose':
+    'Las partes del trabajo de este track, el propietario de cada una y quién recibe sus tickets nuevos.',
+  'areas.about':
+    'Un área es una parte del trabajo de un track, como API o Facturación. Un ticket puede estar en varias áreas. Cada área puede nombrar un propietario y un equipo propietario, y dice quién recibe un ticket nuevo que no nombra responsable: el propietario del área, el propietario del track o nadie. Decide la primera de las áreas del ticket cuya regla nombra a alguien; si a esa persona no se le pueden asignar tickets en el track, el ticket se queda sin asignar. Un área archivada sigue en sus tickets, pero no se ofrece para tickets nuevos. Todos los que pueden ver el track leen esta página; sus administradores la cambian.',
+  'areas.loading': 'Cargando las áreas…',
+  'areas.failed': 'No se pudieron cargar las áreas. Inténtalo de nuevo en un momento.',
+  'areas.new': 'Área nueva',
+  'areas.readOnly': 'Solo los administradores de este track pueden cambiar sus áreas.',
+  'areas.readOnlyArchived': 'Este track está archivado, así que sus áreas no pueden cambiar.',
+  'areas.none': 'Aún no hay áreas',
+  'empty.areas.body':
+    'Las áreas dividen el trabajo del track en partes, como API o Facturación, cada una con un propietario. Cuando el track tiene alguna, el formulario de creación las ofrece. Añade una con Área nueva.',
+  'empty.areas.bodyRead':
+    'Las áreas dividen el trabajo del track en partes, como API o Facturación, cada una con un propietario. Las añaden los administradores del track.',
+  'areas.listLabel': 'Áreas de {key}',
+  'areas.archivedTitle': 'Áreas archivadas',
+  'areas.archivedNote': 'Siguen en sus tickets, pero no se ofrecen para tickets nuevos.',
+  'areas.owner': 'Propietario: {name}',
+  'areas.ownerUnset': 'Sin propietario',
+  'areas.ownerTeam': 'Equipo propietario: {name}',
+  'areas.rule.area_owner': 'Los tickets nuevos sin responsable van al propietario del área.',
+  'areas.rule.track_owner': 'Los tickets nuevos sin responsable van al propietario del track.',
+  'areas.rule.unassigned': 'Los tickets nuevos sin responsable se quedan sin asignar.',
+  'areas.change': 'Cambiar',
+  'areas.changeOf': 'Cambiar el área {name}',
+  'areas.archive': 'Archivar',
+  'areas.archiveOf': 'Archivar el área {name}',
+  'areas.restore': 'Restaurar',
+  'areas.restoreOf': 'Restaurar el área {name}',
+  'areas.delete': 'Eliminar',
+  'areas.deleteOf': 'Eliminar el área {name}',
+  'areas.confirmDelete':
+    '¿Eliminar el área {name}? No se puede recuperar. Si hay tickets en ella, eliges después adónde van.',
+  'areas.whereTicketsGo': 'Adónde van los tickets de {name}',
+  'areas.inUse':
+    '{count, plural, one {# ticket está} other {# tickets están}} en {name}. Elige adónde van; el historial del ticket registra el cambio.',
+  'areas.inUseSearch': 'Abrirlos en la búsqueda',
+  'areas.moveTo': 'Moverlos a',
+  'areas.moveNone': 'Ninguna área: quitarles {name}',
+  'areas.form.name': 'Nombre',
+  'areas.form.description': 'Descripción',
+  'areas.form.owner': 'Propietario',
+  'areas.form.ownerHint':
+    'Escribe un nombre para encontrar a alguien; primero salen quienes pueden ver este track.',
+  'areas.form.removeOwner': 'Quitar a {name} como propietario',
+  'areas.form.team': 'Equipo propietario',
+  'areas.form.teamHint': 'Escribe un nombre para encontrar un equipo.',
+  'areas.form.removeTeam': 'Quitar {name} como equipo propietario',
+  'areas.form.rule': 'Los tickets nuevos sin responsable van a',
+  'areas.form.rule.area_owner': 'El propietario del área',
+  'areas.form.rule.track_owner': 'El propietario del track',
+  'areas.form.rule.unassigned': 'Nadie: se quedan sin asignar',
+  'areas.form.ruleHint':
+    'Cuando un ticket está en varias áreas, decide la primera cuya regla nombra a alguien; si a esa persona no se le pueden asignar tickets aquí, el ticket se queda sin asignar.',
+  'areas.form.ruleNoOwner':
+    'Esta área aún no tiene propietario: hasta que lo tenga, su regla no da los tickets nuevos a nadie.',
+  'areas.form.save': 'Guardar el área',
+  'areas.form.cancel': 'Cancelar',
+  'areas.created': 'Se añadió el área {name}.',
+  'areas.saved': 'Se guardó el área {name}.',
+  'areas.archivedDone': 'Se archivó el área {name}.',
+  'areas.restoredDone': 'Se restauró el área {name}.',
+  'areas.deleted': 'Se eliminó el área {name}.',
+  'areas.deletedMoved': 'Se eliminó el área {name}; sus tickets pasaron a {to}.',
+  'areas.deletedRemoved': 'Se eliminó el área {name} y se quitó de sus tickets.',
+  'areas.problem.nameTaken': 'Este track ya tiene un área con ese nombre.',
+  'areas.problem.limit':
+    'Este track tiene tantas áreas como permite el sitio ({limit}). Archiva una antes, o pide a un administrador del sitio que suba el límite en Salvaguardas.',
+  'areas.problem.changed': 'Alguien cambió esta área mientras tanto. Se volvió a leer la lista.',
+  'areas.problem.owner': 'Esa persona ya no puede ser propietaria de un área. Elige a otra.',
+  'areas.problem.team': 'Ese equipo ya no existe. Elige otro.',
+  'areas.problem.replacement': 'Esa área ya no puede recibir los tickets. Elige otra.',
+  'areas.problem.other': 'No se pudo guardar el cambio. Inténtalo de nuevo en un momento.',
+  'areas.manageTitle': 'Sus áreas',
+  'areas.manageIntro':
+    'Quién es propietario de cada parte del trabajo de {key} y quién recibe sus tickets nuevos.',
+  'areas.manageLink': 'Áreas: las partes de su trabajo y sus propietarios',
   'release.notFound': 'Esta versión no existe, o no puedes verla.',
   'release.title': 'Versión',
   'release.failed': 'No se pudo cargar esta versión. Inténtalo de nuevo en un momento.',
@@ -6718,7 +7409,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.trackSets.purpose':
     'Elige los diseños, prioridades, política de visibilidad y notificaciones de un track entre los conjuntos que existen.',
   'admin.trackSets.about':
-    'Esta página solo elige. Los conjuntos de diseños y las políticas de visibilidad se crean en sus propias páginas; los conjuntos de prioridades y las políticas de notificación se crean por ahora con la API. Los conjuntos de tipos, de reglas de campos y los mapas de flujos se eligen donde se crean.',
+    'Esta página solo elige. Los conjuntos de diseños, los conjuntos de prioridades, las políticas de visibilidad y las políticas de notificaciones se crean en sus propias páginas. Los conjuntos de tipos, de reglas de campos y los mapas de flujos se eligen donde se crean.',
   'admin.trackSets.forbidden':
     'Solo los administradores del sitio y de la configuración eligen aquí los conjuntos de un track.',
   'admin.trackSets.loading': 'Leyendo…',
@@ -6737,6 +7428,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.trackSets.priorityNone': 'Las prioridades predeterminadas del sitio',
   'admin.trackSets.priorityHint':
     'Las prioridades entre las que eligen los tickets. Un ticket conserva una prioridad que su track deja de ofrecer.',
+  'admin.trackSets.priorityLink': 'Crea y cambia los conjuntos de prioridades en Prioridades.',
   'admin.trackSets.visibility': 'Política de visibilidad',
   'admin.trackSets.visibilityNone': 'Ninguna: los tickets no tienen nivel',
   'admin.trackSets.visibilityHint':
@@ -6744,6 +7436,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.trackSets.notification': 'Notificaciones',
   'admin.trackSets.notificationNone': 'Las notificaciones predeterminadas del sitio',
   'admin.trackSets.notificationHint': 'Quién se entera de qué cambios en este track.',
+  'admin.trackSets.notificationLink':
+    'Crea y cambia las políticas de notificaciones en Políticas de notificaciones.',
   'admin.trackSets.own': '{name} (propio)',
   'admin.trackSets.save': 'Guardar',
   'admin.trackSets.saved': 'Se guardó {key}.',

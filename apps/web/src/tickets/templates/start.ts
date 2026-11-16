@@ -82,7 +82,7 @@ function editableCustom(field: CustomField | undefined): boolean {
 }
 
 /** An instant as `datetime-local` takes it, on the person's own clock (T-280). */
-const localDateTime = (value: string): string => localDateTimeText(new Date(value));
+export const localDateTime = (value: string): string => localDateTimeText(new Date(value));
 
 /** A custom field's stored value as the form holds it. */
 function fillCustom(field: CustomField, key: string, value: unknown, fill: FormFill): void {

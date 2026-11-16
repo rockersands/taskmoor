@@ -1,6 +1,7 @@
 import type { CsvSeparator } from '@taskmoor/webconfig';
 import { API_BASE, api } from '../api/client';
 import { everyTrack } from '../api/tracks';
+import type { NumberSettings } from '../fields/numberFormat';
 import { loadSubticketProgress, type SubticketProgress } from '../tickets/tools/client';
 import type { ChoiceField } from './basic';
 
@@ -58,6 +59,8 @@ export interface SearchField {
   name: string;
   type: string;
   multiple?: boolean;
+  /** Its type settings: how a number shows (T-320). */
+  config?: NumberSettings;
 }
 
 /** A track the person sees. */
@@ -165,6 +168,7 @@ export const searchClient: SearchClient = {
       name: f.name,
       type: f.type,
       multiple: f.multiple ?? false,
+      ...(f.config ? { config: f.config } : {}),
     })),
   edit: async (id, change) =>
     (await api<{ ticket: SearchTicket }>(`/tickets/${id}`, { method: 'PATCH', body: change }))

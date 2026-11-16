@@ -810,6 +810,82 @@ describe('the create form (M1-012)', () => {
   });
 });
 
+describe('the create form’s defaults (T-320)', () => {
+  /** The bug form with a default for each custom field, and a short text field defaulting too. */
+  const DEFAULTS_FORM: TicketForm = {
+    ...withFields(BUG_FORM, [{ key: 'cf[9]', required: false, description: null }]),
+    customFields: [
+      ...BUG_FORM.customFields.map((f) =>
+        f.id === 7
+          ? { ...f, defaultValue: { id: 71, value: 'Minor' } }
+          : {
+              ...f,
+              defaultValue: {
+                id: 80,
+                value: 'Backend',
+                child: { id: 81, value: 'Queue' },
+              },
+            },
+      ),
+      {
+        id: 9,
+        name: 'Customer',
+        description: '',
+        type: 'text',
+        multiple: false,
+        defaultValue: 'ACME',
+      },
+    ],
+  };
+
+  it('[CORE-009] starts each field with its default and sends null for one emptied', async () => {
+    const user = userEvent.setup();
+    const calls = openCreate({
+      'GET /tracks/SHOP/layout?ticketTypeId=3&operation=create': () =>
+        jsonResponse(200, DEFAULTS_FORM),
+      'POST /tickets': () => jsonResponse(201, { ticket: { id: 9, key: 'SHOP-9' } }),
+    });
+    const customer = await screen.findByLabelText('Customer');
+    // The form shows what the ticket would get.
+    expect(customer).toHaveValue('ACME');
+    expect(screen.getByLabelText('Severity (required)')).toHaveValue('71');
+    expect(screen.getByLabelText('Component')).toHaveValue('80');
+    expect(screen.getByLabelText('Component: second level')).toHaveValue('81');
+
+    await user.type(screen.getByLabelText('Summary (required)'), 'Checkout fails');
+    await user.type(screen.getByLabelText('Due date (required)'), '2026-12-01');
+    await user.clear(customer);
+    await user.selectOptions(screen.getByLabelText('Severity (required)'), 'Blocker');
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+    expect(await screen.findByText('SHOP-9 was created.')).toBeVisible();
+    const sent = calls.filter((c) => c.method === 'POST' && c.path === '/tickets').pop();
+    // Emptied, it is sent as null: the server would otherwise fill its default in.
+    expect((sent?.body as { fields?: unknown } | undefined)?.fields).toEqual({
+      7: 70,
+      8: { parent: 80, child: 81 },
+      9: null,
+    });
+    // The next ticket starts with the defaults again.
+    expect(screen.getByLabelText('Customer')).toHaveValue('ACME');
+    expect(screen.getByLabelText('Severity (required)')).toHaveValue('71');
+  });
+
+  it('[CORE-009] keeps what was typed and drops the defaults another ticket type lacks', async () => {
+    const user = userEvent.setup();
+    openCreate({
+      'GET /tracks/SHOP/layout?ticketTypeId=3&operation=create': () =>
+        jsonResponse(200, DEFAULTS_FORM),
+    });
+    await user.type(await screen.findByLabelText('Summary (required)'), 'Checkout fails');
+    expect(screen.getByLabelText('Customer')).toHaveValue('ACME');
+    await chooseType(user, 'Chore');
+    expect(await screen.findByLabelText('Summary (required)')).toHaveValue('Checkout fails');
+    await chooseType(user, 'Bug');
+    expect(await screen.findByLabelText('Customer')).toHaveValue('ACME');
+    expect(screen.getByLabelText('Summary (required)')).toHaveValue('Checkout fails');
+  });
+});
+
 describe('the blocks of a new ticket’s text (NTF-013, T-120)', () => {
   it('[NTF-013] links another ticket from the description, found by search, as its key only', async () => {
     const user = userEvent.setup();

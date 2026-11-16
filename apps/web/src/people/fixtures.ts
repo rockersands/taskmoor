@@ -4,6 +4,7 @@ import {
   type GroupDetail,
   type GroupSummary,
   type PeopleClient,
+  type ServiceAccountChoice,
   USERS_PAGE,
   type User,
 } from './client';
@@ -32,6 +33,12 @@ export const PEOPLE: User[] = [
   }),
 ];
 
+/** Active service accounts, which the people list leaves out (IAM-007; T-320). */
+export const SERVICE_ACCOUNTS: ServiceAccountChoice[] = [
+  { id: 50, name: 'Release bot', email: 'service-50@service.invalid' },
+  { id: 51, name: 'Nightly export', email: 'service-51@service.invalid' },
+];
+
 /** `count` active people named Person 001, Person 002…, for lists longer than a page (T-307). */
 export function manyPeople(count: number): User[] {
   return Array.from({ length: count }, (_, i) => {
@@ -50,19 +57,40 @@ export interface FakePeopleClient extends PeopleClient {
  * `people` (the sample people unless given).
  */
 export function fakePeopleClient(
-  options: { pageSize?: number; people?: User[] } = {},
+  options: {
+    pageSize?: number;
+    people?: User[];
+    /** A third group, Engineering, kept by a directory with Release bot in it (M1-082; T-320). */
+    directoryGroup?: boolean;
+  } = {},
 ): FakePeopleClient {
   const pageSize = options.pageSize ?? USERS_PAGE;
   let users = structuredClone(options.people ?? PEOPLE);
+  const services: User[] = SERVICE_ACCOUNTS.map((a) =>
+    person(a.id, a.name, a.email, { hasPassword: false, lastSignInAt: null }),
+  );
   let groups: {
     id: number;
     name: string;
     description: string;
     members: number[];
     children: number[];
+    directory?: { id: number; name: string };
   }[] = [
     { id: 11, name: 'Approvers', description: 'Sign off releases', members: [1, 3], children: [] },
     { id: 12, name: 'Support', description: '', members: [2], children: [] },
+    ...(options.directoryGroup
+      ? [
+          {
+            id: 13,
+            name: 'Engineering',
+            description: 'From the company directory',
+            members: [3, 50],
+            children: [],
+            directory: { id: 2, name: 'Corporate directory' },
+          },
+        ]
+      : []),
   ];
   let next = 100;
   const calls: FakePeopleClient['calls'] = [];
@@ -170,7 +198,13 @@ export function fakePeopleClient(
       const g = group(id);
       return structuredClone({
         group: { id: g.id, name: g.name, description: g.description },
-        members: users.filter((u) => g.members.includes(u.id)),
+        members: [
+          ...users.filter((u) => g.members.includes(u.id)).map((u) => ({ ...u, kind: 'person' })),
+          ...services
+            .filter((u) => g.members.includes(u.id))
+            .map((u) => ({ ...u, kind: 'service' })),
+        ] as GroupDetail['members'],
+        directory: g.directory ?? null,
         children: groups
           .filter((c) => g.children.includes(c.id))
           .map((c) => ({ id: c.id, name: c.name })),
@@ -190,7 +224,16 @@ export function fakePeopleClient(
     },
     renameGroup: async (id, change) => {
       log('renameGroup', id, change);
-      Object.assign(group(id), change);
+      const g = group(id);
+      if (change.name !== undefined && g.directory) {
+        throw new ApiError(409, { error: 'directory_managed', directory: g.directory });
+      }
+      const taken = (other: (typeof groups)[number]) =>
+        other.id !== id && other.name.toLowerCase() === change.name?.toLowerCase();
+      if (change.name !== undefined && groups.some(taken)) {
+        throw new ApiError(409, { error: 'name_taken' });
+      }
+      Object.assign(g, change);
     },
     deleteGroup: async (id) => {
       log('deleteGroup', id);
@@ -220,6 +263,7 @@ export function fakePeopleClient(
       const g = group(id);
       g.children = g.children.filter((c) => c !== childId);
     },
+    serviceAccounts: async () => structuredClone(SERVICE_ACCOUNTS),
   };
 }
 

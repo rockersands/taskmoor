@@ -19,8 +19,7 @@ export interface AdminGroup {
 export const ADMIN_HOME = '#/admin';
 
 /**
- * Administration's groups and pages (ADR-114). A control that has no page yet is not listed:
- * priorities and notification policies join their groups with their pages.
+ * Administration's groups and pages (ADR-114). A control that has no page yet is not listed.
  * The tracks someone runs lead the list, and are all a track's manager sees here.
  */
 export const ADMIN_GROUPS: readonly AdminGroup[] = [
@@ -116,6 +115,12 @@ export const ADMIN_GROUPS: readonly AdminGroup[] = [
         hintId: 'settings.fieldsHint',
       },
       {
+        id: 'ticket-types',
+        href: '#/admin/ticket-types',
+        labelId: 'settings.ticketTypes',
+        hintId: 'settings.ticketTypesHint',
+      },
+      {
         id: 'configuration-sets',
         href: '#/admin/configuration-sets',
         labelId: 'settings.sets',
@@ -128,10 +133,22 @@ export const ADMIN_GROUPS: readonly AdminGroup[] = [
         hintId: 'settings.layoutsHint',
       },
       {
+        id: 'priorities',
+        href: '#/admin/priorities',
+        labelId: 'settings.priorities',
+        hintId: 'settings.prioritiesHint',
+      },
+      {
         id: 'track-sets',
         href: '#/admin/track-sets',
         labelId: 'settings.trackSets',
         hintId: 'settings.trackSetsHint',
+      },
+      {
+        id: 'notification-policies',
+        href: '#/admin/notification-policies',
+        labelId: 'settings.notificationPolicies',
+        hintId: 'settings.notificationPoliciesHint',
       },
     ],
   },
@@ -251,6 +268,12 @@ export const ADMIN_GROUPS: readonly AdminGroup[] = [
         href: '#/admin/guardrails',
         labelId: 'settings.guardrails',
         hintId: 'settings.guardrailsHint',
+      },
+      {
+        id: 'email',
+        href: '#/admin/email',
+        labelId: 'settings.email',
+        hintId: 'settings.emailHint',
       },
     ],
   },

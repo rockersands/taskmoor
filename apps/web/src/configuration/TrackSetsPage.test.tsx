@@ -75,6 +75,24 @@ describe('which sets a track uses (UI-T20)', () => {
     expect(client.saved).toEqual([{ trackId: 3, change: { prioritySetId: null } }]);
   });
 
+  it('[CORE-014] links the priority picker to the page that makes priority sets', async () => {
+    renderPage();
+    const form = await screen.findByRole('form', { name: 'Sets of SHOP' });
+    expect(
+      within(form).getByRole('link', { name: 'Make and change priority sets on Priorities.' }),
+    ).toHaveAttribute('href', '#/admin/priorities');
+  });
+
+  it('[NTF-001] links the notification picker to the page that makes notification policies', async () => {
+    renderPage();
+    const form = await screen.findByRole('form', { name: 'Sets of SHOP' });
+    expect(
+      within(form).getByRole('link', {
+        name: 'Make and change notification policies on Notification policies.',
+      }),
+    ).toHaveAttribute('href', '#/admin/notification-policies');
+  });
+
   it('[NTF-001] offers a local-mode track its own sets, opens on the named track', async () => {
     renderPage(CONFIG_ADMIN, { initialTrackId: 4 });
     const form = await screen.findByRole('form', { name: 'Sets of OPS' });

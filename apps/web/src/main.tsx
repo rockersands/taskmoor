@@ -42,6 +42,7 @@ import './styles/surfaces.css';
 import './styles/track-groups.css';
 import './styles/drag.css';
 import './styles/layout-editor.css';
+import './styles/fields.css';
 import './styles/motion.css';
 import './styles/print.css';
 

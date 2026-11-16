@@ -35,28 +35,63 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The fields, one choice list open with its options. */
+/** The fields, one choice list open with its contexts, defaults and options. */
 export const Fields: Story = {
+  args: { client: fakeFieldsClient() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Severity' }));
     await expect(await canvas.findByRole('button', { name: 'Rename Medium' })).toBeVisible();
+    await expect(canvas.getByText('Tracks: Payments; ticket types: Bug')).toBeVisible();
   },
 };
 
-/** An option on tickets is not deleted: the page says how many hold it. */
+/**
+ * An option on tickets is not deleted: the page says how many hold it. A plain option asks
+ * nothing first (D13, T-267), so the refusal comes at the first press.
+ */
 export const OptionInUse: Story = {
+  args: { client: fakeFieldsClient() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Severity' }));
     await userEvent.click(await canvas.findByRole('button', { name: 'Delete Medium' }));
     await expect(await canvas.findByRole('alert')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Delete Medium' })).toBeVisible();
+  },
+};
+
+/** A two-level list open: each option with its child options. */
+export const TwoLevelList: Story = {
+  args: { client: fakeFieldsClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Region' }));
+    await expect(
+      await canvas.findByRole('list', { name: 'Child options of Europe' }),
+    ).toBeVisible();
+  },
+};
+
+/** New field with a formula, its check saying what it reads. */
+export const NewFormula: Story = {
+  args: { client: fakeFieldsClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'New field' }));
+    const form = canvas.getByRole('form', { name: 'Add a field' });
+    await userEvent.type(within(form).getByLabelText('Field name'), 'Spend');
+    await userEvent.selectOptions(within(form).getByLabelText('Type'), 'formula');
+    await userEvent.type(within(form).getByLabelText('Expression'), '{{Cost} * 2');
+    await expect(
+      await within(form).findByText('It gives a number. It reads {Cost}.'),
+    ).toBeVisible();
   },
 };
 
 /**
- * Deleting an option that takes its second-level options and the default with it asks first,
- * saying so (D13, T-267); at a phone's width nothing sticks out.
+ * Deleting an option that takes its child options and the default with it asks first, saying so
+ * (D13, T-267); at a phone's width nothing sticks out.
  */
 export const DeletingAnOptionAsksAtPhoneWidth: Story = {
   args: { client: fakeFieldsClient() },
@@ -65,7 +100,9 @@ export const DeletingAnOptionAsksAtPhoneWidth: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Office' }));
     await userEvent.click(await canvas.findByRole('button', { name: 'Delete Madrid' }));
-    const question = canvas.getByRole('group', { name: /^Deleting Madrid also deletes/ });
+    const question = canvas.getByRole('group', {
+      name: /^Delete Madrid and its 2 child options\? They leave this list for good\. New tickets/,
+    });
     await expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
     await fitsPhoneWidth(canvas);
   },
@@ -81,11 +118,12 @@ export const NoFieldsYet: Story = {
 };
 
 export const AtPhoneWidth: Story = {
+  args: { client: fakeFieldsClient() },
   decorators: [atPhoneWidth],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Severity' }));
-    await expect(await canvas.findByRole('button', { name: 'Rename Medium' })).toBeVisible();
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Region' }));
+    await expect(await canvas.findByRole('button', { name: 'Rename Madrid' })).toBeVisible();
     await expect(canvas.getByText(/^Add custom fields and keep/)).toBeVisible();
     await fitsPhoneWidth(canvas);
   },

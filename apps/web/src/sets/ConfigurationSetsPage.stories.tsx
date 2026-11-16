@@ -49,6 +49,40 @@ export const RuleSetOpen: Story = {
   },
 };
 
+/** A type set open: its types, their order, the preselected one and its default kinds (T-320). */
+export const TypeSetOpen: Story = {
+  args: { client: fakeSetsClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage Software types' }));
+    await expect(canvas.getByRole('list', { name: 'Order in the set' })).toBeVisible();
+    await expect(canvas.getByLabelText('Software tracks')).toBeDisabled();
+  },
+};
+
+/** A type dropped that tickets still have: the set asks which kept type they take (CORE-005). */
+export const DroppedTypeInUse: Story = {
+  args: { client: fakeSetsClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage Software types' }));
+    const panel = canvas.getByRole('form', { name: 'Settings of Software types' });
+    await userEvent.click(within(panel).getByLabelText('Bug'));
+    await userEvent.click(within(panel).getByRole('button', { name: 'Save the set' }));
+    await expect(await canvas.findByLabelText('Tickets of Bug become')).toHaveFocus();
+  },
+};
+
+/** The same question at a phone's width: nothing sticks out sideways. */
+export const DroppedTypeAtPhoneWidth: Story = {
+  ...DroppedTypeInUse,
+  decorators: [atPhoneWidth],
+  play: async (context) => {
+    await DroppedTypeInUse.play?.(context);
+    await fitsPhoneWidth(within(context.canvasElement));
+  },
+};
+
 /**
  * Someone who runs OPS, a track with its own configuration, on its own page (T-163a): its type
  * set, whose types they choose, and the rule set it owns, open, with the offer to use it.

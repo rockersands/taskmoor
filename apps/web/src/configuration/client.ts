@@ -60,6 +60,28 @@ export interface MappingNeeded {
   workflowId: number;
 }
 
+/**
+ * What a change of workflow map would do, as the preview routes answer it (WF-001; T-320): the
+ * tickets in statuses their type's new workflow lacks, and the statuses each new workflow offers
+ * them.
+ */
+export interface MappingImpact {
+  ticketCount: number;
+  lostStatuses: { ticketType: Named; status: Named; ticketCount: number; workflow: Named }[];
+  targetWorkflows: (Named & { statuses: Named[] })[];
+}
+
+/** Where each lost status's tickets go, by ticket type: `{ typeId: { fromId: toId } }`. */
+export type TypeStatusMapping = Record<string, Record<string, number>>;
+
+/** How far the tickets a change moves have got (`GET /api/v1/workflow-migrations/:id`). */
+export interface StatusMigration {
+  id: number;
+  status: 'queued' | 'running' | 'done';
+  total: number;
+  migrated: number;
+}
+
 /** Track templates (M1-054): each makes a track of its type with its features and board. */
 export const TRACK_TEMPLATES = ['scrum', 'kanban', 'bug-tracking', 'business', 'blank'] as const;
 export type TrackTemplate = (typeof TRACK_TEMPLATES)[number];
@@ -104,17 +126,31 @@ export interface ConfigurationClient {
   workflowMaps: () => Promise<WorkflowMapSummary[]>;
   workflowMap: (id: number) => Promise<WorkflowMap>;
   createWorkflowMap: (body: { name: string; defaultWorkflowId: number }) => Promise<WorkflowMap>;
+  /** The map saved, and the tickets it moves when a mapping was given (WF-001; T-320). */
   updateWorkflowMap: (
     id: number,
-    change: {
-      name?: string;
-      defaultWorkflowId?: number;
-      entries?: { ticketTypeId: number; workflowId: number }[];
-    },
-  ) => Promise<WorkflowMap>;
+    change: MapChange & { name?: string; typeStatusMapping?: TypeStatusMapping },
+  ) => Promise<{ workflowMap: WorkflowMap; statusMigration: StatusMigration | null }>;
   deleteWorkflowMap: (id: number) => Promise<void>;
   workflows: () => Promise<Named[]>;
   ticketTypes: () => Promise<Named[]>;
+  /** What switching a shared-mode track to a map would do to its tickets (T-320). */
+  trackMapImpact: (trackId: number, workflowMapId: number | 'default') => Promise<MappingImpact>;
+  /** What a change of a map's workflows would do to the tickets of its tracks (T-320). */
+  workflowMapImpact: (id: number, change: MapChange) => Promise<MappingImpact>;
+  /** Switches a track's map (`null`: the default), moving tickets as the mapping says (T-320). */
+  switchWorkflowMap: (
+    trackId: number,
+    workflowMapId: number | null,
+    typeStatusMapping?: TypeStatusMapping,
+  ) => Promise<{ track: Track; statusMigration: StatusMigration | null }>;
+  statusMigration: (id: number) => Promise<StatusMigration>;
+}
+
+/** A change of a map's workflows: the one for every other type, and each type's own. */
+export interface MapChange {
+  defaultWorkflowId?: number;
+  entries?: { ticketTypeId: number; workflowId: number }[];
 }
 
 export const configurationClient: ConfigurationClient = {
@@ -152,13 +188,13 @@ export const configurationClient: ConfigurationClient = {
   createWorkflowMap: async (body) =>
     (await api<{ workflowMap: WorkflowMap }>('/workflow-maps', { method: 'POST', body }))
       .workflowMap,
-  updateWorkflowMap: async (id, change) =>
-    (
-      await api<{ workflowMap: WorkflowMap }>(`/workflow-maps/${id}`, {
-        method: 'PATCH',
-        body: change,
-      })
-    ).workflowMap,
+  updateWorkflowMap: async (id, change) => {
+    const saved = await api<{ workflowMap: WorkflowMap; statusMigration?: StatusMigration }>(
+      `/workflow-maps/${id}`,
+      { method: 'PATCH', body: change },
+    );
+    return { workflowMap: saved.workflowMap, statusMigration: saved.statusMigration ?? null };
+  },
   deleteWorkflowMap: async (id) => {
     await api<unknown>(`/workflow-maps/${id}`, { method: 'DELETE' });
   },
@@ -171,4 +207,29 @@ export const configurationClient: ConfigurationClient = {
       id: t.id,
       name: t.name,
     })),
+  trackMapImpact: async (trackId, workflowMapId) =>
+    (
+      await api<{ impact: MappingImpact }>(
+        `/tracks/${trackId}/workflow-map/impact?workflowMapId=${workflowMapId}`,
+      )
+    ).impact,
+  workflowMapImpact: async (id, change) =>
+    (
+      await api<{ impact: MappingImpact }>(`/workflow-maps/${id}/impact`, {
+        method: 'POST',
+        body: change,
+      })
+    ).impact,
+  switchWorkflowMap: async (trackId, workflowMapId, typeStatusMapping) => {
+    const saved = await api<{ track: Track; statusMigration?: StatusMigration }>(
+      `/tracks/${trackId}`,
+      {
+        method: 'PATCH',
+        body: { workflowMapId, ...(typeStatusMapping ? { typeStatusMapping } : {}) },
+      },
+    );
+    return { track: saved.track, statusMigration: saved.statusMigration ?? null };
+  },
+  statusMigration: async (id) =>
+    (await api<{ statusMigration: StatusMigration }>(`/workflow-migrations/${id}`)).statusMigration,
 };

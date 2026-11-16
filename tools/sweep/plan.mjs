@@ -136,6 +136,7 @@ export function allRoutes(ids, source) {
       route('track', `track-${s.id}`, `${track}${s.path}`),
     ),
     route('track', 'track-templates', `${track}/templates`),
+    route('track', 'track-areas', `${track}/areas`),
     route('track', 'track-kanban-summary', `#/tracks/${ids.kanbanTrack}`),
     route('track', 'track-kanban-board', `#/tracks/${ids.kanbanTrack}/board`),
     route('track', 'track-kanban-statistics', `#/tracks/${ids.kanbanTrack}/statistics`),
@@ -196,6 +197,11 @@ export function allRoutes(ids, source) {
       'admin',
       'manage-track-configuration-sets',
       `#/manage/tracks/${ids.localTrackId}/configuration-sets`,
+    ),
+    route(
+      'admin',
+      'manage-track-notification-policies',
+      `#/manage/tracks/${ids.localTrackId}/notification-policies`,
     ),
 
     route('other', 'account', '#/account'),

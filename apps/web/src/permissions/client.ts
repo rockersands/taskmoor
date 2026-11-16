@@ -21,7 +21,10 @@ export interface PolicySummary {
   grantCount: number;
 }
 
-/** Who a grant names. Field grantees (`user_field`, `group_field`) are given through the API. */
+/**
+ * Who a grant names. Field grantees name a field of the ticket by key (`cf[12]`): `user_field`
+ * a user field, whose people get the grant, `group_field` a group field, whose groups do.
+ */
 export type Grantee =
   | 'role'
   | 'group'
@@ -59,6 +62,34 @@ export interface NewGrant {
   roleId?: number;
   groupId?: number;
   userId?: number;
+  fieldKey?: string;
+}
+
+/** A user or group field a field grantee may name (IAM-010, IAM-011; T-320). */
+export interface FieldChoice {
+  /** As grants name it: `cf[12]`. */
+  key: string;
+  name: string;
+  type: 'user' | 'group';
+  /** The local-mode track that owns it; null for a shared field. */
+  trackId: number | null;
+}
+
+/** The field a grantee names, by its name; its key when the field is gone. */
+export function fieldName(fields: readonly FieldChoice[], key: string | null | undefined): string {
+  return fields.find((f) => f.key === key)?.name ?? key ?? '';
+}
+
+/** The user and group fields of the site, as field grantees name them. */
+export async function readFieldChoices(): Promise<FieldChoice[]> {
+  const { fields } = await api<{
+    fields: { id: number; name: string; type: string; trackId: number | null }[];
+  }>('/fields');
+  return fields.flatMap((f) =>
+    f.type === 'user' || f.type === 'group'
+      ? [{ key: `cf[${f.id}]`, name: f.name, type: f.type, trackId: f.trackId }]
+      : [],
+  );
 }
 
 /** The permission names, as `GET /api/v1/permissions/catalogue` lists them. */
@@ -85,6 +116,8 @@ export interface PermissionsClient {
   removeGlobalGrant: (id: number) => Promise<void>;
   groups: () => Promise<Named[]>;
   findPeople: (query: string) => Promise<Named[]>;
+  /** The user and group fields field grantees name (T-320). */
+  fields: () => Promise<FieldChoice[]>;
 }
 
 export const permissionsClient: PermissionsClient = {
@@ -123,4 +156,5 @@ export const permissionsClient: PermissionsClient = {
         `/users?status=active&limit=8&query=${encodeURIComponent(query)}`,
       )
     ).users,
+  fields: readFieldChoices,
 };

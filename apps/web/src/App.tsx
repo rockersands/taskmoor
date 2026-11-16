@@ -11,6 +11,7 @@ import { AiUsagePage } from './admin/AiUsagePage';
 import { ApiUsagePage } from './admin/ApiUsagePage';
 import { adminAccessOf } from './admin/access';
 import { AuditPage } from './admin/audit/AuditPage';
+import { EmailSettingsPage } from './admin/EmailSettingsPage';
 import { FrontendsPage } from './admin/FrontendsPage';
 import { ImportsPage } from './admin/imports/ImportsPage';
 import { McpPage } from './admin/McpPage';
@@ -20,6 +21,7 @@ import { SettingsPage } from './admin/SettingsPage';
 import { SystemPage } from './admin/SystemPage';
 import { ADMIN_HOME, adminGroupOf, groupsFor } from './admin/sections';
 import { TrashPage } from './admin/TrashPage';
+import { AreasPage } from './areas/AreasPage';
 import { BoardPage } from './boards/BoardPage';
 import { BoardSettingsPage } from './boards/BoardSettingsPage';
 import { BulkOperationPage } from './bulk/BulkOperationPage';
@@ -47,6 +49,7 @@ import { LayoutEditorPage } from './layouts/LayoutEditorPage';
 import { ListPage } from './list/ListPage';
 import type { MetaClient } from './meta/client';
 import { VersionGate } from './meta/VersionGate';
+import { NotificationPoliciesPage } from './notifications/NotificationPoliciesPage';
 import { UnsubscribePage } from './notifications/UnsubscribePage';
 import { ConsentPage } from './oauth/ConsentPage';
 import { GroupsPage } from './people/GroupsPage';
@@ -58,6 +61,7 @@ import { VisibilityPage } from './permissions/VisibilityPage';
 import { PLAN_BOARD_ROUTE, PLAN_ROUTE, type PlanSection } from './plans/address';
 import { PlanPage } from './plans/PlanPage';
 import { PlansPage } from './plans/PlansPage';
+import { PrioritiesPage } from './priorities/PrioritiesPage';
 import { CrossTrackReleasePage } from './releases/CrossTrackReleasePage';
 import { CrossTrackReleasesPage } from './releases/CrossTrackReleasesPage';
 import { ReleasePage } from './releases/ReleasePage';
@@ -103,6 +107,7 @@ import { CreateTicketPage } from './tickets/CreateTicketPage';
 import { TicketTemplatesPage } from './tickets/templates/TicketTemplatesPage';
 import { TicketPage } from './tickets/view/TicketPage';
 import { TicketPopup } from './tickets/view/TicketPopup';
+import { TicketTypesPage } from './tickettypes/TicketTypesPage';
 import { TimelinePage } from './timeline/TimelinePage';
 import { AdminTokensPage } from './tokens/AdminTokensPage';
 import { ServiceAccountsPage } from './tokens/ServiceAccountsPage';
@@ -213,6 +218,11 @@ const ADMIN_FRONTENDS = '#/admin/frontends';
 const ADMIN_AI = '#/admin/ai';
 const ADMIN_WEBHOOKS = '#/admin/webhooks';
 const ADMIN_DIRECTORIES = '#/admin/directories';
+/** Notification policies (NTF-001) and the site's email settings (NTF-002), T-155. */
+const ADMIN_NOTIFICATION_POLICIES = '#/admin/notification-policies';
+const ADMIN_EMAIL = '#/admin/email';
+/** A local-mode track's own notification policies, beside its own sets (T-163a's pattern). */
+const OWN_NOTIFICATION_POLICIES = /^#\/manage\/tracks\/(\d{1,10})\/notification-policies(?:[/?]|$)/;
 const CREATE_TICKET = '#/create';
 const ADMIN_WORKFLOWS = '#/admin/workflows';
 const ADMIN_USERS = '#/admin/users';
@@ -225,9 +235,13 @@ const ADMIN_PERMISSIONS = '#/admin/permissions';
 const ADMIN_VISIBILITY = '#/admin/visibility';
 const ADMIN_EXPLAINER = '#/admin/permission-explainer';
 const ADMIN_SETS = '#/admin/configuration-sets';
+/** Ticket types and hierarchy levels (T-320). */
+const ADMIN_TICKET_TYPES = '#/admin/ticket-types';
 /** The layout editor (UI-T15): a set by id with `?set=`. */
 const ADMIN_LAYOUTS = '#/admin/layouts';
 const ADMIN_TRACK_SETS = '#/admin/track-sets';
+/** Priorities, priority sets and close reasons (T-320). */
+const ADMIN_PRIORITIES = '#/admin/priorities';
 const ADMIN_GUARDRAILS = '#/admin/guardrails';
 const ADMIN_TICKET_TEMPLATES = '#/admin/ticket-templates';
 const ADMIN_IMPORTS = '#/admin/imports';
@@ -246,6 +260,8 @@ const TRACK_SUMMARY = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})(?:[/?]|$)/;
 const TRACK_FILES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/files(?:[/?]|$)/;
 /** A track's outcomes with their progress (AGL-024). */
 const TRACK_OUTCOMES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/outcomes(?:[/?]|$)/;
+/** A track's areas (CORE-015, T-320). */
+const TRACK_AREAS = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/areas(?:[/?]|$)/;
 /** A track's board, backlog and statistics, which read its one board. */
 const TRACK_BOARD_SECTION =
   /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/(board|backlog|statistics)(?:\/([a-z-]{1,40}))?(?:[/?]|$)/;
@@ -460,6 +476,22 @@ function Pages() {
               },
             },
             {
+              id: 'go-notification-policies',
+              labelId: 'notificationPolicies.title' as const,
+              keywords: ['notifications', 'notify', 'recipients', 'events', 'who hears'],
+              run: () => {
+                navigate(ADMIN_NOTIFICATION_POLICIES);
+              },
+            },
+            {
+              id: 'go-email',
+              labelId: 'emailSettings.title' as const,
+              keywords: ['email', 'mail', 'smtp', 'digest', 'batch'],
+              run: () => {
+                navigate(ADMIN_EMAIL);
+              },
+            },
+            {
               id: 'go-tokens',
               labelId: 'admin.tokens.title' as const,
               keywords: ['api', 'revoke', 'rotate'],
@@ -604,11 +636,27 @@ function Pages() {
               },
             },
             {
+              id: 'go-ticket-types',
+              labelId: 'admin.ticketTypes.title' as const,
+              keywords: ['ticket type', 'type', 'level', 'hierarchy', 'icon', 'subticket'],
+              run: () => {
+                navigate(ADMIN_TICKET_TYPES);
+              },
+            },
+            {
               id: 'go-layouts',
               labelId: 'layouts.title' as const,
               keywords: ['layout', 'screen', 'form', 'tabs', 'sections', 'arrange fields'],
               run: () => {
                 navigate(ADMIN_LAYOUTS);
+              },
+            },
+            {
+              id: 'go-priorities',
+              labelId: 'admin.priorities.title' as const,
+              keywords: ['priority', 'priority set', 'close reason', 'urgent', 'scheme'],
+              run: () => {
+                navigate(ADMIN_PRIORITIES);
               },
             },
             {
@@ -721,6 +769,13 @@ function Pages() {
     content = <WebhooksPage />;
   } else if (isRoute(hash, ADMIN_DIRECTORIES)) {
     content = <DirectoriesPage />;
+  } else if (isRoute(hash, ADMIN_NOTIFICATION_POLICIES)) {
+    content = <NotificationPoliciesPage />;
+  } else if (isRoute(hash, ADMIN_EMAIL)) {
+    content = <EmailSettingsPage />;
+  } else if (OWN_NOTIFICATION_POLICIES.test(hash)) {
+    const trackId = Number(OWN_NOTIFICATION_POLICIES.exec(hash)?.[1]);
+    content = <NotificationPoliciesPage key={`${trackId}-notifications`} trackId={trackId} />;
   } else if (isRoute(hash, ADMIN_USERS)) {
     content = <UsersPage />;
   } else if (isRoute(hash, ADMIN_GROUPS)) {
@@ -760,11 +815,15 @@ function Pages() {
     content = <VisibilityPage />;
   } else if (isRoute(hash, ADMIN_EXPLAINER)) {
     content = <PermissionExplainerPage />;
+  } else if (isRoute(hash, ADMIN_PRIORITIES)) {
+    content = <PrioritiesPage />;
   } else if (isRoute(hash, ADMIN_TRACK_SETS)) {
     const trackId = Number(/[?&]track=(\d{1,10})(?:&|$)/.exec(hash)?.[1]);
     content = <TrackSetsPage {...(trackId ? { initialTrackId: trackId } : {})} />;
   } else if (isRoute(hash, ADMIN_SETS)) {
     content = <ConfigurationSetsPage />;
+  } else if (isRoute(hash, ADMIN_TICKET_TYPES)) {
+    content = <TicketTypesPage />;
   } else if (isRoute(hash, ADMIN_LAYOUTS)) {
     const setId = Number(/[?&]set=(\d{1,10})(?:&|$)/.exec(hash)?.[1]);
     content = <LayoutEditorPage {...(setId ? { initialSetId: setId } : {})} />;
@@ -931,6 +990,17 @@ function Pages() {
     content = (
       <TrackLayout trackKey={key} section="outcomes">
         <TrackOutcomesPage key={key} trackKey={key} />
+      </TrackLayout>
+    );
+  } else if (TRACK_AREAS.test(hash)) {
+    active = 'tracks';
+    guarded = true;
+    const key = TRACK_AREAS.exec(hash)?.[1] ?? '';
+    // Under the track's tab bar with no tab of its own, as its Ticket templates (T-320). Once
+    // TrackLayout has `within` (wave26m/t359-track), it lies within the Summary, which leads here.
+    content = (
+      <TrackLayout trackKey={key} section={null}>
+        <AreasPage key={key} trackKey={key} />
       </TrackLayout>
     );
   } else if (TRACK_BOARD_SECTION.test(hash)) {

@@ -3,6 +3,7 @@ import { useNotSetupAdmin } from '../admin/access';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
@@ -24,6 +25,8 @@ const SETS: {
   labelId: MessageId;
   noneId: MessageId;
   hintId: MessageId;
+  /** The page that makes and changes these sets, when there is one. */
+  made?: { href: string; linkId: MessageId };
 }[] = [
   {
     key: 'layoutSetId',
@@ -38,6 +41,7 @@ const SETS: {
     labelId: 'admin.trackSets.priority',
     noneId: 'admin.trackSets.priorityNone',
     hintId: 'admin.trackSets.priorityHint',
+    made: { href: '#/admin/priorities', linkId: 'admin.trackSets.priorityLink' },
   },
   {
     key: 'visibilityPolicyId',
@@ -52,6 +56,10 @@ const SETS: {
     labelId: 'admin.trackSets.notification',
     noneId: 'admin.trackSets.notificationNone',
     hintId: 'admin.trackSets.notificationHint',
+    made: {
+      href: '#/admin/notification-policies',
+      linkId: 'admin.trackSets.notificationLink',
+    },
   },
 ];
 
@@ -244,7 +252,7 @@ function TrackSetsForm({
       aria-label={t('admin.trackSets.formOf', { key: track.key })}
       onSubmit={(event) => void submit(event)}
     >
-      {SETS.map(({ key, list, labelId, noneId, hintId }) => (
+      {SETS.map(({ key, list, labelId, noneId, hintId, made }) => (
         <div key={key} className="form-field">
           <label htmlFor={`${id}-${key}`} className="form-label">
             {t(labelId)}
@@ -265,6 +273,11 @@ function TrackSetsForm({
           <p id={`${id}-${key}-hint`} className="form-hint">
             {t(hintId)}
           </p>
+          {made && (
+            <p className="form-hint form-hint-link">
+              <a href={routeHref(made.href)}>{t(made.linkId)}</a>
+            </p>
+          )}
         </div>
       ))}
       <p role="status" className="form-status">
