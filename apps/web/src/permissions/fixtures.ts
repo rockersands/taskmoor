@@ -1,5 +1,13 @@
 import { ApiError } from '../api/client';
-import type { Grant, NewGrant, PermissionsClient, Policy, PolicySummary, Role } from './client';
+import type {
+  FieldChoice,
+  Grant,
+  NewGrant,
+  PermissionsClient,
+  Policy,
+  PolicySummary,
+  Role,
+} from './client';
 
 export interface FakePermissionsClient extends PermissionsClient {
   calls: { action: string; args: unknown[] }[];
@@ -12,6 +20,16 @@ const GROUPS = [
 const PEOPLE = [
   { id: 1, name: 'Ada Lovelace' },
   { id: 2, name: 'Bo Rivera' },
+];
+
+/**
+ * The user and group fields a field grantee may name (T-320): two shared, and one a local-mode
+ * track owns, which a shared policy may not name.
+ */
+export const FIELD_CHOICES: FieldChoice[] = [
+  { key: 'cf[31]', name: 'Reviewer', type: 'user', trackId: null },
+  { key: 'cf[32]', name: 'Approving team', type: 'group', trackId: null },
+  { key: 'cf[33]', name: 'Shop contact', type: 'user', trackId: 3 },
 ];
 
 /**
@@ -31,6 +49,7 @@ export function fakePermissionsClient(): FakePermissionsClient {
         { id: 101, permission: 'browse_track', grantee: 'role', roleId: 8, roleName: 'Members' },
         { id: 102, permission: 'browse_track', grantee: 'any_user' },
         { id: 103, permission: 'create_tickets', grantee: 'role', roleId: 8, roleName: 'Members' },
+        { id: 104, permission: 'edit_tickets', grantee: 'user_field', fieldKey: 'cf[31]' },
       ],
       tracks: [
         { id: 3, key: 'SHOP', name: 'Shop' },
@@ -57,7 +76,8 @@ export function fakePermissionsClient(): FakePermissionsClient {
     a.grantee === b.grantee &&
     (a.roleId ?? undefined) === b.roleId &&
     (a.groupId ?? undefined) === b.groupId &&
-    (a.userId ?? undefined) === b.userId;
+    (a.userId ?? undefined) === b.userId &&
+    (a.fieldKey ?? undefined) === b.fieldKey;
   const policyOf = (id: number) => policies.find((p) => p.policy.id === id) as Policy;
   return {
     calls,
@@ -150,5 +170,6 @@ export function fakePermissionsClient(): FakePermissionsClient {
     groups: async () => structuredClone(GROUPS),
     findPeople: async (query) =>
       PEOPLE.filter((p) => p.name.toLowerCase().includes(query.toLowerCase())),
+    fields: async () => structuredClone(FIELD_CHOICES),
   };
 }

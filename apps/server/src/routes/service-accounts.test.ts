@@ -186,6 +186,36 @@ describe('service accounts (M1-004)', () => {
     expect(detail.body).not.toContain(t.token);
   });
 
+  it('[IAM-007] [IAM-008] a group read says which members are service accounts (T-320)', async () => {
+    const id = await createAccount('Indexer');
+    const ada = await database.db
+      .selectFrom('app_user')
+      .select('id')
+      .where('email', '=', 'ada@example.com')
+      .executeTakeFirstOrThrow();
+    const group = await admin({
+      method: 'POST',
+      url: '/api/v1/groups',
+      payload: { name: 'People and robots' },
+    });
+    const groupId = group.json().group.id;
+    for (const member of [ada.id, id]) {
+      const added = await admin({
+        method: 'PUT',
+        url: `/api/v1/groups/${groupId}/members/${member}`,
+      });
+      expect(added.statusCode).toBe(204);
+    }
+    const read = await admin({ method: 'GET', url: `/api/v1/groups/${groupId}` });
+    expect(read.statusCode).toBe(200);
+    expect(
+      (read.json().members as { id: number; kind: string }[]).map((m) => [m.id, m.kind]),
+    ).toEqual([
+      [ada.id, 'person'],
+      [id, 'service'],
+    ]);
+  });
+
   it('[IAM-007] rotates a service-account token with a configurable overlap and no downtime', async () => {
     const id = await createAccount('Exporter');
     const old = await issue(id, {

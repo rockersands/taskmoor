@@ -1,5 +1,6 @@
 import { ApiError } from '../api/client';
 import type { Named } from './client';
+import { FIELD_CHOICES } from './fixtures';
 import type {
   ExplainClient,
   Explanation,
@@ -47,6 +48,15 @@ const POLICIES: VisibilityPolicy[] = [
             group: null,
             user: null,
             fieldKey: null,
+          },
+          // Whoever the ticket's Reviewer field names (T-320).
+          {
+            id: 102,
+            grantee: 'user_field',
+            role: null,
+            group: null,
+            user: null,
+            fieldKey: 'cf[31]',
           },
         ],
       }),
@@ -156,7 +166,7 @@ export function fakeVisibilityClient(
         role: member.roleId ? (ROLES.find((r) => r.id === member.roleId) ?? null) : null,
         group: member.groupId ? (GROUPS.find((g) => g.id === member.groupId) ?? null) : null,
         user: member.userId ? (PEOPLE.find((p) => p.id === member.userId) ?? null) : null,
-        fieldKey: null,
+        fieldKey: member.fieldKey ?? null,
       });
     },
     removeMember: async (policyId, levelId, memberId) => {
@@ -168,6 +178,7 @@ export function fakeVisibilityClient(
     groups: async () => GROUPS,
     findPeople: async (query) =>
       PEOPLE.filter((p) => p.name.toLowerCase().includes(query.toLowerCase())),
+    fields: async () => structuredClone(FIELD_CHOICES),
   };
 }
 

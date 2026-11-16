@@ -3391,7 +3391,7 @@ export const messagesEn = {
   'admin.tracks.archivedSaid': 'Track {key} was archived.',
   'admin.tracks.restored': 'Track {key} was restored.',
   'admin.tracks.problem.mapping':
-    '{tickets, plural, one {# ticket is} other {# tickets are}} in statuses the new workflows lack. Give a status mapping through the API, then switch.',
+    '{tickets, plural, one {# ticket is} other {# tickets are}} in statuses the new workflows lack. Choose the workflow map again to say where they go.',
   'admin.tracks.problem.migrating':
     'Tickets are still moving after an earlier change. Try again when it has finished.',
   'admin.tracks.problem.key': 'That key is taken or not a valid key.',
@@ -3431,7 +3431,7 @@ export const messagesEn = {
   'admin.maps.confirmDelete':
     'Delete {name}? No track can use it afterwards, and this cannot be undone.',
   'admin.maps.problem.mapping':
-    '{tickets, plural, one {# ticket is} other {# tickets are}} in statuses the new workflows lack. Give a status mapping through the API, then save.',
+    '{tickets, plural, one {# ticket is} other {# tickets are}} in statuses the new workflows lack. Save the map again to say where they go.',
   'admin.maps.problem.migrating':
     'Tickets are still moving after an earlier change. Try again when it has finished.',
   'admin.maps.problem.nameTaken': 'There is a map with that name already.',
@@ -3928,6 +3928,56 @@ export const messagesEn = {
   'admin.permissions.granteeKind.anyone': 'Anyone, signed in or not',
   'admin.permissions.granteeKind.requester': 'The requester',
   'admin.permissions.granteeKind.assignee': 'The assignee',
+  // T-320 (UI-T21): field grantees, the status mapping step, renaming groups and service
+  // accounts, and service accounts in groups.
+  'admin.permissions.granteeKind.user_field': 'People in a user field',
+  'admin.permissions.granteeKind.group_field': 'Groups in a group field',
+  'admin.permissions.pickUserField': 'User field',
+  'admin.permissions.pickGroupField': 'Group field',
+  'admin.permissions.pickFieldEmpty': 'No field of this kind yet',
+  'admin.permissions.problem.field': 'That field is gone, or not of this kind. Choose another.',
+  'statusMapping.lead':
+    '{count, plural, one {# ticket is} other {# tickets are}} in statuses the new workflows lack. Choose where they go: they move when you confirm.',
+  'statusMapping.changed':
+    'Tickets changed since this was read. Check where each goes, then confirm again.',
+  'statusMapping.legend': 'Where the tickets go',
+  'statusMapping.moveTo':
+    'Move the {count, plural, one {# {type} ticket} other {# {type} tickets}} in {status} to',
+  'statusMapping.choose': 'Choose a status',
+  'statusMapping.of': 'A status of {workflow}, the new workflow of {type}.',
+  'statusMapping.missing': 'Choose a status for each, then confirm.',
+  'statusMapping.cancel': 'Cancel',
+  'statusMapping.moved':
+    '{count, plural, one {# ticket moved to its new status.} other {# tickets moved to their new statuses.}}',
+  'statusMapping.moving':
+    '{count, plural, one {# ticket is moving to its new status.} other {# tickets are moving to their new statuses.}}',
+  'statusMapping.progress': 'Tickets moved: {moved, number} of {total, number}',
+  'statusMapping.done':
+    '{total, plural, one {The ticket has moved.} other {All # tickets have moved.}}',
+  'statusMapping.progressFailed':
+    'How far the tickets got could not be read. They keep moving: look again in a moment.',
+  'admin.tracks.mappingTitle': 'Switch {key} to {map}',
+  'admin.tracks.mappingConfirm': 'Switch and move the tickets',
+  'admin.maps.mappingTitle': 'Save {name}',
+  'admin.maps.mappingConfirm': 'Save and move the tickets',
+  'admin.groups.editOf': 'Name and description of {name}',
+  'admin.groups.save': 'Save',
+  'admin.groups.saved': '{name} was saved.',
+  'admin.groups.directoryName':
+    'The directory {directory} keeps this group’s name: rename it there. The description is yours to change.',
+  'admin.groups.serviceAccount': 'Service account',
+  'admin.groups.addServiceAccount': 'Add a service account',
+  'admin.groups.addServiceAccountHint':
+    'A service account in a group gets the group’s permissions, as a person does.',
+  'admin.groups.pickServiceAccount': 'Choose a service account',
+  'admin.groups.addServiceAccountShort': 'Add the account',
+  'admin.serviceAccounts.change': 'Change',
+  'admin.serviceAccounts.changeNamed': 'Change the name and description of {name}',
+  'admin.serviceAccounts.save': 'Save',
+  'admin.serviceAccounts.saved': '{name} was saved.',
+  'admin.serviceAccounts.cancelChange': 'Cancel',
+  'admin.serviceAccounts.saveFailed':
+    'The service account could not be saved. Try again in a moment.',
   'admin.permissions.problem.roleInUse':
     'Access policies or tracks still use this role: take it out of them first.',
   'admin.permissions.problem.policyInUse': 'Tracks still use this policy: give them another first.',

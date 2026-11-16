@@ -11,13 +11,22 @@ import { trackHref } from '../tracks/TrackLayout';
 import {
   type ConfigurationClient,
   configurationClient,
+  type MappingImpact,
   type Named,
   type RoleActors,
+  type StatusMigration,
   type Track,
   type TrackBoard,
+  type TypeStatusMapping,
   type WorkflowMapSummary,
 } from './client';
 import { NewTrackForm, trackRefusal } from './NewTrackForm';
+import {
+  MigrationProgress,
+  movedText,
+  needsMapping,
+  StatusMappingPanel,
+} from './StatusMappingPanel';
 
 export interface TracksAdminPageProps {
   /** Stories and tests pass their own backend; the page calls the API otherwise. */
@@ -27,8 +36,7 @@ export interface TracksAdminPageProps {
 /**
  * Tracks (CORE-001, CORE-025, WF-001), for administrators: add a track, rename it, choose its
  * workflow map, give roles to people and groups, archive and restore. A map change that would
- * leave tickets in statuses their new workflow lacks is refused here with the counts; the
- * mapping is given through the API (or a later version of this page).
+ * leave tickets in statuses their new workflow lacks asks first where they go (T-320).
  */
 export function TracksAdminPage({ client = configurationClient }: TracksAdminPageProps) {
   const t = useT();
@@ -316,6 +324,135 @@ function SprintsSetting({
   );
 }
 
+/**
+ * A shared-mode track's workflow map (WF-001; T-320). Picking another map reads first what the
+ * switch would do: with no ticket in a status the new workflows lack it switches at once;
+ * otherwise the status mapping step asks where those tickets go, then switches and moves them,
+ * showing their progress when some move in the background.
+ */
+function MapSwitch({
+  track,
+  maps,
+  client,
+  onChanged,
+  onProblem,
+}: {
+  track: Track;
+  maps: WorkflowMapSummary[];
+  client: ConfigurationClient;
+  onChanged: (message: string) => void;
+  onProblem: (error: unknown) => void;
+}) {
+  const t = useT();
+  const id = useId();
+  const current = track.workflowMapId ?? maps.find((m) => m.isDefault)?.id ?? '';
+  const [mapId, setMapId] = useState(current);
+  useEffect(() => setMapId(current), [current]);
+  /** The map picked, while its preview is read or its mapping step is open. */
+  const [picked, setPicked] = useState<WorkflowMapSummary | null>(null);
+  const [mapping, setMapping] = useState<{ impact: MappingImpact; changed: boolean } | null>(null);
+  const [migration, setMigration] = useState<StatusMigration | null>(null);
+  const busy = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const select = useRef<HTMLSelectElement>(null);
+  const target = (map: WorkflowMapSummary) => (map.isDefault ? null : map.id);
+
+  /** Closes the step, its focus back on the map's choice, and says why when it failed. */
+  const stop = (error?: unknown) => {
+    const open = mapping !== null;
+    setPicked(null);
+    setMapping(null);
+    if (open) select.current?.focus();
+    if (error !== undefined) onProblem(error);
+  };
+  const switchTo = async (map: WorkflowMapSummary, typeStatusMapping?: TypeStatusMapping) => {
+    if (busy.current) return;
+    busy.current = true;
+    setSaving(true);
+    try {
+      const { statusMigration } = await client.switchWorkflowMap(
+        track.id,
+        target(map),
+        typeStatusMapping,
+      );
+      setMapId(map.id);
+      stop();
+      setMigration(statusMigration && statusMigration.status !== 'done' ? statusMigration : null);
+      onChanged(
+        [
+          t('admin.tracks.mapSaved', { key: track.key, map: map.name }),
+          movedText(t, statusMigration),
+        ]
+          .filter(Boolean)
+          .join(' '),
+      );
+    } catch (error) {
+      if (!needsMapping(error)) stop(error);
+      else {
+        // Tickets changed since the preview: read it again and ask again.
+        await client.trackMapImpact(track.id, map.isDefault ? 'default' : map.id).then(
+          (impact) => setMapping({ impact, changed: true }),
+          (again) => stop(again),
+        );
+      }
+    } finally {
+      busy.current = false;
+      setSaving(false);
+    }
+  };
+  const pick = async (map: WorkflowMapSummary) => {
+    setPicked(map);
+    setMapping(null);
+    setMigration(null);
+    try {
+      const impact = await client.trackMapImpact(track.id, map.isDefault ? 'default' : map.id);
+      if (impact.ticketCount === 0) await switchTo(map);
+      else setMapping({ impact, changed: false });
+    } catch (error) {
+      stop(error);
+    }
+  };
+
+  return (
+    <>
+      <div className="form-field" data-tutorial="track-workflow-map">
+        <label htmlFor={`${id}-map`} className="form-label">
+          {t('admin.tracks.workflowMap')}
+        </label>
+        <select
+          ref={select}
+          id={`${id}-map`}
+          value={picked?.id ?? mapId}
+          onChange={(event) => {
+            const map = maps.find((m) => String(m.id) === event.target.value);
+            if (!map) return;
+            if (map.id === mapId) stop();
+            else void pick(map);
+          }}
+        >
+          {maps.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      {picked && mapping && (
+        <StatusMappingPanel
+          impact={mapping.impact}
+          title={t('admin.tracks.mappingTitle', { key: track.key, map: picked.name })}
+          confirmLabel={t('admin.tracks.mappingConfirm')}
+          changed={mapping.changed}
+          busy={saving}
+          onConfirm={(typeStatusMapping) => void switchTo(picked, typeStatusMapping)}
+          onCancel={() => stop()}
+        />
+      )}
+      {migration && <MigrationProgress migration={migration} read={client.statusMigration} />}
+    </>
+  );
+}
+
 function TrackPanel({
   track,
   client,
@@ -423,32 +560,13 @@ function TrackPanel({
       </form>
 
       {track.mode === 'shared' && maps.length > 0 && (
-        <div className="form-field" data-tutorial="track-workflow-map">
-          <label htmlFor={`${id}-map`} className="form-label">
-            {t('admin.tracks.workflowMap')}
-          </label>
-          <select
-            id={`${id}-map`}
-            value={track.workflowMapId ?? maps.find((m) => m.isDefault)?.id ?? ''}
-            onChange={(event) => {
-              const picked = maps.find((m) => String(m.id) === event.target.value);
-              if (!picked) return;
-              void run(
-                () =>
-                  client.updateTrack(track.id, {
-                    workflowMapId: picked.isDefault ? null : picked.id,
-                  }),
-                t('admin.tracks.mapSaved', { key: track.key, map: picked.name }),
-              );
-            }}
-          >
-            {maps.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <MapSwitch
+          track={track}
+          maps={maps}
+          client={client}
+          onChanged={onChanged}
+          onProblem={onProblem}
+        />
       )}
 
       {!track.archived && track.features?.sprints !== undefined && (

@@ -3489,7 +3489,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.tracks.archivedSaid': 'Se archivó el track {key}.',
   'admin.tracks.restored': 'Se restauró el track {key}.',
   'admin.tracks.problem.mapping':
-    '{tickets, plural, one {# ticket está} other {# tickets están}} en estados que los nuevos flujos de trabajo no tienen. Da una correspondencia de estados mediante la API y luego cambia.',
+    '{tickets, plural, one {# ticket está} other {# tickets están}} en estados que los nuevos flujos de trabajo no tienen. Vuelve a elegir el mapa de flujos para decir adónde van.',
   'admin.tracks.problem.migrating':
     'Los tickets aún se están moviendo tras un cambio anterior. Inténtalo de nuevo cuando haya terminado.',
   'admin.tracks.problem.key': 'Esa clave está ocupada o no es una clave válida.',
@@ -3529,7 +3529,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.maps.confirmDelete':
     '¿Eliminar {name}? Ningún track podrá usarlo después, y no se puede deshacer.',
   'admin.maps.problem.mapping':
-    '{tickets, plural, one {# ticket está} other {# tickets están}} en estados que los nuevos flujos de trabajo no tienen. Da una correspondencia de estados mediante la API y luego guarda.',
+    '{tickets, plural, one {# ticket está} other {# tickets están}} en estados que los nuevos flujos de trabajo no tienen. Vuelve a guardar el mapa para decir adónde van.',
   'admin.maps.problem.migrating':
     'Los tickets aún se están moviendo tras un cambio anterior. Inténtalo de nuevo cuando haya terminado.',
   'admin.maps.problem.nameTaken': 'Ya hay un mapa con ese nombre.',
@@ -4032,6 +4032,56 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.permissions.granteeKind.anyone': 'Cualquiera, con sesión iniciada o no',
   'admin.permissions.granteeKind.requester': 'El solicitante',
   'admin.permissions.granteeKind.assignee': 'El responsable',
+  // T-320 (UI-T21): beneficiarios de campo, el paso de correspondencia de estados, renombrar
+  // grupos y cuentas de servicio, y cuentas de servicio en grupos.
+  'admin.permissions.granteeKind.user_field': 'Personas en un campo de usuario',
+  'admin.permissions.granteeKind.group_field': 'Grupos en un campo de grupo',
+  'admin.permissions.pickUserField': 'Campo de usuario',
+  'admin.permissions.pickGroupField': 'Campo de grupo',
+  'admin.permissions.pickFieldEmpty': 'Aún no hay ningún campo de este tipo',
+  'admin.permissions.problem.field': 'Ese campo ya no existe o no es de este tipo. Elige otro.',
+  'statusMapping.lead':
+    '{count, plural, one {# ticket está} other {# tickets están}} en estados que los nuevos flujos de trabajo no tienen. Elige adónde van: se mueven cuando confirmes.',
+  'statusMapping.changed':
+    'Los tickets cambiaron desde que se leyó esto. Revisa adónde va cada uno y vuelve a confirmar.',
+  'statusMapping.legend': 'Adónde van los tickets',
+  'statusMapping.moveTo':
+    'Mover {count, plural, one {el # ticket de tipo {type}} other {los # tickets de tipo {type}}} de {status} a',
+  'statusMapping.choose': 'Elige un estado',
+  'statusMapping.of': 'Un estado de {workflow}, el nuevo flujo de trabajo de {type}.',
+  'statusMapping.missing': 'Elige un estado para cada uno y luego confirma.',
+  'statusMapping.cancel': 'Cancelar',
+  'statusMapping.moved':
+    '{count, plural, one {# ticket pasó a su nuevo estado.} other {# tickets pasaron a sus nuevos estados.}}',
+  'statusMapping.moving':
+    '{count, plural, one {# ticket está pasando a su nuevo estado.} other {# tickets están pasando a sus nuevos estados.}}',
+  'statusMapping.progress': 'Tickets movidos: {moved, number} de {total, number}',
+  'statusMapping.done':
+    '{total, plural, one {El ticket ya se movió.} other {Los # tickets ya se movieron.}}',
+  'statusMapping.progressFailed':
+    'No se pudo leer cuánto han avanzado los tickets. Siguen moviéndose: vuelve a mirar en un momento.',
+  'admin.tracks.mappingTitle': 'Cambiar {key} a {map}',
+  'admin.tracks.mappingConfirm': 'Cambiar y mover los tickets',
+  'admin.maps.mappingTitle': 'Guardar {name}',
+  'admin.maps.mappingConfirm': 'Guardar y mover los tickets',
+  'admin.groups.editOf': 'Nombre y descripción de {name}',
+  'admin.groups.save': 'Guardar',
+  'admin.groups.saved': 'Se guardó {name}.',
+  'admin.groups.directoryName':
+    'El directorio {directory} gestiona el nombre de este grupo: renómbralo allí. La descripción la puedes cambiar tú.',
+  'admin.groups.serviceAccount': 'Cuenta de servicio',
+  'admin.groups.addServiceAccount': 'Añadir una cuenta de servicio',
+  'admin.groups.addServiceAccountHint':
+    'Una cuenta de servicio en un grupo recibe los permisos del grupo, como una persona.',
+  'admin.groups.pickServiceAccount': 'Elige una cuenta de servicio',
+  'admin.groups.addServiceAccountShort': 'Añadir la cuenta',
+  'admin.serviceAccounts.change': 'Cambiar',
+  'admin.serviceAccounts.changeNamed': 'Cambiar el nombre y la descripción de {name}',
+  'admin.serviceAccounts.save': 'Guardar',
+  'admin.serviceAccounts.saved': 'Se guardó {name}.',
+  'admin.serviceAccounts.cancelChange': 'Cancelar',
+  'admin.serviceAccounts.saveFailed':
+    'No se pudo guardar la cuenta de servicio. Inténtalo de nuevo en un momento.',
   'admin.permissions.problem.roleInUse':
     'Hay políticas de acceso o tracks que todavía usan este rol: quítalo antes de ellos.',
   'admin.permissions.problem.policyInUse':

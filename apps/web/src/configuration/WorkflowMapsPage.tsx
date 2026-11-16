@@ -9,11 +9,21 @@ import { PageHeader } from '../shell/PageHeader';
 import {
   type ConfigurationClient,
   configurationClient,
+  type MapChange,
+  type MappingImpact,
   type MappingNeeded,
   type Named,
+  type StatusMigration,
+  type TypeStatusMapping,
   type WorkflowMap,
   type WorkflowMapSummary,
 } from './client';
+import {
+  MigrationProgress,
+  movedText,
+  needsMapping,
+  StatusMappingPanel,
+} from './StatusMappingPanel';
 
 export interface WorkflowMapsPageProps {
   /** Stories and tests pass their own backend; the page calls the API otherwise. */
@@ -24,7 +34,7 @@ export interface WorkflowMapsPageProps {
  * Workflow maps (M1-028, WF-001 (3)), for administrators: which workflow each ticket type uses,
  * and the one every other type uses. Shared maps serve any number of shared-mode tracks; the
  * default map serves tracks without one. A change that would leave tickets in statuses their
- * new workflow lacks is refused here with the counts (status mapping through the API).
+ * new workflow lacks asks first where they go (T-320).
  */
 export function WorkflowMapsPage({ client = configurationClient }: WorkflowMapsPageProps) {
   const t = useT();
@@ -270,6 +280,16 @@ function MapPanel({
   const [fallback, setFallback] = useState('');
   const [entries, setEntries] = useState<{ ticketTypeId: number; workflowId: number }[]>([]);
   const [newType, setNewType] = useState('');
+  /** The change previewed, while its status mapping step is open (T-320). */
+  const [mapping, setMapping] = useState<{
+    change: MapChange;
+    impact: MappingImpact;
+    changed: boolean;
+  } | null>(null);
+  const [migration, setMigration] = useState<StatusMigration | null>(null);
+  const [saving, setSaving] = useState(false);
+  const busy = useRef(false);
+  const saveButton = useRef<HTMLButtonElement>(null);
 
   const show = (found: WorkflowMap) => {
     setMap(found);
@@ -287,135 +307,201 @@ function MapPanel({
   const typeName = (typeId: number) => types.find((ty) => ty.id === typeId)?.name ?? String(typeId);
   const unmapped = types.filter((ty) => !entries.some((e) => e.ticketTypeId === ty.id));
 
+  /** Closes the mapping step, its focus back on Save the map, and says why when it failed. */
+  const stop = (error?: unknown) => {
+    if (mapping) saveButton.current?.focus();
+    setMapping(null);
+    if (error !== undefined) onProblem(error);
+  };
+  const save = async (change: MapChange, typeStatusMapping?: TypeStatusMapping) => {
+    if (busy.current) return;
+    busy.current = true;
+    setSaving(true);
+    try {
+      const saved = await client.updateWorkflowMap(id, {
+        ...change,
+        ...(typeStatusMapping ? { typeStatusMapping } : {}),
+      });
+      show(saved.workflowMap);
+      stop();
+      const moving = saved.statusMigration;
+      setMigration(moving && moving.status !== 'done' ? moving : null);
+      onChanged(
+        [t('admin.maps.saved', { name: saved.workflowMap.name }), movedText(t, moving)]
+          .filter(Boolean)
+          .join(' '),
+      );
+    } catch (error) {
+      if (!needsMapping(error)) stop(error);
+      else {
+        // Tickets changed since the preview: read it again and ask again.
+        await client.workflowMapImpact(id, change).then(
+          (impact) => setMapping({ change, impact, changed: true }),
+          (again) => stop(again),
+        );
+      }
+    } finally {
+      busy.current = false;
+      setSaving(false);
+    }
+  };
+  // A map no track uses moves no ticket; otherwise the preview says whether any must move.
+  const submit = async () => {
+    const change: MapChange = { defaultWorkflowId: Number(fallback), entries };
+    setMigration(null);
+    if (map.tracks.length === 0) return save(change);
+    try {
+      const impact = await client.workflowMapImpact(id, change);
+      if (impact.ticketCount === 0) await save(change);
+      else setMapping({ change, impact, changed: false });
+    } catch (error) {
+      stop(error);
+    }
+  };
+
   return (
-    <form
-      className="people-panel"
-      aria-label={t('admin.maps.editOf', { name: map.name })}
-      onSubmit={(event) => {
-        event.preventDefault();
-        client
-          .updateWorkflowMap(id, { defaultWorkflowId: Number(fallback), entries })
-          .then((saved) => {
-            show(saved);
-            onChanged(t('admin.maps.saved', { name: saved.name }));
-          }, onProblem);
-      }}
-    >
-      <div className="form-field">
-        <label htmlFor={`${formId}-default`} className="form-label">
-          {t('admin.maps.everyOtherType')}
-        </label>
-        <select
-          id={`${formId}-default`}
-          value={fallback}
-          onChange={(event) => setFallback(event.target.value)}
-        >
-          {workflows.map((w) => (
-            <option key={w.id} value={w.id}>
-              {w.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      {entries.map((entry) => (
-        <div key={entry.ticketTypeId} className="form-field">
-          <label htmlFor={`${formId}-type-${entry.ticketTypeId}`} className="form-label">
-            {t('admin.maps.typeUses', { type: typeName(entry.ticketTypeId) })}
-          </label>
-          <span className="people-sublist-row">
-            <select
-              id={`${formId}-type-${entry.ticketTypeId}`}
-              value={entry.workflowId}
-              onChange={(event) =>
-                setEntries((list) =>
-                  list.map((e) =>
-                    e.ticketTypeId === entry.ticketTypeId
-                      ? { ...e, workflowId: Number(event.target.value) }
-                      : e,
-                  ),
-                )
-              }
-            >
-              {workflows.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="button-secondary people-action"
-              aria-label={t('admin.maps.removeEntry', { type: typeName(entry.ticketTypeId) })}
-              onClick={() => setEntries((list) => list.filter((e) => e !== entry))}
-            >
-              {t('admin.maps.remove')}
-            </button>
-          </span>
-        </div>
-      ))}
-      {unmapped.length > 0 && (
+    <>
+      <form
+        className="people-panel"
+        aria-label={t('admin.maps.editOf', { name: map.name })}
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit();
+        }}
+      >
         <div className="form-field">
-          <label htmlFor={`${formId}-new`} className="form-label">
-            {t('admin.maps.addType')}
+          <label htmlFor={`${formId}-default`} className="form-label">
+            {t('admin.maps.everyOtherType')}
           </label>
-          <span className="people-sublist-row">
-            <select
-              id={`${formId}-new`}
-              value={newType}
-              onChange={(event) => setNewType(event.target.value)}
-            >
-              <option value="">{t('admin.maps.pickType')}</option>
-              {unmapped.map((ty) => (
-                <option key={ty.id} value={ty.id}>
-                  {ty.name}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="button-secondary people-action"
-              disabled={!newType}
-              onClick={() => {
-                setEntries((list) => [
-                  ...list,
-                  { ticketTypeId: Number(newType), workflowId: Number(fallback) },
-                ]);
-                setNewType('');
+          <select
+            id={`${formId}-default`}
+            value={fallback}
+            onChange={(event) => setFallback(event.target.value)}
+          >
+            {workflows.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        {entries.map((entry) => (
+          <div key={entry.ticketTypeId} className="form-field">
+            <label htmlFor={`${formId}-type-${entry.ticketTypeId}`} className="form-label">
+              {t('admin.maps.typeUses', { type: typeName(entry.ticketTypeId) })}
+            </label>
+            <span className="people-sublist-row">
+              <select
+                id={`${formId}-type-${entry.ticketTypeId}`}
+                value={entry.workflowId}
+                onChange={(event) =>
+                  setEntries((list) =>
+                    list.map((e) =>
+                      e.ticketTypeId === entry.ticketTypeId
+                        ? { ...e, workflowId: Number(event.target.value) }
+                        : e,
+                    ),
+                  )
+                }
+              >
+                {workflows.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="button-secondary people-action"
+                aria-label={t('admin.maps.removeEntry', { type: typeName(entry.ticketTypeId) })}
+                onClick={() => setEntries((list) => list.filter((e) => e !== entry))}
+              >
+                {t('admin.maps.remove')}
+              </button>
+            </span>
+          </div>
+        ))}
+        {unmapped.length > 0 && (
+          <div className="form-field">
+            <label htmlFor={`${formId}-new`} className="form-label">
+              {t('admin.maps.addType')}
+            </label>
+            <span className="people-sublist-row">
+              <select
+                id={`${formId}-new`}
+                value={newType}
+                onChange={(event) => setNewType(event.target.value)}
+              >
+                <option value="">{t('admin.maps.pickType')}</option>
+                {unmapped.map((ty) => (
+                  <option key={ty.id} value={ty.id}>
+                    {ty.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="button-secondary people-action"
+                disabled={!newType}
+                onClick={() => {
+                  setEntries((list) => [
+                    ...list,
+                    { ticketTypeId: Number(newType), workflowId: Number(fallback) },
+                  ]);
+                  setNewType('');
+                }}
+              >
+                {t('admin.maps.addShort')}
+              </button>
+            </span>
+          </div>
+        )}
+        {map.tracks.length > 0 && (
+          <p className="page-note">
+            {t('admin.maps.usedBy', { tracks: map.tracks.map((tr) => tr.key).join(', ') })}
+          </p>
+        )}
+        <div className="form-actions">
+          <button ref={saveButton} type="submit" className="button-primary">
+            {t('admin.maps.save')}
+          </button>
+          {/* Asks first, saying what will happen (D13); a refusal keeps the question open. */}
+          {!map.isDefault && (
+            <DangerAction
+              label={t('admin.maps.delete')}
+              name={t('admin.maps.deleteOf', { name: map.name })}
+              outcome={t('admin.maps.confirmDelete', { name: map.name })}
+              confirmLabel={t('admin.maps.deleteOf', { name: map.name })}
+              onConfirm={async () => {
+                try {
+                  await client.deleteWorkflowMap(id);
+                } catch (error) {
+                  onProblem(error);
+                  throw error;
+                }
+                onDeleted(map.name);
               }}
-            >
-              {t('admin.maps.addShort')}
-            </button>
-          </span>
+            />
+          )}
+        </div>
+      </form>
+      {(mapping || migration) && (
+        // Under the map's form, across the row, as the form itself is.
+        <div className="people-panel">
+          {mapping && (
+            <StatusMappingPanel
+              impact={mapping.impact}
+              title={t('admin.maps.mappingTitle', { name: map.name })}
+              confirmLabel={t('admin.maps.mappingConfirm')}
+              changed={mapping.changed}
+              busy={saving}
+              onConfirm={(typeStatusMapping) => void save(mapping.change, typeStatusMapping)}
+              onCancel={() => stop()}
+            />
+          )}
+          {migration && <MigrationProgress migration={migration} read={client.statusMigration} />}
         </div>
       )}
-      {map.tracks.length > 0 && (
-        <p className="page-note">
-          {t('admin.maps.usedBy', { tracks: map.tracks.map((tr) => tr.key).join(', ') })}
-        </p>
-      )}
-      <div className="form-actions">
-        <button type="submit" className="button-primary">
-          {t('admin.maps.save')}
-        </button>
-        {/* Asks first, saying what will happen (D13); a refusal keeps the question open. */}
-        {!map.isDefault && (
-          <DangerAction
-            label={t('admin.maps.delete')}
-            name={t('admin.maps.deleteOf', { name: map.name })}
-            outcome={t('admin.maps.confirmDelete', { name: map.name })}
-            confirmLabel={t('admin.maps.deleteOf', { name: map.name })}
-            onConfirm={async () => {
-              try {
-                await client.deleteWorkflowMap(id);
-              } catch (error) {
-                onProblem(error);
-                throw error;
-              }
-              onDeleted(map.name);
-            }}
-          />
-        )}
-      </div>
-    </form>
+    </>
   );
 }
