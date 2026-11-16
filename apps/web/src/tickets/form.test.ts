@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { setAccountTimeZone } from '../i18n/zone';
+import { useTimeZone } from '../test/timeZone';
 import { BUG_FORM, CHORE_FORM } from './fixtures';
 import { createBody, fieldErrors, textDocument } from './form';
 
@@ -93,6 +95,41 @@ describe('the create form data (M1-012)', () => {
         { type: 'paragraph' },
         { type: 'paragraph', content: [{ type: 'text', text: 'b' }] },
       ],
+    });
+  });
+});
+
+describe('a date and time typed on the create form (T-280)', () => {
+  useTimeZone('America/Mexico_City');
+  afterEach(() => setAccountTimeZone(null));
+  const form = {
+    layout: {
+      operation: 'create',
+      tabs: [
+        {
+          name: null,
+          sections: [
+            {
+              kind: 'main' as const,
+              hideWhenEmpty: false,
+              fields: [{ key: 'cf[20]', required: false, description: null }],
+            },
+          ],
+        },
+      ],
+    },
+    customFields: [{ id: 20, name: 'Go live', description: '', type: 'datetime', multiple: false }],
+  };
+
+  it('[NFR-006] [IAM-008] sends the instant the time names on the person’s clock: the account’s zone, else the device’s', () => {
+    // 14:00 on the device in Mexico City (UTC−6) is 20:00 in UTC.
+    expect(createBody('SHOP', 3, form, { 'cf[20]': '2026-11-16T14:00' }).fields).toEqual({
+      20: '2026-11-16T20:00:00.000Z',
+    });
+    // The account says New York (UTC−5): 14:00 there is 19:00 in UTC.
+    setAccountTimeZone('America/New_York');
+    expect(createBody('SHOP', 3, form, { 'cf[20]': '2026-11-16T14:00' }).fields).toEqual({
+      20: '2026-11-16T19:00:00.000Z',
     });
   });
 });

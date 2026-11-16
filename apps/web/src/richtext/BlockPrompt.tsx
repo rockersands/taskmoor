@@ -4,6 +4,7 @@ import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { formatSize } from '../attachments/format';
 import { useT } from '../i18n/I18nProvider';
+import { personDay } from '../i18n/zone';
 import { TicketPicker } from '../tickets/tools/TicketPicker';
 import { type EditorAttachment, useEditorTools } from './EditorTools';
 import {
@@ -29,12 +30,8 @@ export interface BlockPromptProps {
 /** The languages a code block's fence and the wiki markup can both carry. */
 const LANGUAGE = /^[A-Za-z0-9_+#.-]{1,40}$/;
 
-/** Today where the reader is, as a date field holds it. */
-const today = () => {
-  const now = new Date();
-  const two = (n: number) => String(n).padStart(2, '0');
-  return `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}`;
-};
+/** Today on the reader's own clock (T-280), as a date field holds it. */
+const today = () => personDay(new Date());
 
 /**
  * Enter in a prompt's field applies it. These are not forms: the editor they open from often sits

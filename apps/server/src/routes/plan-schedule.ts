@@ -55,6 +55,7 @@ import {
   schedule,
   scheduleBody,
 } from '../plans/scheduler';
+import { viewerDay } from '../reports/zone';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
 import { isCalendarDay } from '../tickets/model';
 import { periodOf, planVisible } from './plans';
@@ -141,7 +142,6 @@ export interface RunCounts {
 }
 
 const DAY_FIELDS = ['startDate', 'dueDate'] as const;
-const today = () => new Date().toISOString().slice(0, 10);
 
 /** A run's draft writes and removals, from the engine's proposals and the drafts under the lock. */
 export function diffProposals(options: {
@@ -360,7 +360,7 @@ export function registerPlanScheduleRoutes(
     if (scenario === 'not_found') return notFound(reply);
     const periods = periodsFrom(
       periodOf(plan),
-      q.data.from ?? today(),
+      q.data.from ?? viewerDay(request),
       q.data.periods ?? DEFAULT_RUN_PERIODS,
     );
     try {
@@ -452,7 +452,7 @@ export function registerPlanScheduleRoutes(
         return invalidFields(reply, { 'into.newScenario.from': 'not_found' });
       overlay = into.newScenario.from;
     }
-    const from = body.from ?? today();
+    const from = body.from ?? viewerDay(request);
     const periods: Period[] = periodsFrom(periodOf(plan), from, body.periods);
 
     try {

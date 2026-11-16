@@ -11,6 +11,7 @@ import {
 import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { wallTime } from '../i18n/zone';
 import { type Lock, useLockText } from '../locks/useLockText';
 import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
@@ -198,8 +199,12 @@ export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps)
     const files = [...event.clipboardData.files];
     if (files.length === 0) return;
     event.preventDefault();
-    // Pasted screenshots arrive as "image.png"; give them a name of their own.
-    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    // Pasted screenshots arrive as "image.png"; give them a name of their own, the time on the
+    // person's own clock (T-280).
+    const w = wallTime(new Date());
+    const stamp = [w.year, w.month, w.day, w.hour, w.minute, w.second]
+      .map((n, i) => String(n).padStart(i === 0 ? 4 : 2, '0'))
+      .join('-');
     void upload(
       files.map((file, i) =>
         /^image\.\w+$/.test(file.name)

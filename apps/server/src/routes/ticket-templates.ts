@@ -8,6 +8,7 @@ import { refusedKeys } from '../clone/run';
 import { emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
 import { type FieldShape, parseValue, referencedIds } from '../fields/types';
+import { viewerDay } from '../reports/zone';
 import {
   createTemplateBody,
   expandSummary,
@@ -17,7 +18,6 @@ import {
   type TemplateDefaults,
   type TemplateSubticket,
   templateSubticket,
-  todayIn,
   updateTemplateBody,
 } from '../templates/model';
 import { type Caller, callRoute } from '../tickets/caller';
@@ -473,7 +473,7 @@ export function registerTicketTemplateRoutes(
       .select('key')
       .where('id', '=', trackId)
       .executeTakeFirstOrThrow();
-    const start = startValues(row, patternValues(user, track.key));
+    const start = startValues(row, patternValues(request, user, track.key));
     if (start.description !== undefined) {
       start.description = writeRichText(start.description as JsonValue, format);
     }
@@ -551,10 +551,12 @@ export function registerTicketTemplateRoutes(
     return out;
   }
 
+  /** `{date}` is today on the person's own clock (T-280), the day a due in N days counts from. */
   const patternValues = (
-    user: { name: string; timeZone: string | null },
+    request: FastifyRequest,
+    user: { name: string },
     trackKey: string,
-  ): PatternValues => ({ date: todayIn(user.timeZone), track: trackKey, user: user.name });
+  ): PatternValues => ({ date: viewerDay(request), track: trackKey, user: user.name });
 
   app.post('/api/v1/ticket-templates', async (request, reply) => {
     const user = requireUser(request, reply);
@@ -825,7 +827,7 @@ export function registerTicketTemplateRoutes(
       .select('key')
       .where('id', '=', trackId)
       .executeTakeFirstOrThrow();
-    const pattern = patternValues(user, track.key);
+    const pattern = patternValues(request, user, track.key);
     const start = startValues(row, pattern);
     const merged = mergeBody(start, given, new Set(omit ?? []));
     const body: Record<string, unknown> = {

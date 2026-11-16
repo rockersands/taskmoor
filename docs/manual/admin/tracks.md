@@ -2,7 +2,7 @@
 title: "Tracks"
 audience: admins
 sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/client.ts, apps/web/src/configuration/NewTrackForm.tsx, apps/web/src/tracks/TracksPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/web/src/tickets/templates/draft.ts, apps/web/src/tickets/templates/client.ts, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/form.ts, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md, apps/server/src/sprints/lifecycle.ts, apps/server/src/tracks/membership.ts, apps/server/src/routes/track-groups.ts, apps/server/src/trackgroups/access.ts, apps/web/src/trackgroups/TrackArrangement.tsx, apps/web/src/trackgroups/ShareGroupDialog.tsx, packages/db/src/migrations/0100_track_groups.ts, docs/adr/0121-personal-track-groups.md, apps/server/src/notifications/track-groups.ts, apps/server/src/trackgroups/privacy.ts, packages/db/src/migrations/0103_checklist_notices.ts, apps/server/src/notifications/checklists.ts, apps/web/src/tracks/NewTrackDialog.tsx, apps/web/src/shell/ModalDialog.tsx, apps/server/src/api/operations.ts, apps/web/src/admin/NewButton.tsx, apps/web/src/tickets/pickerSources.ts, apps/web/src/tickets/PersonPicker.tsx, apps/server/src/routes/fields.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/users.ts, apps/server/src/routes/teams.ts
-accessed: 2026-11-14
+accessed: 2026-11-16
 attestation: own-words
 ---
 # Tracks
@@ -364,7 +364,7 @@ there while a template is being changed. It asks for:
 | **Name** | Required; unique among the templates of that track, or among those for every track, ignoring case |
 | **What it is for** | Shown beside the template when someone chooses it |
 | **Ticket types it fits** | The types that offer it; none means every type |
-| **Summary** | A pattern: `{date}` becomes today in the person's time zone, `{track}` the track's key, `{user}` the person's name |
+| **Summary** | A pattern: `{date}` becomes today on the person's clock (the time zone saved in their account, else their device's), `{track}` the track's key, `{user}` the person's name |
 | **Description** | An outline in rich text |
 | **Priority**, **Labels** | Default values |
 | **Start date** and **Due date**, **in days from today** | Counted from the day the ticket is made; negative numbers count back |

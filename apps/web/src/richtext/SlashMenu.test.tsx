@@ -7,6 +7,7 @@ import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
 import { messagesEn } from '../i18n/messages.en';
 import { messagesEs } from '../i18n/messages.es';
+import { setAccountTimeZone } from '../i18n/zone';
 import { type EditorTools, EditorToolsProvider } from './EditorTools';
 import { RichTextEditor, type RichTextEditorProps } from './RichTextEditor';
 import { RichTextView } from './RichTextView';
@@ -366,6 +367,24 @@ describe('the slash menu (NTF-013)', () => {
         attrs: { timestamp: String(Date.UTC(2026, 10, 3)) },
       });
     } finally {
+      vi.useRealTimers();
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('[NTF-013] offers today on the zone saved on the account, not the device’s (T-280)', async () => {
+    // 19:00 on 3 November on a device in Mexico City; the account says Tokyo, where it is
+    // already 10:00 on 4 November.
+    vi.stubEnv('TZ', 'America/Mexico_City');
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-04T01:00:00Z'));
+    setAccountTimeZone('Asia/Tokyo');
+    try {
+      const { textbox } = renderEditor();
+      await choose(textbox, 'date');
+      expect(await screen.findByLabelText('Date')).toHaveValue('2026-11-04');
+    } finally {
+      setAccountTimeZone(null);
       vi.useRealTimers();
       vi.unstubAllEnvs();
     }

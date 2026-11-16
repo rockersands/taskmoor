@@ -330,7 +330,8 @@ describe('a release’s page (M1-050)', () => {
     await user.click(notes.getByRole('button', { name: 'Copy as Markdown' }));
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining('## Bug\n\n- CHK-26'));
     expect(await screen.findByText('Release notes copied.')).toBeVisible();
-    // The file's link names the browser's zone, which a download cannot send as a header (T-277).
+    // The file's link names the person's zone, which a download cannot send as a header
+    // (T-277, T-280).
     expect(notes.getByRole('link', { name: 'Download Markdown' })).toHaveAttribute(
       'href',
       '/api/v1/releases/1/notes?format=markdown&timeZone=America%2FChicago',

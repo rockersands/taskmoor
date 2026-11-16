@@ -374,6 +374,23 @@ describe('releases hub (M1-050)', () => {
     expect(await listed(behind)).toMatchObject({ overdue: false });
     expect((await read(ahead, `/api/v1/releases/${due}`)).release.overdue).toBe(true);
     expect((await read(behind, `/api/v1/releases/${due}`)).release.overdue).toBe(false);
+    // The zone saved on the account wins over the device's the app sends (T-280): a person in
+    // Pago Pago on a laptop left on Kiritimati's clock sees the day they live in.
+    await database.db
+      .updateTable('app_user')
+      .set({ time_zone: behind })
+      .where('id', '=', users.alice?.id as number)
+      .execute();
+    try {
+      expect(await codes(ahead)).not.toContain('overdue');
+      expect(await listed(ahead)).toMatchObject({ overdue: false });
+    } finally {
+      await database.db
+        .updateTable('app_user')
+        .set({ time_zone: null })
+        .where('id', '=', users.alice?.id as number)
+        .execute();
+    }
     // Shipped with no day given, each ships on the shipper's own day, never UTC's for both.
     const shippedOn: Record<string, string> = {};
     for (const [name, timeZone] of [

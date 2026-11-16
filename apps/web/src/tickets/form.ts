@@ -1,4 +1,5 @@
 import type { MessageId } from '../i18n/messages.en';
+import { instantOfLocalText } from '../i18n/zone';
 import type { Lock } from '../locks/useLockText';
 
 /**
@@ -162,8 +163,8 @@ function customValue(
     case 'paragraph':
       return textDocument(raw) ?? undefined;
     case 'datetime':
-      // A local date and time from the browser, sent as the instant it names.
-      return new Date(raw).toISOString();
+      // A date and time as typed, on the person's own clock (T-280), sent as the instant it names.
+      return (instantOfLocalText(raw) ?? new Date(raw)).toISOString();
     case 'select':
     case 'user':
     case 'group':
