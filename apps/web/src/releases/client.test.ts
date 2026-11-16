@@ -24,15 +24,15 @@ describe('the release notes file with the backend at another site (T-282)', () =
     zone.mockRestore();
   });
 
-  it('[CORE-016] [IAM-008] names the account’s zone over the device’s (T-280)', () => {
+  it('[CORE-016] [NFR-006] names the account’s zone over the device’s, and the page’s language (T-280, T-283)', () => {
     const zone = vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockReturnValue({
       ...new Intl.DateTimeFormat().resolvedOptions(),
       timeZone: 'Europe/Madrid',
     });
     setAccountTimeZone('America/Bogota');
     try {
-      expect(notesFileHref(7)).toBe(
-        'https://api.example.test/api/v1/releases/7/notes?format=markdown&timeZone=America%2FBogota',
+      expect(notesFileHref(7, 'es')).toBe(
+        'https://api.example.test/api/v1/releases/7/notes?format=markdown&timeZone=America%2FBogota&locale=es',
       );
     } finally {
       setAccountTimeZone(null);

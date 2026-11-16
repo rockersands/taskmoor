@@ -75,6 +75,8 @@ export function ReleasePage({
 }: ReleasePageProps) {
   const t = useT();
   const intl = useIntl();
+  /** The page's language, as numbers and dates are formatted in it (`formatLocale`). */
+  const language = intl.locale;
   const id = useId();
   const [release, setRelease] = useState<Release | null>(null);
   const [overview, setOverview] = useState<ReleaseOverview | null>(null);
@@ -99,8 +101,9 @@ export function ReleasePage({
     client.get(releaseId).then(
       (r) => {
         setRelease(r);
-        // The notes name the track: a failure after them keeps its tab bar.
-        const read = client.notes(releaseId).then((n) => {
+        // The notes name the track: a failure after them keeps its tab bar. Their Markdown is
+        // written in the page's language (T-283), so what is copied reads as what is shown.
+        const read = client.notes(releaseId, language).then((n) => {
           setNotes(n);
           return n;
         });
@@ -116,7 +119,7 @@ export function ReleasePage({
             : 'failed',
         ),
     );
-  }, [client, releaseId]);
+  }, [client, releaseId, language]);
   useEffect(load, [load]);
 
   if (failed === 'missing') {
@@ -788,7 +791,7 @@ function NotesView({
         <div className="release-notes">
           {notes.sections.map((s, i) => (
             <section key={s.type} aria-labelledby={`${id}-notes-${i}`}>
-              {/* A seeded type in the person's language; the Markdown keeps the stored name (T-351). */}
+              {/* A seeded type in the person's language, as the Markdown writes it (T-351, T-283). */}
               <h3 id={`${id}-notes-${i}`}>{typeName(t, s.type)}</h3>
               <ul>
                 {s.tickets.map((k) => (
@@ -812,7 +815,7 @@ function NotesView({
           <button type="button" className="button-secondary" onClick={copy}>
             {t('release.notes.copy')}
           </button>
-          <a className="button-secondary" href={notesFileHref(releaseId)} download>
+          <a className="button-secondary" href={notesFileHref(releaseId, intl.locale)} download>
             {t('release.notes.download')}
           </a>
         </div>

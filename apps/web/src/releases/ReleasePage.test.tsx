@@ -261,13 +261,15 @@ describe('a release’s page (M1-050)', () => {
     ).toBeVisible();
   });
 
-  it('[CORE-016] heads the notes and names the tickets’ types in the person’s language, a type someone named as written (T-351)', async () => {
+  it('[CORE-016] [NFR-006] heads the notes and names the tickets’ types in the person’s language, a type someone named as written; the Markdown is asked for in that language (T-351, T-283)', async () => {
     const user = userEvent.setup();
     const writeText = vi.fn(async () => undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     const client = fakeReleaseClient();
     const notes = client.notes.bind(client);
-    client.notes = async (id) => {
+    const asked: (string | undefined)[] = [];
+    client.notes = async (id, locale) => {
+      asked.push(locale);
       const read = await notes(id);
       return {
         ...read,
@@ -275,6 +277,11 @@ describe('a release’s page (M1-050)', () => {
           ...read.sections,
           { type: 'Spike', tickets: [{ id: 27, key: 'CHK-27', summary: 'Try a wallet' }] },
         ],
+        // The server writes the Markdown in the language asked for.
+        markdown:
+          locale === 'es'
+            ? read.markdown.replace('## Feature', '## Funcionalidad').replace('## Bug', '## Error')
+            : read.markdown,
       };
     };
     renderRelease(1, client, 'es');
@@ -284,10 +291,15 @@ describe('a release’s page (M1-050)', () => {
     expect(section.getByRole('link', { name: 'CHK-26' }).closest('section')).toHaveAccessibleName(
       'Error',
     );
-    // The Markdown keeps the stored names, in English as the manual says.
+    // What is copied and downloaded is written in the page's language too (T-283).
+    expect(asked).toEqual(['es']);
     await user.click(section.getByRole('button', { name: 'Copiar como Markdown' }));
-    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('## Feature\n'));
-    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('## Bug\n'));
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('## Funcionalidad\n'));
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('## Error\n'));
+    expect(section.getByRole('link', { name: 'Descargar en Markdown' })).toHaveAttribute(
+      'href',
+      expect.stringMatching(/[?&]locale=es$/),
+    );
   });
 
   it('[CORE-016] gives each ticket’s type in the person’s language in the release’s tickets (T-351)', async () => {
@@ -331,10 +343,10 @@ describe('a release’s page (M1-050)', () => {
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining('## Bug\n\n- CHK-26'));
     expect(await screen.findByText('Release notes copied.')).toBeVisible();
     // The file's link names the person's zone, which a download cannot send as a header
-    // (T-277, T-280).
+    // (T-277, T-280), and the page's language (T-283).
     expect(notes.getByRole('link', { name: 'Download Markdown' })).toHaveAttribute(
       'href',
-      '/api/v1/releases/1/notes?format=markdown&timeZone=America%2FChicago',
+      '/api/v1/releases/1/notes?format=markdown&timeZone=America%2FChicago&locale=en',
     );
     // Shipped: no way to ship it again, the day it shipped.
     expect(screen.queryByRole('button', { name: 'Ship this release…' })).toBeNull();
