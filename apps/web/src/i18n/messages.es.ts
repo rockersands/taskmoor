@@ -2880,6 +2880,9 @@ export const messagesEs: Record<MessageId, string> = {
   'tickets.error.otherTrack': 'Un subticket se queda en el track de su padre.',
   'tickets.error.archived': 'Esta versión o área está archivada. Elige otra.',
   'tickets.error.notInTrack': 'Este track no ofrece esta opción. Elige una de las suyas.',
+  'tickets.error.releaseNotInTrack':
+    'Esta versión no es de este track. Elige una de sus versiones.',
+  'tickets.error.areaNotInTrack': 'Esta área no es de este track. Elige una de sus áreas.',
   'tickets.create.withheld':
     'No puedes definir este campo en un ticket nuevo. El ticket solo se crea si lo rellena un valor predeterminado o el flujo de trabajo; si no, pídeselo a un administrador del track.',
   'tickets.create.parentHint': 'Escribe la clave de un ticket o palabras de su resumen.',

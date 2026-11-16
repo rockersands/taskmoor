@@ -344,7 +344,7 @@ describe('the create form (M1-012)', () => {
     expect(screen.queryByText('This value was refused.')).toBeNull();
   });
 
-  it('[CORE-015] [CORE-013] [CORE-010] says so when an area or a custom release is not the track’s own (T-282)', async () => {
+  it('[CORE-015] [CORE-016] [CORE-013] [CORE-010] [CORE-008] says so when an area or a custom release is not the track’s own, naming which (T-282, T-286)', async () => {
     const user = userEvent.setup();
     const form = withFields(CHORE_FORM, [
       { key: 'area', required: false, description: null },
@@ -373,10 +373,17 @@ describe('the create form (M1-012)', () => {
     await within(release).findByRole('option', { name: 'Spring' });
     await user.selectOptions(release, 'Spring');
     await user.click(screen.getByRole('button', { name: 'Create' }));
-    const words = 'This track does not offer this choice. Choose one of its own.';
-    expect(await screen.findAllByText(words)).toHaveLength(2);
-    expect(screen.getByRole('group', { name: 'Areas' })).toHaveAccessibleDescription(words);
-    expect(screen.getByRole('combobox', { name: 'Fixed in' })).toHaveAccessibleDescription(words);
+    // Each says what it holds: an area, and a custom release field by its type (T-286).
+    const area = 'This area is not in this track. Choose one of its areas.';
+    const releaseWords = 'This release is not in this track. Choose one of its releases.';
+    expect(await screen.findByText(area)).toBeVisible();
+    expect(screen.getByRole('group', { name: 'Areas' })).toHaveAccessibleDescription(area);
+    expect(screen.getByRole('combobox', { name: 'Fixed in' })).toHaveAccessibleDescription(
+      releaseWords,
+    );
+    expect(
+      screen.queryByText('This track does not offer this choice. Choose one of its own.'),
+    ).toBeNull();
     expect(screen.queryByText('This value was refused.')).toBeNull();
   });
 

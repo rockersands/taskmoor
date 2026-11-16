@@ -33,6 +33,7 @@ import {
   PICKED_SYSTEM,
   SYSTEM_FIELDS,
   type TicketForm,
+  trackThingOf,
 } from './form';
 import { PersonPicker, type PickedPerson } from './PersonPicker';
 import { findFieldPeople, findGroups, findPeople, findTeams } from './pickerSources';
@@ -1029,7 +1030,7 @@ export function CreateTicketPage({
           )}
           {error && (
             <p id={errorId} className="form-error">
-              {t(errorMessage(error))}
+              {t(errorMessage(error, trackThingOf(field.key, custom?.type)))}
             </p>
           )}
         </fieldset>
@@ -1103,7 +1104,7 @@ export function CreateTicketPage({
         )}
         {error && (
           <p id={errorId} className="form-error">
-            {t(errorMessage(error))}
+            {t(errorMessage(error, trackThingOf(field.key, custom?.type)))}
           </p>
         )}
       </div>
@@ -1303,7 +1304,9 @@ export function CreateTicketPage({
                       {' '}
                       {t('tickets.create.fieldProblem', {
                         field: nameOf(key, customField(form.value, key)),
-                        problem: t(errorMessage(code)),
+                        problem: t(
+                          errorMessage(code, trackThingOf(key, customField(form.value, key)?.type)),
+                        ),
                       })}
                     </span>
                   ))}

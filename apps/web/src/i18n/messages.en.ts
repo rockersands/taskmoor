@@ -2796,6 +2796,10 @@ export const messagesEn = {
   'tickets.error.otherTrack': 'A subticket stays in its parent’s track.',
   'tickets.error.archived': 'This release or area is archived. Choose another.',
   'tickets.error.notInTrack': 'This track does not offer this choice. Choose one of its own.',
+  // A release or area the track does not have names which it is (T-286).
+  'tickets.error.releaseNotInTrack':
+    'This release is not in this track. Choose one of its releases.',
+  'tickets.error.areaNotInTrack': 'This area is not in this track. Choose one of its areas.',
   'tickets.create.withheld':
     'You may not set this field on a new ticket. The ticket is created only if a default or the workflow fills it in; if not, ask a track administrator.',
   'tickets.create.parentHint': 'Type a ticket’s key or words from its summary.',

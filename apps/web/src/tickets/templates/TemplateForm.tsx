@@ -662,7 +662,7 @@ export function TemplateForm({
     const body = bodyOf(draft, template, options.fields, track);
     (template ? client.update(template.id, body) : client.create(body)).then(onSaved, (error) => {
       setBusy(false);
-      setRefusal(saveRefusalOf(error, draft));
+      setRefusal(saveRefusalOf(error, draft, options.fields));
     });
   };
 
