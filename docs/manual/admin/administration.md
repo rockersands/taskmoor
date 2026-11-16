@@ -45,7 +45,7 @@ and how it gets there. Someone who may not use a page is told so, without the re
 | You are | You see |
 |---|---|
 | A **site administrator** | Every group below |
-| A **configuration administrator** | Only **Tracks and setup** |
+| A **configuration administrator** | **Tracks and setup**, and of **People and access** only **Visibility policies** |
 | Anyone else | No **Administration** in the sidebar. An address that leads there says only administrators can use it |
 
 What the sidebar shows follows what the server allows; the server still checks every request. See
@@ -70,7 +70,8 @@ administrators.
 
 Each panel reads on its own, so one that fails says so and the others still show.
 
-A configuration administrator sees the list of setup pages instead.
+A configuration administrator sees the list of their pages instead: the setup pages and
+**Visibility policies**.
 
 ## Finding a page
 
