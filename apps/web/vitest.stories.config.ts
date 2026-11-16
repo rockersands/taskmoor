@@ -38,6 +38,7 @@ export const STORY_DEPS: readonly string[] = [
   '@tiptap/extension-collaboration-caret',
   '@tiptap/pm/model',
   '@tiptap/pm/state',
+  '@tiptap/pm/tables',
   '@tiptap/react',
   '@tiptap/y-tiptap',
   'axe-core',
