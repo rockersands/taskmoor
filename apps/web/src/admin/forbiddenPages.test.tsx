@@ -114,6 +114,16 @@ describe('a page someone may not use says only so (T-144)', () => {
     expect(screen.queryByRole('button', { name: /^Manage field/ })).toBeNull();
   });
 
+  it('[NFR-005] a track’s own Fields page, for a member who runs no track (T-322)', async () => {
+    const container = open(<FieldsAdminPage client={fakeFieldsClient()} trackId={4} />, MEMBER);
+    await refusedOnly(
+      container,
+      'Fields',
+      /^Only site and configuration administrators manage fields/,
+    );
+    expect(screen.queryByRole('button', { name: 'New field' })).toBeNull();
+  });
+
   it('[NFR-005] a configuration administrator still manages fields (T-320)', async () => {
     open(<FieldsAdminPage client={fakeFieldsClient()} />, CONFIG_ADMIN);
     expect(await screen.findByRole('button', { name: 'Manage field Severity' })).toBeVisible();
