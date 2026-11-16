@@ -376,6 +376,38 @@ describe('result columns (M1-042)', () => {
     expect(cellChange('cf[9]', { kind: 'text' }, ' ')).toEqual({ fields: { 9: null } });
   });
 
+  it('[CORE-010] shows a number column by its field’s format, a formula’s by its output (T-320)', () => {
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={MEMBER}>
+          <ResultGrid
+            tickets={[
+              { ...(TICKETS[0] as SearchTicket), fields: { '60': 1234.5, '61': 40, '62': 3 } },
+            ]}
+            columns={['cf[60]', 'cf[61]', 'cf[62]']}
+            fields={[
+              {
+                id: 60,
+                name: 'Cost',
+                type: 'number',
+                config: { format: 'currency', currency: 'EUR', decimals: 2 },
+              },
+              { id: 61, name: 'Done', type: 'formula', config: { output: 'percentage' } },
+              { id: 62, name: 'Plain', type: 'number', config: {} },
+            ]}
+            client={fakeSearchClient()}
+            onSaved={() => {}}
+          />
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    expect(
+      within(row('SHOP-41'))
+        .getAllByRole('cell')
+        .map((c) => c.querySelector('.search-cell-value')?.textContent),
+    ).toEqual(['€1,234.50', '40%', '3']);
+  });
+
   it('[QRY-014] shows values as text', () => {
     expect(valueText({ id: 1, name: 'High' })).toBe('High');
     expect(

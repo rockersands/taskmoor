@@ -13,7 +13,7 @@ import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { navigate, routeHref } from '../routing/router';
 import type { SearchClient, SearchField, SearchTicket } from '../search/client';
-import { cellEditor, customFieldId, isDateTimeColumn } from '../search/columns';
+import { cellEditor, customFieldId, isDateTimeColumn, numberShowOfColumn } from '../search/columns';
 import { Cell } from '../search/ResultTable';
 import { useColumnName } from '../search/useColumnName';
 import { DangerAction } from '../shell/DangerAction';
@@ -1227,6 +1227,7 @@ function GridBody({
           // The parent changes with Move under, never in a cell.
           editor={readOnly || c.field === 'parent' ? null : cellEditor(c.field, fields)}
           dateTime={isDateTimeColumn(c.field, fields)}
+          number={numberShowOfColumn(c.field, fields)}
           priorities={priorities}
           client={search}
           onSaved={onSaved}

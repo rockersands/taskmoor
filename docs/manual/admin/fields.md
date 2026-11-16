@@ -1,7 +1,7 @@
 ---
 title: "Fields, ticket types and layouts"
 audience: admins
-sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/workflows/close-reasons.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/layouts/LayoutCanvas.tsx, apps/web/src/layouts/GripMenu.tsx, apps/web/src/layouts/LayoutPreview.tsx, apps/web/src/layouts/refusal.ts, apps/web/src/layouts/model.ts, apps/web/src/layouts/client.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md, apps/server/src/tickets/priority-level.ts, packages/db/src/migrations/0095_points_field.ts, apps/web/src/sets/trackScope.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/server/src/workflows/board-managed.ts, apps/web/src/layouts/createForm.ts, apps/web/src/tickets/form.ts, apps/server/src/fields/values.ts, apps/server/src/import/load.ts, apps/web/src/priorities/PrioritiesPage.tsx, apps/web/src/priorities/PrioritySetsSection.tsx, apps/web/src/priorities/client.ts, apps/web/src/sets/TypeSetForm.tsx, apps/web/src/tickettypes/TicketTypesPage.tsx, apps/web/src/tickettypes/client.ts, apps/web/src/shell/TicketIcons.tsx
+sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/workflows/close-reasons.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/layouts/LayoutCanvas.tsx, apps/web/src/layouts/GripMenu.tsx, apps/web/src/layouts/LayoutPreview.tsx, apps/web/src/layouts/refusal.ts, apps/web/src/layouts/model.ts, apps/web/src/layouts/client.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md, apps/server/src/tickets/priority-level.ts, packages/db/src/migrations/0095_points_field.ts, apps/web/src/sets/trackScope.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/server/src/workflows/board-managed.ts, apps/web/src/layouts/createForm.ts, apps/web/src/tickets/form.ts, apps/server/src/fields/values.ts, apps/server/src/import/load.ts, apps/web/src/priorities/PrioritiesPage.tsx, apps/web/src/priorities/PrioritySetsSection.tsx, apps/web/src/priorities/client.ts, apps/web/src/sets/TypeSetForm.tsx, apps/web/src/tickettypes/TicketTypesPage.tsx, apps/web/src/tickettypes/client.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/fields/FieldPanel.tsx, apps/web/src/fields/ContextsSection.tsx, apps/web/src/fields/OptionList.tsx, apps/web/src/fields/FormulaEditor.tsx, apps/web/src/fields/formulaWords.ts, apps/web/src/fields/FieldSettings.tsx, apps/web/src/fields/numberFormat.ts, apps/web/src/fields/defaultValue.ts, apps/web/src/tickets/defaults.ts, apps/web/src/search/columns.ts, apps/web/src/tickets/view/TicketPage.tsx
 accessed: 2026-11-16
 attestation: own-words
 ---
@@ -81,9 +81,18 @@ A field's type, and whether it holds several values, are fixed when the field is
 | Formula | `formula` | Computed; see [formula fields](#formula-fields) |
 | Team | `team` | One of the site's [teams](people-and-groups.md#teams); one value |
 
-Through the API, a field's `config` sets how some types behave: `maxChars` for a paragraph;
-`format` (`number`, `currency`, `percentage`), `decimals` (0 to 3) and `currency` (a code such
-as `EUR`) for a number; `display` (`dropdown`, `radio`, `checkboxes`) for a choice list.
+Some types have settings, a field's `config` in the API:
+
+- A paragraph's **Most characters** (`maxChars`, 1 to 100,000; 32,767 when left empty).
+- How a number **Shows as**: **Number**, **Currency** or **Percentage** (`format`), with
+  **Decimals** (`decimals`, 0 to 3, or **As typed**) and, for a currency, its **Currency code**
+  (`currency`, three letters such as `EUR`). The value stored is the same whatever the format,
+  and a percentage stores 40 for 40%. The ticket page and the columns of search results and of a
+  plan's Grid show the number that way, in the reader's language: `1234.5` as **€1,234.50**. Under
+  a number box that someone may change, the ticket page writes the value that way. A formula's
+  number, currency and percentage outputs show the same way.
+- A choice list's `display` (`dropdown`, `radio`, `checkboxes`) is kept for the API and imports.
+  The web app always shows a list, so the Fields page leaves it as it is.
 
 Taskmoor does not yet offer track pickers, checklists or the other types of the full
 catalogue. The form that makes a ticket offers pickers for person, group, team, release and area
@@ -91,17 +100,19 @@ fields, as the ticket page does.
 
 ### Adding and managing fields
 
-On **Administration**, **Fields**, **New field** opens the form; **Add a field** asks for a **Field name**, a **Type** and, for types
-that allow it, **Holds several values**. **Manage** on a field offers:
+On **Administration**, **Fields**, **New field** opens the form; **Add a field** asks for a
+**Field name**, a **Description**, a **Type** and, for types that allow it, **Holds several
+values**, then the type's settings above, or for a formula its [editor](#formula-fields). Forms
+show a field's description under it, unless a field rule gives help text of its own. The list
+shows each field's type and description. **Manage** on a field offers:
 
-- **Rename**.
-- The options of each context of a choice list: a **New option** with **Add the option**,
-  **Rename**, **Stop offering**, **Offer again** and **Delete**.
+- Its **Field name** and **Description**, with **Save the name and description**.
+- **Settings of** the field, for a paragraph or a number, with **Save the settings**; or the
+  **Formula of** a formula field, with **Save the formula**. The page sends the settings whole,
+  as the API replaces them.
+- **Where it applies**: the field's contexts, described below.
 - **Delete field**, in the danger colour, asks first: its field rules go with it and layouts stop
   showing it.
-
-Formula fields, contexts' scopes and defaults, child options of a two-level list and the type
-settings above are set through the API (`/api/v1/fields`).
 
 ### Contexts and options
 
@@ -117,6 +128,36 @@ A context says where a field applies and what it offers there.
 - Options keep their ids when renamed, reordered (`PUT .../options/order`) or no longer offered.
   An option that stops being offered stays on the tickets that have it and is refused for new
   values.
+
+On the Fields page, **Where it applies** lists a field's contexts. Each says what it covers, such
+as **Every track; every ticket type** or **Tracks: Payments; ticket types: Bug**, and for a person
+field whom it offers (**People to choose from**). Each context has:
+
+- **Change**: its **Context name**; its **Tracks**, **Every track** or **Only these tracks**, ticked
+  in a list; its **Ticket types** the same way; and for a person field, under **People to choose
+  from**, **Offer** **Anyone**, **The members of a group** or **The holders of a track role**. A field
+  of a local-mode track covers that track only, and the form says so instead of listing tracks.
+  **Save the context**; a change that would cover a track and type another context covers is
+  refused in words.
+- **Delete**, which asks first. The context's default and options go with it, and its tracks and
+  ticket types fall to the field's other contexts. Deleting the last one is allowed, and the
+  question says that the field then applies nowhere until a context is added. A context whose
+  options tickets hold is not deleted; the refusal says how many tickets.
+- **Default value**: what a new ticket's field holds when the create form leaves it as it starts.
+  A choice list chooses among the options it still offers (several, when the field holds
+  several); a two-level list an option and, if wanted, a **Default child option**; person, group
+  and team fields pick by name; the other types take what is typed, labels separated by spaces.
+  **Save the default**; **Remove the default** leaves none. Release, area, read-only text and
+  formula fields take no default, and the page says so.
+- For a choice list, its options: a **New option** with **Add the option**, **Up** and **Down** to
+  reorder them, **Rename**, **Stop offering**, **Offer again** and **Delete**; the default is
+  marked **Default**. Under each option of a two-level list are its child options, with the same
+  actions and **New child option** with **Add the child option**.
+
+**New context** opens a form with the same choices, and **Add a context** adds it.
+
+The create form starts each field with its context's default, so it shows what the ticket would
+get; a field emptied there is sent empty, and the ticket gets no default for it.
 
 Endpoints: `POST /api/v1/fields/:id/contexts` adds a context;
 `/api/v1/fields/:id/contexts/:contextId` takes `PATCH` and `DELETE`; options are under
@@ -136,7 +177,19 @@ contexts cover only that track, and nothing about them reaches another track. Th
 
 ## Formula fields
 
-A formula field computes its value from other fields. Create one through the API:
+A formula field computes its value from other fields. On **Administration**, **Fields**, choose
+**Formula** as the **Type** under **New field**; **Manage** on a formula field changes it. The
+editor has:
+
+- the **Expression**;
+- the **Output**: **Number**, **Currency**, **Percentage**, **Date**, **Duration** or **Text**, with
+  **Decimals** and a **Currency code** where the output takes them;
+- a line under the expression that checks it while you type: what it gives and the fields it
+  reads, or where it is wrong, such as **Line 1, column 7: No field is called {Pionts}, or a
+  formula here cannot see it.**, in your language. A save that is refused says the same;
+- **What a formula can use**, which lists the fields it can read, in braces, and its functions.
+
+Through the API:
 
 ```http
 POST /api/v1/fields

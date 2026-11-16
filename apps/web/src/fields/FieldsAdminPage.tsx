@@ -5,31 +5,49 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSessionExpiry } from '../session/useSessionExpiry';
-import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import {
   FIELD_TYPES,
   type Field,
-  type FieldContext,
-  type FieldOption,
+  type FieldConfig,
   type FieldsClient,
   type FieldType,
+  type FormulaProblem,
   fieldsClient,
   MULTIPLE_TYPES,
-  OPTION_TYPES,
 } from './client';
+import { FieldPanel } from './FieldPanel';
+import { FieldSettings, SETTINGS_TYPES } from './FieldSettings';
+import { FormulaEditor, formulaConfig } from './FormulaEditor';
 
 export interface FieldsAdminPageProps {
   /** Stories and tests pass their own backend; the page calls the API otherwise. */
   client?: FieldsClient;
 }
 
+/** The refusals the fields page words, by the server's code. */
+const REFUSALS: Readonly<Record<string, MessageId>> = {
+  name_taken: 'admin.fields.problem.nameTaken',
+  value_taken: 'admin.fields.problem.valueTaken',
+  context_overlap: 'admin.fields.problem.overlap',
+  invalid_default: 'admin.fields.problem.invalidDefault',
+  unknown_group: 'admin.fields.problem.listChanged',
+  unknown_role: 'admin.fields.problem.listChanged',
+  unknown_track: 'admin.fields.problem.listChanged',
+  unknown_ticket_type: 'admin.fields.problem.listChanged',
+  unknown_parent: 'admin.fields.problem.listChanged',
+  track_archived: 'admin.fields.problem.trackArchived',
+  guardrail_exceeded: 'admin.fields.problem.limit',
+  invalid_request: 'admin.fields.problem.invalid',
+};
+
 /**
- * Custom fields (CORE-003, CORE-009), for administrators: add a field of any type but formula,
- * rename it, keep the options of each of its contexts (add, rename, disable, delete one no
- * ticket uses) and delete a field no ticket holds a value of. Where a context applies, and
- * formulas, are set through the API for now.
+ * Custom fields (CORE-003, CORE-009, CORE-010, CORE-011), for site and configuration
+ * administrators: add a field of any type, formulas included (T-320), with its description and
+ * type settings; Manage one (`FieldPanel`) to change its name, description, settings or formula,
+ * where it applies, each context's default and options, and to delete it once no ticket holds a
+ * value. A choice list's display setting stays API-only in 1.0: the web app always shows a list.
  */
 export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps) {
   const t = useT();
@@ -37,6 +55,7 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
   const titleId = useId();
   const title = useRef<HTMLHeadingElement>(null);
   const nameId = useId();
+  const descriptionId = useId();
   const typeId = useId();
   const multipleId = useId();
   const notAdmin = useNotSetupAdmin();
@@ -49,8 +68,13 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
   const [open, setOpen] = useState<number | null>(null);
   const creating = useNewForm();
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [type, setType] = useState<FieldType>('text');
   const [multiple, setMultiple] = useState(false);
+  const [config, setConfig] = useState<FieldConfig>({});
+  const [refused, setRefused] = useState<{ problem: FormulaProblem; expression: string } | null>(
+    null,
+  );
   const [message, setMessage] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -68,7 +92,7 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
   }, [load, notAdmin]);
 
   const refusal = useCallback(
-    (error: unknown) => {
+    (error: unknown, about?: 'context') => {
       if (!(error instanceof ApiError)) return t('admin.fields.problem.other');
       const body = error.body as {
         error?: string;
@@ -78,13 +102,20 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
       if (body?.error === 'in_use') {
         return t('admin.fields.problem.inUse', { tickets: body.ticketCount ?? 0 });
       }
+      if (body?.error === 'options_in_use') {
+        return t('admin.fields.problem.optionsInUse', { tickets: body.ticketCount ?? 0 });
+      }
       if (body?.error === 'used_by_formula') {
         return t('admin.fields.problem.formula', {
           fields: (body.fields ?? []).map((f) => f.name).join(', '),
         });
       }
-      if (body?.error === 'name_taken') return t('admin.fields.problem.nameTaken');
-      if (body?.error === 'value_taken') return t('admin.fields.problem.valueTaken');
+      if (body?.error === 'name_taken' && about === 'context') {
+        return t('admin.fields.problem.contextNameTaken');
+      }
+      const known =
+        body?.error && Object.hasOwn(REFUSALS, body.error) ? REFUSALS[body.error] : null;
+      if (known) return t(known);
       if (error.status === 403) return t('admin.fields.problem.forbidden');
       return t('admin.fields.problem.other');
     },
@@ -96,6 +127,12 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
     void load();
   };
   const typeName = (of: FieldType) => t(`admin.fields.type.${of}` as MessageId);
+  const chooseType = (next: FieldType) => {
+    setType(next);
+    setConfig(next === 'formula' ? formulaConfig({}, 'number') : {});
+    setRefused(null);
+  };
+  const fields = state.status === 'loaded' ? state.fields : [];
 
   return (
     <section aria-labelledby={titleId} className="page admin-page people-page">
@@ -130,21 +167,38 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
                 event.preventDefault();
                 const wanted = name.trim();
                 if (!wanted) return;
+                const settings =
+                  type === 'formula' ? formulaConfig(config, config.output ?? 'number') : config;
                 client
                   .createField({
                     name: wanted,
                     type,
+                    ...(description.trim() ? { description: description.trim() } : {}),
                     ...(MULTIPLE_TYPES.has(type) ? { multiple } : {}),
+                    ...(Object.keys(settings).length > 0 ? { config: settings } : {}),
                   })
                   .then(
                     (made) => {
                       setName('');
+                      setDescription('');
                       setMultiple(false);
+                      chooseType('text');
                       creating.close();
                       said(t('admin.fields.added', { name: made.name }));
                       setOpen(made.id);
                     },
-                    (error) => setProblem(refusal(error)),
+                    (error) => {
+                      const body =
+                        error instanceof ApiError
+                          ? (error.body as { error?: string; formula?: FormulaProblem } | null)
+                          : null;
+                      if (body?.error === 'invalid_formula' && body.formula) {
+                        setRefused({
+                          problem: body.formula,
+                          expression: settings.expression ?? '',
+                        });
+                      } else setProblem(refusal(error));
+                    },
                   );
               }}
             >
@@ -156,9 +210,26 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
                   id={nameId}
                   type="text"
                   required
+                  maxLength={255}
                   value={name}
                   onChange={(event) => setName(event.target.value)}
                 />
+              </div>
+              <div className="form-field">
+                <label htmlFor={descriptionId} className="form-label">
+                  {t('admin.fields.description')}
+                </label>
+                <textarea
+                  id={descriptionId}
+                  rows={2}
+                  maxLength={2000}
+                  aria-describedby={`${descriptionId}-hint`}
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                />
+                <p id={`${descriptionId}-hint`} className="form-hint">
+                  {t('admin.fields.descriptionHint')}
+                </p>
               </div>
               <div className="form-field">
                 <label htmlFor={typeId} className="form-label">
@@ -167,7 +238,7 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
                 <select
                   id={typeId}
                   value={type}
-                  onChange={(event) => setType(event.target.value as FieldType)}
+                  onChange={(event) => chooseType(event.target.value as FieldType)}
                 >
                   {FIELD_TYPES.map((of) => (
                     <option key={of} value={of}>
@@ -186,6 +257,19 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
                   />
                   <label htmlFor={multipleId}>{t('admin.fields.multiple')}</label>
                 </div>
+              )}
+              {SETTINGS_TYPES.has(type) && (
+                <FieldSettings type={type} config={config} onChange={setConfig} />
+              )}
+              {type === 'formula' && (
+                <FormulaEditor
+                  config={config}
+                  onChange={setConfig}
+                  fields={fields}
+                  check={client.checkFormula}
+                  trackId={null}
+                  refused={refused}
+                />
               )}
               <div className="form-actions">
                 <button type="submit" className="button-primary">
@@ -230,6 +314,7 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
                         ? t('admin.fields.summaryMultiple', { type: typeName(f.type) })
                         : typeName(f.type)}
                     </p>
+                    {f.description && <p className="people-meta">{f.description}</p>}
                   </div>
                   <div className="people-actions">
                     <button
@@ -245,6 +330,7 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
                   {open === f.id && (
                     <FieldPanel
                       id={f.id}
+                      fields={state.fields}
                       client={client}
                       onChanged={said}
                       onDeleted={(deleted) => {
@@ -253,7 +339,7 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
                         said(t('admin.fields.deleted', { name: deleted }));
                         title.current?.focus();
                       }}
-                      onProblem={(error) => setProblem(refusal(error))}
+                      onProblem={(error, about) => setProblem(refusal(error, about))}
                     />
                   )}
                 </li>
@@ -263,297 +349,5 @@ export function FieldsAdminPage({ client = fieldsClient }: FieldsAdminPageProps)
         </>
       )}
     </section>
-  );
-}
-
-function FieldPanel({
-  id,
-  client,
-  onChanged,
-  onDeleted,
-  onProblem,
-}: {
-  id: number;
-  client: FieldsClient;
-  onChanged: (message: string) => void;
-  onDeleted: (name: string) => void;
-  onProblem: (error: unknown) => void;
-}) {
-  const t = useT();
-  const formId = useId();
-  const [field, setField] = useState<Field | null>(null);
-  const [name, setName] = useState('');
-
-  const show = (found: Field) => {
-    setField(found);
-    setName(found.name);
-  };
-  // biome-ignore lint/correctness/useExhaustiveDependencies: once per field
-  useEffect(() => {
-    client.field(id).then(show, onProblem);
-  }, [id]);
-
-  if (!field) return <p className="page-note people-panel">{t('admin.fields.loading')}</p>;
-
-  return (
-    <div className="people-panel">
-      <form
-        className="people-inline"
-        aria-label={t('admin.fields.renameOf', { name: field.name })}
-        onSubmit={(event) => {
-          event.preventDefault();
-          const wanted = name.trim();
-          if (!wanted || wanted === field.name) return;
-          client.updateField(id, { name: wanted }).then((saved) => {
-            show(saved);
-            onChanged(t('admin.fields.saved', { name: saved.name }));
-          }, onProblem);
-        }}
-      >
-        <div className="form-field">
-          <label htmlFor={`${formId}-name`} className="form-label">
-            {t('admin.fields.name')}
-          </label>
-          <input
-            id={`${formId}-name`}
-            type="text"
-            required
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-        </div>
-        <button type="submit" className="button-secondary">
-          {t('admin.fields.rename')}
-        </button>
-      </form>
-      {OPTION_TYPES.has(field.type) &&
-        field.contexts.map((context) => (
-          <ContextOptions
-            key={context.id}
-            field={field}
-            context={context}
-            client={client}
-            onField={show}
-            onChanged={onChanged}
-            onProblem={onProblem}
-          />
-        ))}
-      <div className="form-actions">
-        {/* Asks first, saying what will happen (D13); a refusal keeps the question open. */}
-        <DangerAction
-          label={t('admin.fields.delete')}
-          name={t('admin.fields.deleteOf', { name: field.name })}
-          outcome={t('admin.fields.confirmDelete', { name: field.name })}
-          confirmLabel={t('admin.fields.deleteOf', { name: field.name })}
-          onConfirm={async () => {
-            try {
-              await client.deleteField(id);
-            } catch (error) {
-              onProblem(error);
-              throw error;
-            }
-            onDeleted(field.name);
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-/** The options of one context: add, rename, disable or enable, delete. */
-function ContextOptions({
-  field,
-  context,
-  client,
-  onField,
-  onChanged,
-  onProblem,
-}: {
-  field: Field;
-  context: FieldContext;
-  client: FieldsClient;
-  onField: (field: Field) => void;
-  onChanged: (message: string) => void;
-  onProblem: (error: unknown) => void;
-}) {
-  const t = useT();
-  const headingId = useId();
-  const newId = useId();
-  const [value, setValue] = useState('');
-  const options = context.options ?? [];
-  const reload = () => client.field(field.id).then(onField, onProblem);
-
-  return (
-    <section aria-labelledby={headingId} className="people-panel">
-      <h2 id={headingId} className="facts-title">
-        {t('admin.fields.optionsOf', { context: context.name })}
-      </h2>
-      {options.length === 0 ? (
-        <EmptyState compact title={t('admin.fields.noOptions')} />
-      ) : (
-        <ul className="people-sublist">
-          {options.map((option) => (
-            <OptionRow
-              key={option.id}
-              option={option}
-              onRename={(wanted) =>
-                client
-                  .updateOption(field.id, context.id, option.id, { value: wanted })
-                  .then((saved) => {
-                    onField(saved);
-                    onChanged(t('admin.fields.optionRenamed', { value: wanted }));
-                  }, onProblem)
-              }
-              onToggle={() =>
-                client
-                  .updateOption(field.id, context.id, option.id, { disabled: !option.disabled })
-                  .then((saved) => {
-                    onField(saved);
-                    onChanged(
-                      t(
-                        option.disabled
-                          ? 'admin.fields.optionEnabled'
-                          : 'admin.fields.optionDisabled',
-                        { value: option.value },
-                      ),
-                    );
-                  }, onProblem)
-              }
-              onDelete={() =>
-                client.deleteOption(field.id, context.id, option.id).then(() => {
-                  void reload();
-                  onChanged(t('admin.fields.optionDeleted', { value: option.value }));
-                }, onProblem)
-              }
-            />
-          ))}
-        </ul>
-      )}
-      <form
-        className="people-inline"
-        aria-label={t('admin.fields.addOptionTo', { context: context.name })}
-        onSubmit={(event) => {
-          event.preventDefault();
-          const wanted = value.trim();
-          if (!wanted) return;
-          client.addOption(field.id, context.id, wanted).then((saved) => {
-            setValue('');
-            onField(saved);
-            onChanged(t('admin.fields.optionAdded', { value: wanted }));
-          }, onProblem);
-        }}
-      >
-        <div className="form-field">
-          <label htmlFor={newId} className="form-label">
-            {t('admin.fields.newOption')}
-          </label>
-          <input
-            id={newId}
-            type="text"
-            required
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-          />
-        </div>
-        <button type="submit" className="button-secondary">
-          {t('admin.fields.addOption')}
-        </button>
-      </form>
-    </section>
-  );
-}
-
-function OptionRow({
-  option,
-  onRename,
-  onToggle,
-  onDelete,
-}: {
-  option: FieldOption;
-  onRename: (value: string) => void;
-  onToggle: () => void;
-  onDelete: () => void;
-}) {
-  const t = useT();
-  const inputId = useId();
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(option.value);
-
-  if (editing) {
-    return (
-      <li>
-        <label htmlFor={inputId} className="visually-hidden">
-          {t('admin.fields.optionValueOf', { value: option.value })}
-        </label>
-        <input
-          id={inputId}
-          type="text"
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-        />
-        <span className="people-actions">
-          <button
-            type="button"
-            className="button-secondary people-action"
-            onClick={() => {
-              const wanted = value.trim();
-              if (wanted && wanted !== option.value) onRename(wanted);
-              setEditing(false);
-            }}
-          >
-            {t('admin.fields.optionSave')}
-          </button>
-          <button
-            type="button"
-            className="button-secondary people-action"
-            onClick={() => {
-              setValue(option.value);
-              setEditing(false);
-            }}
-          >
-            {t('admin.fields.optionCancel')}
-          </button>
-        </span>
-      </li>
-    );
-  }
-  return (
-    <li>
-      <span className="people-sublist-row">
-        {option.value}
-        {option.disabled && (
-          <span className="people-badge">{t('admin.fields.optionDisabledBadge')}</span>
-        )}
-      </span>
-      <span className="people-actions">
-        <button
-          type="button"
-          className="button-secondary people-action"
-          aria-label={t('admin.fields.optionRenameOf', { value: option.value })}
-          onClick={() => setEditing(true)}
-        >
-          {t('admin.fields.optionRename')}
-        </button>
-        <button
-          type="button"
-          className="button-secondary people-action"
-          aria-label={t(
-            option.disabled ? 'admin.fields.optionEnableOf' : 'admin.fields.optionDisableOf',
-            { value: option.value },
-          )}
-          onClick={onToggle}
-        >
-          {t(option.disabled ? 'admin.fields.optionEnable' : 'admin.fields.optionDisable')}
-        </button>
-        <button
-          type="button"
-          className="button-secondary people-action"
-          aria-label={t('admin.fields.optionDeleteOf', { value: option.value })}
-          onClick={onDelete}
-        >
-          {t('admin.fields.optionDelete')}
-        </button>
-      </span>
-    </li>
   );
 }
