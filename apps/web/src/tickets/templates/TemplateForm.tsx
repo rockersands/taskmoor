@@ -287,7 +287,11 @@ function ListedValues({
   );
 }
 
-/** Finding the person a track's template assigns, with the create form's person picker. */
+/**
+ * Finding the person a track's template assigns, with the create form's person picker and its
+ * assignee search: only people who may be given tickets in the track (T-269). One the reader may
+ * not see named, or who is gone, shows by number and can be removed (T-283).
+ */
 function AssigneeChooser({
   client,
   track,
@@ -308,8 +312,19 @@ function AssigneeChooser({
       <PersonPicker
         label={t('workflow.field.assignee')}
         hint={t('tickets.templates.assigneeHint')}
-        search={(typed) => client.people(track, typed)}
-        chosen={chosen ? [chosen] : []}
+        search={(typed) => client.assignable(track, typed)}
+        chosen={
+          chosen
+            ? [
+                {
+                  id: chosen.id,
+                  name:
+                    chosen.name ||
+                    t('tickets.templates.unnamedValue', { type: 'user', id: chosen.id }),
+                },
+              ]
+            : []
+        }
         removeLabel={(name) => t('tickets.templates.removeAssignee', { name })}
         describedBy={problem ? `${id}-problem` : undefined}
         invalid={problem !== undefined}

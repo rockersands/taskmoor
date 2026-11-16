@@ -821,3 +821,37 @@ describe('the ticket template form adds custom person, group and team values (CO
     expect(untranslated(texts)).toEqual([]);
   });
 });
+
+describe('the ticket template form’s assignee (CORE-029, T-269, T-283)', () => {
+  it('[CORE-029] [CORE-008] finds the assignee among those who may be given tickets in the track', async () => {
+    const user = userEvent.setup();
+    const { client, form } = renderForm(null);
+    await user.type(within(form).getByRole('searchbox', { name: 'Assignee' }), 'an');
+    await within(form).findByRole('button', { name: 'Ana Ortiz' });
+    expect(client.searched).toEqual(['assignable:SHOP:an']);
+  });
+
+  it('[CORE-029] [IAM-009] shows an assignee it may not name by number, and keeps it on save', async () => {
+    const user = userEvent.setup();
+    const hidden: SavedTemplate = { ...RELEASE_TEMPLATE, assignee: null };
+    const { client, form } = renderForm(hidden);
+    const assignee = within(form).getByRole('list', { name: 'Assignee' });
+    expect(within(assignee).getByText('Person 21, hidden from you or gone')).toBeVisible();
+    await user.click(within(form).getByRole('button', { name: 'Save the template' }));
+    await waitFor(() => expect(client.saved).toHaveLength(1));
+    expect(client.saved[0]?.body.defaults.assigneeId).toBe(21);
+    // Removed, it goes from the draft, and the assignee search takes its place.
+    cleanup();
+    const removed = renderForm(hidden);
+    await user.click(
+      within(removed.form).getByRole('button', {
+        name: 'Remove Person 21, hidden from you or gone as assignee',
+      }),
+    );
+    expect(within(removed.form).getByRole('searchbox', { name: 'Assignee' })).toBeVisible();
+    const fields = TEMPLATE_OPTIONS.fields;
+    const draft = { ...draftOf(hidden, fields), assignee: null };
+    expect(bodyOf(draft, hidden, fields, 'SHOP').defaults.assigneeId).toBeUndefined();
+    expect(bodyOf(draftOf(hidden, fields), hidden, fields, 'SHOP').defaults.assigneeId).toBe(21);
+  });
+});

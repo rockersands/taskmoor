@@ -2,7 +2,7 @@ import type { Database } from '@taskmoor/db';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { type Kysely, sql } from 'kysely';
 import { z } from 'zod';
-import { requireGlobal, requireUser } from '../auth';
+import { requireUser } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import { docHash, loadOriginal, RICH_TEXT_FIELDS } from '../tickets/rich-text';
 import { loadTicket, resolveTicket, resolveTrack, type TicketRow } from '../tickets/store';
@@ -19,7 +19,11 @@ import { loadTicket, resolveTicket, resolveTrack, type TicketRow } from '../tick
  *   exists), so the editor can warn before mentioning someone who cannot (NTF-005 (1)). Those
  *   who can come first. Needs "Browse users and groups" and the track or ticket. With
  *   `assignable=true`, only those who hold "Assignable user" in the track (the ticket's track),
- *   for an assignee picker such as the create form's (CORE-008, IAM-010).
+ *   for an assignee picker such as the create form's (CORE-008, IAM-010). That search also
+ *   answers those who may give tickets to people there ("Assign tickets", in the track or on the
+ *   ticket) without "Browse users and groups" (T-269), without opening the site's directory to
+ *   them: it finds people by name only, once something is typed, and only those who may see the
+ *   ticket (browse the track).
  *
  * Both only read.
  */
@@ -40,6 +44,7 @@ const mentionQuery = z
 
 const invalid = (reply: FastifyReply) => reply.code(400).send({ error: 'invalid_request' });
 const notFound = (reply: FastifyReply) => reply.code(404).send({ error: 'not_found' });
+const forbidden = (reply: FastifyReply) => reply.code(403).send({ error: 'forbidden' });
 
 export function registerRichTextRoutes(
   app: FastifyInstance,
@@ -73,8 +78,13 @@ export function registerRichTextRoutes(
   });
 
   app.get('/api/v1/people/mentionable', async (request, reply) => {
-    if (!(await requireGlobal(request, reply, 'browse_users'))) return reply;
+    if (!requireUser(request, reply)) return reply;
+    // The site's people need "Browse users and groups"; an assignee picker's search is also for
+    // those who may assign where they look, checked once the track or ticket is known (T-269).
+    const directory = await request.authz.hasGlobal('browse_users');
     const q = mentionQuery.safeParse(request.query);
+    const assignableOnly = q.success && q.data.assignable === 'true';
+    if (!directory && !assignableOnly) return forbidden(reply);
     if (!q.success) return invalid(reply);
     const ws = request.workspaceId;
     let ticket: TicketRow | undefined;
@@ -92,11 +102,21 @@ export function registerRichTextRoutes(
         return notFound(reply);
       }
     }
+    if (
+      !directory &&
+      !(ticket
+        ? await request.authz.canTicket('assign_tickets', ticket)
+        : await request.authz.can('assign_tickets', trackId as number))
+    ) {
+      return forbidden(reply);
+    }
     const text = q.data.q
       .trim()
       .replace(/^@/, '')
       .toLowerCase()
       .replace(/[\\%_]/g, (c) => `\\${c}`);
+    // Without the directory nothing is listed until a name is typed, and never by address.
+    if (!directory && text === '') return { people: [] };
     let query = db
       .selectFrom('app_user')
       .select(['id', 'name'])
@@ -105,17 +125,18 @@ export function registerRichTextRoutes(
       .where('kind', '=', 'person');
     if (text !== '') {
       query = query.where((eb) =>
-        eb.or([
-          sql<boolean>`lower(name) LIKE ${`%${text}%`}`,
-          sql<boolean>`lower(email) LIKE ${`${text}%`}`,
-        ]),
+        directory
+          ? eb.or([
+              sql<boolean>`lower(name) LIKE ${`%${text}%`}`,
+              sql<boolean>`lower(email) LIKE ${`${text}%`}`,
+            ])
+          : sql<boolean>`lower(name) LIKE ${`%${text}%`}`,
       );
     }
     // A few more than asked, so those who can see the ticket fill the list first. For an
     // assignee picker the permission is checked per person, after the text match: the reading
     // goes on, a page at a time, until enough of them may be assigned or no one is left, so a
     // site where few may be assigned still finds them however many names come first.
-    const assignableOnly = q.data.assignable === 'true';
     const wanted = q.data.limit * 3;
     const page = assignableOnly ? Math.max(wanted, 100) : wanted;
     const people: { id: number; name: string; canView: boolean }[] = [];
@@ -140,6 +161,8 @@ export function registerRichTextRoutes(
           const canView = ticket
             ? await as.seesTicket(ticket)
             : await as.can('browse_track', trackId as number);
+          // Without the directory, only those who may see the ticket (browse the track).
+          if (!directory && !canView) return null;
           return { id: r.id, name: r.name, canView };
         }),
       );

@@ -151,6 +151,35 @@ describe('a template on the create form (CORE-030)', () => {
     expect(archived.picked).toEqual(['assigneeId']);
   });
 
+  it('[CORE-030] [IAM-009] keeps an assignee the template does not name out of the picker, as a checkbox (T-283)', () => {
+    const form: TicketForm = {
+      ...FORM,
+      layout: {
+        operation: 'create',
+        tabs: [
+          {
+            name: null,
+            sections: [
+              {
+                kind: 'main',
+                hideWhenEmpty: false,
+                fields: [field('summary'), field('assignee')],
+              },
+            ],
+          },
+        ],
+      },
+    };
+    // The API names no one the reader may not see, or who is gone: the id alone stays.
+    const fill = fillForm({ summary: 'Release', assigneeId: 21 }, form, {
+      keys: new Set(['assignee']),
+      assignee: null,
+    });
+    expect(fill.picks).toEqual({});
+    expect(fill.picked).toEqual([]);
+    expect(fill.extras).toEqual(['assigneeId']);
+  });
+
   it('[CORE-030] fills custom person, group, team, release and area pickers only with what it can name or offer (T-276)', () => {
     const custom = (id: number, type: string, multiple = false) => ({
       id,

@@ -25,7 +25,7 @@ This file specifies identity and access for Taskmoor: local sign-in and two-fact
 |---|---|
 | Site administrator | Users, groups, sign-in, security, import and export, backups, system settings |
 | Configuration administrator | Tracks, ticket types, fields, workflows, configuration sets and policies (no user management, no import or export) |
-| Browse users and groups | See user and group lists in pickers and directories |
+| Browse users and groups | See user and group lists in pickers and directories. The assignee picker also answers those who may assign tickets in the track (names only, once typed, among people who can see the track), and a person field limited to a group or role offers its own list to anyone who may fill it |
 | Share dashboards and saved searches | Share beyond private |
 | Manage group search subscriptions | Subscribe groups to saved searches |
 | Manage custom onboarding | Configure onboarding content |
