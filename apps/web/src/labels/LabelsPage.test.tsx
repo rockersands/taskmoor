@@ -215,6 +215,31 @@ describe('labels: merging and renaming (T-322)', () => {
     ]);
   });
 
+  it('[CORE-017] Show more labels waits for a search on its way, rather than paging on the old list', async () => {
+    const user = userEvent.setup();
+    const client = fakeLabelsClient({ many: true });
+    const usage = client.usage;
+    let answer: (() => void) | undefined;
+    client.usage = async (query) => {
+      // The search's answer is slow.
+      if (query.q === 'team-0') await new Promise<void>((resolve) => (answer = resolve));
+      return usage(query);
+    };
+    renderPage(ADMIN, { client });
+    await within(listCard()).findByRole('checkbox', { name: 'backend' });
+    await user.type(within(listCard()).getByLabelText('Find labels that start with'), 'team-0');
+    await waitFor(() => expect(answer).toBeDefined());
+    const more = within(listCard()).getByRole('button', { name: 'Show more labels' });
+    expect(more).toHaveAttribute('aria-disabled', 'true');
+    await user.click(more);
+    answer?.();
+    await waitFor(() => expect(rows()).toHaveLength(9));
+    expect(rows()[0]).toBe('team-01');
+    expect(
+      client.calls.filter((c) => (c.args[0] as { after?: string }).after !== undefined),
+    ).toEqual([]);
+  });
+
   it('[CORE-017] says beside Show more labels when the next labels cannot be read', async () => {
     const user = userEvent.setup();
     const client = fakeLabelsClient({ many: true });

@@ -103,8 +103,12 @@ export function LabelsPage({ client = labelsClient }: LabelsPageProps) {
     list.current?.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[focusAt]?.focus();
   }, [focusAt]);
 
+  /** The list shown is for another search than the one typed, whose answer is on its way. */
+  const stale = state.status === 'loaded' && state.q !== query.trim();
+
   const showMore = async () => {
-    if (state.status !== 'loaded' || state.adding) return;
+    // Paging on would show the old search's labels under the new one: its own answer comes.
+    if (state.status !== 'loaded' || state.adding || stale) return;
     const from = state;
     const last = from.labels.at(-1)?.name;
     const mine = ++reading.current;
@@ -357,7 +361,7 @@ export function LabelsPage({ client = labelsClient }: LabelsPageProps) {
                       <button
                         type="button"
                         className="button-secondary"
-                        aria-disabled={state.adding || undefined}
+                        aria-disabled={state.adding || stale || undefined}
                         onClick={() => void showMore()}
                       >
                         {t('admin.labels.more')}

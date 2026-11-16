@@ -177,7 +177,8 @@ under its title.
     and whose question says how many tickets change, at most the sum of the counts. Then **Labels
     on this site**: a search by how labels start, as the suggestions match them, and the labels 50
     at a time, a box each with the tickets that have it as its description. **Show more labels**
-    gives the keyboard to the first label it adds.
+    gives the keyboard to the first label it adds; while a new search is on its way it waits
+    (`aria-disabled`), so the old search's labels are never paged on under the new one.
   - Ticks stay while the search changes, so labels found by different beginnings go into one
     merge; **Clear the ticks** gives the keyboard to the card's heading. After a merge the ticks
     and the word clear, the list is read again, the status line says how many tickets changed,
