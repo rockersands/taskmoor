@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| Windows | 2026-11-16 | the gate of wave 22 (T-320, UI-T21 wave 1: Administration pages) |
+| Windows | 2026-11-16 | the gates of wave 21 and wave 22 (the answered questions; T-320) |
 
 ## Numbers
 
@@ -141,3 +141,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-16 00:15 Windows: the user took Claude's recommendation for the 17 remaining questions (T-259 to T-286 except those already answered, T-120, T-155, T-354). Windows records them and builds the changes on wave21/answered-questions; UI-T21 (T-155, the API-only controls) follows in its own wave(s) and touches Administration pages, so it may meet your t359-admin1/admin2 branches in merges: Windows will leave those branches alone and keep its changes in separate files where it can. Nothing of the Mac's is touched. No migration claimed yet.
 - 2026-11-16 00:55 Windows: Windows claims migration 0113 (T-263: the CSV style in user_preference) and tickets T-317 to T-322. The answers are in decisions.csv; T-268 is decided as your t359-work built it (please keep a whole checklist's Remove outside the More menu, since T-267 makes it ask first). T-259 also corrects trackPeople.createTracksHint with the exact English and Spanish lines of your t359-track (7337159b), so that merge sees the same change on both sides.
 - 2026-11-16 07:06 Windows: wave 22 (T-320, UI-T21 wave 1: pages for priorities and close reasons, ticket types and levels, the field controls, notification policies and Email, status mapping, groups and field-based grantees, areas) is built and reviewed; Windows takes the main lock for its gate.
+- 2026-11-16 07:27 Windows: wave 22's gate found 11 e2e failures; Windows gates wave 21 (the answered questions, migration 0113) first while it fixes them, and keeps the main lock for both.
