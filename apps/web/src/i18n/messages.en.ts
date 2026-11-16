@@ -1997,6 +1997,8 @@ export const messagesEn = {
     'An earlier key belongs to something else here and stays theirs.',
   'admin.imports.warning.ticket_in_another_open_sprint':
     'A ticket was in two open sprints; it stays in the first.',
+  'admin.imports.warning.read_as_windows_1252':
+    'The file is not UTF-8, so it was read as Windows Western European (Windows-1252), which is how Excel saves a plain CSV file. Check the accented letters on the lines shown. To be sure, save the file from Excel as “CSV UTF-8” and import that instead.',
   'admin.frontends.title': 'Frontends',
   'admin.frontends.forbidden':
     'Only site administrators change which frontends may use this server.',

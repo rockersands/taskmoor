@@ -94,6 +94,8 @@ export const EXPLAINED_WARNINGS = [
   'name_taken',
   'former_key_taken',
   'ticket_in_another_open_sprint',
+  // The CSV import read a file that is not UTF-8 as Windows-1252 (T-263).
+  'read_as_windows_1252',
 ] as const;
 
 export function warningExplanation(code: string): MessageId {

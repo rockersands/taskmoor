@@ -2048,6 +2048,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Una clave anterior pertenece aquí a otra cosa y sigue siendo suya.',
   'admin.imports.warning.ticket_in_another_open_sprint':
     'Un ticket estaba en dos sprints abiertos; se queda en el primero.',
+  'admin.imports.warning.read_as_windows_1252':
+    'El archivo no está en UTF-8, así que se leyó como europeo occidental de Windows (Windows-1252), que es como Excel guarda un CSV sencillo. Revisa las letras con tilde de las líneas indicadas. Para ir sobre seguro, guarda el archivo desde Excel como «CSV UTF-8» e importa ese.',
   'admin.frontends.title': 'Frontends web',
   'admin.frontends.forbidden':
     'Solo los administradores del sitio cambian qué frontends pueden usar este servidor.',

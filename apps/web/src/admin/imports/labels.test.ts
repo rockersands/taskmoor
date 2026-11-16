@@ -2,7 +2,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { messagesEn } from '../../i18n/messages.en';
-import { IMPORT_KINDS, kindLabel } from './labels';
+import { messagesEs } from '../../i18n/messages.es';
+import { EXPLAINED_WARNINGS, IMPORT_KINDS, kindLabel, warningExplanation } from './labels';
 
 /** The server's source, from the repository root or from the app (as the SSO tests read it). */
 const serverSource = (file: string) => {
@@ -30,5 +31,18 @@ describe('the import labels', () => {
   it('[IMP-010] names checklists as checklists, not as something else', () => {
     expect(kindLabel('checklist')).toBe('admin.imports.kind.checklist');
     expect(kindLabel('something new')).toBe('admin.imports.kind.other');
+  });
+
+  it('[IMP-012] [NFR-006] explains every warning it lists, the CSV file read as Windows-1252 among them (T-263)', () => {
+    for (const code of EXPLAINED_WARNINGS) {
+      expect(messagesEn[warningExplanation(code)], code).toBeTruthy();
+      expect(messagesEs[warningExplanation(code)], code).toBeTruthy();
+    }
+    // The code is the CSV source's own, as the server writes it.
+    expect(serverSource('import/csv.ts')).toContain("code: 'read_as_windows_1252'");
+    expect(warningExplanation('read_as_windows_1252')).toBe(
+      'admin.imports.warning.read_as_windows_1252',
+    );
+    expect(messagesEn['admin.imports.warning.read_as_windows_1252']).toContain('CSV UTF-8');
   });
 });
