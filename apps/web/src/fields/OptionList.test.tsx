@@ -98,7 +98,35 @@ describe('options and their order (T-320)', () => {
     await user.click(screen.getByRole('button', { name: 'Stop offering Barcelona' }));
     expect(await screen.findByText('Barcelona is no longer offered.')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Delete Lisbon' }));
+    const question = screen.getByRole('group', { name: /^Delete Lisbon\? It leaves this list/ });
+    await user.click(within(question).getByRole('button', { name: 'Delete Lisbon' }));
     expect(await screen.findByText('Lisbon was deleted.')).toBeVisible();
     expect(values(europe)).toEqual(['Barcelona']);
+  });
+
+  it('[CORE-009] asks before deleting an option, naming its child options, and keeps the keyboard', async () => {
+    const user = userEvent.setup();
+    const client = await renderField(5);
+    // The first press only asks, with the danger look; Cancel sends nothing (D13).
+    const first = screen.getByRole('button', { name: 'Delete Europe' });
+    expect(first).toHaveClass('button-danger-quiet');
+    await user.click(first);
+    const question = screen.getByRole('group', {
+      name: /^Delete Europe and its 2 child options\? They leave this list for good/,
+    });
+    await user.click(within(question).getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Delete Europe' })).toHaveFocus();
+    expect(client.calls).toEqual([]);
+
+    await user.click(screen.getByRole('button', { name: 'Delete Madrid' }));
+    await user.click(
+      within(screen.getByRole('group', { name: /^Delete Madrid\?/ })).getByRole('button', {
+        name: 'Delete Madrid',
+      }),
+    );
+    expect(await screen.findByText('Madrid was deleted.')).toBeVisible();
+    expect(client.calls).toEqual([{ action: 'deleteOption', args: [5, 50, 511] }]);
+    // Its row is gone, so the list's heading takes the keyboard, not the page.
+    expect(screen.getByRole('heading', { name: 'Options in Everywhere' })).toHaveFocus();
   });
 });

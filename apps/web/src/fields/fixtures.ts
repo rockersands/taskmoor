@@ -260,9 +260,12 @@ export function fakeFieldsClient(): FakeFieldsClient {
   /** A default given as ids, as the REST form shows it. */
   const restDefault = (field: Field, context: FieldContext, input: unknown): unknown => {
     if (input === null || input === undefined) return null;
+    // As the server: only an option the context still offers.
     const option = (id: number) => {
       const found = allOptions(context).find((o) => o.id === id);
-      if (!found) throw new ApiError(400, { error: 'invalid_default', problem: 'not_found' });
+      if (!found || found.disabled) {
+        throw new ApiError(400, { error: 'invalid_default', problem: 'not_found' });
+      }
       return { id, value: found.value };
     };
     const person = (list: Named[], id: number) => {
@@ -424,6 +427,18 @@ export function fakeFieldsClient(): FakeFieldsClient {
       if (inUse.has(optionId)) throw new ApiError(409, { error: 'in_use', ticketCount: 3 });
       const context = contextOf(fieldId, contextId);
       const top = optionsOf(fieldId, contextId);
+      // As the server: a default that names it, or a child of it, goes too.
+      const gone = new Set([
+        optionId,
+        ...(top.find((o) => o.id === optionId)?.children ?? []).map((c) => c.id),
+      ]);
+      const named = [context.defaultValue ?? []].flat() as {
+        id?: number;
+        child?: { id?: number } | null;
+      }[];
+      if (named.some((v) => gone.has(v.id ?? 0) || gone.has(v.child?.id ?? 0))) {
+        context.defaultValue = null;
+      }
       context.options = top.filter((o) => o.id !== optionId);
       for (const o of context.options)
         o.children = (o.children ?? []).filter((c) => c.id !== optionId);

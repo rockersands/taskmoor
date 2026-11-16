@@ -1,4 +1,5 @@
-import { type FormEvent, type ReactNode, useEffect, useId, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { useNewForm } from '../admin/NewButton';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { DangerAction } from '../shell/DangerAction';
@@ -21,6 +22,7 @@ import {
   defaultOptionIds,
   draftOf,
   EMPTY_DRAFT,
+  offeredOnly,
 } from './defaultValue';
 import { OptionList } from './OptionList';
 
@@ -49,7 +51,8 @@ export interface ContextsSectionProps {
  * group's members or a track role's holders), its default value and, for choice lists, its
  * options. Change edits a context; Add a context makes another; Delete asks first and says what
  * follows, also that the field applies nowhere once its last context goes. A local-mode track's
- * field covers its own track only, so no other track is offered.
+ * field covers its own track only, so no other track is offered. The keyboard never falls to the
+ * page: a closed form gives it back to its button, a deleted context to the section's heading.
  */
 export function ContextsSection({
   field,
@@ -61,12 +64,17 @@ export function ContextsSection({
 }: ContextsSectionProps) {
   const t = useT();
   const headingId = useId();
-  const [adding, setAdding] = useState(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const adding = useNewForm();
+  const [deleted, setDeleted] = useState(0);
+  useEffect(() => {
+    if (deleted > 0) heading.current?.focus();
+  }, [deleted]);
   const problem = (error: unknown) => onProblem(error, 'context');
 
   return (
     <section aria-labelledby={headingId} className="people-panel">
-      <h2 id={headingId} className="facts-title">
+      <h2 id={headingId} ref={heading} tabIndex={-1} className="facts-title">
         {t('admin.fields.contexts.title', { name: field.name })}
       </h2>
       <p className="form-hint">{t('admin.fields.contexts.hint')}</p>
@@ -87,31 +95,37 @@ export function ContextsSection({
               onField={onField}
               onChanged={onChanged}
               onProblem={problem}
+              onDeleted={() => setDeleted((n) => n + 1)}
             />
           ))}
         </ul>
       )}
-      {adding ? (
+      <div className="form-actions">
+        <button
+          ref={adding.button}
+          type="button"
+          className="button-secondary"
+          aria-expanded={adding.open}
+          onClick={adding.toggle}
+        >
+          {t('admin.fields.contexts.new')}
+        </button>
+      </div>
+      {adding.open && (
         <ContextForm
           field={field}
           lists={lists}
           label={t('admin.fields.contexts.add')}
           submit={t('admin.fields.contexts.add')}
-          onCancel={() => setAdding(false)}
+          onCancel={adding.close}
           onSave={(body) =>
             client.addContext(field.id, body).then((saved) => {
               onField(saved);
-              setAdding(false);
+              adding.close();
               onChanged(t('admin.fields.contexts.added', { name: body.name }));
             }, problem)
           }
         />
-      ) : (
-        <div className="form-actions">
-          <button type="button" className="button-secondary" onClick={() => setAdding(true)}>
-            {t('admin.fields.contexts.new')}
-          </button>
-        </div>
       )}
     </section>
   );
@@ -170,6 +184,7 @@ function ContextItem({
   onField,
   onChanged,
   onProblem,
+  onDeleted,
 }: {
   field: Field;
   context: FieldContext;
@@ -179,11 +194,13 @@ function ContextItem({
   onField: (field: Field) => void;
   onChanged: (message: string) => void;
   onProblem: (error: unknown) => void;
+  /** Drawn without it now: the keyboard goes elsewhere. */
+  onDeleted: () => void;
 }) {
   const t = useT();
   const reach = useReach();
   const people = usePeopleLimit();
-  const [editing, setEditing] = useState(false);
+  const changing = useNewForm();
   return (
     <li className="people-item">
       <div className="people-main">
@@ -193,11 +210,12 @@ function ContextItem({
       </div>
       <div className="people-actions">
         <button
+          ref={changing.button}
           type="button"
           className="button-secondary people-action"
-          aria-expanded={editing}
+          aria-expanded={changing.open}
           aria-label={t('admin.fields.contexts.changeOf', { name: context.name })}
-          onClick={() => setEditing(!editing)}
+          onClick={changing.toggle}
         >
           {t('admin.fields.contexts.change')}
         </button>
@@ -221,21 +239,22 @@ function ContextItem({
             }
             onChanged(t('admin.fields.contexts.deleted', { name: context.name }));
             await client.field(field.id).then(onField, onProblem);
+            onDeleted();
           }}
         />
       </div>
-      {editing && (
+      {changing.open && (
         <ContextForm
           field={field}
           context={context}
           lists={lists}
           label={t('admin.fields.contexts.changeOf', { name: context.name })}
           submit={t('admin.fields.contexts.save')}
-          onCancel={() => setEditing(false)}
+          onCancel={changing.close}
           onSave={(body) =>
             client.updateContext(field.id, context.id, body).then((saved) => {
               onField(saved);
-              setEditing(false);
+              changing.close();
               onChanged(t('admin.fields.contexts.saved', { name: body.name }));
             }, onProblem)
           }
@@ -309,12 +328,18 @@ function ContextForm({
   const [groupId, setGroupId] = useState(String(config.userGroupId ?? ''));
   const [roleId, setRoleId] = useState(String(config.userRoleId ?? ''));
   const [missing, setMissing] = useState<MessageId | null>(null);
+  // A track in the trash keeps its place in a context, but the tracks list leaves it out and the
+  // server refuses a context that names one: it could be neither shown nor unticked, so saving
+  // leaves it out and the form says so. A list that could not be read (empty) leaves them all.
+  const known = lists?.tracks ?? [];
+  const gone = known.length === 0 ? [] : tracks.filter((id) => !known.some((k) => k.id === id));
+  const kept = tracks.filter((id) => !gone.includes(id));
 
   const save = (event: FormEvent) => {
     event.preventDefault();
     const wanted = name.trim();
     if (!wanted) return;
-    if (!local && trackReach === 'some' && tracks.length === 0) {
+    if (!local && trackReach === 'some' && kept.length === 0) {
       setMissing('admin.fields.contexts.chooseTrack');
       return;
     }
@@ -329,7 +354,7 @@ function ContextForm({
     setMissing(null);
     const body: ContextBody = {
       name: wanted,
-      trackIds: local ? [field.trackId as number] : trackReach === 'all' ? null : tracks,
+      trackIds: local ? [field.trackId as number] : trackReach === 'all' ? null : kept,
       ticketTypeIds: typeReach === 'all' ? null : types,
     };
     if (field.type === 'user') {
@@ -374,6 +399,9 @@ function ContextForm({
           chosen={tracks}
           onChosen={setTracks}
         />
+      )}
+      {!local && trackReach === 'some' && gone.length > 0 && (
+        <p className="form-hint">{t('admin.fields.contexts.goneTracks', { count: gone.length })}</p>
       )}
       <ReachChoice
         legend={t('admin.fields.contexts.types')}
@@ -543,8 +571,12 @@ function DefaultForm({
 }) {
   const t = useT();
   const id = useId();
+  const saveButton = useRef<HTMLButtonElement>(null);
   const stored = JSON.stringify(context.defaultValue ?? null);
-  const [draft, setDraft] = useState<DefaultDraft>(() => draftOf(field, context.defaultValue));
+  const [kept, setDraft] = useState<DefaultDraft>(() => draftOf(field, context.defaultValue));
+  // Only the options still offered: one the default names but no longer offered is left out, and
+  // the form says so, since it can neither be shown nor saved.
+  const { draft, dropped } = offeredOnly(field, kept, context.options ?? []);
   // What the server saved (or another change brought) shows again.
   // biome-ignore lint/correctness/useExhaustiveDependencies: follows the stored default only
   useEffect(() => setDraft(draftOf(field, context.defaultValue)), [stored]);
@@ -559,17 +591,24 @@ function DefaultForm({
     );
   }
   const send = (value: unknown) =>
-    client.updateContext(field.id, context.id, { defaultValue: value }).then((saved) => {
-      onField(saved);
-      onChanged(
-        t(value === null ? 'admin.fields.default.removed' : 'admin.fields.default.saved', {
-          name: context.name,
-        }),
-      );
-    }, onProblem);
+    client.updateContext(field.id, context.id, { defaultValue: value }).then(
+      (saved) => {
+        onField(saved);
+        onChanged(
+          t(value === null ? 'admin.fields.default.removed' : 'admin.fields.default.saved', {
+            name: context.name,
+          }),
+        );
+        return true;
+      },
+      (error) => {
+        onProblem(error);
+        return false;
+      },
+    );
   const label = t('admin.fields.default.label');
   const options = (context.options ?? []).filter((o) => !o.disabled);
-  const set = (change: Partial<DefaultDraft>) => setDraft((d) => ({ ...d, ...change }));
+  const set = (change: Partial<DefaultDraft>) => setDraft({ ...draft, ...change });
 
   let control: ReactNode;
   switch (field.type) {
@@ -711,8 +750,13 @@ function DefaultForm({
       }}
     >
       {control}
+      {dropped.length > 0 && (
+        <p className="form-hint">
+          {t('admin.fields.default.notOffered', { values: dropped.join(', ') })}
+        </p>
+      )}
       <div className="form-actions">
-        <button type="submit" className="button-secondary">
+        <button ref={saveButton} type="submit" className="button-secondary">
           {t('admin.fields.default.save')}
         </button>
         {context.defaultValue !== null && context.defaultValue !== undefined && (
@@ -721,7 +765,10 @@ function DefaultForm({
             className="button-secondary"
             onClick={() => {
               setDraft(EMPTY_DRAFT);
-              void send(null);
+              // Once removed this button goes, so the keyboard moves to Save the default.
+              void send(null).then((done) => {
+                if (done) saveButton.current?.focus();
+              });
             }}
           >
             {t('admin.fields.default.clear')}

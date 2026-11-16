@@ -61,6 +61,17 @@ export const TwoLevels: Story = {
   },
 };
 
+/** Delete asks first and says what goes: here an option and its two child options (D13). */
+export const DeleteAsksFirst: Story = {
+  args: { start: fieldOf(5) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'Delete Europe' }));
+    const question = canvas.getByRole('group', { name: /^Delete Europe and its 2 child options/ });
+    await expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+  },
+};
+
 /** A context with no option yet. */
 export const NoOptions: Story = {
   args: { start: fieldOf(3) },

@@ -201,6 +201,13 @@ already had:
   currency and percentage outputs too. **A choice list's display (dropdown, radio, checkboxes)
   stays API-only in 1.0:** the web app always shows a list, so a control would change nothing; the
   page leaves a stored one as it is, and the manual says it is kept for the API and imports.
+- **After review:** an option's **Delete** is a `DangerAction` too (D13): it asks first and names
+  the child options and the default that go with it. A default naming an option no longer offered
+  is shown without it and saved without it, with a line naming it; a context naming a track in the
+  trash is saved without it, with a line saying so (the server refuses both). The keyboard never
+  falls to the page: **New context** stays as the form's button (`useNewForm`), a closed form gives
+  focus back to its button, a deleted context or option to its section's heading, and **Remove the
+  default** to **Save the default**.
 - **Who:** site and configuration administrators. Everyone signed in reads `GET /fields`, so the
   session decides, as on Priorities and Ticket types: someone who only runs tracks sees only the
   refusal, not controls on shared fields that the server refuses them and pickers that read lists

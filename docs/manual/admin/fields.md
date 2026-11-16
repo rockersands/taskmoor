@@ -137,8 +137,9 @@ field whom it offers (**People to choose from**). Each context has:
   in a list; its **Ticket types** the same way; and for a person field, under **People to choose
   from**, **Offer** **Anyone**, **The members of a group** or **The holders of a track role**. A field
   of a local-mode track covers that track only, and the form says so instead of listing tracks.
-  **Save the context**; a change that would cover a track and type another context covers is
-  refused in words.
+  A track moved to the trash stays in a context's list but cannot be chosen, so the form says that
+  saving leaves it out. **Save the context**; a change that would cover a track and type another
+  context covers is refused in words.
 - **Delete**, which asks first. The context's default and options go with it, and its tracks and
   ticket types fall to the field's other contexts. Deleting the last one is allowed, and the
   question says that the field then applies nowhere until a context is added. A context whose
@@ -147,12 +148,16 @@ field whom it offers (**People to choose from**). Each context has:
   A choice list chooses among the options it still offers (several, when the field holds
   several); a two-level list an option and, if wanted, a **Default child option**; person, group
   and team fields pick by name; the other types take what is typed, labels separated by spaces.
-  **Save the default**; **Remove the default** leaves none. Release, area, read-only text and
-  formula fields take no default, and the page says so.
+  **Save the default**; **Remove the default** leaves none. A default that names an option no
+  longer offered keeps it until it is saved again: the form names that option and leaves it out
+  when saving. Release, area, read-only text and formula fields take no default, and the page says
+  so.
 - For a choice list, its options: a **New option** with **Add the option**, **Up** and **Down** to
   reorder them, **Rename**, **Stop offering**, **Offer again** and **Delete**; the default is
-  marked **Default**. Under each option of a two-level list are its child options, with the same
-  actions and **New child option** with **Add the child option**.
+  marked **Default**. **Delete** asks first and says what goes: the option, its child options for
+  a two-level list, and a default that names one of them. Under each option of a two-level list
+  are its child options, with the same actions and **New child option** with **Add the child
+  option**.
 
 **New context** opens a form with the same choices, and **Add a context** adds it.
 

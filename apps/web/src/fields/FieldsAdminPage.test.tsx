@@ -69,7 +69,10 @@ describe('field administration (M1-053, T-320)', () => {
     await user.click(screen.getByRole('button', { name: 'Stop offering South' }));
     expect(await screen.findByText('South is no longer offered.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Offer again South' })).toBeVisible();
+    // Delete asks first (D13).
     await user.click(screen.getByRole('button', { name: 'Delete North east' }));
+    const question = screen.getByRole('group', { name: /^Delete North east\? It leaves/ });
+    await user.click(within(question).getByRole('button', { name: 'Delete North east' }));
     expect(await screen.findByText('North east was deleted.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Rename North east' })).toBeNull();
   });
@@ -79,9 +82,14 @@ describe('field administration (M1-053, T-320)', () => {
     renderPage();
     await user.click(await screen.findByRole('button', { name: 'Manage field Severity' }));
     await user.click(await screen.findByRole('button', { name: 'Delete Medium' }));
+    const asked = screen.getByRole('group', { name: /^Delete Medium\?/ });
+    await user.click(within(asked).getByRole('button', { name: 'Delete Medium' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       '3 tickets hold it, the trash included. Stop offering it instead.',
     );
+    // Refused: the option's question stays open, to cancel.
+    await user.click(within(asked).getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Delete Medium' })).toHaveFocus();
     await user.click(screen.getByRole('button', { name: 'Delete field Severity' }));
     const question = screen.getByRole('group', { name: /^Delete Severity\?/ });
     await user.click(within(question).getByRole('button', { name: 'Delete field Severity' }));

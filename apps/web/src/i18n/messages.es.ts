@@ -3956,6 +3956,15 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.fields.problem.limit':
     'Eso superaría uno de los límites del sitio. Un administrador del sitio puede subirlo en la página Salvaguardas.',
   'admin.fields.problem.invalid': 'No se aceptaron esos ajustes. Revísalos e inténtalo de nuevo.',
+  // La página Campos tras la revisión (T-320).
+  'admin.fields.optionConfirmDelete':
+    '¿Eliminar {value}? Sale de esta lista para siempre, y un valor por defecto que la nombre se quita. Una opción que tenga un ticket no se elimina: deja de ofrecerla. No se puede deshacer.',
+  'admin.fields.optionConfirmDeleteChildren':
+    '¿Eliminar {value} y {count, plural, one {su # opción hija} other {sus # opciones hijas}}? Salen de esta lista para siempre, y un valor por defecto que nombre alguna se quita. Las opciones que tenga un ticket no se eliminan: deja de ofrecerlas. No se puede deshacer.',
+  'admin.fields.default.notOffered':
+    'El valor por defecto aún nombra {values}, que ya no se ofrece aquí, así que al guardarlo se deja fuera.',
+  'admin.fields.contexts.goneTracks':
+    '{count, plural, one {Un track que nombra está} other {# tracks que nombra están}} en la papelera, así que al guardar {count, plural, one {queda} other {quedan}} fuera de este contexto.',
   'admin.permissions.title': 'Permisos',
   'admin.permissions.intro':
     'Los roles nombran lo que las personas hacen en un track; las políticas de acceso dicen qué puede hacer cada rol, grupo o persona en los tracks que las usan; los permisos globales se aplican en todas partes.',

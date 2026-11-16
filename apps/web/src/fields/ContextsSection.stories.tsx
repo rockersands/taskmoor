@@ -100,3 +100,38 @@ export const NoDefault: Story = {
     await expect(canvas.getByText('A field of type Formula takes no default value.')).toBeVisible();
   },
 };
+
+/** Severity with its contexts changed as `change` says, by index. */
+const severityWith = (change: (contexts: Field['contexts']) => void): Field => {
+  const field = structuredClone(fieldOf(2));
+  change(field.contexts);
+  return field;
+};
+
+/** A context still naming a track in the trash: saving leaves it out, and the form says so. */
+export const TrackInTheTrash: Story = {
+  args: {
+    start: severityWith((contexts) => {
+      if (contexts[1]) contexts[1].trackIds = [1, 9];
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'Change context Payments bugs' }));
+    await expect(canvas.getByText(/^A track it names is in the trash/)).toBeVisible();
+  },
+};
+
+/** A default naming an option no longer offered: saving leaves it out, and the form says so. */
+export const DefaultNoLongerOffered: Story = {
+  args: {
+    start: severityWith((contexts) => {
+      const low = contexts[0]?.options?.find((o) => o.id === 201);
+      if (low) low.disabled = true;
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(/^The default still names Low/)).toBeVisible();
+  },
+};

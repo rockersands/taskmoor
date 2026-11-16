@@ -66,6 +66,48 @@ export function draftOf(field: Field, value: unknown): DefaultDraft {
   }
 }
 
+/** A context's option as the default form reads it: offered or not, a two-level list's children. */
+interface OfferedOption {
+  id: number;
+  value: string;
+  disabled: boolean;
+  children?: readonly OfferedOption[];
+}
+
+/**
+ * The draft with only the options the context still offers (T-320), and the names of those left
+ * out. Stopping offering an option leaves a saved default naming it, and the server refuses a
+ * default that names an option no longer offered; the form draws only offered ones, so it could
+ * neither show nor untick it. Other types come back as they are.
+ */
+export function offeredOnly(
+  field: Field,
+  draft: DefaultDraft,
+  options: readonly OfferedOption[],
+): { draft: DefaultDraft; dropped: string[] } {
+  if (field.type !== 'select' && field.type !== 'cascading-select') return { draft, dropped: [] };
+  const all = options.flatMap((o) => [o, ...(o.children ?? [])]);
+  const nameOf = (id: string) => all.find((o) => String(o.id) === id)?.value ?? `#${id}`;
+  const offered = (list: readonly OfferedOption[] | undefined, id: string) =>
+    (list ?? []).some((o) => String(o.id) === id && !o.disabled);
+  if (field.type === 'select') {
+    const ids = draft.ids.filter((id) => offered(options, id));
+    const dropped = draft.ids.filter((id) => !ids.includes(id)).map(nameOf);
+    return { draft: dropped.length === 0 ? draft : { ...draft, ids }, dropped };
+  }
+  const parentId = draft.ids[0];
+  if (parentId === undefined || parentId === '') return { draft, dropped: [] };
+  if (!offered(options, parentId)) {
+    const dropped = [nameOf(parentId), ...(draft.child === '' ? [] : [nameOf(draft.child)])];
+    return { draft: { ...draft, ids: [], child: '' }, dropped };
+  }
+  const parent = options.find((o) => String(o.id) === parentId);
+  if (draft.child !== '' && !offered(parent?.children, draft.child)) {
+    return { draft: { ...draft, child: '' }, dropped: [nameOf(draft.child)] };
+  }
+  return { draft, dropped: [] };
+}
+
 /** What the form holds as `defaultValue` for `PATCH .../contexts/:id`; null for no default. */
 export function defaultInput(field: Field, draft: DefaultDraft): unknown {
   const text = draft.text.trim();

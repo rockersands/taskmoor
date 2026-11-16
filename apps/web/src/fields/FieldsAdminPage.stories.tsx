@@ -46,13 +46,15 @@ export const Fields: Story = {
   },
 };
 
-/** An option on tickets is not deleted: the page says how many hold it. */
+/** An option on tickets is not deleted: the page says how many hold it, the question still open. */
 export const OptionInUse: Story = {
   args: { client: fakeFieldsClient() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Severity' }));
     await userEvent.click(await canvas.findByRole('button', { name: 'Delete Medium' }));
+    const question = canvas.getByRole('group', { name: /^Delete Medium\?/ });
+    await userEvent.click(within(question).getByRole('button', { name: 'Delete Medium' }));
     await expect(await canvas.findByRole('alert')).toBeVisible();
   },
 };

@@ -175,8 +175,14 @@ test('[CORE-009] the administrator adds a choice list, keeps its options and del
   await page.getByRole('button', { name: 'Stop offering South' }).click();
   await expect(page.getByText('South is no longer offered.')).toBeVisible();
   expect(await seriousAxeViolations(page)).toEqual([]);
+  // Deleting an option asks first too (D13), and the keyboard stays on the page.
   await page.getByRole('button', { name: 'Delete North east' }).click();
+  await page
+    .getByRole('group', { name: /^Delete North east\?/ })
+    .getByRole('button', { name: 'Delete North east' })
+    .click();
   await expect(page.getByText('North east was deleted.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Options in Default' })).toBeFocused();
 
   await page.getByRole('button', { name: `Delete field ${field}` }).click();
   // Asks first, saying what will happen (D13); the answer names what goes.

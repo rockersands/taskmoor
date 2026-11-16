@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import type { ChildOption, Field, FieldContext, FieldsClient } from './client';
 
@@ -22,7 +23,8 @@ type Moved = { id: number; up: boolean } | null;
  * The options of one context (CORE-009 (3); T-320): add, rename, stop offering or offer again,
  * delete one no ticket holds, and move up or down (`PUT .../options/order` with every option at
  * that level). Under each option of a two-level list, its child options, with the same actions
- * and their own New child option.
+ * and their own New child option. Delete asks first and says what goes (D13); once the row is
+ * gone, the list's heading takes the keyboard.
  */
 export function OptionList({
   field,
@@ -36,6 +38,12 @@ export function OptionList({
   const t = useT();
   const headingId = useId();
   const [moved, setMoved] = useState<Moved>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  // A deleted option's row goes with the focus its question held: the heading takes it.
+  const [deleted, setDeleted] = useState(0);
+  useEffect(() => {
+    if (deleted > 0) heading.current?.focus();
+  }, [deleted]);
   const options = context.options ?? [];
   const cascade = field.type === 'cascading-select';
   const reload = () => client.field(field.id).then(onField, onProblem);
@@ -62,11 +70,18 @@ export function OptionList({
             }),
           );
         }, onProblem),
-    onDelete: (option: ChildOption) =>
-      client.deleteOption(field.id, context.id, option.id).then(() => {
-        void reload();
-        onChanged(t('admin.fields.optionDeleted', { value: option.value }));
-      }, onProblem),
+    onDelete: async (option: ChildOption) => {
+      try {
+        await client.deleteOption(field.id, context.id, option.id);
+      } catch (error) {
+        // Refused: the question stays open to try again or cancel.
+        onProblem(error);
+        throw error;
+      }
+      onChanged(t('admin.fields.optionDeleted', { value: option.value }));
+      await reload();
+      setDeleted((n) => n + 1);
+    },
     onMove: (option: ChildOption, up: boolean) => {
       const ids = siblings.map((o) => o.id);
       const from = ids.indexOf(option.id);
@@ -85,7 +100,7 @@ export function OptionList({
 
   return (
     <section aria-labelledby={headingId} className="people-panel">
-      <h4 id={headingId} className="facts-title">
+      <h4 id={headingId} ref={heading} tabIndex={-1} className="facts-title">
         {t('admin.fields.optionsOf', { context: context.name })}
       </h4>
       {options.length === 0 ? (
@@ -143,7 +158,7 @@ export function OptionList({
 interface Bound {
   onRename: (option: ChildOption, wanted: string) => unknown;
   onToggle: (option: ChildOption) => unknown;
-  onDelete: (option: ChildOption) => unknown;
+  onDelete: (option: ChildOption) => Promise<void>;
   onMove: (option: ChildOption, up: boolean) => unknown;
 }
 const bind = (actions: Bound, option: ChildOption) => ({
@@ -261,7 +276,7 @@ function OptionRow({
   onMove,
   children,
 }: {
-  option: ChildOption;
+  option: ChildOption & { children?: ChildOption[] };
   first: boolean;
   last: boolean;
   isDefault: boolean;
@@ -270,7 +285,8 @@ function OptionRow({
   onSeen: () => void;
   onRename: (value: string) => void;
   onToggle: () => void;
-  onDelete: () => void;
+  /** Rejects when the server refuses, so the question stays open. */
+  onDelete: () => Promise<void>;
   onMove: (up: boolean) => void;
   children?: ReactNode;
 }) {
@@ -378,14 +394,21 @@ function OptionRow({
         >
           {t(option.disabled ? 'admin.fields.optionEnable' : 'admin.fields.optionDisable')}
         </button>
-        <button
-          type="button"
-          className="button-secondary people-action"
-          aria-label={t('admin.fields.optionDeleteOf', { value: option.value })}
-          onClick={onDelete}
-        >
-          {t('admin.fields.optionDelete')}
-        </button>
+        {/* Asks first, saying what goes with it (D13); a refusal keeps the question open. */}
+        <DangerAction
+          label={t('admin.fields.optionDelete')}
+          name={t('admin.fields.optionDeleteOf', { value: option.value })}
+          outcome={
+            (option.children?.length ?? 0) > 0
+              ? t('admin.fields.optionConfirmDeleteChildren', {
+                  value: option.value,
+                  count: option.children?.length ?? 0,
+                })
+              : t('admin.fields.optionConfirmDelete', { value: option.value })
+          }
+          confirmLabel={t('admin.fields.optionDeleteOf', { value: option.value })}
+          onConfirm={onDelete}
+        />
       </span>
       {children}
     </li>

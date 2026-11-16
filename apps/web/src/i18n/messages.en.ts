@@ -3851,6 +3851,16 @@ export const messagesEn = {
   'admin.fields.problem.limit':
     'That would pass one of the site’s limits. A site administrator can raise it on the Guardrails page.',
   'admin.fields.problem.invalid': 'Those settings were not accepted. Check them and try again.',
+  // The Fields page after review (T-320): Delete on an option asks first, a default naming an
+  // option no longer offered, and a context naming a track in the trash.
+  'admin.fields.optionConfirmDelete':
+    'Delete {value}? It leaves this list for good, and a default that names it is removed. An option a ticket holds is not deleted: stop offering it instead. This cannot be undone.',
+  'admin.fields.optionConfirmDeleteChildren':
+    'Delete {value} and its {count, plural, one {# child option} other {# child options}}? They leave this list for good, and a default that names one of them is removed. Options a ticket holds are not deleted: stop offering them instead. This cannot be undone.',
+  'admin.fields.default.notOffered':
+    'The default still names {values}, no longer offered here, so saving the default leaves that out.',
+  'admin.fields.contexts.goneTracks':
+    '{count, plural, one {A track it names is} other {# tracks it names are}} in the trash, so saving leaves {count, plural, one {it} other {them}} out of this context.',
   'admin.permissions.title': 'Permissions',
   'admin.permissions.intro':
     'Roles name what people do in a track; access policies say what each role, group or person may do in the tracks that use them; global permissions apply everywhere.',
