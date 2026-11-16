@@ -178,6 +178,8 @@ export function fakeConfigurationClient(
     ],
   };
   let next = 100;
+  /** The tracks deleted, in the trash. */
+  const trashed: number[] = [];
   const calls: FakeConfigurationClient['calls'] = [];
   const log = (action: string, ...args: unknown[]) => calls.push({ action, args });
   const named = (list: Named[], id: number) => list.find((x) => x.id === id) as Named;
@@ -229,6 +231,14 @@ export function fakeConfigurationClient(
     archiveTrack: async (id, archive) => {
       log('archiveTrack', id, archive);
       Object.assign(tracks.find((t) => t.id === id) as Track, { archived: archive });
+    },
+    // The track goes to the trash and leaves the list; a second delete finds it there.
+    deleteTrack: async (id) => {
+      log('deleteTrack', id);
+      if (trashed.includes(id)) throw new ApiError(409, { error: 'in_trash' });
+      if (!tracks.some((t) => t.id === id)) throw new ApiError(404, { error: 'not_found' });
+      trashed.push(id);
+      tracks = tracks.filter((t) => t.id !== id);
     },
     trackBoard: async (trackId) => structuredClone(boards[trackId] ?? null),
     roles: async () => structuredClone(ROLES),

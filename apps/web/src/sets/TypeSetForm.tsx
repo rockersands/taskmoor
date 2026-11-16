@@ -268,6 +268,15 @@ export function ticketsOf(refusals: readonly TypesInUse[], typeIds: readonly num
   return rest.length === 0 ? total : null;
 }
 
+/** What the mapping question says when a track switches to another type set (T-322). */
+export interface MappingWords {
+  /** How many tickets have a type the new set lacks, and what to do. */
+  intro: string;
+  legend: string;
+  /** Why the tickets of a type have nowhere to go: the new set has no type at its level. */
+  nowhere: (name: string, level: string) => string;
+}
+
 /**
  * Where the tickets of each dropped type go (CORE-005 (2)), once the server has said that tickets
  * still have them (`type_in_use`): a kept type at the same level, or why there is none. The first
@@ -280,6 +289,7 @@ export function TypeMapping({
   kept,
   mapping,
   onChange,
+  words,
 }: {
   /** The dropped types whose tickets need another type. */
   dropped: number[];
@@ -289,6 +299,8 @@ export function TypeMapping({
   kept: number[];
   mapping: Readonly<Record<string, number>>;
   onChange: (mapping: Record<string, number>) => void;
+  /** The question's own words when a track switches type set, not a set dropping types (T-322). */
+  words?: MappingWords;
 }) {
   const t = useT();
   const id = useId();
@@ -310,17 +322,21 @@ export function TypeMapping({
   return (
     <div className="people-inline">
       <p id={`${id}-intro`} className="page-note">
-        {tickets === null
-          ? t('admin.sets.mappingIntroUncounted')
-          : t('admin.sets.mappingIntro', { tickets })}
+        {words
+          ? words.intro
+          : tickets === null
+            ? t('admin.sets.mappingIntroUncounted')
+            : t('admin.sets.mappingIntro', { tickets })}
       </p>
       <fieldset className="sets-choices" aria-describedby={`${id}-intro`}>
-        <legend>{t('admin.sets.mapping')}</legend>
+        <legend>{words?.legend ?? t('admin.sets.mapping')}</legend>
         {rows.map(({ typeId, name, level, targets }) => {
           if (targets.length === 0) {
             return (
               <p key={typeId} className="form-hint">
-                {t('admin.sets.mappingNowhere', { name, level })}
+                {words
+                  ? words.nowhere(name, level)
+                  : t('admin.sets.mappingNowhere', { name, level })}
               </p>
             );
           }

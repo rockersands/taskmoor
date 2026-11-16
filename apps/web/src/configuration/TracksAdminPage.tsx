@@ -20,6 +20,7 @@ import {
   type TypeStatusMapping,
   type WorkflowMapSummary,
 } from './client';
+import { DeleteTrack, TRASH_HREF } from './DeleteTrack';
 import { NewTrackForm, trackRefusal } from './NewTrackForm';
 import {
   MigrationProgress,
@@ -35,13 +36,15 @@ export interface TracksAdminPageProps {
 
 /**
  * Tracks (CORE-001, CORE-025, WF-001), for administrators: add a track, rename it, choose its
- * workflow map, give roles to people and groups, archive and restore. A map change that would
- * leave tickets in statuses their new workflow lacks asks first where they go (T-320).
+ * workflow map, give roles to people and groups, archive and restore, and delete it to the trash
+ * (T-322). A map change that would leave tickets in statuses their new workflow lacks asks first
+ * where they go (T-320).
  */
 export function TracksAdminPage({ client = configurationClient }: TracksAdminPageProps) {
   const t = useT();
   const expired = useSessionExpiry();
   const titleId = useId();
+  const title = useRef<HTMLHeadingElement>(null);
   const notAdmin = useNotSetupAdmin();
   const [state, setState] = useState<
     | { status: 'loading' }
@@ -55,6 +58,8 @@ export function TracksAdminPage({ client = configurationClient }: TracksAdminPag
   /** The board the last template made, to open from here (M1-054). */
   const [board, setBoard] = useState<{ id: number; key: string } | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  /** The key of the track just deleted, to restore from Trash (T-322). */
+  const [trashed, setTrashed] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -80,6 +85,7 @@ export function TracksAdminPage({ client = configurationClient }: TracksAdminPag
     <section aria-labelledby={titleId} className="page admin-page people-page">
       <PageHeader
         titleId={titleId}
+        titleRef={title}
         title={t('admin.tracks.title')}
         {...(state.status === 'forbidden'
           ? {}
@@ -134,6 +140,11 @@ export function TracksAdminPage({ client = configurationClient }: TracksAdminPag
               </a>
             </p>
           )}
+          {trashed && (
+            <p className="page-note">
+              <a href={routeHref(TRASH_HREF)}>{t('admin.tracks.trashLink', { key: trashed })}</a>
+            </p>
+          )}
           {problem && (
             <p role="alert" className="form-error">
               {problem}
@@ -180,6 +191,17 @@ export function TracksAdminPage({ client = configurationClient }: TracksAdminPag
                       client={client}
                       onChanged={said}
                       onProblem={(error) => setProblem(refusal(error))}
+                      onDeleted={() => {
+                        // The track's row goes: the page's heading takes the focus.
+                        setOpen(null);
+                        said(t('admin.tracks.deletedSaid', { key: track.key }));
+                        setTrashed(track.key);
+                        title.current?.focus();
+                      }}
+                      onDeleteRefused={(text) => {
+                        setMessage('');
+                        setProblem(text);
+                      }}
                     />
                   )}
                 </li>
@@ -458,11 +480,15 @@ function TrackPanel({
   client,
   onChanged,
   onProblem,
+  onDeleted,
+  onDeleteRefused,
 }: {
   track: Track;
   client: ConfigurationClient;
   onChanged: (message: string) => void;
   onProblem: (error: unknown) => void;
+  onDeleted: () => void;
+  onDeleteRefused: (text: string) => void;
 }) {
   const t = useT();
   const id = useId();
@@ -774,6 +800,14 @@ function TrackPanel({
           >
             {t(track.archived ? 'admin.tracks.restore' : 'admin.tracks.archive')}
           </button>
+        )}
+        {!confirming && (
+          <DeleteTrack
+            track={track}
+            client={client}
+            onDeleted={onDeleted}
+            onProblem={onDeleteRefused}
+          />
         )}
       </div>
     </div>
