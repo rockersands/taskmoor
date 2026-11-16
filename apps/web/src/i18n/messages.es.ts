@@ -2781,14 +2781,14 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.directories.neverSynced': 'Aún sin sincronizar',
   'admin.directories.nextSync': 'Próxima sincronización {when}',
   'admin.directories.sync': 'Sincronizar ahora',
-  'admin.directories.syncNamed': 'Sincronizar {name} ahora',
+  'admin.directories.syncNamed': 'Sincronizar ahora desde {name}',
   'admin.directories.fullSync': 'Sincronización completa',
-  'admin.directories.fullSyncNamed': 'Sincronizar todo {name} ahora',
+  'admin.directories.fullSyncNamed': 'Sincronización completa de {name}',
   'admin.directories.syncQueued': 'Hay una sincronización de {name} en camino.',
   'admin.directories.syncDisabled':
     'Este directorio está desactivado. Actívalo para sincronizarlo.',
   'admin.directories.confirmRemovals': 'Sincronizar y quitar',
-  'admin.directories.confirmRemovalsNamed': 'Sincronizar {name} y quitar lo que salió de él',
+  'admin.directories.confirmRemovalsNamed': 'Sincronizar y quitar lo que salió de {name}',
   'admin.directories.confirmRemovalsOutcome':
     'Una sincronización completa de {name} empieza ahora y quita {removed, number} de sus {known, number} {what, select, groups {grupos} other {personas}}: {what, select, groups {los que} other {las que}} salieron del directorio. {what, select, groups {Esos grupos se eliminan, y eso no se puede deshacer. Las personas que salieron de él se desactivan y conservan su trabajo.} other {Esas personas se desactivan y conservan su trabajo. Los grupos que salieron de él se eliminan, y eso no se puede deshacer.}}',
   'admin.directories.confirmRemovalsOutcomeUncounted':

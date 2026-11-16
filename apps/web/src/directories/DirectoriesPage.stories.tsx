@@ -80,7 +80,7 @@ export const ConfirmingRemovals: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(
-      await canvas.findByRole('button', { name: 'Sync Research lab and remove what left it' }),
+      await canvas.findByRole('button', { name: 'Sync and remove what left Research lab' }),
     );
     await expect(
       canvas.getByRole('group', { name: /removes 812 of its 1,200 people/ }),
