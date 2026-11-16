@@ -620,8 +620,9 @@ As built:
   `viewerTimeZone` and keeps it.
 - **The web app** (`apps/web/src/i18n/zone.ts`): the session sets the account's zone as soon as
   it knows the person; `localDay` (every "today" of the app), the date the slash menu offers, the
-  snooze's nine o'clock, date-and-time inputs (`tickets/form.ts`, `tickets/templates/start.ts`)
-  and pasted screenshots' names read it, and `I18nProvider` passes it to `IntlProvider` as the
+  snooze's nine o'clock, date-and-time inputs (`tickets/form.ts`, `tickets/templates/start.ts`),
+  the day the admin token page revokes tokens created before (its midnight, `instantOfLocalText`;
+  added after the review) and pasted screenshots' names read it, and `I18nProvider` passes it to `IntlProvider` as the
   default `timeZone`, so every time shown is on it. Requests carry it in the header, and the
   release-notes download, which cannot send a header, carries it in `?timeZone=`. Calendar days
   were already formatted on UTC (T-240), so they do not move.
