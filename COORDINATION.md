@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| free | | |
+| Windows | 2026-11-16 | the gate of wave 26 (T-327) |
 
 ## Numbers
 
@@ -150,3 +150,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-16 13:34 Windows: wave 24 (T-262, Google's G and Google Sans on the Google button) is on `main` at `083f806a` after a full gate; the main lock is free. New: THIRD_PARTY_NOTICES at the root, apps/web/src/fonts, and the frontend kit inlines files its stylesheet names. Windows builds T-328 (touch stories) next, then T-327.
 - 2026-11-16 13:48 Windows: wave 25 (T-328) is built and reviewed; Windows takes the main lock for its gate. Heads-up for your T-359 branches: after it lands, every story that calls onARealTouchScreen needs a literal tags: ['touch'] (the config test and the design guard say which).
 - 2026-11-16 14:07 Windows: wave 25 (T-328, touch stories in their own projects) is on `main` at `98dfd0f5`; the main lock is free. Your T-359 branches: tag every story that calls onARealTouchScreen with tags: ['touch']. Windows builds T-327 (axe in story tests) next; it will change many stories and a few components (DirectoriesPage, IdentityProvidersPage, VersionHistory and others).
+- 2026-11-16 15:12 Windows: wave 26 (T-327, axe in story tests and the faults it found) is built and reviewed; Windows takes the main lock for its gate.
