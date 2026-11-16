@@ -1,11 +1,13 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { App } from '../App';
 import { MEMBER } from '../admin/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
+import type { Session } from '../session/SessionProvider';
 import { type Handler, noContent, stubBackend, untranslated, visibleTexts } from '../test/backend';
 import { jsonResponse } from '../test/setup';
+import { useTimeZone } from '../test/timeZone';
 import { setViewportWidth } from '../test/viewport';
 import { SHOP_41 } from '../tickets/view/fixtures';
 import { AttachmentPanel } from './AttachmentPanel';
@@ -19,6 +21,7 @@ const TICKET = SHOP_41;
 function openTicket(
   handlers: Record<string, Handler> = {},
   list: { attachments?: Attachment[]; maxFileSize?: number; canCreate?: boolean } = {},
+  session: Session = MEMBER,
 ) {
   const calls = stubBackend({
     'GET /tickets/SHOP-41': () => jsonResponse(200, { ticket: TICKET }),
@@ -40,7 +43,7 @@ function openTicket(
     ...handlers,
   });
   window.location.hash = '#/tickets/SHOP-41';
-  render(<App session={MEMBER} />);
+  render(<App session={session} />);
   return calls;
 }
 
@@ -421,8 +424,9 @@ describe('a file sent from the ticket’s text editor (T-120)', () => {
     onTestFinished(() => {
       proto.scrollIntoView = before;
     });
+    // The panel offers itself once its list is in, an effect after the drawing the label is in.
+    await waitFor(() => expect(offered.current?.ready).toBe(true));
     const target = offered.current;
-    expect(target?.ready).toBe(true);
     let result: Awaited<ReturnType<AttachTarget['attach']>> | undefined;
     await act(async () => {
       result = await target?.attach([new File(['png'], 'shot.png', { type: 'image/png' })], {
@@ -453,5 +457,39 @@ describe('a file sent from the ticket’s text editor (T-120)', () => {
       problems: ['big.log is larger than the 2 B limit for one file.'],
     });
     expect(within(panel()).queryByRole('alert')).toBeNull();
+  });
+});
+
+/**
+ * One clock per person (T-280): a pasted screenshot is named by the time on the zone saved on the
+ * account, not the device's nor UTC. The device here is Mexico City.
+ */
+describe('pasted screenshots on the account’s clock', () => {
+  useTimeZone('America/Mexico_City');
+
+  it('[CORE-021] [NFR-006] names a pasted screenshot by the time on the account’s zone', async () => {
+    // Only the date is fixed: the page's timers run as usual.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+    // 02:00 on 5 November in UTC: 11:00 in Tokyo, 20:00 on 4 November on the device.
+    vi.setSystemTime(new Date('2026-11-05T02:00:00Z'));
+    const member = MEMBER as Extract<Session, { status: 'signed-in' }>;
+    openTicket(
+      {
+        'POST /tickets/41/attachments': (body) => {
+          const file = (body as FormData).get('file') as File;
+          return jsonResponse(201, { attachment: uploaded(file.name, 100) });
+        },
+      },
+      {},
+      { status: 'signed-in', user: { ...member.user, timeZone: 'Asia/Tokyo' } },
+    );
+    const input = await screen.findByLabelText('Attach files');
+    fireEvent.paste(input, {
+      clipboardData: { files: [new File(['png'], 'image.png', { type: 'image/png' })] },
+    });
+    expect(await screen.findByText('pasted-2026-11-05-11-00-00.png attached.')).toBeVisible();
   });
 });
