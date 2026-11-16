@@ -1239,6 +1239,164 @@ export const messagesEs: Record<MessageId, string> = {
     'Alguien comparte contigo un grupo de tracks o te lo asigna',
   'notifications.event.checklist_changed':
     'Cambia una lista de comprobación de un ticket que sigues',
+  // Políticas de notificaciones (NTF-001) y Correo (NTF-002, NTF-004) en Administración (T-155).
+  'settings.notificationPolicies': 'Políticas de notificaciones',
+  'settings.notificationPoliciesHint':
+    'Quién se entera de qué cambios en los tickets, en los tracks que usan cada política.',
+  'settings.email': 'Correo',
+  'settings.emailHint':
+    'Si el correo puede salir, cuánto esperan los cambios para llegar juntos y la hora del resumen.',
+  'notificationPolicies.title': 'Políticas de notificaciones',
+  'notificationPolicies.about':
+    'Una política de notificaciones empareja eventos, como un comentario añadido, con quién se entera de ellos: el responsable, los seguidores, una persona, un grupo, un rol del track o las personas de un campo. Cada track usa una política, o la predeterminada si no nombra ninguna, y cada persona elige después si un evento le llega a su bandeja de entrada, a su correo o a ambos. La política que usa un track se elige en Qué conjuntos usa un track.',
+  'notificationPolicies.trackAbout':
+    'Este track tiene su propia configuración, así que puede tener sus propias políticas de notificaciones: quién se entera de qué cambios solo en este track. Los demás tracks no se ven afectados.',
+  'notificationPolicies.trackIntro':
+    'Las políticas de notificaciones propias de este track. Las compartidas son cosa de los administradores del sitio y de la configuración.',
+  'notificationPolicies.forbidden':
+    'Solo los administradores del sitio y de la configuración, y quienes llevan un track con configuración propia, gestionan las políticas de notificaciones.',
+  'notificationPolicies.choose.intro':
+    'Llevas estos tracks con configuración propia. Elige uno para gestionar sus propias políticas de notificaciones.',
+  'notificationPolicies.choose.none':
+    'Ninguno de los tracks que llevas tiene configuración propia. Usan políticas de notificaciones compartidas, que cambian los administradores del sitio y de la configuración.',
+  'notificationPolicies.choose.open': 'Políticas de notificaciones de {key} · {name}',
+  'notificationPolicies.scope.shared':
+    '{key} usa configuración compartida, así que usa una política de notificaciones compartida, que cambian los administradores del sitio y de la configuración.',
+  'notificationPolicies.loading': 'Leyendo las políticas de notificaciones…',
+  'notificationPolicies.failed':
+    'No se pudieron leer las políticas de notificaciones. Inténtalo de nuevo en un momento.',
+  'notificationPolicies.new': 'Nueva política',
+  'notificationPolicies.addPolicy': 'Añadir política',
+  'notificationPolicies.cancelNew': 'Cancelar',
+  'notificationPolicies.name': 'Nombre de la política',
+  'notificationPolicies.description': 'Descripción',
+  'notificationPolicies.startWith': 'Empezar con',
+  'notificationPolicies.startEmpty': 'Sin reglas',
+  'notificationPolicies.startCopy': 'Las reglas de {name}',
+  'notificationPolicies.startHint':
+    'Una política sin reglas no avisa a nadie de nada, así que empezar con una copia suele ser más rápido.',
+  'notificationPolicies.added': 'Se añadió la política {name}.',
+  'notificationPolicies.sharedList': 'Políticas compartidas',
+  'notificationPolicies.ownList': 'Políticas de {key}',
+  'notificationPolicies.chooseNote':
+    'La política que usa un track se elige con sus otros conjuntos:',
+  'notificationPolicies.chooseLink': 'Qué conjuntos usa un track',
+  'notificationPolicies.trackUsesOwn': '{key} usa {name}.',
+  'notificationPolicies.trackUsesShared':
+    '{key} usa ahora una política compartida. Usa una propia para cambiar quién se entera de qué en él.',
+  'notificationPolicies.emptyTitle': 'Aún no hay políticas',
+  'notificationPolicies.empty': 'Añade una con Nueva política y úsala para {key}.',
+  'notificationPolicies.emptyShared':
+    'Añade una con Nueva política y elígela para los tracks en Qué conjuntos usa un track.',
+  'notificationPolicies.default': 'Predeterminada',
+  'notificationPolicies.defaultUse': 'La usan los tracks que no nombran otra política.',
+  'notificationPolicies.usedBy': 'La usan {tracks}.',
+  'notificationPolicies.unused': 'Ningún track la usa.',
+  'notificationPolicies.moreTracks': '{tracks} y {count} más',
+  'notificationPolicies.ruleCount':
+    '{count, plural, =0 {Sin reglas.} one {# regla.} other {# reglas.}}',
+  'notificationPolicies.manage': 'Gestionar',
+  'notificationPolicies.manageOf': 'Gestionar {name}',
+  'notificationPolicies.rulesOf': 'Quién se entera de qué en {name}',
+  'notificationPolicies.noRules': 'Aún no hay reglas',
+  'notificationPolicies.noRulesBody':
+    'Nadie se entera de nada por esta política hasta que tenga una regla. Las menciones siguen llegando a las personas mencionadas.',
+  'notificationPolicies.remove': 'Quitar',
+  'notificationPolicies.removeRule': 'Quitar {recipient} de {event}',
+  'notificationPolicies.ruleRemoved': 'Regla quitada en {event}: {recipient}.',
+  'notificationPolicies.ruleAdded': 'Regla añadida en {event}: {recipient}.',
+  'notificationPolicies.addRuleTo': 'Añadir una regla a {name}',
+  'notificationPolicies.event': 'Evento',
+  'notificationPolicies.builtInEvents': 'Eventos de todos los tracks',
+  'notificationPolicies.transitionEvents': 'Eventos que lanzan las transiciones',
+  'notificationPolicies.otherEvent': 'Otro evento de transición…',
+  'notificationPolicies.eventName': 'Nombre del evento de transición',
+  'notificationPolicies.eventNameHint':
+    'Como lo nombra el flujo de trabajo de la transición: hasta 100 letras, dígitos, espacios, puntos, guiones y guiones bajos.',
+  'notificationPolicies.eventNameInvalid':
+    'Escribe el nombre del evento: hasta 100 letras, dígitos, espacios, puntos, guiones y guiones bajos.',
+  'notificationPolicies.customEvent': 'Evento de transición «{name}»',
+  'notificationPolicies.recipientKind': 'Quién se entera',
+  'notificationPolicies.findPerson': 'Buscar a una persona',
+  'notificationPolicies.person': 'Persona',
+  'notificationPolicies.personEmpty': 'Escribe un nombre arriba para buscar a alguien',
+  'notificationPolicies.group': 'Grupo',
+  'notificationPolicies.role': 'Rol del track',
+  'notificationPolicies.userField': 'Campo de usuario',
+  'notificationPolicies.groupField': 'Campo de grupo',
+  'notificationPolicies.addRule': 'Añadir regla',
+  'notificationPolicies.duplicate': 'Esa regla ya existe.',
+  'notificationPolicies.pickTarget': 'Elige primero a quién nombra la regla.',
+  'notificationPolicies.gone': 'algo que ya se eliminó',
+  'notificationPolicies.recipient.assignee': 'El responsable',
+  'notificationPolicies.recipient.requester': 'El solicitante',
+  'notificationPolicies.recipient.follower': 'Los seguidores',
+  'notificationPolicies.recipient.area_owner': 'Los propietarios de las áreas del ticket',
+  'notificationPolicies.recipient.track_owner': 'El propietario del track',
+  'notificationPolicies.recipient.current_user': 'La persona que hizo el cambio',
+  'notificationPolicies.recipient.user': '{name}',
+  'notificationPolicies.recipient.group': 'Miembros de {name}',
+  'notificationPolicies.recipient.role': 'Personas con el rol {name}',
+  'notificationPolicies.recipient.user_field': 'Personas en {name}',
+  'notificationPolicies.recipient.group_field': 'Miembros de los grupos en {name}',
+  'notificationPolicies.kind.user': 'Una persona',
+  'notificationPolicies.kind.group': 'Los miembros de un grupo',
+  'notificationPolicies.kind.role': 'Las personas con un rol del track',
+  'notificationPolicies.kind.user_field': 'Las personas de un campo de usuario',
+  'notificationPolicies.kind.group_field': 'Los miembros de los grupos de un campo de grupo',
+  'notificationPolicies.detailsOf': 'Nombre y descripción de {name}',
+  'notificationPolicies.saveDetails': 'Guardar nombre y descripción',
+  'notificationPolicies.detailsSaved': 'Se guardó {name}.',
+  'notificationPolicies.useFor': 'Usar esta política para {key}',
+  'notificationPolicies.useHint':
+    'Desde entonces el track sigue esta política. Solo los administradores del sitio y de la configuración pueden volver a darle una compartida.',
+  'notificationPolicies.usedFor': '{key} usa ahora {name}.',
+  'notificationPolicies.delete': 'Eliminar política',
+  'notificationPolicies.deleteOf': 'Eliminar {name}',
+  'notificationPolicies.confirmDelete':
+    '{name} y sus reglas se eliminan para siempre. Ningún track la usa, así que nadie deja de enterarse de nada.',
+  'notificationPolicies.deleted': 'Se eliminó la política {name}.',
+  'notificationPolicies.defaultStays':
+    'La política predeterminada no se puede eliminar: la usan los tracks que no nombran otra.',
+  'notificationPolicies.inUseStays':
+    'Hay tracks que usan esta política, así que no se puede eliminar hasta que usen otra.',
+  'notificationPolicies.problem.nameTaken':
+    'Ya existe una política con ese nombre. Elige otro nombre.',
+  'notificationPolicies.problem.inUse':
+    'Hay tracks que usan esta política ({tracks}), así que no se eliminó. Elige antes otra política para ellos.',
+  'notificationPolicies.problem.default': 'La política predeterminada no se puede eliminar.',
+  'notificationPolicies.problem.invalid':
+    'No se guardó: una regla nombra algo que ya no existe, o un campo de otro tipo. Vuelve a leer la página y revisa la regla.',
+  'notificationPolicies.problem.forbidden': 'Ya no puedes cambiar esta política.',
+  'notificationPolicies.problem.other': 'No se pudo guardar. Inténtalo de nuevo en un momento.',
+  'emailSettings.title': 'Correo',
+  'emailSettings.about':
+    'Taskmoor envía las notificaciones por correo a través de un servidor SMTP indicado donde se ejecuta (TASKMOOR_SMTP_URL y las variables que lo acompañan) o en el formulario de la primera configuración; su contraseña solo sale del entorno, nunca de esta página. Aquí ves si hay un servidor configurado y eliges cuánto esperan los cambios de un ticket para llegar en un solo correo, y a qué hora salen los resúmenes.',
+  'emailSettings.forbidden': 'Solo los administradores del sitio cambian los ajustes de correo.',
+  'emailSettings.loading': 'Leyendo los ajustes de correo…',
+  'emailSettings.failed':
+    'No se pudieron leer los ajustes de correo. Inténtalo de nuevo en un momento.',
+  'emailSettings.outgoing': 'Correo saliente',
+  'emailSettings.server': 'Servidor de correo',
+  'emailSettings.serverOn': 'Configurado',
+  'emailSettings.serverOff': 'Sin configurar',
+  'emailSettings.serverOnNote':
+    'Taskmoor puede enviar correo. El servidor y sus credenciales se cambian donde se ejecuta Taskmoor, no en esta página.',
+  'emailSettings.serverOffNote':
+    'El correo espera sin enviarse, y las notificaciones siguen llegando a la bandeja de entrada. Indica un servidor SMTP donde se ejecuta Taskmoor (TASKMOOR_SMTP_URL) y lo que espera sale.',
+  'emailSettings.formLabel': 'Cuándo sale el correo',
+  'emailSettings.window': 'Espera antes de enviar los cambios de un ticket, en minutos',
+  'emailSettings.windowHint':
+    'Los cambios de un ticket dentro de este tiempo llegan en un solo correo. De 0 a 60; por defecto, 2.',
+  'emailSettings.windowInvalid': 'Indica un número de minutos de 0 a 60.',
+  'emailSettings.digestHour': 'Hora del resumen',
+  'emailSettings.digestHourHint':
+    'Los resúmenes diarios salen a esta hora en la zona horaria de cada persona, y los semanales los lunes a la misma hora.',
+  'emailSettings.hour': '{hour}:00',
+  'emailSettings.save': 'Guardar los ajustes de correo',
+  'emailSettings.saved': 'Se guardaron los ajustes de correo.',
+  'emailSettings.saveFailed':
+    'No se pudieron guardar los ajustes de correo. Inténtalo de nuevo en un momento.',
   'unsubscribe.title': 'Darse de baja',
   'unsubscribe.checking': 'Comprobando el enlace…',
   'unsubscribe.noToken':
@@ -3135,6 +3293,8 @@ export const messagesEs: Record<MessageId, string> = {
   'trackPeople.ownConfigIntro': '{key} tiene configuración propia, y puedes cambiarla aquí:',
   'trackPeople.layoutsLink': 'Conjuntos de diseños: dónde aparecen los campos en sus formularios',
   'trackPeople.setsLink': 'Conjuntos de configuración: sus tipos de ticket y reglas de campos',
+  'trackPeople.notificationsLink':
+    'Políticas de notificaciones: quién se entera de qué cambios en él',
   'trackPeople.invite': 'Invitar personas',
   'trackPeople.inviteOff':
     'Las invitaciones están desactivadas en este track. Un administrador del sitio puede activarlas.',

@@ -2,6 +2,7 @@ import { type ReactElement, useCallback, useEffect, useId, useRef, useState } fr
 import { useAdminTrail } from '../admin/AdminLayout';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
+import { ownPoliciesHref } from '../notifications/NotificationPoliciesPage';
 import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
@@ -274,6 +275,11 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
             </li>
             <li>
               <a href={routeHref(ownSetsHref(track.id))}>{t('trackPeople.setsLink')}</a>
+            </li>
+            <li>
+              <a href={routeHref(ownPoliciesHref(track.id))}>
+                {t('trackPeople.notificationsLink')}
+              </a>
             </li>
           </ul>
         </section>

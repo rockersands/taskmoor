@@ -1203,6 +1203,161 @@ export const messagesEn = {
   'notifications.event.generic': 'Other changes',
   'notifications.event.track_group_shared': 'A track group is shared with you or set on you',
   'notifications.event.checklist_changed': 'A checklist changes on a ticket you follow',
+  // Notification policies (NTF-001) and Email (NTF-002, NTF-004) in Administration (T-155).
+  'settings.notificationPolicies': 'Notification policies',
+  'settings.notificationPoliciesHint':
+    'Who hears of which changes to tickets, in the tracks that use each policy.',
+  'settings.email': 'Email',
+  'settings.emailHint':
+    'Whether mail can go out, how long changes wait to arrive together, and the digest hour.',
+  'notificationPolicies.title': 'Notification policies',
+  'notificationPolicies.about':
+    'A notification policy pairs events, such as a comment added, with who hears of them: the assignee, the followers, a person, a group, a track role or the people in a field. Each track uses one policy, or the default when it names none, and each person then chooses whether an event reaches their inbox, their email or both. Which policy a track uses is chosen on Which sets a track uses.',
+  'notificationPolicies.trackAbout':
+    'This track has its own configuration, so it can have notification policies of its own: who hears of which changes in this track only. Other tracks are not affected.',
+  'notificationPolicies.trackIntro':
+    'The notification policies this track owns. Shared policies are for site and configuration administrators.',
+  'notificationPolicies.forbidden':
+    'Only site and configuration administrators, and the people who run a track with its own configuration, manage notification policies.',
+  'notificationPolicies.choose.intro':
+    'You run these tracks with their own configuration. Choose one to manage its own notification policies.',
+  'notificationPolicies.choose.none':
+    'None of the tracks you run has its own configuration. They use shared notification policies, which site and configuration administrators change.',
+  'notificationPolicies.choose.open': 'Notification policies of {key} · {name}',
+  'notificationPolicies.scope.shared':
+    '{key} uses shared configuration, so it uses a shared notification policy, which site and configuration administrators change.',
+  'notificationPolicies.loading': 'Reading the notification policies…',
+  'notificationPolicies.failed':
+    'The notification policies could not be read. Try again in a moment.',
+  'notificationPolicies.new': 'New policy',
+  'notificationPolicies.addPolicy': 'Add policy',
+  'notificationPolicies.cancelNew': 'Cancel',
+  'notificationPolicies.name': 'Policy name',
+  'notificationPolicies.description': 'Description',
+  'notificationPolicies.startWith': 'Start with',
+  'notificationPolicies.startEmpty': 'No rules',
+  'notificationPolicies.startCopy': 'The rules of {name}',
+  'notificationPolicies.startHint':
+    'A policy with no rules tells nobody anything, so starting from a copy is usually quicker.',
+  'notificationPolicies.added': 'Policy {name} was added.',
+  'notificationPolicies.sharedList': 'Shared policies',
+  'notificationPolicies.ownList': 'Policies of {key}',
+  'notificationPolicies.chooseNote': 'Which policy a track uses is chosen with its other sets:',
+  'notificationPolicies.chooseLink': 'Which sets a track uses',
+  'notificationPolicies.trackUsesOwn': '{key} uses {name}.',
+  'notificationPolicies.trackUsesShared':
+    '{key} uses a shared policy now. Use one of its own to change who hears of what in it.',
+  'notificationPolicies.emptyTitle': 'No policies yet',
+  'notificationPolicies.empty': 'Add one with New policy, then use it for {key}.',
+  'notificationPolicies.emptyShared':
+    'Add one with New policy, then choose it for tracks on Which sets a track uses.',
+  'notificationPolicies.default': 'Default',
+  'notificationPolicies.defaultUse': 'Tracks that name no other policy use it.',
+  'notificationPolicies.usedBy': 'Used by {tracks}.',
+  'notificationPolicies.unused': 'No track uses it.',
+  'notificationPolicies.moreTracks': '{tracks} and {count} more',
+  'notificationPolicies.ruleCount':
+    '{count, plural, =0 {No rules.} one {# rule.} other {# rules.}}',
+  'notificationPolicies.manage': 'Manage',
+  'notificationPolicies.manageOf': 'Manage {name}',
+  'notificationPolicies.rulesOf': 'Who hears of what in {name}',
+  'notificationPolicies.noRules': 'No rules yet',
+  'notificationPolicies.noRulesBody':
+    'Nobody hears of anything through this policy until it has a rule. Mentions still reach the people mentioned.',
+  'notificationPolicies.remove': 'Remove',
+  'notificationPolicies.removeRule': 'Remove {recipient} from {event}',
+  'notificationPolicies.ruleRemoved': 'Rule removed for {event}: {recipient}.',
+  'notificationPolicies.ruleAdded': 'Rule added for {event}: {recipient}.',
+  'notificationPolicies.addRuleTo': 'Add a rule to {name}',
+  'notificationPolicies.event': 'Event',
+  'notificationPolicies.builtInEvents': 'Events of every track',
+  'notificationPolicies.transitionEvents': 'Events that transitions fire',
+  'notificationPolicies.otherEvent': 'Another transition event…',
+  'notificationPolicies.eventName': 'Transition event name',
+  'notificationPolicies.eventNameHint':
+    'As the transition’s workflow names it: up to 100 letters, digits, spaces, dots, dashes and underscores.',
+  'notificationPolicies.eventNameInvalid':
+    'Give the event’s name: up to 100 letters, digits, spaces, dots, dashes and underscores.',
+  'notificationPolicies.customEvent': 'Transition event “{name}”',
+  'notificationPolicies.recipientKind': 'Who hears of it',
+  'notificationPolicies.findPerson': 'Find a person',
+  'notificationPolicies.person': 'Person',
+  'notificationPolicies.personEmpty': 'Type a name above to find someone',
+  'notificationPolicies.group': 'Group',
+  'notificationPolicies.role': 'Track role',
+  'notificationPolicies.userField': 'User field',
+  'notificationPolicies.groupField': 'Group field',
+  'notificationPolicies.addRule': 'Add rule',
+  'notificationPolicies.duplicate': 'That rule is there already.',
+  'notificationPolicies.pickTarget': 'Choose who the rule names first.',
+  'notificationPolicies.gone': 'something since deleted',
+  'notificationPolicies.recipient.assignee': 'The assignee',
+  'notificationPolicies.recipient.requester': 'The requester',
+  'notificationPolicies.recipient.follower': 'The followers',
+  'notificationPolicies.recipient.area_owner': 'The owners of the ticket’s areas',
+  'notificationPolicies.recipient.track_owner': 'The track owner',
+  'notificationPolicies.recipient.current_user': 'The person who made the change',
+  'notificationPolicies.recipient.user': '{name}',
+  'notificationPolicies.recipient.group': 'Members of {name}',
+  'notificationPolicies.recipient.role': 'People with the role {name}',
+  'notificationPolicies.recipient.user_field': 'People in {name}',
+  'notificationPolicies.recipient.group_field': 'Members of the groups in {name}',
+  'notificationPolicies.kind.user': 'A person',
+  'notificationPolicies.kind.group': 'The members of a group',
+  'notificationPolicies.kind.role': 'The people with a track role',
+  'notificationPolicies.kind.user_field': 'The people in a user field',
+  'notificationPolicies.kind.group_field': 'The members of the groups in a group field',
+  'notificationPolicies.detailsOf': 'Name and description of {name}',
+  'notificationPolicies.saveDetails': 'Save name and description',
+  'notificationPolicies.detailsSaved': '{name} was saved.',
+  'notificationPolicies.useFor': 'Use this policy for {key}',
+  'notificationPolicies.useHint':
+    'From then on the track follows this policy. Only site and configuration administrators can give it a shared one again.',
+  'notificationPolicies.usedFor': '{key} now uses {name}.',
+  'notificationPolicies.delete': 'Delete policy',
+  'notificationPolicies.deleteOf': 'Delete {name}',
+  'notificationPolicies.confirmDelete':
+    '{name} and its rules are deleted for good. No track uses it, so nobody hears less.',
+  'notificationPolicies.deleted': 'Policy {name} was deleted.',
+  'notificationPolicies.defaultStays':
+    'The default policy cannot be deleted: tracks that name no other policy use it.',
+  'notificationPolicies.inUseStays':
+    'Tracks use this policy, so it cannot be deleted until they use another.',
+  'notificationPolicies.problem.nameTaken':
+    'A policy with that name exists already. Choose another name.',
+  'notificationPolicies.problem.inUse':
+    'Tracks use this policy ({tracks}), so it was not deleted. Choose another policy for them first.',
+  'notificationPolicies.problem.default': 'The default policy cannot be deleted.',
+  'notificationPolicies.problem.invalid':
+    'That was not saved: a rule names something that is no longer there, or a field of another kind. Read the page again and check the rule.',
+  'notificationPolicies.problem.forbidden': 'You may no longer change this policy.',
+  'notificationPolicies.problem.other': 'That could not be saved. Try again in a moment.',
+  'emailSettings.title': 'Email',
+  'emailSettings.about':
+    'Taskmoor emails notifications through an SMTP server named where it runs (TASKMOOR_SMTP_URL and the variables beside it) or in the first-run setup form; its password only ever comes from the environment, never from this page. Here you see whether a server is set up, and choose how long changes to one ticket wait so that they arrive in one email, and the hour digests go out.',
+  'emailSettings.forbidden': 'Only site administrators change the email settings.',
+  'emailSettings.loading': 'Reading the email settings…',
+  'emailSettings.failed': 'The email settings could not be read. Try again in a moment.',
+  'emailSettings.outgoing': 'Outgoing mail',
+  'emailSettings.server': 'Mail server',
+  'emailSettings.serverOn': 'Set up',
+  'emailSettings.serverOff': 'Not set up',
+  'emailSettings.serverOnNote':
+    'Taskmoor can send email. The server and its sign-in are changed where Taskmoor runs, not on this page.',
+  'emailSettings.serverOffNote':
+    'Email waits unsent, and notifications still reach people’s inboxes. Name an SMTP server where Taskmoor runs (TASKMOOR_SMTP_URL) and what is waiting goes out.',
+  'emailSettings.formLabel': 'When email goes out',
+  'emailSettings.window': 'Wait before emailing a ticket’s changes, in minutes',
+  'emailSettings.windowHint':
+    'Changes to one ticket within this time arrive in one email. From 0 to 60; the default is 2.',
+  'emailSettings.windowInvalid': 'Give a number of minutes from 0 to 60.',
+  'emailSettings.digestHour': 'Digest hour',
+  'emailSettings.digestHourHint':
+    'Daily digests go out at this hour in each person’s own time zone, and weekly digests on Mondays at the same hour.',
+  'emailSettings.hour': '{hour}:00',
+  'emailSettings.save': 'Save email settings',
+  'emailSettings.saved': 'The email settings were saved.',
+  'emailSettings.saveFailed': 'The email settings could not be saved. Try again in a moment.',
   'unsubscribe.title': 'Unsubscribe',
   'unsubscribe.checking': 'Checking the link…',
   'unsubscribe.noToken':
@@ -3047,6 +3202,7 @@ export const messagesEn = {
   'trackPeople.ownConfigIntro': '{key} has its own configuration, and you can change it here:',
   'trackPeople.layoutsLink': 'Layout sets: where fields appear on its forms',
   'trackPeople.setsLink': 'Configuration sets: its ticket types and field rules',
+  'trackPeople.notificationsLink': 'Notification policies: who hears of which changes in it',
   'trackPeople.invite': 'Invite people',
   'trackPeople.inviteOff': 'Inviting is off for this track. A site administrator can turn it on.',
   'trackPeople.inviteOffAdmin':
