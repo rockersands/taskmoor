@@ -141,7 +141,8 @@ export function LabelsPage({ client = labelsClient }: LabelsPageProps) {
     );
 
   const target = into.trim();
-  // What the server refuses to become: an empty word, a space inside or a word too long.
+  // What the server refuses to become, besides nothing: a space or a control character inside,
+  // or a word too long.
   const notAWord =
     target !== '' &&
     (/\s/.test(target) ||
