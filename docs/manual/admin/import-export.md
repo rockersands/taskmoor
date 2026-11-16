@@ -1,7 +1,7 @@
 ---
 title: "Importing and exporting"
 audience: admins
-sources: apps/server/src/import/archive.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/adr/0089-dc-fields-and-forms.md, docs/adr/0090-dc-access-and-visibility.md, docs/adr/0093-dc-workflows.md, apps/server/src/import/dc-workflows.ts, apps/server/src/import/dc-backup/stage-workflows.ts, apps/server/src/import/load-config.ts, apps/server/src/fields/values.ts, apps/server/src/import/dc-schemes.ts, apps/server/src/import/load-access.ts, apps/server/src/import/dc-fields.ts, apps/server/src/import/load-forms.ts, apps/server/src/fields/sets.ts, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md, docs/adr/0092-dc-ticket-content.md, apps/server/src/import/dc-content.ts, apps/server/src/import/dc-backup/stage-issues.ts, apps/server/src/import/load-weblinks.ts, docs/adr/0094-cloud-rest-import.md, apps/server/src/import/cloud/source.ts, apps/server/src/import/cloud/fetch.ts, apps/server/src/import/cloud/client.ts, apps/server/src/import/cloud/people.ts, apps/server/src/import/load-agile.ts, apps/server/src/boards/one-per-track.ts, docs/adr/0116-one-place-per-track.md, apps/server/src/import/dc-agile.ts, apps/server/src/import/dc-backup/stage-agile.ts, apps/server/src/import/dc-backup/agile-format.ts, docs/adr/0095-dc-boards-and-sprints.md, apps/server/src/import/dc-filters.ts, apps/server/src/import/load-filters.ts, apps/server/src/import/translate/jql.ts, apps/server/src/import/translate/corpus.ts, apps/server/src/import/dc-backup/stage-filters.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/SavedSearchBar.tsx, docs/adr/0096-dc-filters-and-query-translation.md, docs/adr/0097-imported-keys-and-links.md, docs/adr/0102-delta-import-runs.md, docs/adr/0103-import-wizard-and-cli.md, apps/server/src/import/cli.ts, apps/server/src/import/files.ts, apps/web/src/admin/imports/ImportsPage.tsx, apps/web/src/admin/imports/ImportWizard.tsx, packages/webconfig/src/links.ts, apps/server/src/routes/imported-links.ts, apps/server/src/frontend.ts, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/csv.ts, apps/server/src/workflows/free-moves.ts, apps/web/src/shell/NotFoundPage.tsx
+sources: apps/server/src/import/archive.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/server/src/routes/imports.ts, apps/server/src/import/run.ts, apps/server/src/import/jobs.ts, apps/server/src/import/report.ts, apps/server/src/import/csv.ts, apps/server/src/import/dc.ts, apps/server/src/import/dc-backup/stage.ts, apps/server/src/import/taskmoor.ts, apps/server/src/import/synthetic.ts, apps/server/src/routes/exports.ts, apps/server/src/export/format.ts, apps/server/src/routes/search-export.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/i18n/messages.en.ts, docs/csv-import.md, docs/export-format.md, deploy/README.md, docs/adr/0048-importer-framework.md, docs/adr/0063-full-export-format.md, docs/adr/0081-dc-backup-mapping.md, docs/adr/0089-dc-fields-and-forms.md, docs/adr/0090-dc-access-and-visibility.md, docs/adr/0093-dc-workflows.md, apps/server/src/import/dc-workflows.ts, apps/server/src/import/dc-backup/stage-workflows.ts, apps/server/src/import/load-config.ts, apps/server/src/fields/values.ts, apps/server/src/import/dc-schemes.ts, apps/server/src/import/load-access.ts, apps/server/src/import/dc-fields.ts, apps/server/src/import/load-forms.ts, apps/server/src/fields/sets.ts, docs/specs/02d-dc-backup-format.md, docs/plan/progress.csv, docs/specs/00-terminology.md, docs/specs/02a-platform-api-and-integrations.md, docs/adr/0092-dc-ticket-content.md, apps/server/src/import/dc-content.ts, apps/server/src/import/dc-backup/stage-issues.ts, apps/server/src/import/load-weblinks.ts, docs/adr/0094-cloud-rest-import.md, apps/server/src/import/cloud/source.ts, apps/server/src/import/cloud/fetch.ts, apps/server/src/import/cloud/client.ts, apps/server/src/import/cloud/people.ts, apps/server/src/import/load-agile.ts, apps/server/src/boards/one-per-track.ts, docs/adr/0116-one-place-per-track.md, apps/server/src/import/dc-agile.ts, apps/server/src/import/dc-backup/stage-agile.ts, apps/server/src/import/dc-backup/agile-format.ts, docs/adr/0095-dc-boards-and-sprints.md, apps/server/src/import/dc-filters.ts, apps/server/src/import/load-filters.ts, apps/server/src/import/translate/jql.ts, apps/server/src/import/translate/corpus.ts, apps/server/src/import/dc-backup/stage-filters.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/SavedSearchBar.tsx, docs/adr/0096-dc-filters-and-query-translation.md, docs/adr/0097-imported-keys-and-links.md, docs/adr/0102-delta-import-runs.md, docs/adr/0103-import-wizard-and-cli.md, apps/server/src/import/cli.ts, apps/server/src/import/files.ts, apps/web/src/admin/imports/ImportsPage.tsx, apps/web/src/admin/imports/ImportWizard.tsx, packages/webconfig/src/links.ts, apps/server/src/routes/imported-links.ts, apps/server/src/frontend.ts, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/csv.ts, apps/server/src/workflows/free-moves.ts, apps/web/src/shell/NotFoundPage.tsx, apps/server/src/import/load.ts, apps/server/src/routes/audit.ts, apps/server/src/routes/plans.ts, apps/web/src/admin/imports/labels.ts, apps/web/src/account/csvStyle.tsx, docs/adr/0122-multi-track.md
 accessed: 2026-11-16
 attestation: own-words
 jira-names: import sources and field mapping
@@ -494,7 +494,8 @@ again. The report counts the slow-downs under `source_throttled` and the retried
 - `email` (the default): by email address, as other imports do. People Taskmoor does not have are
   created; people whose address the site hides become placeholders.
 - `csv`: a file you give in `data`, two columns: the person in the site (account id or email
-  address) and the address of their Taskmoor account. A header row is optional. Everyone the file
+  address) and the address of their Taskmoor account, separated by commas, semicolons, tabs or
+  vertical bars (found from the first row). A header row is optional. Everyone the file
   leaves out, or maps to an address nobody here has, is **unmapped**.
 - `scim`: the person your identity provider provisioned over SCIM with the same address. Everyone
   else is unmapped.
@@ -596,7 +597,19 @@ Content-Type: application/json
 - The header is checked against the mapping before the run is queued: a column the mapping names
   but the file lacks is refused with `400 invalid_source` and the line.
 - The file is read as UTF-8. A byte-order mark at its start, as Excel's "CSV UTF-8" and Taskmoor's
-  own exports write, is left out, so it never becomes part of the first header.
+  own exports write, is left out, so it never becomes part of the first header. A file that starts
+  with a UTF-16 byte-order mark (Excel's "Unicode text") is read as UTF-16.
+- A file that is not UTF-8 is read as Windows-1252 (Windows Western European), which is what
+  Excel's plain "CSV" saves with Spanish and other Western settings. The report then warns
+  `read_as_windows_1252` and lists the first lines with accented letters, so check them in the dry
+  run. Other code pages, such as Mac Roman or Central European, still read wrong: to be sure, save
+  the file from Excel as "CSV UTF-8".
+- Without `delimiter`, the separator is found from the header: the most frequent of comma,
+  semicolon, tab and vertical bar outside quotes, a tie going to the comma. A semicolon file from a
+  Spanish Excel imports with no setting.
+- In a file separated by semicolons, number fields read a decimal comma: `2,5` is 2.5 and `1.234,5`
+  is 1234.5. A bare `1.234` could be a thousands dot or a decimal point, so it is left out with a
+  `value_invalid` warning on its row.
 
 ### The mapping
 
@@ -605,7 +618,7 @@ Content-Type: application/json
 | `columns` | `{"column", "to"}` pairs: a header of the file's first row and the target it fills. Several columns with the same header all fill that one target |
 | `track` | The track for rows with neither a `track` nor a `key` column; it must exist |
 | `type` | The ticket type for rows without a `type` column; the track's default type if left out |
-| `delimiter` | `,` (default), `;`, a tab, or a vertical bar |
+| `delimiter` | `,`, `;`, a tab, or a vertical bar; found from the header when left out |
 | `listSeparator` | Between several values in one cell; `;` by default |
 | `people` | Text the file uses for people (names, old user names) mapped to email addresses |
 
@@ -649,7 +662,7 @@ their values, and every change is in the ticket's history, made by the system.
 After a search, the results page offers **Export CSV** and **Export JSON** (see
 [Search and the query language](../use/search.md)). Both export every ticket the query finds, in
 its order and in the columns shown, never a ticket the person could not see. The API is
-`GET /api/v1/search/export?q=<query>&format=csv&columns=key,summary,status`:
+`GET /api/v1/search/export?q=<query>&format=csv&columns=key,summary,status&separator=comma`:
 
 - `format` is `csv` (default) or `json`; `columns` lists result columns such as `assignee`,
   `targetReleases` or `cf[10]`, and the key always comes first. Without `columns` it uses key,
@@ -658,9 +671,14 @@ its order and in the columns shown, never a ticket the person could not see. The
 - In CSV, lists are joined by `; ` and a cell starting with `=`, `+`, `-`, `@`, a tab or a
   carriage return gets a leading apostrophe, so a spreadsheet does not run it as a formula. CSV
   import removes that apostrophe again; people appear by name, so map them with `people`.
+- `separator` is `comma` (the default: numbers as `1.5`) or `semicolon` (numbers as `1,5`), as a
+  spreadsheet set up for a decimal comma, such as Excel with Spanish settings, opens a file by a
+  double-click. The web app asks for each person's style: **Spreadsheet files (CSV)** on their
+  [profile](../use/account.md#profile). The audit log export (`/api/v1/audit/export`) and a plan's
+  List file (`/api/v1/plans/<id>/export`) take the same parameter.
 - A CSV file starts with a UTF-8 byte-order mark (the bytes EF BB BF), once, so Excel on Windows
-  reads accented headers properly; cells stay separated by commas. Every CSV download does the
-  same: the audit log and a plan's files too. JSON has no mark.
+  reads accented headers properly, in either style. Every CSV download does the same: the audit log
+  and a plan's files too. JSON has no mark.
 
 ## Full export
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
+import { useCsvSeparator } from '../account/csvStyle';
 import { useT } from '../i18n/I18nProvider';
 import { searchHref } from '../releases/client';
 import { routeHref } from '../routing/router';
@@ -63,6 +64,8 @@ export function PlanCapacityPage({
   scenario,
 }: PlanSectionProps) {
   const t = useT();
+  // Commas or semicolons, as the person's spreadsheet opens them (T-263).
+  const csvSeparator = useCsvSeparator();
   const intl = useIntl();
   const headingId = useId();
   const compact = useMediaQuery(COMPACT_QUERY);
@@ -343,7 +346,7 @@ export function PlanCapacityPage({
               label: t('plans.download.csv'),
               make: async () => {
                 const name = fileName(plan.name, 'capacity', today, 'csv');
-                saveBlob(name, csvBlob(capacityCsv(t, data)));
+                saveBlob(name, csvBlob(capacityCsv(t, data, csvSeparator)));
                 return name;
               },
             },

@@ -20,3 +20,30 @@ describe('the people file of an import (M1-095)', () => {
     expect(parsePeopleCsv(exported)).toEqual(rows);
   });
 });
+
+describe('the people file in the separator a spreadsheet chose (T-263)', () => {
+  it('[IMP-007] [IMP-012] finds semicolons, tabs and pipes from the first row, as the CSV import does', () => {
+    const rows = [
+      { source: '2', target: 'bea@example.org' },
+      { source: 'cyd@example.com', target: 'nobody@example.org' },
+    ];
+    // Saved by a Spanish Excel: semicolons, with a header or without.
+    expect(parsePeopleCsv('2;bea@example.org\r\ncyd@example.com;nobody@example.org\r\n')).toEqual(
+      rows,
+    );
+    expect(
+      parsePeopleCsv(
+        csvFile(
+          [
+            ['origen', 'taskmoor'],
+            ['2', 'bea@example.org'],
+            ['cyd@example.com', 'nobody@example.org'],
+          ],
+          'semicolon',
+        ),
+      ),
+    ).toEqual(rows);
+    expect(parsePeopleCsv('2\tbea@example.org\ncyd@example.com\tnobody@example.org')).toEqual(rows);
+    expect(parsePeopleCsv('2|bea@example.org\ncyd@example.com|nobody@example.org')).toEqual(rows);
+  });
+});

@@ -1,5 +1,5 @@
 import type { Database } from '@taskmoor/db';
-import { csvLine as csvRecord } from '@taskmoor/webconfig';
+import { type CsvSeparator, csvLine as csvRecord } from '@taskmoor/webconfig';
 import { type Kysely, sql } from 'kysely';
 import { erasedEmail, erasedName, withoutCapacityNotes } from '../privacy/placeholder';
 
@@ -288,8 +288,11 @@ export const CSV_COLUMNS = [
   'hash',
 ] as const;
 
-/** One record as a CSV line (the shared rule of every export, `@taskmoor/webconfig`). */
-export function csvLine(record: AuditView): string {
+/**
+ * One record as a CSV line (the shared rule of every export, `@taskmoor/webconfig`), in either
+ * style (T-263).
+ */
+export function csvLine(record: AuditView, separator: CsvSeparator = 'comma'): string {
   const values: Record<(typeof CSV_COLUMNS)[number], unknown> = {
     seq: record.seq,
     occurred_at: record.occurredAt,
@@ -306,5 +309,8 @@ export function csvLine(record: AuditView): string {
     prev_hash: record.prevHash,
     hash: record.hash,
   };
-  return csvRecord(CSV_COLUMNS.map((c) => values[c]));
+  return csvRecord(
+    CSV_COLUMNS.map((c) => values[c]),
+    separator,
+  );
 }

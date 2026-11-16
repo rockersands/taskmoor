@@ -1,11 +1,11 @@
 import type { Database } from '@taskmoor/db';
+import { CSV_SEPARATORS, type CsvSeparator } from '@taskmoor/webconfig';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireGlobal, requireUser } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import { diff, emit } from '../events/bus';
-import { autoFollows } from '../tickets/followers';
 import { type FieldChange, linkChange, recordChanges } from '../tickets/history';
 import { ticketKey } from '../tickets/model';
 import { loadTicket, resolveTicket, type TicketRow } from '../tickets/store';
@@ -1029,36 +1029,37 @@ export function registerLinkRoutes(
     else app.delete('/api/v1/tickets/:id/votes', handler);
   }
 
-  // Personal settings (CORE-019: auto-follow).
+  // Personal settings (CORE-019: auto-follow; T-263: how their CSV files are written, null for
+  // automatic, which the web app works out from their region).
 
   app.get('/api/v1/account/preferences', async (request, reply) => {
     const user = requireUser(request, reply);
     if (!user) return reply;
-    return { preferences: { autoFollow: await autoFollows(db, user.id) } };
+    return { preferences: await preferencesOf(db, user.id) };
   });
 
   app.patch('/api/v1/account/preferences', async (request, reply) => {
     const user = requireUser(request, reply);
     if (!user) return reply;
-    const parsed = z.object({ autoFollow: z.boolean() }).partial().strict().safeParse(request.body);
+    const parsed = z
+      .object({ autoFollow: z.boolean(), csvSeparator: z.enum(CSV_SEPARATORS).nullable() })
+      .partial()
+      .strict()
+      .safeParse(request.body);
     if (!parsed.success) return invalid(reply);
     const body = parsed.data;
     await db.transaction().execute(async (trx) => {
-      const was = await autoFollows(trx, user.id);
-      const changes = diff<Record<string, unknown>>({ autoFollow: was }, body);
+      const was = await preferencesOf(trx, user.id);
+      const changes = diff<Record<string, unknown>>(was, body);
       if (Object.keys(changes).length === 0) return;
+      const next = {
+        auto_follow: body.autoFollow ?? was.autoFollow,
+        csv_separator: body.csvSeparator === undefined ? was.csvSeparator : body.csvSeparator,
+      };
       await trx
         .insertInto('user_preference')
-        .values({
-          user_id: user.id,
-          workspace_id: request.workspaceId,
-          auto_follow: body.autoFollow ?? was,
-        })
-        .onConflict((oc) =>
-          oc
-            .column('user_id')
-            .doUpdateSet({ auto_follow: body.autoFollow ?? was, updated_at: new Date() }),
-        )
+        .values({ user_id: user.id, workspace_id: request.workspaceId, ...next })
+        .onConflict((oc) => oc.column('user_id').doUpdateSet({ ...next, updated_at: new Date() }))
         .execute();
       await emit(trx, by(request), {
         type: 'user.preferences_updated',
@@ -1066,6 +1067,19 @@ export function registerLinkRoutes(
         payload: { changes },
       });
     });
-    return { preferences: { autoFollow: await autoFollows(db, user.id) } };
+    return { preferences: await preferencesOf(db, user.id) };
   });
+}
+
+/** A person's own settings as the preferences route shows them; defaults without a row. */
+async function preferencesOf(
+  db: Kysely<Database> | Transaction<Database>,
+  userId: number,
+): Promise<{ autoFollow: boolean; csvSeparator: CsvSeparator | null }> {
+  const row = await db
+    .selectFrom('user_preference')
+    .select(['auto_follow', 'csv_separator'])
+    .where('user_id', '=', userId)
+    .executeTakeFirst();
+  return { autoFollow: row?.auto_follow ?? true, csvSeparator: row?.csv_separator ?? null };
 }

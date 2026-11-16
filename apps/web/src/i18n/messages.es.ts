@@ -1292,6 +1292,12 @@ export const messagesEs: Record<MessageId, string> = {
   'account.locale': 'Idioma y región',
   'account.localeAutomatic': 'Automático',
   'account.localeHint': 'Automático sigue la configuración de idioma de tu navegador.',
+  'account.csv': 'Hojas de cálculo (CSV)',
+  'account.csvAutomatic': 'Automático',
+  'account.csvComma': 'Comas, números como 1.5',
+  'account.csvSemicolon': 'Punto y coma, números como 1,5',
+  'account.csvHint':
+    'Cómo separan sus celdas los archivos CSV que descargas, para que tu hoja de cálculo los abra en columnas. Automático sigue tu idioma y región: punto y coma donde los números se escriben 1,5, comas donde se escriben 1.5.',
   'account.saveProfile': 'Guardar el perfil',
   'account.profileSaved': 'Perfil guardado.',
   'account.invalidTimeZone': 'No se reconoce esa zona horaria.',
@@ -2049,6 +2055,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Una clave anterior pertenece aquí a otra cosa y sigue siendo suya.',
   'admin.imports.warning.ticket_in_another_open_sprint':
     'Un ticket estaba en dos sprints abiertos; se queda en el primero.',
+  'admin.imports.warning.read_as_windows_1252':
+    'El archivo no está en UTF-8, así que se leyó como europeo occidental de Windows (Windows-1252), que es como Excel guarda un CSV sencillo. Revisa las letras con tilde de las líneas indicadas. Para ir sobre seguro, guarda el archivo desde Excel como «CSV UTF-8» e importa ese.',
   'admin.frontends.title': 'Frontends web',
   'admin.frontends.forbidden':
     'Solo los administradores del sitio cambian qué frontends pueden usar este servidor.',

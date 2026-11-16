@@ -47,7 +47,7 @@ paged with `after`).
 | `columns` | `{column, to}` pairs: the header as the file's first row has it, and what it fills. A header that appears several times fills one field with every column of that name. |
 | `track` | The track of rows that have neither a `track` nor a `key` column. It must exist. |
 | `type` | The ticket type of rows without a `type` column (it must exist); the track's default type if left out. |
-| `delimiter` | `,` (default), `;`, a tab or `|`. |
+| `delimiter` | `,`, `;`, a tab or `|`. Left out, it is found from the header: the most frequent of the four outside quotes, a tie going to the comma (T-263). |
 | `listSeparator` | Between several values in one cell (releases, areas, fields with several values); `;` by default. |
 | `people` | Text the file uses for people (display names, old user names) to their email addresses. |
 
@@ -83,11 +83,30 @@ A row is identified by its `id` column, else its `key` column, else its line in 
 (`line:<n>`). Only the first two survive edits to the file, so give a file that will be imported
 again one of them. Two rows with the same id: the second fails as `duplicate_row_id`.
 
+## Files from spreadsheets
+
+Spreadsheets save CSV in more than one way, and the importer reads what they write (T-263):
+
+- **Encoding.** A file that is valid UTF-8 is read as UTF-8, with or without a byte-order mark. A
+  file that starts with a UTF-16 byte-order mark (Excel's "Unicode text") is read as UTF-16. Any
+  other file is read as Windows-1252 (Windows Western European), which is what Excel's plain
+  "CSV" saves in Spain, the rest of Western Europe and the Americas; the report then carries a
+  `read_as_windows_1252` warning with the first lines that hold accented letters, to check. Files
+  in other code pages, such as Mac Roman or Central European, still read wrong: save them as
+  "CSV UTF-8".
+- **Separator.** Without `delimiter` in the mapping it is found from the header, so the
+  semicolons of a Spanish Excel need no setting. A `delimiter` in the mapping always wins.
+- **Decimal commas.** In a file separated by semicolons, a number field reads `2,5` as 2.5 and
+  `1.234,5` as 1234.5. A bare `1.234` could be a thousands dot or a decimal point, so it is left
+  out with a `value_invalid` warning; `2.5` and `1.234.567` are read as written.
+
 ## Files from Taskmoor
 
 A CSV exported from search results (`GET /api/v1/search/export`) imports back with a mapping of
-its columns. Its first bytes are a UTF-8 byte-order mark, as on every Taskmoor CSV export (T-252);
-the importer leaves the mark out, as it does for any file that starts with one. Lists in its cells are separated by `; `, and the apostrophe the export puts before a
+its columns, in either style the export writes (commas, or semicolons with numbers as `2,5`): the
+separator is found from the header. Its first bytes are a UTF-8 byte-order mark, as on every
+Taskmoor CSV export (T-252); the importer leaves the mark out, as it does for any file that starts
+with one. Lists in its cells are separated by `; `, and the apostrophe the export puts before a
 cell that starts with `=`, `+`, `-`, `@`, a tab or a carriage return (so that a spreadsheet does
 not run it as a formula) is removed again. People appear by name in that export: map them with
 `people`.

@@ -1,3 +1,4 @@
+import { isUtf8 } from 'node:buffer';
 import { randomBytes } from 'node:crypto';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -5,16 +6,32 @@ import { join } from 'node:path';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
 import { fc } from '@taskmoor/testkit/property';
-import { csvField } from '@taskmoor/webconfig';
+import { csvField, csvLine, detectDelimiter } from '@taskmoor/webconfig';
 import type { FastifyInstance, InjectOptions } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
 import { JobRunner } from '../events/queue';
 import { FieldCatalogs } from '../fields/catalog';
-import { cellText, dayOf, instantOf, records, secondsOf } from './csv';
+import {
+  CsvSource,
+  cellText,
+  csvSource,
+  dayOf,
+  decodeCsv,
+  fromDecimalComma,
+  instantOf,
+  records,
+  secondsOf,
+} from './csv';
 import { registerImportJobs } from './jobs';
 import { type FidelityReport, fidelityReport } from './report';
+
+/**
+ * Windows-1252 at 0x80 to 0x9F, as the WHATWG Encoding Standard's index has it; the five bytes it
+ * leaves undefined decode to the C1 control of the same number.
+ */
+const CP1252_80_9F = '€\u0081‚ƒ„…†‡ˆ‰Š‹Œ\u008DŽ\u008F\u0090‘’“”•–—˜™š›œ\u009DžŸ';
 
 const rows = (text: string, delimiter = ',') =>
   [...records(Buffer.from(text, 'utf8'), delimiter)].map((r) => r.fields);
@@ -48,9 +65,17 @@ describe('reading CSV (M1-098)', () => {
           const full = table.map((r) => [...r, ...Array(width - r.length).fill('')]);
           // A row of empty cells reads as a blank line only when it has one column.
           fc.pre(full.every((r) => r.length > 1 || r[0] !== ''));
-          const text = full.map((r) => `${r.map(csvField).join(',')}\r\n`).join('');
-          const back = rows(text).map((r) => r.map(cellText));
-          expect(back).toEqual(full);
+          // Either style, its separator found from the header (T-263).
+          for (const style of ['comma', 'semicolon'] as const) {
+            const text = full.map((r) => csvLine(r, style)).join('');
+            const delimiter = detectDelimiter(Buffer.from(text, 'utf8'));
+            if (width > 1) expect(delimiter).toBe(style === 'comma' ? ',' : ';');
+            const back = rows(text, delimiter).map((r) => r.map(cellText));
+            expect(back).toEqual(full);
+          }
+          expect(full.map((r) => `${r.map((c) => csvField(c)).join(',')}\r\n`).join('')).toBe(
+            full.map((r) => csvLine(r)).join(''),
+          );
         },
       ),
     );
@@ -62,6 +87,150 @@ describe('reading CSV (M1-098)', () => {
     }
     // An apostrophe someone typed before anything else is theirs.
     expect(cellText("'＿x")).toBe("'＿x");
+  });
+
+  it('[IMP-012] finds the separator from the header when the mapping leaves it out (T-263)', () => {
+    const open = (text: string, delimiter?: ',' | ';' | '\t' | '|') =>
+      new CsvSource(
+        csvSource.parse({
+          format: 'csv',
+          data: text,
+          mapping: {
+            track: 'CSV',
+            columns: [{ column: 'Resumen', to: 'summary' }],
+            ...(delimiter ? { delimiter } : {}),
+          },
+        }),
+      );
+    expect(open('Clave;Resumen;Estado\r\nA-1;"x, y";Nuevo').delimiter).toBe(';');
+    expect(open('Clave\tResumen\nA-1\tx').delimiter).toBe('\t');
+    expect(open('Clave|Resumen\nA-1|x').delimiter).toBe('|');
+    expect(open('Clave,Resumen\nA-1;x;y;z').delimiter).toBe(',');
+    // A tie goes to the comma.
+    expect(open('Resumen,a;b\nx').delimiter).toBe(',');
+    // An explicit separator wins over what the header shows.
+    expect(open('Clave;Resumen\nA-1;x', ',').delimiter).toBe(',');
+    expect(() => open('Clave;Resumen\nA-1;x', ',').check()).toThrow('no column "Resumen"');
+  });
+
+  it('[IMP-012] finds the same separator and the same offsets in every job part of a run', () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom(',', ';', '\t', '|'),
+        fc.array(fc.array(fc.string({ unit: 'binary' }), { minLength: 2, maxLength: 4 }), {
+          minLength: 1,
+          maxLength: 6,
+        }),
+        fc.boolean(),
+        (delimiter, table, latin) => {
+          const text = table.map((r) => r.join(delimiter)).join('\r\n');
+          const raw = latin ? Buffer.from(text, 'latin1') : Buffer.from(text, 'utf8');
+          const first = decodeCsv(raw);
+          const again = decodeCsv(Buffer.from(raw));
+          expect(again.encoding).toBe(first.encoding);
+          expect(again.bytes.equals(first.bytes)).toBe(true);
+          const d = detectDelimiter(first.bytes);
+          expect(detectDelimiter(again.bytes)).toBe(d);
+          const offsets = (b: Buffer) => [...records(b, d)].map((r) => [r.start, r.end]);
+          expect(offsets(again.bytes)).toEqual(offsets(first.bytes));
+          // What comes out is always UTF-8, so a second reading changes nothing.
+          expect(decodeCsv(first.bytes).bytes.equals(first.bytes)).toBe(true);
+        },
+      ),
+    );
+  });
+
+  it('[IMP-012] keeps UTF-8 as it is, with or without a byte-order mark (T-263)', () => {
+    for (const text of ['Clave;Título\r\nA-1;Árbol', '﻿Clave;Título\r\nA-1;Árbol', 'Key\n1']) {
+      const raw = Buffer.from(text, 'utf8');
+      const read = decodeCsv(raw);
+      expect(read.encoding).toBe('utf-8');
+      expect(read.bytes).toBe(raw);
+    }
+  });
+
+  it('[IMP-012] reads a file that is not UTF-8 as Windows-1252, every byte as browsers do (T-263)', () => {
+    // Bytes 0x80 to 0xFF after an ASCII letter are not UTF-8. Node 22's own TextDecoder reads
+    // 0x80 to 0x9F of 'windows-1252' as Latin-1 controls, so the expected text is spelled out.
+    const high = Buffer.from([0x78, ...Array.from({ length: 128 }, (_, i) => 0x80 + i)]);
+    const read = decodeCsv(high);
+    expect(read.encoding).toBe('windows-1252');
+    expect(read.bytes.toString('utf8')).toBe(`x${CP1252_80_9F}${high.toString('latin1', 33)}`);
+    expect(read.bytes.toString('utf8').slice(1, 33)).toBe(CP1252_80_9F);
+    // What Spanish Excel's plain "CSV" saves: semicolons and the legacy code page.
+    const excel = Buffer.from([
+      0x44, 0x65, 0x73, 0x63, 0x72, 0x69, 0x70, 0x63, 0x69, 0xf3, 0x6e, 0x3b, 0x80, 0x0d, 0x0a,
+    ]);
+    expect(decodeCsv(excel).bytes.toString('utf8')).toBe('Descripción;€\r\n');
+    // A UTF-8 mark followed by bytes that are not UTF-8: the rest is read the old way.
+    const marked = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from([0x41, 0xe9])]);
+    expect(decodeCsv(marked).bytes.toString('utf8')).toBe('Aé');
+  });
+
+  it('[IMP-012] reads UTF-16 that starts with its byte-order mark (T-263)', () => {
+    const text = 'Clave\tTítulo\r\nA-1\t€ y ñ\r\n';
+    const le = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(text, 'utf16le')]);
+    expect(decodeCsv(le)).toMatchObject({ encoding: 'utf-16le' });
+    expect(decodeCsv(le).bytes.toString('utf8')).toBe(text);
+    const be = Buffer.from(Buffer.from(text, 'utf16le')).swap16();
+    const marked = Buffer.concat([Buffer.from([0xfe, 0xff]), be]);
+    expect(decodeCsv(marked)).toMatchObject({ encoding: 'utf-16be' });
+    expect(decodeCsv(marked).bytes.toString('utf8')).toBe(text);
+    // An odd last byte is dropped, not read past.
+    expect(decodeCsv(Buffer.concat([marked, Buffer.from([0x41])])).bytes.toString('utf8')).toBe(
+      text,
+    );
+  });
+
+  it('[IMP-012] reads Windows-1252 text back as it was written, whenever its bytes are not UTF-8', () => {
+    const encoder = new Map(
+      Array.from({ length: 256 }, (_, b) => [
+        b >= 0x80 && b <= 0x9f ? (CP1252_80_9F[b - 0x80] as string) : String.fromCharCode(b),
+        b,
+      ]),
+    );
+    fc.assert(
+      fc.property(
+        fc.array(fc.constantFrom(...'aZ09 ;,"\r\nñÑáéíóúÁÉÍÓÚüÜ¿¡€œŒšŠžŽŸ‘’“”–—…ªº°'), {
+          maxLength: 60,
+        }),
+        (chars) => {
+          const text = chars.join('');
+          const bytes = Buffer.from(chars.map((c) => encoder.get(c) as number));
+          fc.pre(!isUtf8(bytes));
+          const read = decodeCsv(bytes);
+          expect(read.encoding).toBe('windows-1252');
+          expect(read.bytes.toString('utf8')).toBe(text);
+        },
+      ),
+    );
+  });
+
+  it('[IMP-012] reads a decimal comma in a semicolon file, and refuses what could be either mark (T-263)', () => {
+    const cases: [string, string | null][] = [
+      ['2,5', '2.5'],
+      ['-0,25', '-0.25'],
+      [',5', '.5'],
+      ['1.234,5', '1234.5'],
+      ['1.234.567,89', '1234567.89'],
+      ['1234,5', '1234.5'],
+      ['1,5e3', '1.5e3'],
+      [' 7,0 ', '7.0'],
+      // One group of three after a dot: a thousands dot or a decimal point.
+      ['1.234', null],
+      ['-12.500', null],
+      // Unmistakable without a comma: a decimal point, or groups of thousands.
+      ['2.5', '2.5'],
+      ['0.125', '0.125'],
+      ['1.2345', '1.2345'],
+      ['1.234.567', '1234567'],
+      ['42', '42'],
+      // Text a number field refuses on its own.
+      ['12.34,5', '12.34,5'],
+      ['2,', '2,'],
+      ['lots', 'lots'],
+    ];
+    for (const [text, read] of cases) expect(fromDecimalComma(text), text).toBe(read);
   });
 
   it('[IMP-012] reads dates, instants and durations', () => {
@@ -548,5 +717,91 @@ describe('CSV import (M1-098)', () => {
       .where('summary', '=', 'No delivery column')
       .executeTakeFirstOrThrow();
     expect(made.fields).not.toHaveProperty(String(deliveredIn));
+  });
+
+  it('[IMP-012] [NFR-006] imports what Spanish Excel saves as plain CSV: semicolons, Windows-1252 with a note, decimal commas (T-263)', async () => {
+    // Semicolons, the legacy code page and no byte-order mark; the mapping names no separator.
+    const text = [
+      'Resumen;Descripción;Pts',
+      'Árbol de navegación;Señal "rápida";2,5',
+      'Mil y pico;;1.234,5',
+      'Dudoso;;1.234',
+      '',
+    ].join('\r\n');
+    await mkdir(join(importDir, 'in'), { recursive: true });
+    await writeFile(join(importDir, 'in', 'excel.csv'), Buffer.from(text, 'latin1'));
+    const mapping = {
+      track: 'CSV',
+      columns: [
+        { column: 'Resumen', to: 'summary' },
+        { column: 'Descripción', to: 'description' },
+        { column: 'Pts', to: 'field', field: points },
+      ],
+    };
+    const { id, report } = await run({
+      source: { format: 'csv', system: 'excel-es', path: 'in/excel.csv', mapping },
+    });
+    expect(report.totals.failed, JSON.stringify(report.failures)).toBe(0);
+    expect(report.warnings).toContainEqual({
+      kind: 'source',
+      code: 'read_as_windows_1252',
+      detail: null,
+      count: 2,
+      examples: ['line 1: Descripción', 'line 2: Árbol'],
+    });
+    const made = await database.db
+      .selectFrom('ticket')
+      .select(['summary', 'description', 'fields'])
+      .where('summary', 'in', ['Árbol de navegación', 'Mil y pico', 'Dudoso'])
+      .orderBy('id')
+      .execute();
+    expect(made.map((m) => m.summary)).toEqual(['Árbol de navegación', 'Mil y pico', 'Dudoso']);
+    expect(JSON.stringify(made[0]?.description)).toContain('Señal \\"rápida\\"');
+    expect(made[0]?.fields).toMatchObject({ [points]: 2.5 });
+    expect(made[1]?.fields).toMatchObject({ [points]: 1234.5 });
+    // "1.234" could be a thousands dot or a decimal point: left out, and said so.
+    expect(made[2]?.fields).not.toHaveProperty(String(points));
+    const found = await problems(id, '?kind=ticket');
+    expect(found.find((p) => p.sourceId === 'line:4')?.warnings).toEqual([
+      { code: 'value_invalid', detail: `cf[${points}]` },
+    ]);
+    // The stored run keeps no separator, so every later part finds the same one again.
+    const stored = await database.db
+      .selectFrom('import_run')
+      .select('source')
+      .where('id', '=', String(id))
+      .executeTakeFirstOrThrow();
+    expect((stored.source as { mapping: Record<string, unknown> }).mapping).not.toHaveProperty(
+      'delimiter',
+    );
+  });
+
+  it('[IMP-012] keeps the separator a mapping names, and reads a UTF-8 file without a note (T-263)', async () => {
+    const mapping = (delimiter?: string) => ({
+      track: 'CSV',
+      columns: [
+        { column: 'Resumen', to: 'summary' },
+        { column: 'Pts', to: 'field', field: points },
+      ],
+      ...(delimiter ? { delimiter } : {}),
+    });
+    const data = 'Resumen;Pts\r\nCon marca y UTF-8;3,25\r\n';
+    const refused = await as('admin', {
+      method: 'POST',
+      url: '/api/v1/admin/imports',
+      payload: { dryRun: true, source: { format: 'csv', data, mapping: mapping(',') } },
+    });
+    expect(refused.statusCode).toBe(400);
+    expect(refused.json()).toMatchObject({ error: 'invalid_source', line: 1 });
+    const { report } = await run({
+      source: { format: 'csv', system: 'utf8-es', data: `﻿${data}`, mapping: mapping(';') },
+    });
+    expect(report.warnings.filter((w) => w.kind === 'source')).toEqual([]);
+    const made = await database.db
+      .selectFrom('ticket')
+      .select('fields')
+      .where('summary', '=', 'Con marca y UTF-8')
+      .executeTakeFirstOrThrow();
+    expect(made.fields).toMatchObject({ [points]: 3.25 });
   });
 });

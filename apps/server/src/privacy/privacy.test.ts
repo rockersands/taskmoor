@@ -377,6 +377,13 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
         created_by: kalo,
       })
       .execute();
+    // [NFR-006] How Kalo's CSV files are written (T-263): a setting of theirs, in the download.
+    const csv = await as('kalo', {
+      method: 'PATCH',
+      url: '/api/v1/account/preferences',
+      payload: { csvSeparator: 'semicolon' },
+    });
+    expect(csv.statusCode, csv.body).toBe(200);
     const asked = await post('kalo', '/api/v1/account/data-exports');
     expect(asked.statusCode, asked.body).toBe(202);
     const id = asked.json().export.id as string;
@@ -432,6 +439,7 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
     // [PLN-002] [PLN-003] The scenarios they made and the drafts they last changed, by ids: no
     // ticket key or summary, since the plan or the ticket may be hidden from them now.
     const preferences = JSON.parse(String(zip['preferences.json']));
+    expect(preferences).toMatchObject({ autoFollow: true, csvSeparator: 'semicolon' });
     expect(preferences.planScenarios).toEqual([
       {
         planId: plan.id,
@@ -720,7 +728,13 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
       body: mentionDoc(kalo, 'Kalo Example'),
     });
     expect(said.statusCode, said.body).toBe(201);
-    // Kalo has a second factor, a token and preferences.
+    // Kalo has a second factor, a token and preferences, how their CSV files are written among
+    // them (T-263).
+    await database.db
+      .insertInto('user_preference')
+      .values({ user_id: kalo, workspace_id: 1, csv_separator: 'semicolon' })
+      .onConflict((oc) => oc.column('user_id').doUpdateSet({ csv_separator: 'semicolon' }))
+      .execute();
     await database.db
       .insertInto('totp_credential')
       .values({ user_id: kalo, workspace_id: 1, secret_sealed: 'sealed' })
@@ -829,6 +843,8 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
       'personal_export',
       // [PLN-009] Their capacity in plans, notes and all; the plan stays.
       'plan_capacity',
+      // [NFR-006] Their settings, how their CSV files are written among them (T-263).
+      'user_preference',
     ] as const) {
       const left = await database.db
         .selectFrom(table)

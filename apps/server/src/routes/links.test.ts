@@ -564,13 +564,52 @@ describe('ticket links, web links, followers and votes (M1-015)', () => {
         'dave',
       ]);
       expect((await get('dave', '/api/v1/account/preferences')).json()).toEqual({
-        preferences: { autoFollow: true },
+        preferences: { autoFollow: true, csvSeparator: null },
       });
       expect(
         (await patch('dave', '/api/v1/account/preferences', { autoFollow: false })).json(),
-      ).toEqual({ preferences: { autoFollow: false } });
+      ).toEqual({ preferences: { autoFollow: false, csvSeparator: null } });
       const other = await create('dave', 'ABC', 'Not followed');
       expect((await get('dave', `/api/v1/tickets/${other.id}/followers`)).json().count).toBe(0);
+    });
+
+    it('[IAM-008] [NFR-006] keeps how one’s CSV files are written, automatic until chosen (T-263)', async () => {
+      const preferences = '/api/v1/account/preferences';
+      const eventsOf = async (who: number) =>
+        (
+          await database.db
+            .selectFrom('domain_event')
+            .select('payload')
+            .where('type', '=', 'user.preferences_updated')
+            .where('subject_id', '=', String(who))
+            .orderBy('id')
+            .execute()
+        ).map((e) => e.payload);
+      expect((await get('eve', preferences)).json()).toEqual({
+        preferences: { autoFollow: true, csvSeparator: null },
+      });
+      expect((await patch('eve', preferences, { csvSeparator: 'semicolon' })).json()).toEqual({
+        preferences: { autoFollow: true, csvSeparator: 'semicolon' },
+      });
+      // Another setting leaves the choice as it is; null goes back to automatic.
+      expect((await patch('eve', preferences, { autoFollow: false })).json()).toEqual({
+        preferences: { autoFollow: false, csvSeparator: 'semicolon' },
+      });
+      expect((await patch('eve', preferences, { csvSeparator: null })).json()).toEqual({
+        preferences: { autoFollow: false, csvSeparator: null },
+      });
+      // The same value again changes nothing and records nothing.
+      await patch('eve', preferences, { csvSeparator: null });
+      expect(await eventsOf(users.eve?.id as number)).toEqual([
+        { changes: { csvSeparator: { from: null, to: 'semicolon' } } },
+        { changes: { autoFollow: { from: true, to: false } } },
+        { changes: { csvSeparator: { from: 'semicolon', to: null } } },
+      ]);
+      for (const wrong of [{ csvSeparator: 'tab' }, { csvSeparator: ';' }, { other: 1 }]) {
+        expect((await patch('eve', preferences, wrong)).statusCode, JSON.stringify(wrong)).toBe(
+          400,
+        );
+      }
     });
 
     it('[CORE-019] has no cap on followers or voters', async () => {

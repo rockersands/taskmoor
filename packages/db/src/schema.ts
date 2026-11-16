@@ -1410,6 +1410,11 @@ export interface UserPreferenceTable {
   quiet_start: number | null;
   quiet_end: number | null;
   updated_at: DefaultTimestamp;
+  /**
+   * How their CSV files are written: `comma` (numbers as 1.5) or `semicolon` (numbers as 1,5);
+   * null is automatic, from the decimal mark of their region (T-263).
+   */
+  csv_separator: 'comma' | 'semicolon' | null;
 }
 
 /** The workspace's time tracking settings (M1-019, TIM-001). */

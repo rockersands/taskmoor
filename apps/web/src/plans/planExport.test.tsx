@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { CSV_BOM } from '@taskmoor/webconfig';
+import { CSV_BOM, type CsvSeparator } from '@taskmoor/webconfig';
 import { renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
@@ -31,7 +31,7 @@ const translate = (locale: 'en' | 'es' = 'en') =>
  * A file's rows, read as RFC 4180 reads them, after its byte-order mark: every file starts with
  * exactly one (T-252), as the importer expects and takes off.
  */
-function parse(file: string): string[][] {
+function parse(file: string, separator: ',' | ';' = ','): string[][] {
   expect(file.startsWith(CSV_BOM)).toBe(true);
   const text = file.slice(1);
   expect(text.startsWith(CSV_BOM)).toBe(false);
@@ -48,7 +48,7 @@ function parse(file: string): string[][] {
       } else if (c === '"') quoted = false;
       else cell += c;
     } else if (c === '"') quoted = true;
-    else if (c === ',') {
+    else if (c === separator) {
       row.push(cell);
       cell = '';
     } else if (c === '\r' && text[i + 1] === '\n') {
@@ -251,6 +251,44 @@ describe('the files of a plan', () => {
     expect(cross?.slice(-2)).toEqual(['1', '4']);
     expect(rows.some((r) => r[0] === 'Launch across tracks' && r[2] === 'SHOP')).toBe(true);
     matchesGolden(releasesCsv(translate(), data), 'plan-releases.csv');
+  });
+
+  it('[PLN-014] [NFR-006] writes every view’s file in the semicolon style when the person’s is, numbers as 1,5 and the mark once (T-263)', async () => {
+    const t = translate('es');
+    const client = fakePlanClient();
+    const timeline = await client.timeline(12, {});
+    const files = {
+      timeline: (s: CsvSeparator) => timelineCsv(t, timeline, undefined, undefined, s),
+      calendar: async (s: CsvSeparator) =>
+        calendarCsv(t, await client.calendar(12, {}, '2026-11-01', '2026-11-30'), s),
+      summary: async (s: CsvSeparator) => summaryCsv(t, await client.summary(12, {}), s),
+      capacity: async (s: CsvSeparator) => {
+        const data = await client.capacity(12, {}, '2026-11-04', 3);
+        // Half a day of capacity, so the file holds a fraction.
+        const period = data.teams[0]?.capacity.periods[0];
+        if (period) period.amount = 12.5;
+        return capacityCsv(t, data, s);
+      },
+      releases: async (s: CsvSeparator) => releasesCsv(t, await client.releases(12), s),
+    };
+    let decimals = 0;
+    for (const [view, make] of Object.entries(files)) {
+      const commas = await make('comma');
+      const semicolons = await make('semicolon');
+      // The mark first, exactly once (parse checks), then the same cells between semicolons.
+      expect(semicolons.startsWith(CSV_BOM), view).toBe(true);
+      const read = parse(semicolons, ';');
+      expect(read[0]?.length, view).toBe(parse(commas)[0]?.length);
+      const asPoints = read.map((r) =>
+        r.map((c) => {
+          if (/^-?\d+,\d+$/.test(c)) decimals += 1;
+          return c.replace(/^(-?\d+),(\d+)$/, '$1.$2');
+        }),
+      );
+      expect(asPoints, view).toEqual(parse(commas));
+    }
+    // Numbers with a fraction are written with a decimal comma in this style.
+    expect(decimals).toBeGreaterThan(0);
   });
 
   it('[PLN-014] heads a file in the language of the person', async () => {

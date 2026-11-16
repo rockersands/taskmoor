@@ -1,6 +1,12 @@
 import { Readable } from 'node:stream';
 import type { Database } from '@taskmoor/db';
-import { CSV_CONTENT_TYPE, csvLine, withBom } from '@taskmoor/webconfig';
+import {
+  CSV_CONTENT_TYPE,
+  CSV_SEPARATORS,
+  type CsvSeparator,
+  csvLine,
+  withBom,
+} from '@taskmoor/webconfig';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
@@ -22,8 +28,9 @@ import {
 } from './search';
 
 /**
- * Exporting search results (M1-042; QRY-015): `GET /api/v1/search/export?q=&format=&columns=`
- * streams every ticket a query finds, as CSV or as a JSON array, in the query's order.
+ * Exporting search results (M1-042; QRY-015):
+ * `GET /api/v1/search/export?q=&format=&columns=&separator=` streams every ticket a query finds,
+ * as CSV or as a JSON array, in the query's order.
  *
  * - The statement is the search route's (`prepareSearch`, with the person's time zone and
  *   session as `searchPerson` gives them): the person's permission filter is part of it,
@@ -37,7 +44,9 @@ import {
  *   per column as text (lists joined by "; ") by the rule every CSV export shares
  *   (`@taskmoor/webconfig` `csv.ts`): RFC 4180 quoting, a leading apostrophe on text a
  *   spreadsheet would run as a formula, and a UTF-8 byte-order mark before the header, once
- *   (T-252). JSON writes the tickets as the search route shows them, keeping those columns.
+ *   (T-252). `separator` picks the style (T-263): `comma`, the default, with numbers as 1.5, or
+ *   `semicolon`, with numbers as 1,5, as a spreadsheet set up for a decimal comma opens it. JSON
+ *   writes the tickets as the search route shows them, keeping those columns.
  *
  * It reads only: no event, and an API token needs the read scope.
  */
@@ -89,6 +98,8 @@ const exportInput = z
     q: z.string().max(100_000).default(''),
     format: z.enum(['csv', 'json']).default('csv'),
     columns: z.string().max(4000).optional(),
+    /** How a CSV file separates its cells and writes numbers (T-263). */
+    separator: z.enum(CSV_SEPARATORS).default('comma'),
   })
   .strict();
 
@@ -169,13 +180,13 @@ function systemText(view: TicketView, column: SystemColumn): string | number | n
 }
 
 /** One CSV line of a ticket. */
-function csvRow(view: TicketView, columns: readonly Column[]): string {
+function csvRow(view: TicketView, columns: readonly Column[], separator: CsvSeparator): string {
   const cells = columns.map((c) =>
     c.kind === 'system'
       ? systemText(view, c.id)
       : customText((view.fields as Record<string, unknown>)[String(c.field)]),
   );
-  return csvLine(cells);
+  return csvLine(cells, separator);
 }
 
 /** What one export streams, for the search's route and a plan's (PLN-014). */
@@ -185,6 +196,8 @@ export interface TicketExport {
   format: 'csv' | 'json';
   /** The columns as the results list names them; none for the default. */
   columns: string | undefined;
+  /** How a CSV file separates its cells and writes numbers (T-263). */
+  separator: CsvSeparator;
   /** The file's name before its day: already safe in a header. */
   file: string;
   timeoutMs: number;
@@ -199,7 +212,7 @@ export async function sendTicketExport(
   catalogs: FieldCatalogs,
   request: FastifyRequest,
   reply: FastifyReply,
-  { q, format, columns: asked, file, timeoutMs }: TicketExport,
+  { q, format, columns: asked, separator, file, timeoutMs }: TicketExport,
 ) {
   const columns = readColumns(asked);
   if (typeof columns === 'string') {
@@ -244,7 +257,7 @@ export async function sendTicketExport(
 
   async function* chunks(): AsyncGenerator<string> {
     // A CSV file starts with the byte-order mark, once (T-252), then the header.
-    let buffer = format === 'csv' ? withBom(csvLine(header)) : '[';
+    let buffer = format === 'csv' ? withBom(csvLine(header, separator)) : '[';
     let rows = 0;
     let after: Cursor | undefined;
     while (query) {
@@ -261,7 +274,7 @@ export async function sendTicketExport(
         filter.sql,
       );
       for (const view of views) {
-        if (format === 'csv') buffer += csvRow(view, chosen);
+        if (format === 'csv') buffer += csvRow(view, chosen, separator);
         else {
           const shown = typeof shape === 'object' ? project(view, shape) : view;
           buffer += `${rows === 0 ? '\n' : ',\n'}${JSON.stringify(shown)}`;
@@ -300,11 +313,12 @@ export function registerSearchExportRoutes(
     if (!user) return reply;
     const parsed = exportInput.safeParse(request.query);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
-    const { q, format, columns } = parsed.data;
+    const { q, format, columns, separator } = parsed.data;
     return sendTicketExport(db, catalogs, request, reply, {
       q,
       format,
       columns,
+      separator,
       file: 'tickets',
       timeoutMs,
     });

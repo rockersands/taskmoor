@@ -441,6 +441,8 @@ export async function writePersonalData(
   files.push(
     await writeJson(sink, 'preferences.json', {
       autoFollow: preference?.auto_follow ?? null,
+      // How their CSV files are written; null is automatic, from their region (T-263).
+      csvSeparator: preference?.csv_separator ?? null,
       notifyOwnChanges: preference?.notify_own_changes ?? null,
       emailDelivery: preference?.email_delivery ?? null,
       quietHours:
