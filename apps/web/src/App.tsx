@@ -1,6 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { AccountPage, accountSectionOf } from './account/AccountPage';
 import { accountClient } from './account/client';
+import { CsvStyleProvider } from './account/csvStyle';
 import { AdminGroupPage } from './admin/AdminGroupPage';
 import { AdminLayout } from './admin/AdminLayout';
 import { AdminOverviewPage } from './admin/AdminOverviewPage';
@@ -1133,7 +1134,10 @@ export function App({ locale, session, onI18nError, metaClient }: AppProps) {
           <PaletteCommandsProvider>
             <VersionGate {...(metaClient ? { client: metaClient } : {})}>
               <TutorialProvider>
-                <Pages />
+                {/* How the person's CSV files are written, read once a page offers one (T-263). */}
+                <CsvStyleProvider>
+                  <Pages />
+                </CsvStyleProvider>
               </TutorialProvider>
             </VersionGate>
           </PaletteCommandsProvider>

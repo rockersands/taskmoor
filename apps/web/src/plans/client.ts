@@ -1,3 +1,4 @@
+import type { CsvSeparator } from '@taskmoor/webconfig';
 import { API_BASE, ApiError, api } from '../api/client';
 import { everyTrack } from '../api/tracks';
 import { type CalendarClient, type CalendarTicket, calendarClient } from '../calendar/client';
@@ -345,6 +346,8 @@ export interface PlanListFile {
   filters: PlanFilters;
   columns: readonly string[];
   sort: 'created' | 'updated' | 'due' | 'priority';
+  /** Commas or semicolons, as the person's spreadsheet opens them (T-263); commas if left out. */
+  separator?: CsvSeparator;
 }
 
 export interface PlanClient {
@@ -462,11 +465,12 @@ export const planClient: PlanClient = {
       return { ok: false, error: error.code ?? String(error.status), fields: body?.fields ?? {} };
     }
   },
-  exportHref: (id, { filters, columns, sort }) => {
+  exportHref: (id, { filters, columns, sort, separator }) => {
     const params = filterParams(filters);
     params.set('format', 'csv');
     params.set('columns', ['key', ...columns].join(','));
     params.set('sort', sort);
+    if (separator === 'semicolon') params.set('separator', separator);
     return `${API_BASE}/plans/${id}/export?${params}`;
   },
   choices: (id) => api<PlanChoices>(`/plans/${id}/choices`),

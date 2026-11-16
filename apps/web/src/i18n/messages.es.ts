@@ -1291,6 +1291,12 @@ export const messagesEs: Record<MessageId, string> = {
   'account.locale': 'Idioma y región',
   'account.localeAutomatic': 'Automático',
   'account.localeHint': 'Automático sigue la configuración de idioma de tu navegador.',
+  'account.csv': 'Hojas de cálculo (CSV)',
+  'account.csvAutomatic': 'Automático',
+  'account.csvComma': 'Comas, números como 1.5',
+  'account.csvSemicolon': 'Punto y coma, números como 1,5',
+  'account.csvHint':
+    'Cómo separan sus celdas los archivos CSV que descargas, para que tu hoja de cálculo los abra en columnas. Automático sigue tu idioma y región: punto y coma donde los números se escriben 1,5, comas donde se escriben 1.5.',
   'account.saveProfile': 'Guardar el perfil',
   'account.profileSaved': 'Perfil guardado.',
   'account.invalidTimeZone': 'No se reconoce esa zona horaria.',

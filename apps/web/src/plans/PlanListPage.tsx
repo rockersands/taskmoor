@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useCsvSeparator } from '../account/csvStyle';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import {
@@ -48,6 +49,8 @@ export function PlanListPage({
   scenario,
 }: PlanSectionProps & { group: PlanGroup | null; search: SearchClient; list: ListClient }) {
   const t = useT();
+  // Commas or semicolons, as the person's spreadsheet opens them (T-263).
+  const csvSeparator = useCsvSeparator();
   const store = `plan-${id}`;
   const [fields, setFields] = useState<SearchField[]>([]);
   const [sortHere, setSortHere] = useState<Sort>('created');
@@ -143,7 +146,7 @@ export function PlanListPage({
             {
               key: 'csv',
               label: t('plans.download.csv'),
-              href: client.exportHref(id, { filters, columns, sort }),
+              href: client.exportHref(id, { filters, columns, sort, separator: csvSeparator }),
             },
           ]}
           notes={[t('plans.download.everyTicket')]}

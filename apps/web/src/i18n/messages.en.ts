@@ -1254,6 +1254,13 @@ export const messagesEn = {
   'account.locale': 'Language and region',
   'account.localeAutomatic': 'Automatic',
   'account.localeHint': 'Automatic follows the language setting of your browser.',
+  // How downloaded CSV files are written (T-263).
+  'account.csv': 'Spreadsheet files (CSV)',
+  'account.csvAutomatic': 'Automatic',
+  'account.csvComma': 'Commas, numbers as 1.5',
+  'account.csvSemicolon': 'Semicolons, numbers as 1,5',
+  'account.csvHint':
+    'How the CSV files you download separate their cells, so your spreadsheet opens them in columns. Automatic follows your language and region: semicolons where numbers are written as 1,5, commas where they are written as 1.5.',
   'account.saveProfile': 'Save profile',
   'account.profileSaved': 'Profile saved.',
   'account.invalidTimeZone': 'That time zone is not recognised.',

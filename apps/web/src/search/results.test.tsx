@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MEMBER } from '../admin/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
-import { SessionProvider } from '../session/SessionProvider';
+import { type Session, SessionProvider } from '../session/SessionProvider';
 import { useTimeZone } from '../test/timeZone';
 import { setViewportWidth } from '../test/viewport';
 import { exportUrl, type SearchTicket } from './client';
@@ -17,11 +17,11 @@ import { SearchPage } from './SearchPage';
 /** The stylesheets, read from disk: the web project turns CSS imports off. */
 const STYLES = ['apps/web/src/styles', 'src/styles'].find((d) => existsSync(d)) ?? 'src/styles';
 
-function renderPage(initialQuery = 'track = SHOP') {
+function renderPage(initialQuery = 'track = SHOP', session: Session = MEMBER) {
   const client = fakeSearchClient();
   const view = render(
     <I18nProvider locale="en">
-      <SessionProvider session={MEMBER}>
+      <SessionProvider session={session}>
         <main>
           <SearchPage
             client={client}
@@ -229,6 +229,28 @@ describe('search results (M1-042)', () => {
       'href',
       exportUrl('track = SHOP ORDER BY key', 'json', DEFAULT_COLUMNS),
     );
+  });
+
+  it('[QRY-015] [NFR-006] gives a person whose region writes 1,5 the semicolon CSV file (T-263)', async () => {
+    const spain: Session =
+      MEMBER.status === 'signed-in'
+        ? { ...MEMBER, user: { ...MEMBER.user, locale: 'es-ES' } }
+        : MEMBER;
+    renderPage('track = SHOP ORDER BY key', spain);
+    await screen.findByRole('table');
+    const nav = screen.getByRole('navigation', { name: 'Export' });
+    const csv = new URL(
+      within(nav).getByRole('link', { name: 'Export CSV' }).getAttribute('href') as string,
+      'http://x.test',
+    );
+    expect(csv.searchParams.get('separator')).toBe('semicolon');
+    expect(csv.searchParams.get('format')).toBe('csv');
+    // JSON has no separator.
+    const json = new URL(
+      within(nav).getByRole('link', { name: 'Export JSON' }).getAttribute('href') as string,
+      'http://x.test',
+    );
+    expect(json.searchParams.has('separator')).toBe(false);
   });
 
   it('[QRY-014] [NFR-005] fits a small phone: stacked rows of key, summary, then status, assignee and priority (TR-1, PL-1)', async () => {
