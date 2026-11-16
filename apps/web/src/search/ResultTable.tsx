@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
+import { type NumberShow, numberText } from '../fields/numberFormat';
 import { dayText, isCalendarDay, isInstant, momentText } from '../i18n/days';
 import { useT } from '../i18n/I18nProvider';
 import { type Lock, useLockText } from '../locks/useLockText';
@@ -23,6 +24,7 @@ import {
   DATE_COLUMNS,
   editorStart,
   isDateTimeColumn,
+  numberShowOfColumn,
   type TableSort,
   valueText,
 } from './columns';
@@ -239,6 +241,7 @@ export function ResultGrid({
                     columnName={nameOf(column)}
                     editor={readOnly ? null : cellEditor(column, fields)}
                     dateTime={isDateTimeColumn(column, fields)}
+                    number={numberShowOfColumn(column, fields)}
                     priorities={priorities}
                     client={client}
                     onSaved={onSaved}
@@ -279,6 +282,7 @@ export function Cell({
   columnName,
   editor,
   dateTime,
+  number = null,
   priorities,
   client,
   onSaved,
@@ -290,6 +294,8 @@ export function Cell({
   editor: CellEditor | null;
   /** A moment (created, updated, closed or a custom datetime field), read in the locale. */
   dateTime: boolean;
+  /** How a number field's or formula's numbers show, by its settings (T-320). */
+  number?: NumberShow | null;
   priorities: { id: number; name: string; level?: number }[] | null;
   client: SearchClient;
   onSaved: (ticket: SearchTicket) => void;
@@ -323,6 +329,9 @@ export function Cell({
         : unassigned
           ? t('search.edit.unassigned')
           : valueText(value);
+  // A number as its field's settings show it (T-320).
+  const text =
+    number !== null && typeof value === 'number' ? numberText(intl, value, number) : shown;
 
   const close = () => {
     setInput(null);
@@ -414,7 +423,7 @@ export function Cell({
       ) : (
         <span className="search-cell-view">
           <span className={unassigned ? 'search-cell-value search-cell-none' : 'search-cell-value'}>
-            <CellPicture column={column} value={value} shown={shown} />
+            <CellPicture column={column} value={value} shown={text} />
           </span>
           {editor && (
             <button

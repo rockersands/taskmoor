@@ -11,6 +11,7 @@ import { AttachmentPanel } from '../../attachments/AttachmentPanel';
 import { type AttachmentClient, attachmentClient } from '../../attachments/client';
 import { FileDropProvider, useTicketFileDrop } from '../../attachments/FileDrop';
 import type { CommentClient } from '../../comments/client';
+import { numberText } from '../../fields/numberFormat';
 import { useT } from '../../i18n/I18nProvider';
 import { CollaborativeEditor, type Connect } from '../../richtext/CollaborativeEditor';
 import {
@@ -1404,6 +1405,9 @@ function NumberFact({
   const saved = typeof value === 'number' ? String(value) : '';
   const [draft, setDraft] = useState<string | null>(null);
   const name = fieldName(t, field.name);
+  // How the saved value reads by the field's settings, when they change how it reads.
+  const shown =
+    field.show && typeof value === 'number' ? numberText(intl, value, field.show) : null;
   const save = () => {
     if (draft === null || draft === saved) {
       setDraft(null);
@@ -1416,7 +1420,11 @@ function NumberFact({
     return (
       <div>
         <dt>{name}</dt>
-        <dd>{typeof value === 'number' ? intl.formatNumber(value) : t('ticketView.none')}</dd>
+        <dd>
+          {typeof value === 'number'
+            ? numberText(intl, value, field.show ?? null)
+            : t('ticketView.none')}
+        </dd>
       </div>
     );
   }
@@ -1438,6 +1446,8 @@ function NumberFact({
             id={id}
             type="number"
             step="any"
+            // A format, a currency or set decimals show under the box (T-320).
+            aria-describedby={shown ? `${id}-shown` : undefined}
             // Empty reads as the other empty fields do (PL-44).
             placeholder={t('ticketView.none')}
             value={draft ?? saved}
@@ -1455,6 +1465,11 @@ function NumberFact({
             }}
           />
         </form>
+        {shown && (
+          <p id={`${id}-shown`} className="form-hint">
+            {shown}
+          </p>
+        )}
       </dd>
     </div>
   );
