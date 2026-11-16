@@ -78,6 +78,25 @@ under its title.
   permission explainer; webhooks; AI limits and prices; which layout, priority, visibility and
   notification sets a track uses. The rest of what the manual marks as API-only is listed in
   `docs/plan/ui-overhaul-tasks.md`.
+- **As built (T-320, 2026-11-16): Priorities.** One page, `#/admin/priorities`, in Tracks and
+  setup after Layout sets, for site and configuration administrators; anyone else, a track's
+  manager included, sees the refusal alone, since the lists are the site's. Three cards, each with
+  its New button at its head (D11) and its own status and refusal lines, so a phone shows the
+  answer beside the list acted on: the priorities, most urgent first; the priority sets; and the
+  close reasons, folded in because they are the same kind of site list under CORE-014.
+  - Priorities and close reasons: New, Up and Down (the keyboard path of section 7; the whole
+    order goes to `PUT .../order`, and a list changed elsewhere meanwhile is read again with
+    nothing moved), Change (name and description) and Delete (D13). The question says first what a
+    value in use needs; when the server answers `409 in_use`, or for a close reason
+    `used_by_workflow` with the workflows named, the page asks which value takes its place and
+    sends `?replacementId`, which also gives those workflows a new version.
+  - Priority sets: New and Manage (name, description, the priorities offered, what new tickets
+    get), Make this the default set, and Delete, whose question counts the tracks that go back to
+    the default set; the default set has no Delete.
+  - No icon or colour controls for priorities: neither changes what is drawn, as the icon follows
+    the place in the list. Names show as stored, as on the other configuration pages.
+  - Which sets a track uses links its priority picker here, and this page links back. Merging
+    labels (`POST /labels/merge`) stays in the API for now: its own sub-ticket of T-155.
 - Each administration page has a breadcrumb back to its group, and admin routes keep their paths.
 - **The top bar** keeps New ticket, the command palette and the person's menu. It gains a
   light and dark toggle and a **Help** menu: Tutorials, Keyboard shortcuts and the Manual.
