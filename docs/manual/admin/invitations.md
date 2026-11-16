@@ -2,7 +2,7 @@
 title: "Inviting people and running a track"
 audience: admins
 sources: apps/server/src/routes/invitations.ts, apps/server/src/authz/track-admins.ts, apps/server/src/authz/permissions.ts, apps/server/src/routes/authz.ts, apps/server/src/email/invitation.ts, apps/server/src/sso/sign-in.ts, packages/db/src/migrations/0087_track_invitations.ts, apps/web/src/trackpeople/ManagedTracksPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/web/src/trackpeople/InviteDialog.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/trackpeople/CreateTracksBox.tsx, apps/server/src/authz/create-tracks.ts, packages/db/src/migrations/0097_invitation_create_tracks.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0118-track-invitations.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/trackpeople/ChecklistNoticesBox.tsx, apps/server/src/routes/tracks.ts, packages/db/src/migrations/0103_checklist_notices.ts, docs/adr/0120-ticket-tools.md, apps/web/src/sets/trackScope.tsx, apps/web/src/shell/StandaloneFrame.tsx, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts, apps/server/src/trackgroups/access.ts, apps/server/src/ldap/accounts.ts, docs/plan/decisions.csv, apps/web/src/trackpeople/client.ts, apps/web/src/api/managedTracks.ts, apps/web/src/notifications/NotificationPoliciesPage.tsx
-accessed: 2026-11-14
+accessed: 2026-11-16
 attestation: own-words
 ---
 # Inviting people and running a track
