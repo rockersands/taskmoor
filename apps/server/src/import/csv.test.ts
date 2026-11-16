@@ -747,7 +747,8 @@ describe('CSV import (M1-098)', () => {
       code: 'read_as_windows_1252',
       detail: null,
       count: 2,
-      examples: ['line 1: Descripción', 'line 2: Árbol'],
+      // The line and its word as data; the report says "line" in the reader's language.
+      examples: ['1: Descripción', '2: Árbol'],
     });
     const made = await database.db
       .selectFrom('ticket')

@@ -1903,6 +1903,8 @@ export const messagesEn = {
   'admin.imports.report.code': 'Code {code}.',
   'admin.imports.report.codeDetail': 'Code {code}: {detail}.',
   'admin.imports.report.examples': 'For example {examples}.',
+  // One line of a CSV file the import read as Windows-1252, and its first accented word (T-263).
+  'admin.imports.report.lineExample': 'line {line}: {text}',
   'admin.imports.report.unsupported': 'Not imported',
   'admin.imports.report.unsupportedItem': '{kind}: {count} ({reason})',
   'admin.imports.report.failures': 'Failures',

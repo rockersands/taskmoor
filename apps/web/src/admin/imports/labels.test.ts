@@ -1,9 +1,23 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { createIntl } from 'react-intl';
 import { describe, expect, it } from 'vitest';
+import type { Translate } from '../../i18n/I18nProvider';
+import { type Locale, messagesFor } from '../../i18n/locale';
 import { messagesEn } from '../../i18n/messages.en';
 import { messagesEs } from '../../i18n/messages.es';
-import { EXPLAINED_WARNINGS, IMPORT_KINDS, kindLabel, warningExplanation } from './labels';
+import {
+  EXPLAINED_WARNINGS,
+  IMPORT_KINDS,
+  kindLabel,
+  warningExample,
+  warningExplanation,
+} from './labels';
+
+const translate = (locale: Locale): Translate => {
+  const intl = createIntl({ locale, messages: messagesFor(locale) });
+  return (id, values) => intl.formatMessage({ id }, values);
+};
 
 /** The server's source, from the repository root or from the app (as the SSO tests read it). */
 const serverSource = (file: string) => {
@@ -44,5 +58,18 @@ describe('the import labels', () => {
       'admin.imports.warning.read_as_windows_1252',
     );
     expect(messagesEn['admin.imports.warning.read_as_windows_1252']).toContain('CSV UTF-8');
+  });
+
+  it('[IMP-012] [NFR-006] says which lines of a Windows-1252 file to check in the reader’s language (T-263)', () => {
+    const es = translate('es');
+    // The server sends the line and its word as data.
+    expect(warningExample(es, 'read_as_windows_1252', '2: Árbol')).toBe('línea 2: Árbol');
+    expect(warningExample(translate('en'), 'read_as_windows_1252', '2: Árbol')).toBe(
+      'line 2: Árbol',
+    );
+    // A report written before keeps its English word out too.
+    expect(warningExample(es, 'read_as_windows_1252', 'line 5: Señal')).toBe('línea 5: Señal');
+    // Other warnings' examples are data, shown as they are.
+    expect(warningExample(es, 'merged_into', '10042: 7')).toBe('10042: 7');
   });
 });

@@ -310,7 +310,10 @@ export function fromDecimalComma(text: string): string | null {
   return t;
 }
 
-/** The first word of each line with a letter outside ASCII, as the note about the reading shows. */
+/**
+ * The first word of each line with a letter outside ASCII, as the note about the reading shows:
+ * `<line>: <word>`, data only, which the report words in the reader's language.
+ */
 function accentedLines(bytes: Buffer): { count: number; examples: string[] } {
   const examples: string[] = [];
   let count = 0;
@@ -319,7 +322,7 @@ function accentedLines(bytes: Buffer): { count: number; examples: string[] } {
     const word = /[^\s,;|"]*\P{ASCII}[^\s,;|"]*/u.exec(line);
     if (!word) continue;
     count += 1;
-    if (examples.length < 5) examples.push(`line ${i + 1}: ${word[0].slice(0, 40)}`);
+    if (examples.length < 5) examples.push(`${i + 1}: ${word[0].slice(0, 40)}`);
   }
   return { count, examples };
 }

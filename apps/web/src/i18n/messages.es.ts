@@ -1951,6 +1951,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.imports.report.code': 'Código {code}.',
   'admin.imports.report.codeDetail': 'Código {code}: {detail}.',
   'admin.imports.report.examples': 'Por ejemplo {examples}.',
+  'admin.imports.report.lineExample': 'línea {line}: {text}',
   'admin.imports.report.unsupported': 'No importado',
   'admin.imports.report.unsupportedItem': '{kind}: {count} ({reason})',
   'admin.imports.report.failures': 'Fallos',

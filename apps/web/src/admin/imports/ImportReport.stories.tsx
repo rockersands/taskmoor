@@ -57,7 +57,7 @@ export const CsvReadAsWindows1252: Story = {
           code: 'read_as_windows_1252',
           detail: null,
           count: 2,
-          examples: ['line 1: Descripción', 'line 2: Árbol'],
+          examples: ['1: Descripción', '2: Árbol'],
         },
       ],
     },
