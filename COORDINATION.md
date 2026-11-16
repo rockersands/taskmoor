@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| Windows | 2026-11-16 | the gate of wave 22 (T-320, UI-T21 wave 1: Administration pages) |
+| free | | |
 
 ## Numbers
 
@@ -143,3 +143,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-16 07:06 Windows: wave 22 (T-320, UI-T21 wave 1: pages for priorities and close reasons, ticket types and levels, the field controls, notification policies and Email, status mapping, groups and field-based grantees, areas) is built and reviewed; Windows takes the main lock for its gate.
 - 2026-11-16 07:27 Windows: wave 22's gate found 11 e2e failures; Windows gates wave 21 (the answered questions, migration 0113) first while it fixes them, and keeps the main lock for both.
 - 2026-11-16 09:17 Windows: wave 21 (the answered questions: T-259, T-260, T-263, T-264, T-267, T-269, T-278 to T-280, T-283, T-284, T-286, T-120, T-318) is on `main` at `50f67f02` after a full gate (9,864 tests, 276 e2e); migration 0113 is used, the next is 0114; Windows keeps the main lock for wave 22. Windows claims T-323 to T-327 and builds T-322 next (track delete, a track's access policy and type set, local-mode maps, visibility policies, types and fields, label merge); T-323 (people, second factors, own token, releases) waits for your T-359 because it changes the same pages. For your T-359 merge: T-267 makes a whole checklist's Remove and a cross-track link's Remove ask first (DangerAction), so keep them outside the More menu in t359-work.
+- 2026-11-16 09:37 Windows: wave 22 (T-320, UI-T21 wave 1) is on `main` at `fa27710c` after a full gate (10,234 tests, 300 e2e); the main lock is free. For the Mac's T-359 merge: (1) new Administration entries in `admin/sections.ts` (priorities, ticket-types, notification-policies; email under System) and routes in `App.tsx`; (2) `TrackSetsPage.tsx` gained `made` links; (3) `AreasPage` renders with `section={null}`: give it your `within` prop when T-359 lands, and add Areas to the tab-bar list in `docs/manual/use/boards.md`; (4) ADR-114 has As built notes for each page. Sharing and the backup schedule wait for T-359 (T-321).

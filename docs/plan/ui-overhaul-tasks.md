@@ -196,7 +196,7 @@ follow this work; `backlog.csv` and `progress.csv` stay with the main session.
 | UI-T18 | Administration: webhooks (second) | done | Create, change, delete and see deliveries in the web app, site administrators only; story, tests; `admin/rest-api.md` updated | |
 | UI-T19 | Administration: AI limits and prices (third) | done | Limits and the price table managed in the web app; story, tests; `admin/ai-usage.md` updated | |
 | UI-T20 | Administration: which sets a track uses (fourth) | done (a plain picker; making layout, priority and notification sets stays in UI-T15 and UI-T21) | A track's layout, priority, visibility and notification sets chosen in the web app; the "API only" rows in `admin/fields.md` go. Needs a list to choose from, so it joins UI-T15 (layouts), UI-T17 (visibility) and the priority and notification pages in UI-T21 | |
-| UI-T21 | Administration: the rest of what the manual marks API-only; the user decides which are in 1.0 | todo | Each item below has a page, or a line saying why it stays in the API | |
+| UI-T21 | Administration: the rest of what the manual marks API-only; the user decided on 2026-11-16 that all are in 1.0 (T-155) | in progress (wave 1, T-320, on `main` at `fa27710c`: every row below except sharing and the backup schedule, which wait for T-321 after the Mac's T-359; the gaps beyond the list are T-322) | Each item below has a page, or a line saying why it stays in the API | |
 
 ### UI-T21: other controls `docs/manual/admin` marks as API-only
 

@@ -22,7 +22,32 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: the user's answers of 2026-11-16, built (2026-11-16, Windows)
+### Latest: Administration pages for what was API-only, wave 1 (2026-11-16, Windows)
+
+On `main` at `fa27710c` after a full gate (10,234 tests, 300 e2e). No migration of its own (wave 21 used 0113; the next is 0114).
+
+- T-320 (UI-T21 wave 1, T-155): new pages `#/admin/priorities` (`apps/web/src/priorities/`: priorities,
+  priority sets, close reasons), `#/admin/ticket-types` (`apps/web/src/tickettypes/`: levels and types;
+  type sets gain their settings and the mapping question), `#/admin/notification-policies` and
+  `#/admin/email` (System), and `#/tracks/KEY/areas` (`AreasPage.tsx`, rendered with `section={null}`
+  until the Mac's `within` prop merges). The Fields page gains formula fields, contexts with scopes and
+  person limits, defaults (the create form fills them), child options, type settings and number formats.
+  Workflow maps gain the status mapping step; groups can be renamed and hold service accounts; People
+  in field and Groups in field are grantees on access policies.
+- Server: `fieldIdOf` refuses an id above the integer range (400, not 500); the field-grantee check is new.
+  `workflows/locks.ts` caches lock lists per database, not per process (the gate's e2e found two sites
+  sharing one list; ADR-042 updated).
+- The first gate failed on 11 e2e tests: a new spec's track sorted before ATT, two Delete buttons'
+  visible words were not in their names (WCAG 2.5.3), and the lock cache above. All fixed before this gate.
+- Wave 21 was merged in before this gate; the field option Delete follows the user's T-267 rule (asks
+  only with second-level options or a default).
+- Priorities, Ticket types and Fields refuse someone who only runs tracks (site and configuration
+  administrators only).
+- Left: T-321 (sharing, the backup schedule; after the Mac's T-359), T-322 (the gaps beyond the list),
+  and `docs/manual/use/boards.md` naming Areas among the pages that keep the tab bar (after T-359).
+- The server still keeps a notification rule naming a deleted field; the page leaves it out on the next change.
+
+### Earlier: the user's answers of 2026-11-16, built (2026-11-16, Windows)
 
 On `main` at `50f67f02` after a full gate (9,864 tests, 276 e2e). Migration 0113 (`user_preference.csv_style`, T-263); the next is 0114.
 
