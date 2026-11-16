@@ -277,7 +277,12 @@ test('[IAM-011] the administrator gives a person a global permission and takes i
   await give.getByRole('button', { name: 'Give' }).click();
   await expect(page.getByText(`${permission} was given to Ada Attach.`)).toBeVisible();
   expect(await seriousAxeViolations(page)).toEqual([]);
+  // A global grant reaches the whole site: removing it asks first (D13, T-267).
   await page.getByRole('button', { name: `Remove Ada Attach from ${permission}` }).click();
+  await page
+    .getByRole('group', { name: `Ada Attach loses ${permission} across the whole site.` })
+    .getByRole('button', { name: `Remove Ada Attach from ${permission}` })
+    .click();
   await expect(page.getByText(`Ada Attach no longer has ${permission}.`)).toBeVisible();
 });
 
