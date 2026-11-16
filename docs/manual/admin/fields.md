@@ -1,7 +1,7 @@
 ---
 title: "Fields, ticket types and layouts"
 audience: admins
-sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/workflows/close-reasons.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/layouts/LayoutCanvas.tsx, apps/web/src/layouts/GripMenu.tsx, apps/web/src/layouts/LayoutPreview.tsx, apps/web/src/layouts/refusal.ts, apps/web/src/layouts/model.ts, apps/web/src/layouts/client.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md, apps/server/src/tickets/priority-level.ts, packages/db/src/migrations/0095_points_field.ts, apps/web/src/sets/trackScope.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/server/src/workflows/board-managed.ts, apps/web/src/layouts/createForm.ts, apps/web/src/tickets/form.ts, apps/server/src/fields/values.ts, apps/server/src/import/load.ts, apps/web/src/priorities/PrioritiesPage.tsx, apps/web/src/priorities/PrioritySetsSection.tsx, apps/web/src/priorities/client.ts
+sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/workflows/close-reasons.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/layouts/LayoutCanvas.tsx, apps/web/src/layouts/GripMenu.tsx, apps/web/src/layouts/LayoutPreview.tsx, apps/web/src/layouts/refusal.ts, apps/web/src/layouts/model.ts, apps/web/src/layouts/client.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md, apps/server/src/tickets/priority-level.ts, packages/db/src/migrations/0095_points_field.ts, apps/web/src/sets/trackScope.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/server/src/workflows/board-managed.ts, apps/web/src/layouts/createForm.ts, apps/web/src/tickets/form.ts, apps/server/src/fields/values.ts, apps/server/src/import/load.ts, apps/web/src/priorities/PrioritiesPage.tsx, apps/web/src/priorities/PrioritySetsSection.tsx, apps/web/src/priorities/client.ts, apps/web/src/sets/TypeSetForm.tsx, apps/web/src/tickettypes/TicketTypesPage.tsx, apps/web/src/tickettypes/client.ts, apps/web/src/shell/TicketIcons.tsx
 accessed: 2026-11-16
 attestation: own-words
 ---
@@ -12,8 +12,9 @@ types and hierarchy levels, and the configuration sets that tell each track whic
 priorities, rules and forms it uses.
 
 In the web app, site and configuration administrators use **Administration**, **Fields**,
-**Administration**, **Configuration sets**, **Administration**, **Layout sets** and
-**Administration**, [**Priorities**](#priorities-and-priority-sets). The people
+**Administration**, **Ticket types**, **Administration**, **Configuration sets**,
+**Administration**, **Layout sets** and **Administration**,
+[**Priorities**](#priorities-and-priority-sets). The people
 who run a track with its own configuration (local mode) change that track's own sets on its own
 pages; see [A track's own sets](#a-tracks-own-sets). The rest is done through the
 [REST API](rest-api.md); a token that changes shared configuration needs the `admin` scope
@@ -184,7 +185,34 @@ A fresh site has these ticket types:
 | Idea | 0, Standard | A possible improvement to explore before committing to it |
 | Subticket | -1, Subticket | A smaller part of another ticket |
 
-There is no web page for ticket types or levels yet. Through the API:
+On **Administration**, **Ticket types**, site and configuration administrators see the levels as
+the page's headings, top first, each with the shared ticket types that sit at it, under the
+names they are stored with. Anyone else who opens the page is told only that they may not.
+
+- **New level** adds a level with a **Level name**, a **Description** and **Where it goes**:
+  above Outcome or above a level added there, the top by default. A level put between two
+  others moves the ones above it up by one, so it is refused when tickets of those levels would
+  lose a valid parent.
+- **Rename** on a level changes its name and description. The three built-in levels, Outcome,
+  Standard and Subticket, are never moved or removed.
+- **Up** and **Down** move an added level among the added ones.
+- **Remove level**, on an added level, asks first and says what it would do: which types fall to
+  the standard level and how many tickets change level. While removing it would break a parent
+  link, it is not offered, and the level says how many links would break.
+- **New ticket type** adds a type with a **Ticket type name**, a **Description**, its **Level**
+  and an **Icon**: one of the seven shapes (Outcome, Feature, Bug, Chore, To-do, Idea and
+  Subticket) or a plain hexagon.
+- **Manage** on a type changes the same settings; **Save the type**. Choosing another level says
+  first how many of its tickets would change level, or why it would be refused. **Delete type**
+  asks first. A type still in a type set is kept, and the page names the sets; so is a type that
+  tickets still have, with their number.
+
+A change that would break a parent link is refused, with the number of links it would break and
+of tickets it would leave at the subticket level without a parent, and nothing changes. A type's
+colour is stored but nothing draws it, so it has no control on the page. A local-mode track's
+own types are made through the API (`trackId`).
+
+Through the API:
 
 - `/api/v1/ticket-types`: `name`, `description`, `icon`, `color`, `levelId`, and `trackId` for a
   type a local-mode track owns. A type is deleted only once no type set holds it. `icon` is a
@@ -210,15 +238,23 @@ A type set lists the ticket types a track offers, in order, with one preselected
 | Discovery type set | Idea | Idea | discovery tracks |
 
 On **Administration**, **Configuration sets**, **Type sets**: **New type set** opens the form;
-**Add a type set** with a **Type set name** and the **Ticket types in the set**. **Manage** changes the types; **Save the set** and
-**Delete set**, which asks first (not for a default set, nor one a track uses). The preselected type, the order and
-which track types a set is the default for are set through `/api/v1/type-sets`
-(`defaultTypeId`, `ticketTypeIds`, `defaultFor`). A default set says what it is the default for,
-such as **Default for software tracks**.
+**Add a type set** with a **Type set name**, the **Ticket types in the set**, their **Order in the
+set** (**Up** and **Down** on each; a type ticked goes to the end), the **Preselected type** (or
+none, and the create form then takes the first in the order) and, under **Default set for new
+tracks of these kinds**, the kinds of track it is the default for. **Manage** changes the same;
+**Save the set** and **Delete set**, which asks first (not for a default set, nor one a track
+uses). A kind the set is already the default for stays ticked: tick it on another set, which
+takes it over. A default set says what it is the default for, such as **Default for software
+tracks**. Through the API these are `ticketTypeIds` (in order), `defaultTypeId` and `defaultFor`
+on `/api/v1/type-sets`.
 
-Dropping a type that tickets in the set's tracks still have is refused (`type_in_use`). Through
-the API, give `ticketTypeMapping` from each dropped type's id to a type the set keeps at the
-same level, and the tickets change type with the set.
+Dropping a type that tickets in the set's tracks still have is refused at first (`type_in_use`),
+and the set asks, under **Tickets of the types you drop**, which type each dropped type's tickets
+take: one the set keeps, at the same level. **Save the set** again and the tickets change type
+with the set, in one change in each ticket's history; a ticket whose status the new type's
+workflow lacks takes that workflow's initial status. When the set keeps no type at that level it
+says so: keep the type, or add one of that level. Through the API, give `ticketTypeMapping` from
+each dropped type's id to the kept type.
 
 ## Field rules
 
@@ -477,8 +513,9 @@ the track: under **Its own configuration** are two links.
   choice of track. A set the track does not use yet has **Use this set for** the track; from then
   on the track's forms follow it.
 - **Configuration sets** (`#/manage/tracks/<id>/configuration-sets`) shows the track's own type
-  set: **Manage** it to choose its ticket types, the shared ones and the track's own. A track keeps
-  this one type set, so none is added or deleted here. Below are the field rule sets the track
+  set: **Manage** it to choose its ticket types, the shared ones and the track's own, their order
+  and the preselected type, and where the tickets of a type it drops go. A track keeps this one
+  type set, so none is added or deleted here, and it is never a default. Below are the field rule sets the track
   owns: add one, set its rules as on the shared page, delete one the track does not use, and
   **Use this set for** the track.
 

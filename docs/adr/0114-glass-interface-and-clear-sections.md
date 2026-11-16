@@ -60,8 +60,8 @@ under its title.
   here). It sits under **Manage** for those allowed to see it, and its groups are:
   - People and access: People, Groups, Teams, Invitations, Access policies, Visibility policies and
     the permission explainer.
-  - Tracks and setup: Tracks, Workflows, Workflow maps, Fields, Configuration sets, Layout sets,
-    Priorities, Notification policies, and which sets a track uses.
+  - Tracks and setup: Tracks, Workflows, Workflow maps, Fields, Ticket types, Configuration sets,
+    Layout sets, Priorities, Notification policies, and which sets a track uses.
   - Sign-in and security: Security, Identity providers, Directories, Network access, Audit log.
   - Integrations and AI: API tokens, Service accounts, MCP, Frontends, Webhooks, AI, AI usage,
     limits and prices.
@@ -101,6 +101,39 @@ under its title.
 - **The top bar** keeps New ticket, the command palette and the person's menu. It gains a
   light and dark toggle and a **Help** menu: Tutorials, Keyboard shortcuts and the Manual.
 - **Names** follow `docs/specs/00-terminology.md`. No Atlassian term appears in the interface.
+
+**As built (T-320, ticket types and levels, 2026-11-16):**
+
+- **Where:** **Tracks and setup** > **Ticket types** (`#/admin/ticket-types`), right after Fields,
+  for site and configuration administrators; the command palette offers it. Everyone signed in
+  may read the lists, so the session decides who uses the page: anyone else sees only the
+  refusal. The levels are the page's headings, top first, each a card with the shared types at
+  it, under their stored names, as the other configuration pages show them.
+- **Levels:** New level (a name, a description and where it goes: above Outcome or above an added
+  level, the top by default), Rename on every level, Up and Down on the added ones (the keyboard
+  stays on the moved level's button), and Remove level, which asks first with what
+  `GET /api/v1/hierarchy-levels/impact` says: the types that fall to the standard level and the
+  tickets that change level (CORE-007 (1)). While the preview says it would break a parent link,
+  Remove is not offered and the card says how many links. Any refused change (`breaks_tickets`)
+  is said in words with both counts, links and tickets left without a parent.
+- **Types:** New ticket type and Manage take a name, a description, a level (a new level is
+  previewed the same way before saving) and an icon from the seven shapes or a plain hexagon,
+  shown as radio buttons with each shape beside its word. An icon is stored only when it changes
+  what the type draws, so a type that draws its name's shape keeps no icon until it is renamed.
+  Delete type asks first; the refusals name the type sets that hold it or count its tickets.
+- **Not built, on purpose:** no colour control for a type, since its stored colour draws nothing
+  (the icon tells types apart by shape, never by colour); a local-mode track's own types wait
+  for T-322.
+- **Type sets on Configuration sets:** the form (new and Manage) also holds the order (a list with
+  Up and Down per type), the preselected type (or none: the first in the order) and, for a shared
+  set, the kinds of track it is the default for; a kind it already has stays ticked, since another
+  set takes it over. Saving sends only what changed. When the server answers `type_in_use`, the
+  set asks for each dropped type a kept type of its level (`ticketTypeMapping`), the first choice
+  taking the keyboard, or says that none is kept; saving again maps the tickets.
+- **Nothing new on the server.** The page uses the existing routes of `routes/ticket-types.ts`.
+- **Tests:** `TicketTypesPage.test.tsx` and the type set cases of `ConfigurationSetsPage.test.tsx`
+  with fake backends, the refusal-only page in `forbiddenPages.test.tsx`, stories with axe in
+  both skins, and `e2e/ticket-types.spec.ts` on the desktop and mobile projects.
 
 ### 2. Layout and density
 

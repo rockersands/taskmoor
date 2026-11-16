@@ -3438,11 +3438,125 @@ export const messagesEs: Record<MessageId, string> = {
     '{tracks, plural, one {# track usa} other {# tracks usan}} este conjunto: dales otro primero.',
   'admin.sets.problem.default': 'Un conjunto predeterminado no se elimina.',
   'admin.sets.problem.typeInUse':
-    'Hay tickets con un tipo que el conjunto quitaría: muévelos antes a otro tipo mediante la API.',
+    'Hay tickets con un tipo que el conjunto quitaría: elige abajo el tipo que toman y vuelve a guardar.',
   'admin.sets.problem.nameTaken': 'Ya hay un conjunto con ese nombre.',
   'admin.sets.problem.invalid':
     'Esa combinación no está permitida: un campo nunca es obligatorio y oculto a la vez, ni obligatorio solo para algunos editores.',
   'admin.sets.problem.forbidden': 'No puedes cambiar este conjunto.',
+  // Tipos de ticket y niveles, y los ajustes de los conjuntos de tipos (T-320; UI-T21).
+  'settings.ticketTypes': 'Tipos de ticket',
+  'settings.ticketTypesHint':
+    'Las clases de ticket, y los niveles que dicen qué ticket puede ser padre de cuál.',
+  'admin.ticketTypes.title': 'Tipos de ticket',
+  'admin.ticketTypes.intro':
+    'Cada tipo de ticket está en un nivel, y el padre de un ticket está justo un nivel más arriba; un subticket siempre tiene padre. Los tres niveles incorporados se renombran, pero nunca se mueven ni se quitan. Los niveles que añades van por encima de Objetivo. Los tipos que ofrece un track salen de su conjunto de tipos, en Conjuntos de configuración.',
+  'admin.ticketTypes.forbidden':
+    'Solo los administradores del sitio y de configuración gestionan los tipos de ticket y los niveles.',
+  'admin.ticketTypes.loading': 'Leyendo los tipos de ticket…',
+  'admin.ticketTypes.failed':
+    'No se pudieron leer los tipos de ticket. Inténtalo de nuevo en un momento.',
+  'admin.ticketTypes.newType': 'Nuevo tipo de ticket',
+  'admin.ticketTypes.newLevel': 'Nuevo nivel',
+  'admin.ticketTypes.addType': 'Añadir un tipo de ticket',
+  'admin.ticketTypes.addLevel': 'Añadir un nivel',
+  'admin.ticketTypes.cancelNew': 'Cancelar',
+  'admin.ticketTypes.typeName': 'Nombre del tipo de ticket',
+  'admin.ticketTypes.levelName': 'Nombre del nivel',
+  'admin.ticketTypes.description': 'Descripción',
+  'admin.ticketTypes.level': 'Nivel',
+  'admin.ticketTypes.place': 'Dónde va',
+  'admin.ticketTypes.placeAbove': 'Encima de {name}',
+  'admin.ticketTypes.placeHint':
+    'Los tickets del nuevo nivel pueden ser padres de los tickets del nivel justo debajo.',
+  'admin.ticketTypes.icon': 'Icono',
+  'admin.ticketTypes.icon.outcome': 'Objetivo',
+  'admin.ticketTypes.icon.feature': 'Funcionalidad',
+  'admin.ticketTypes.icon.bug': 'Error',
+  'admin.ticketTypes.icon.chore': 'Tarea',
+  'admin.ticketTypes.icon.toDo': 'Pendiente',
+  'admin.ticketTypes.icon.idea': 'Idea',
+  'admin.ticketTypes.icon.subticket': 'Subticket',
+  'admin.ticketTypes.icon.plain': 'Hexágono simple',
+  'admin.ticketTypes.levelBuiltin': 'Incorporado: se puede renombrar, no mover ni quitar.',
+  'admin.ticketTypes.levelAdded': 'Añadido: se puede renombrar, mover y quitar.',
+  'admin.ticketTypes.noTypes': 'Ningún tipo de ticket está en este nivel.',
+  'admin.ticketTypes.typesAt': 'Tipos de ticket en {name}',
+  'admin.ticketTypes.manage': 'Gestionar',
+  'admin.ticketTypes.manageOf': 'Gestionar el tipo de ticket {name}',
+  'admin.ticketTypes.settingsOf': 'Ajustes de {name}',
+  'admin.ticketTypes.save': 'Guardar el tipo',
+  'admin.ticketTypes.renameLevel': 'Renombrar',
+  'admin.ticketTypes.renameLevelOf': 'Renombrar el nivel {name}',
+  'admin.ticketTypes.saveLevel': 'Guardar el nivel',
+  'admin.ticketTypes.up': 'Subir',
+  'admin.ticketTypes.down': 'Bajar',
+  'admin.ticketTypes.moveUp': 'Subir el nivel {name}',
+  'admin.ticketTypes.moveDown': 'Bajar el nivel {name}',
+  'admin.ticketTypes.removeLevel': 'Quitar el nivel',
+  'admin.ticketTypes.removeLevelOf': 'Quitar el nivel {name}',
+  'admin.ticketTypes.confirmRemove':
+    '¿Quitar {name}? {types, plural, =0 {Ningún tipo de ticket está en él.} one {Su tipo, {names}, pasa al nivel {standard}.} other {Sus tipos, {names}, pasan al nivel {standard}.}} {known, select, yes {{tickets, plural, =0 {Ningún ticket cambia de nivel.} one {# ticket cambia de nivel.} other {# tickets cambian de nivel.}}} other {}} No se puede deshacer.',
+  'admin.ticketTypes.breaks':
+    '{links, plural, =0 {no se rompería ningún vínculo con un padre} one {se rompería # vínculo con un padre} other {se romperían # vínculos con un padre}}, y {orphans, plural, =0 {ningún ticket quedaría sin el padre que necesita un subticket} one {# ticket quedaría sin el padre que necesita un subticket} other {# tickets quedarían sin el padre que necesita un subticket}}',
+  'admin.ticketTypes.cannotRemove':
+    '{name} no se puede quitar ahora: {why}. Cambia antes los padres de esos tickets.',
+  'admin.ticketTypes.retypePreview':
+    '{tickets, plural, =0 {Ningún ticket de este tipo cambia de nivel.} one {# ticket de este tipo cambia de nivel.} other {# tickets de este tipo cambian de nivel.}}',
+  'admin.ticketTypes.retypeRefused': 'Este nivel se rechazaría: {why}.',
+  'admin.ticketTypes.deleteType': 'Eliminar el tipo',
+  'admin.ticketTypes.deleteTypeOf': 'Eliminar el tipo de ticket {name}',
+  'admin.ticketTypes.confirmDelete':
+    '¿Eliminar {name}? Después nada podrá usarlo, y no se puede deshacer.',
+  'admin.ticketTypes.typeAdded': 'Se añadió {name}.',
+  'admin.ticketTypes.typeSaved': 'Se guardó {name}.',
+  'admin.ticketTypes.typeDeleted': 'Se eliminó {name}.',
+  'admin.ticketTypes.levelCreated': 'Se añadió el nivel {name}.',
+  'admin.ticketTypes.levelSaved': 'Se guardó el nivel {name}.',
+  'admin.ticketTypes.levelMovedUp': '{name} subió.',
+  'admin.ticketTypes.levelMovedDown': '{name} bajó.',
+  'admin.ticketTypes.levelRemoved': 'Se quitó el nivel {name}.',
+  'admin.ticketTypes.problem.breaks':
+    'No cambió nada: {why}. Cambia antes los padres de esos tickets.',
+  'admin.ticketTypes.problem.typeNameTaken': 'Ya hay un tipo de ticket con ese nombre.',
+  'admin.ticketTypes.problem.levelNameTaken': 'Ya hay un nivel con ese nombre.',
+  'admin.ticketTypes.problem.inTypeSets':
+    '{name} está en los conjuntos de tipos {sets}: quítalo antes de ellos en Conjuntos de configuración.',
+  'admin.ticketTypes.problem.hasTickets':
+    '{tickets, plural, one {# ticket tiene} other {# tickets tienen}} este tipo, la papelera incluida: dales antes otro tipo.',
+  'admin.ticketTypes.problem.builtin':
+    'Un nivel incorporado se renombra, pero nunca se mueve ni se quita.',
+  'admin.ticketTypes.problem.rank': 'Un nivel que añades va por encima de Objetivo.',
+  'admin.ticketTypes.problem.forbidden': 'No puedes cambiar los tipos de ticket ni los niveles.',
+  'admin.ticketTypes.problem.invalid': 'No se aceptó: revisa el nombre y el nivel.',
+  'admin.ticketTypes.problem.other': 'Eso no funcionó. Inténtalo de nuevo en un momento.',
+  'admin.sets.order': 'Orden en el conjunto',
+  'admin.sets.orderHint': 'El formulario de creación ofrece los tipos en este orden.',
+  'admin.sets.up': 'Subir',
+  'admin.sets.down': 'Bajar',
+  'admin.sets.moveUp': 'Subir {name}',
+  'admin.sets.moveDown': 'Bajar {name}',
+  'admin.sets.preselected': 'Tipo preseleccionado',
+  'admin.sets.preselectedFirst': 'Ninguno: el primer tipo del orden',
+  'admin.sets.defaultForLegend': 'Conjunto por defecto de los nuevos tracks de estas clases',
+  'admin.sets.defaultForHint':
+    'Cada clase de track tiene un conjunto por defecto. Para dejar de serlo, márcala en otro conjunto.',
+  'admin.sets.kindChoice.software': 'Tracks de desarrollo de software',
+  'admin.sets.kindChoice.business': 'Tracks de negocio',
+  'admin.sets.kindChoice.service': 'Tracks de servicio',
+  'admin.sets.kindChoice.discovery': 'Tracks de descubrimiento',
+  'admin.sets.mapping': 'Tickets de los tipos que quitas',
+  'admin.sets.mappingIntro':
+    '{tickets, plural, one {# ticket de los tracks que usan este conjunto tiene} other {# tickets de los tracks que usan este conjunto tienen}} un tipo que el conjunto quitaría. Elige el tipo que toman, del mismo nivel, y vuelve a guardar.',
+  'admin.sets.mappingFor': 'Los tickets de {name} pasan a ser',
+  'admin.sets.mappingChoose': 'Elige un tipo',
+  'admin.sets.mappingNowhere':
+    'El conjunto no conserva ningún tipo del nivel {level}, así que los tickets de {name} no tienen adónde ir: conserva {name}, o añade un tipo de ese nivel.',
+  'admin.sets.savedMapped':
+    'Se guardó {name}; {tickets, plural, one {# ticket tomó otro tipo} other {# tickets tomaron otro tipo}}.',
+  'admin.sets.problem.mapping':
+    'Cada tipo que quitas necesita un tipo de su mismo nivel que el conjunto conserve.',
+  'admin.sets.problem.defaultRequired':
+    'Cada clase de track tiene un conjunto por defecto: márcala en otro conjunto.',
   'admin.sets.problem.other': 'Eso no funcionó. Inténtalo de nuevo en un momento.',
   'admin.fields.title': 'Campos',
   'admin.fields.intro':

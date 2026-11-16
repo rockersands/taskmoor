@@ -116,6 +116,12 @@ export const ADMIN_GROUPS: readonly AdminGroup[] = [
         hintId: 'settings.fieldsHint',
       },
       {
+        id: 'ticket-types',
+        href: '#/admin/ticket-types',
+        labelId: 'settings.ticketTypes',
+        hintId: 'settings.ticketTypesHint',
+      },
+      {
         id: 'configuration-sets',
         href: '#/admin/configuration-sets',
         labelId: 'settings.sets',

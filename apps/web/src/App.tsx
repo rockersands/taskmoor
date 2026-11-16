@@ -102,6 +102,7 @@ import { CreateTicketPage } from './tickets/CreateTicketPage';
 import { TicketTemplatesPage } from './tickets/templates/TicketTemplatesPage';
 import { TicketPage } from './tickets/view/TicketPage';
 import { TicketPopup } from './tickets/view/TicketPopup';
+import { TicketTypesPage } from './tickettypes/TicketTypesPage';
 import { TimelinePage } from './timeline/TimelinePage';
 import { AdminTokensPage } from './tokens/AdminTokensPage';
 import { ServiceAccountsPage } from './tokens/ServiceAccountsPage';
@@ -224,6 +225,8 @@ const ADMIN_PERMISSIONS = '#/admin/permissions';
 const ADMIN_VISIBILITY = '#/admin/visibility';
 const ADMIN_EXPLAINER = '#/admin/permission-explainer';
 const ADMIN_SETS = '#/admin/configuration-sets';
+/** Ticket types and hierarchy levels (T-320). */
+const ADMIN_TICKET_TYPES = '#/admin/ticket-types';
 /** The layout editor (UI-T15): a set by id with `?set=`. */
 const ADMIN_LAYOUTS = '#/admin/layouts';
 const ADMIN_TRACK_SETS = '#/admin/track-sets';
@@ -605,6 +608,14 @@ function Pages() {
               },
             },
             {
+              id: 'go-ticket-types',
+              labelId: 'admin.ticketTypes.title' as const,
+              keywords: ['ticket type', 'type', 'level', 'hierarchy', 'icon', 'subticket'],
+              run: () => {
+                navigate(ADMIN_TICKET_TYPES);
+              },
+            },
+            {
               id: 'go-layouts',
               labelId: 'layouts.title' as const,
               keywords: ['layout', 'screen', 'form', 'tabs', 'sections', 'arrange fields'],
@@ -776,6 +787,8 @@ function Pages() {
     content = <TrackSetsPage {...(trackId ? { initialTrackId: trackId } : {})} />;
   } else if (isRoute(hash, ADMIN_SETS)) {
     content = <ConfigurationSetsPage />;
+  } else if (isRoute(hash, ADMIN_TICKET_TYPES)) {
+    content = <TicketTypesPage />;
   } else if (isRoute(hash, ADMIN_LAYOUTS)) {
     const setId = Number(/[?&]set=(\d{1,10})(?:&|$)/.exec(hash)?.[1]);
     content = <LayoutEditorPage {...(setId ? { initialSetId: setId } : {})} />;
