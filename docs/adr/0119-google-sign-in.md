@@ -119,12 +119,14 @@ them. So the button now uses Google's files rather than ours:
 - The G is taken from Google's branding bundle (`signin-assets.zip`, files dated 2026-04-15). Figma
   exported it as a mask in the shape of the G over a conic gradient and blurred shapes. Its elements
   are copied unchanged from the 40 px round light button, and the view is cropped to the G
-  (`apps/web/src/assets/google/google-g.svg`). Every theme and shape in the bundle draws the same G,
-  and the cropped file renders pixel for pixel as the bundle's buttons do. It is shown as an image
-  with empty alternative text: each copy is its own document, so the ids of its mask and filters
-  cannot clash between the two Google buttons the sign-in page can draw. The build puts it in the
-  script as a data URL, which `img-src data:` allows in every policy of the app (the backend's
-  header, the kits' meta element, the single-file kit).
+  (`apps/web/src/assets/google/google-g.svg`). Every button without words in the bundle, in each
+  theme and shape, draws the same G, and in Chromium the cropped file renders pixel for pixel as
+  they do. The buttons with words draw it 2 px further right, with a few figures rounded
+  differently, and the cropped file is within 1/255 of a colour channel of them. It is shown as an
+  image with empty alternative text: each copy is its own document, so the ids of its mask and
+  filters cannot clash between the two Google buttons the sign-in page can draw. The build puts it
+  in the script as a data URL, which `img-src data:` allows in every policy of the app (the
+  backend's header, the kits' meta element, the single-file kit).
 - The words are in Google Sans Medium: Google's own weight-500 files for latin and latin-ext,
   unmodified (SIL OFL 1.1, no Reserved Font Name), 37 KB together, with their licence beside them
   (`apps/web/src/fonts`). They are declared in `@font-face` rules with Google Fonts' own
@@ -135,9 +137,14 @@ them. So the button now uses Google's files rather than ours:
   at 14 px without any.
 - Nothing is fetched from Google at run time. A self-hosted or air-gapped install serves both files
   itself (ADR-036: no font CDN), and `THIRD_PARTY_NOTICES` records where they came from.
+- The spacing is that of Google's files. At its narrowest the button has 12 px from its outer edge
+  to the G, then the 20 px G, 10 px, the words and 12 px. Google's files draw the 1 px edge inside
+  the first 12 px, so the padding is 11 px. The button fills the width it is given, as on the
+  sign-in page, and the G and the words are then centred together. The space before the G grows,
+  and the G keeps its size and the 10 px after it.
 - The touch height stays 44 px. The guidelines set no height (their files are 40 px) and let the
-  button grow for a device as long as the G keeps its size and padding, which it does: 20 px, with
-  12 px before it and 10 px after.
+  button grow for a device as long as the G keeps its size and padding. It does: the G stays 20 px
+  and the spacing stays as above.
 
 ### Break-glass
 

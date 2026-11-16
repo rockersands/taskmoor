@@ -60,6 +60,35 @@ export const Button: Story = {
   },
 };
 
+/**
+ * As narrow as its contents, Google's spacing: the G 12 px from the outer edge (the 1 px edge
+ * inside those 12 px, as Google's files draw it), 10 px between the G and the words, 12 px after
+ * them (T-262).
+ */
+export const AtItsNarrowest: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 'max-content' }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const button = within(canvasElement).getByRole('button', { name: 'Sign in with Google' });
+    const mark = button.querySelector('img') as HTMLImageElement;
+    const label = button.querySelector('span') as HTMLElement;
+    await document.fonts.ready;
+    await waitFor(() => expect(mark.complete && mark.naturalWidth > 0).toBe(true));
+    const outer = button.getBoundingClientRect();
+    const g = mark.getBoundingClientRect();
+    const words = label.getBoundingClientRect();
+    await expect(getComputedStyle(button).borderLeftWidth).toBe('1px');
+    await expect(g.left - outer.left).toBeCloseTo(12, 2);
+    await expect(words.left - g.right).toBeCloseTo(10, 2);
+    await expect(outer.right - words.right).toBeCloseTo(12, 2);
+  },
+};
+
 /** Both looks side by side, each in its own skin. */
 export const BothSkins: Story = {
   render: (args) => (

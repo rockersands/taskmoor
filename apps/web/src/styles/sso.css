@@ -105,11 +105,12 @@
 /* Google's sign-in button (T-061, T-262), as Google's sign-in branding guidelines describe it:
    Google's G at the left on its own fill, light or dark with the skin, a 1px edge, Google Sans
    Medium at 14px on a 20px line with no added letter spacing (the words of Google's own button
-   files measure the same), 12px at the sides and 10px between the mark and the words, and the
-   pill shape. It keeps Google's look in both skins and takes no accent, glass or emphasis of
-   ours. 40px high for a mouse, as Google's files draw it; a finger's height on touch, which the
-   guidelines allow (they let the button grow for a device while the G keeps its size and
-   padding). */
+   files measure the same), 12px at the sides counted from the outer edge (Google's files draw
+   the 1px edge inside those 12px, so the padding is 11px), 10px between the mark and the words,
+   and the pill shape. In a button wider than that, the mark and the words are centred together.
+   It keeps Google's look in both skins and takes no accent, glass or emphasis of ours. 40px high
+   for a mouse, as Google's files draw it; a finger's height on touch, which the guidelines allow
+   (they let the button grow for a device while the G keeps its size and padding). */
 .google-sign-in {
   display: inline-flex;
   align-items: center;
@@ -118,7 +119,7 @@
   width: 100%;
   min-height: 40px;
   box-sizing: border-box;
-  padding: 0 12px;
+  padding: 0 11px;
   border: 1px solid var(--color-google-stroke);
   border-radius: var(--radius-pill);
   background: var(--color-google-fill);
