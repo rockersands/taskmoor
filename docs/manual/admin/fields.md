@@ -295,7 +295,7 @@ names they are stored with. Anyone else who opens the page is told only that the
   and an **Icon**: one of the seven shapes (Outcome, Feature, Bug, Chore, To-do, Idea and
   Subticket) or a plain hexagon.
 - **Manage** on a type changes the same settings; **Save the type**. Choosing another level says
-  first how many of its tickets would change level, or why it would be refused. **Delete type**
+  first how many of its tickets would change level, or why it would be refused. **Delete ticket type**
   asks first. A type still in a type set is kept, and the page names the sets; so is a type that
   tickets still have, with their number.
 

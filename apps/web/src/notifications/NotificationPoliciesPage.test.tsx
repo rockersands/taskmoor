@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { ADMIN, CONFIG_ADMIN, TRACK_ADMIN } from '../admin/fixtures';
@@ -6,6 +6,7 @@ import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
 import { type Session, SessionProvider } from '../session/SessionProvider';
 import { untranslated, visibleTexts } from '../test/backend';
+import { labelInName } from '../test/labelInName';
 import { setViewportWidth } from '../test/viewport';
 import { NotificationPoliciesPage } from './NotificationPoliciesPage';
 import type { RuleInput } from './policiesClient';
@@ -384,6 +385,22 @@ describe('notification policies (NTF-001, T-155)', () => {
     expect(client.calls.at(-1)).toEqual({ action: 'remove', args: [2] });
     expect(screen.getByRole('heading', { name: 'Shared policies' })).toHaveFocus();
     expect(screen.queryByRole('button', { name: 'Manage Payments' })).toBeNull();
+  });
+
+  it('[NTF-001] Delete’s visible words are part of its name, in English and Spanish (WCAG 2.5.3)', async () => {
+    for (const [locale, manage, remove] of [
+      ['en', 'Manage Payments', 'Delete Payments'],
+      ['es', 'Gestionar Payments', 'Eliminar Payments'],
+    ] as const) {
+      const user = userEvent.setup();
+      renderPage({ locale });
+      await user.click(await screen.findByRole('button', { name: manage }));
+      // Someone who says what they see reaches it (axe: label-content-name-mismatch).
+      expect(labelInName(screen.getByRole('button', { name: remove }))).toMatchObject({
+        contained: true,
+      });
+      cleanup();
+    }
   });
 
   it('[IAM-009] a configuration administrator manages the shared policies', async () => {

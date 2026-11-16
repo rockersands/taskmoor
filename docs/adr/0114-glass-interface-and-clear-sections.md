@@ -215,7 +215,7 @@ under its title.
   previewed the same way before saving) and an icon from the seven shapes or a plain hexagon,
   shown as radio buttons with each shape beside its word. An icon is stored only when it changes
   what the type draws, so a type that draws its name's shape keeps no icon until it is renamed.
-  Delete type asks first; the refusals name the type sets that hold it or count its tickets.
+  Delete ticket type asks first; the refusals name the type sets that hold it or count its tickets.
 - **Not built, on purpose:** no colour control for a type, since its stored colour draws nothing
   (the icon tells types apart by shape, never by colour); a local-mode track's own types wait
   for T-322.
