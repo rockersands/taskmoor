@@ -17,8 +17,11 @@ import {
   type SetsClient,
   SYSTEM_FIELDS,
   setsClient,
+  type TypeChoice,
   type TypeSet,
+  type TypeSetChange,
 } from './client';
+import { TypeMapping, type TypeSetDraft, TypeSetFields } from './TypeSetForm';
 import {
   ownLayoutsHref,
   ownSetsHref,
@@ -40,7 +43,9 @@ export interface ConfigurationSetsPageProps {
 }
 
 /**
- * Configuration sets (CORE-003, CORE-008): type sets (which ticket types a track offers) and
+ * Configuration sets (CORE-003, CORE-008): type sets (which ticket types a track offers, in what
+ * order, which one the create form preselects and which kinds of track a shared set is the
+ * default for; a dropped type's tickets take a kept type of their level, CORE-005 (2)) and
  * field rule sets (which fields are required or hidden, with help text, for every type). Layout
  * sets have their own page (`layouts/LayoutEditorPage.tsx`, UI-T15), and the field rules link to
  * it and say how the two combine. Rules for one ticket type, who may edit a field, and visibility
@@ -113,7 +118,7 @@ function Sets({
     | { status: 'loading' }
     | {
         status: 'loaded';
-        types: Named[];
+        types: TypeChoice[];
         fields: Named[];
         typeSets: TypeSet[];
         ruleSets: RuleSetSummary[];
@@ -161,6 +166,8 @@ function Sets({
         return t('admin.sets.problem.default');
       }
       if (body?.error === 'type_in_use') return t('admin.sets.problem.typeInUse');
+      if (body?.error === 'invalid_mapping') return t('admin.sets.problem.mapping');
+      if (body?.error === 'default_required') return t('admin.sets.problem.defaultRequired');
       if (body?.error === 'name_taken') return t('admin.sets.problem.nameTaken');
       if (error.status === 400) return t('admin.sets.problem.invalid');
       if (error.status === 403) return t('admin.sets.problem.forbidden');
@@ -232,43 +239,6 @@ interface Feedback {
   failed: (error: unknown) => void;
 }
 
-/** Checkboxes for the ticket types a set holds. */
-function TypePicker({
-  legend,
-  types,
-  chosen,
-  onChange,
-}: {
-  legend: string;
-  types: Named[];
-  chosen: number[];
-  onChange: (ids: number[]) => void;
-}) {
-  const id = useId();
-  return (
-    <fieldset className="sets-choices">
-      <legend>{legend}</legend>
-      {types.map((type) => (
-        <div key={type.id} className="form-field form-field-inline">
-          <input
-            id={`${id}-${type.id}`}
-            type="checkbox"
-            checked={chosen.includes(type.id)}
-            onChange={(event) =>
-              onChange(
-                event.target.checked
-                  ? [...chosen, type.id]
-                  : chosen.filter((typeId) => typeId !== type.id),
-              )
-            }
-          />
-          <label htmlFor={`${id}-${type.id}`}>{type.name}</label>
-        </div>
-      ))}
-    </fieldset>
-  );
-}
-
 function TypeSetsSection({
   client,
   track,
@@ -276,13 +246,18 @@ function TypeSetsSection({
   sets,
   said,
   failed,
-}: Feedback & { client: SetsClient; track: ScopeTrack | null; types: Named[]; sets: TypeSet[] }) {
+}: Feedback & {
+  client: SetsClient;
+  track: ScopeTrack | null;
+  types: TypeChoice[];
+  sets: TypeSet[];
+}) {
   const t = useT();
   const intl = useIntl();
   const headingId = useId();
   const nameId = useId();
   const [name, setName] = useState('');
-  const [chosen, setChosen] = useState<number[]>([]);
+  const [draft, setDraft] = useState<TypeSetDraft>(EMPTY_DRAFT);
   const [open, setOpen] = useState<number | null>(null);
   const creating = useNewForm();
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -320,14 +295,21 @@ function TypeSetsSection({
             onSubmit={(event) => {
               event.preventDefault();
               const wanted = name.trim();
-              if (!wanted || chosen.length === 0) return;
-              client.createTypeSet({ name: wanted, ticketTypeIds: chosen }).then((made) => {
-                setName('');
-                setChosen([]);
-                setOpen(made.id);
-                creating.close();
-                said(t('admin.sets.added', { name: made.name }));
-              }, failed);
+              if (!wanted || draft.ticketTypeIds.length === 0) return;
+              client
+                .createTypeSet({
+                  name: wanted,
+                  ticketTypeIds: draft.ticketTypeIds,
+                  ...(draft.defaultTypeId !== null ? { defaultTypeId: draft.defaultTypeId } : {}),
+                  ...(draft.defaultFor.length > 0 ? { defaultFor: draft.defaultFor } : {}),
+                })
+                .then((made) => {
+                  setName('');
+                  setDraft(EMPTY_DRAFT);
+                  setOpen(made.id);
+                  creating.close();
+                  said(t('admin.sets.added', { name: made.name }));
+                }, failed);
             }}
           >
             <div className="form-field">
@@ -342,14 +324,13 @@ function TypeSetsSection({
                 onChange={(event) => setName(event.target.value)}
               />
             </div>
-            <TypePicker
-              legend={t('admin.sets.typesIn')}
-              types={types}
-              chosen={chosen}
-              onChange={setChosen}
-            />
+            <TypeSetFields types={types} draft={draft} onChange={setDraft} fixedKinds={[]} />
             <div className="form-actions">
-              <button type="submit" className="button-primary" disabled={chosen.length === 0}>
+              <button
+                type="submit"
+                className="button-primary"
+                disabled={draft.ticketTypeIds.length === 0}
+              >
                 {t('admin.sets.addTypeSet')}
               </button>
               <button type="button" className="button-secondary" onClick={creating.close}>
@@ -427,39 +408,89 @@ function TypeSetPanel({
   onDeleted,
 }: Feedback & {
   set: TypeSet;
-  types: Named[];
+  types: TypeChoice[];
   /** A track's own type set stays as long as the track: only shared ones are deleted. */
   deletable: boolean;
   client: SetsClient;
   onDeleted: () => void;
 }) {
   const t = useT();
-  const [chosen, setChosen] = useState(set.ticketTypes.map((type) => type.id));
+  const shared = set.trackId === null;
+  const [draft, setDraft] = useState<TypeSetDraft>(() => draftOf(set));
+  /** The dropped types whose tickets need another type, once the server has said so. */
+  const [inUse, setInUse] = useState<{ typeIds: number[]; tickets: number } | null>(null);
+  const [mapping, setMapping] = useState<Record<string, number>>({});
+  // A type ticked again is no longer dropped: its tickets keep it.
+  const dropped = (inUse?.typeIds ?? []).filter((id) => !draft.ticketTypeIds.includes(id));
   return (
     <form
       className="people-panel"
       aria-label={t('admin.sets.editOf', { name: set.name })}
       onSubmit={(event) => {
         event.preventDefault();
-        if (chosen.length === 0) return;
-        client
-          .updateTypeSet(set.id, { ticketTypeIds: chosen })
-          .then((saved) => said(t('admin.sets.saved', { name: saved.name })), failed);
+        if (draft.ticketTypeIds.length === 0) return;
+        const before = draftOf(set);
+        const change: TypeSetChange = {};
+        if (draft.ticketTypeIds.join() !== before.ticketTypeIds.join()) {
+          change.ticketTypeIds = draft.ticketTypeIds;
+        }
+        if (draft.defaultTypeId !== before.defaultTypeId)
+          change.defaultTypeId = draft.defaultTypeId;
+        if (
+          shared &&
+          [...draft.defaultFor].sort().join() !== [...before.defaultFor].sort().join()
+        ) {
+          change.defaultFor = draft.defaultFor;
+        }
+        const mapped = Object.entries(mapping).filter(([from]) => dropped.includes(Number(from)));
+        if (mapped.length > 0) change.ticketTypeMapping = Object.fromEntries(mapped);
+        client.updateTypeSet(set.id, change).then(
+          (saved) => {
+            setInUse(null);
+            setMapping({});
+            said(
+              mapped.length > 0 && inUse
+                ? t('admin.sets.savedMapped', { name: saved.name, tickets: inUse.tickets })
+                : t('admin.sets.saved', { name: saved.name }),
+            );
+          },
+          (error) => {
+            const body = error instanceof ApiError ? (error.body as InUse | null) : null;
+            if (body?.error === 'type_in_use') {
+              setInUse({ typeIds: body.ticketTypeIds ?? [], tickets: body.ticketCount ?? 0 });
+            }
+            failed(error);
+          },
+        );
       }}
     >
-      <TypePicker
-        legend={t('admin.sets.typesIn')}
+      <TypeSetFields
         types={types}
-        chosen={chosen}
-        onChange={setChosen}
+        draft={draft}
+        onChange={setDraft}
+        fixedKinds={shared ? set.defaultFor : null}
       />
+      {dropped.length > 0 && inUse && (
+        <TypeMapping
+          dropped={dropped}
+          tickets={inUse.tickets}
+          types={types}
+          kept={draft.ticketTypeIds}
+          mapping={mapping}
+          onChange={setMapping}
+        />
+      )}
       {set.tracks.length > 0 && (
         <p className="page-note">
           {t('admin.sets.usedBy', { tracks: set.tracks.map((tr) => tr.key).join(', ') })}
         </p>
       )}
       <div className="form-actions">
-        <button type="submit" className="button-primary" disabled={chosen.length === 0}>
+        <button
+          type="submit"
+          className="button-primary"
+          disabled={draft.ticketTypeIds.length === 0}
+        >
           {t('admin.sets.save')}
         </button>
         <DeleteButton
@@ -480,6 +511,21 @@ function TypeSetPanel({
     </form>
   );
 }
+
+/** The server's word that tickets still have types a set would drop. */
+interface InUse {
+  error?: string;
+  ticketTypeIds?: number[];
+  ticketCount?: number;
+}
+
+const EMPTY_DRAFT: TypeSetDraft = { ticketTypeIds: [], defaultTypeId: null, defaultFor: [] };
+
+const draftOf = (set: TypeSet): TypeSetDraft => ({
+  ticketTypeIds: set.ticketTypes.map((type) => type.id),
+  defaultTypeId: set.defaultTypeId,
+  defaultFor: [...set.defaultFor],
+});
 
 /** Deleting a set asks first, saying what will happen (D13); a refusal keeps the question open. */
 function DeleteButton({

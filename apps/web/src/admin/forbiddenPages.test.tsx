@@ -9,6 +9,8 @@ import { LayoutEditorPage } from '../layouts/LayoutEditorPage';
 import { PermissionExplainerPage } from '../permissions/PermissionExplainerPage';
 import { VisibilityPage } from '../permissions/VisibilityPage';
 import { SessionProvider } from '../session/SessionProvider';
+import { fakeTicketTypesClient } from '../tickettypes/fixtures';
+import { TicketTypesPage } from '../tickettypes/TicketTypesPage';
 import { WebhooksPage } from '../webhooks/WebhooksPage';
 import { AdminOverviewPage } from './AdminOverviewPage';
 import { AiLimitsPage } from './AiLimitsPage';
@@ -56,6 +58,11 @@ describe('a page someone may not use says only so (T-144)', () => {
       'Permission explainer',
       <PermissionExplainerPage key="e" />,
       /^Only site administrators use the permission explainer/,
+    ],
+    [
+      'Ticket types',
+      <TicketTypesPage key="t" client={fakeTicketTypesClient()} />,
+      /^Only site and configuration administrators manage ticket types/,
     ],
   ])('[NFR-005] %s', async (title, page, refusal) => {
     await refusedOnly(open(page), title, refusal);
