@@ -8,7 +8,7 @@ import { useSessionExpiry } from '../session/useSessionExpiry';
 import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
-import type { Grantee, Named } from './client';
+import { type FieldChoice, fieldName, type Grantee, type Named } from './client';
 import {
   type NewMember,
   type VisibilityClient,
@@ -18,7 +18,7 @@ import {
   visibilityClient,
 } from './visibilityClient';
 
-/** Who a level can name from this page; people and groups in a field go through the API. */
+/** Who a level can name from this page, the people and groups in a field too (T-320). */
 const MEMBER_KINDS: readonly Grantee[] = [
   'role',
   'group',
@@ -26,16 +26,33 @@ const MEMBER_KINDS: readonly Grantee[] = [
   'track_owner',
   'requester',
   'assignee',
+  'user_field',
+  'group_field',
   'any_user',
   'anyone',
 ];
 
 type Translate = ReturnType<typeof useT>;
 
-function memberName(t: Translate, member: VisibilityMember): string {
+/** Who a member is, a field member by its field's name (T-320). */
+function memberName(
+  t: Translate,
+  member: VisibilityMember,
+  fields: readonly FieldChoice[],
+): string {
   const name =
-    member.role?.name ?? member.group?.name ?? member.user?.name ?? member.fieldKey ?? '';
+    member.role?.name ??
+    member.group?.name ??
+    member.user?.name ??
+    fieldName(fields, member.fieldKey);
   return t(`admin.permissions.grantee.${member.grantee}` as MessageId, { name });
+}
+
+/** The server refused a field member: its field is gone or not of its kind (400 `fieldKey`). */
+function fieldRefused(error: unknown): boolean {
+  return (
+    error instanceof ApiError && (error.body as { detail?: unknown } | null)?.detail === 'fieldKey'
+  );
 }
 
 interface Feedback {
@@ -47,6 +64,8 @@ interface Feedback {
 interface Lists {
   roles: Named[];
   groups: Named[];
+  /** The user and group fields of the site: a field member names one (T-320). */
+  fields: FieldChoice[];
   client: VisibilityClient;
 }
 
@@ -63,7 +82,13 @@ export function VisibilityPage({ client = visibilityClient }: { client?: Visibil
   const notAdmin = session.status === 'signed-in' && !session.user.isSiteAdmin;
   const [state, setState] = useState<
     | { status: 'loading' }
-    | { status: 'loaded'; policies: VisibilityPolicy[]; roles: Named[]; groups: Named[] }
+    | {
+        status: 'loaded';
+        policies: VisibilityPolicy[];
+        roles: Named[];
+        groups: Named[];
+        fields: FieldChoice[];
+      }
     | { status: 'failed' }
     | { status: 'forbidden' }
   >(notAdmin ? { status: 'forbidden' } : { status: 'loading' });
@@ -73,12 +98,13 @@ export function VisibilityPage({ client = visibilityClient }: { client?: Visibil
 
   const load = useCallback(async () => {
     try {
-      const [policies, roles, groups] = await Promise.all([
+      const [policies, roles, groups, fields] = await Promise.all([
         client.policies(),
         client.roles(),
         client.groups(),
+        client.fields(),
       ]);
-      setState({ status: 'loaded', policies, roles, groups });
+      setState({ status: 'loaded', policies, roles, groups, fields });
     } catch (error) {
       if (expired(error)) return;
       if (error instanceof ApiError && error.status === 403) setState({ status: 'forbidden' });
@@ -108,7 +134,9 @@ export function VisibilityPage({ client = visibilityClient }: { client?: Visibil
               ? t('admin.visibility.problem.alreadyMember')
               : code === 'limit_reached' || code === 'too_many_members'
                 ? t('admin.visibility.problem.limit')
-                : t('admin.visibility.problem.other'),
+                : fieldRefused(error)
+                  ? t('admin.permissions.problem.field')
+                  : t('admin.visibility.problem.other'),
     );
   };
 
@@ -178,6 +206,7 @@ export function VisibilityPage({ client = visibilityClient }: { client?: Visibil
                     client={client}
                     roles={state.roles}
                     groups={state.groups}
+                    fields={state.fields}
                     said={said}
                     failed={failed}
                     onDeleted={() => title.current?.focus()}
@@ -239,6 +268,7 @@ function PolicyPanel({
   client,
   roles,
   groups,
+  fields,
   said,
   failed,
   onDeleted,
@@ -311,6 +341,7 @@ function PolicyPanel({
               client={client}
               roles={roles}
               groups={groups}
+              fields={fields}
               said={said}
               failed={failed}
               onDeleted={() => heading.current?.focus()}
@@ -367,6 +398,7 @@ function LevelRow({
   client,
   roles,
   groups,
+  fields,
   said,
   failed,
   onDeleted,
@@ -433,12 +465,12 @@ function LevelRow({
           >
             {level.members.map((member) => (
               <li key={member.id} className="visibility-member">
-                <span>{memberName(t, member)}</span>
+                <span>{memberName(t, member, fields)}</span>
                 <button
                   type="button"
                   className="button-secondary people-action"
                   aria-label={t('admin.visibility.removeMember', {
-                    member: memberName(t, member),
+                    member: memberName(t, member, fields),
                     level: level.name,
                   })}
                   onClick={() => {
@@ -446,7 +478,7 @@ function LevelRow({
                       () =>
                         said(
                           t('admin.visibility.memberRemoved', {
-                            member: memberName(t, member),
+                            member: memberName(t, member, fields),
                             level: level.name,
                           }),
                         ),
@@ -465,6 +497,8 @@ function LevelRow({
           client={client}
           roles={roles}
           groups={groups}
+          // A shared policy names shared fields; a local-mode track's own, its track's too.
+          fields={fields.filter((f) => f.trackId === null || f.trackId === policy.trackId)}
           onAdd={(member, label) =>
             client
               .addMember(policy.id, level.id, member)
@@ -602,6 +636,7 @@ function AddMember({
   client,
   roles,
   groups,
+  fields,
   onAdd,
 }: Lists & {
   level: VisibilityLevel;
@@ -610,8 +645,16 @@ function AddMember({
   const t = useT();
   const id = useId();
   const [kind, setKind] = useState<Grantee>('role');
+  const ofKind = (of: Grantee) =>
+    fields.filter((f) => f.type === (of === 'user_field' ? 'user' : 'group'));
   const firstTarget = (of: Grantee) =>
-    of === 'role' ? String(roles[0]?.id ?? '') : of === 'group' ? String(groups[0]?.id ?? '') : '';
+    of === 'role'
+      ? String(roles[0]?.id ?? '')
+      : of === 'group'
+        ? String(groups[0]?.id ?? '')
+        : of === 'user_field' || of === 'group_field'
+          ? (ofKind(of)[0]?.key ?? '')
+          : '';
   const [target, setTarget] = useState(() => firstTarget('role'));
   const [query, setQuery] = useState('');
   const [people, setPeople] = useState<Named[]>([]);
@@ -635,8 +678,15 @@ function AddMember({
     };
   }, [client, kind, query]);
 
-  const targets = kind === 'role' ? roles : kind === 'group' ? groups : people;
-  const needsTarget = kind === 'role' || kind === 'group' || kind === 'user';
+  const byField = kind === 'user_field' || kind === 'group_field';
+  // Every target as a value and a name: a field's value is its key.
+  const targets: { value: string; name: string }[] = byField
+    ? ofKind(kind).map((f) => ({ value: f.key, name: f.name }))
+    : (kind === 'role' ? roles : kind === 'group' ? groups : people).map((x) => ({
+        value: String(x.id),
+        name: x.name,
+      }));
+  const needsTarget = kind === 'role' || kind === 'group' || kind === 'user' || byField;
   return (
     <form
       className="people-inline"
@@ -644,13 +694,14 @@ function AddMember({
       onSubmit={(event) => {
         event.preventDefault();
         if (needsTarget && !target) return;
-        const picked = targets.find((x) => String(x.id) === target);
+        const picked = targets.find((x) => x.value === target);
         onAdd(
           {
             grantee: kind,
             ...(kind === 'role' ? { roleId: Number(target) } : {}),
             ...(kind === 'group' ? { groupId: Number(target) } : {}),
             ...(kind === 'user' ? { userId: Number(target) } : {}),
+            ...(byField ? { fieldKey: target } : {}),
           },
           t(`admin.permissions.grantee.${kind}` as MessageId, { name: picked?.name ?? '' }),
         );
@@ -697,15 +748,25 @@ function AddMember({
                 ? 'admin.permissions.pickRole'
                 : kind === 'group'
                   ? 'admin.permissions.pickGroup'
-                  : 'admin.permissions.pickPerson',
+                  : kind === 'user_field'
+                    ? 'admin.permissions.pickUserField'
+                    : kind === 'group_field'
+                      ? 'admin.permissions.pickGroupField'
+                      : 'admin.permissions.pickPerson',
             )}
           </label>
           <select id={`${id}-target`} value={target} onChange={(e) => setTarget(e.target.value)}>
             {targets.length === 0 && (
-              <option value="">{t('admin.permissions.pickPersonEmpty')}</option>
+              <option value="">
+                {t(
+                  byField
+                    ? 'admin.permissions.pickFieldEmpty'
+                    : 'admin.permissions.pickPersonEmpty',
+                )}
+              </option>
             )}
             {targets.map((x) => (
-              <option key={x.id} value={x.id}>
+              <option key={x.value} value={x.value}>
                 {x.name}
               </option>
             ))}

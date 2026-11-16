@@ -1,6 +1,12 @@
 import { api } from '../api/client';
 import { everyTrack } from '../api/tracks';
-import type { Grantee, Named, NewGrant } from './client';
+import {
+  type FieldChoice,
+  type Grantee,
+  type Named,
+  type NewGrant,
+  readFieldChoices,
+} from './client';
 
 /** A member of a level, as `GET /api/v1/visibility-policies` shows it. */
 export interface VisibilityMember {
@@ -58,6 +64,8 @@ export interface VisibilityClient {
   roles: () => Promise<Named[]>;
   groups: () => Promise<Named[]>;
   findPeople: (query: string) => Promise<Named[]>;
+  /** The user and group fields field members name (T-320). */
+  fields: () => Promise<FieldChoice[]>;
 }
 
 const path = (policyId: number, rest = '') => `/visibility-policies/${policyId}${rest}`;
@@ -101,6 +109,7 @@ export const visibilityClient: VisibilityClient = {
   findPeople: async (query) =>
     (await api<{ people: Named[] }>(`/people/lookup?limit=8&q=${encodeURIComponent(query)}`))
       .people,
+  fields: readFieldChoices,
 };
 
 /** One reason a person holds a permission. */
