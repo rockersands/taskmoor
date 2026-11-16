@@ -220,16 +220,22 @@ that came with it goes too:
   group's members or deletion, every take-back of what shared track groups gave (a share taken
   back, a group left or deleted, a track moved out of a shared group, and an erasure, through
   `trackgroups/access.ts` `releaseShares`; ADR-121), and the erasure of the person themselves, who
-  is marked erased first and so runs no track. Deactivating a person (Administration, SCIM
-  `active: false` or DELETE, and every directory deactivation: an entry removed or disabled, an
+  is marked erased first and so runs no track. A directory sync (`ldap/sync.ts`) checks the people
+  it took out of a group, directly, with a nested group taken out of another, or with a deleted
+  group, once at the end of the run, in the transaction that records it, so someone the directory
+  moves to another group that runs a track keeps it (the T-259 review, 2026-11-16: deactivation
+  had covered this for a disabled person until T-259, and nothing covered it for an active one).
+  Deactivating a person (Administration, SCIM `active: false` or DELETE, and every directory
+  deactivation: an entry removed or disabled, an
   account linked to a disabled entry, a directory deleted, all through `ldap/accounts.ts`
   `deactivateAccount`) still makes the check, which removes only a lapsed grant.
 - **One event.** The change's own event lists what went, `createTracksGrantsRemoved: [{ userId,
   grantId }]`, on `track_role.actor_removed`, `track_invitation.revoked`, `group.member_removed`,
   `group.unnested`, `group.deleted`, `user.deactivated`, `user.erased`, `scim.user_updated`,
   `scim.user_removed`, `scim.group_updated`, `scim.group_deleted`, `directory.user_removed`,
-  `directory.user_updated`, `directory.user_created`, `directory.deleted`, `track_group.unshared`,
-  `track_group.left`, `track_group.deleted`, `track_group.created` and `track_group.track_moved`,
+  `directory.user_updated`, `directory.user_created`, `directory.deleted`, `directory.synced`,
+  `track_group.unshared`, `track_group.left`, `track_group.deleted`, `track_group.created` and
+  `track_group.track_moved`,
   and so its audit record; no `global_grant.removed` beside it (M1-005). Optional, so older
   events still match. The deactivation events (`user.deactivated`, `scim.user_updated`,
   `scim.user_removed` and the `directory.*` ones for a deactivation) carry it only for a lapsed

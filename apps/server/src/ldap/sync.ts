@@ -105,6 +105,11 @@ interface Context {
   skipped: Set<string>;
   now: Date;
   signal: AbortSignal | undefined;
+  /**
+   * People who left a group this run: taken out of it, inside a group taken out of another, or in
+   * a group deleted. The run's last step checks whether they still run a track (T-087b, T-259).
+   */
+  leftGroups: Set<number>;
 }
 
 /** People or groups per transaction. */
@@ -781,6 +786,14 @@ async function applyGroups(
     await ctx.db.transaction().execute(async (trx) => {
       const slice = removed.slice(i, i + CHUNK);
       await lockNesting(trx, ctx.ws);
+      // Everyone in them, nested groups included, may run no track without them (T-259).
+      for (const u of await membersWithin(
+        trx,
+        ctx.ws,
+        slice.map((g) => g.group_id),
+      )) {
+        ctx.leftGroups.add(u);
+      }
       await trx
         .deleteFrom('user_group')
         .where(
@@ -905,6 +918,26 @@ async function applyGroups(
   return outcome;
 }
 
+/** People in any of these groups, directly or through groups nested inside them. */
+async function membersWithin(
+  trx: Trx,
+  workspaceId: number,
+  groupIds: readonly number[],
+): Promise<number[]> {
+  if (groupIds.length === 0) return [];
+  const ids = sql.join(groupIds.map((g) => sql`${g}::int`));
+  const { rows } = await sql<{ user_id: number }>`
+    WITH RECURSIVE d(id) AS (
+      SELECT g.id FROM user_group g WHERE g.workspace_id = ${workspaceId} AND g.id IN (${ids})
+      UNION
+      SELECT n.child_id FROM group_nesting n JOIN d ON n.parent_id = d.id
+       WHERE n.workspace_id = ${workspaceId}
+    )
+    SELECT DISTINCT m.user_id FROM group_member m JOIN d ON m.group_id = d.id
+     WHERE m.workspace_id = ${workspaceId}`.execute(trx);
+  return rows.map((r) => r.user_id);
+}
+
 // ---- Memberships ----
 
 async function applyMemberships(ctx: Context, outcome: GroupOutcome): Promise<void> {
@@ -1019,6 +1052,7 @@ async function applyMemberships(ctx: Context, outcome: GroupOutcome): Promise<vo
             .where('group_id', '=', id)
             .where('user_id', 'in', removed)
             .execute();
+          for (const u of removed) ctx.leftGroups.add(u);
         }
         for (const u of added) addRows.push({ workspace_id: ctx.ws, group_id: id, user_id: u });
         if ((nested.length > 0 || unnested.length > 0) && !nestingLocked) {
@@ -1031,6 +1065,8 @@ async function applyMemberships(ctx: Context, outcome: GroupOutcome): Promise<vo
             .where('parent_id', '=', id)
             .where('child_id', 'in', unnested)
             .execute();
+          // The children's people leave this group: it may have been how they ran a track.
+          for (const u of await membersWithin(trx, ctx.ws, unnested)) ctx.leftGroups.add(u);
         }
         if (nested.length > 0) {
           await trx
@@ -1340,6 +1376,7 @@ export async function runSync(
   const beat = setInterval(() => void heartbeat(db, runId).catch(() => undefined), 30_000);
   beat.unref();
   let client: DirectoryClient | undefined;
+  const leftGroups = new Set<number>();
   try {
     if (!directory) throw new Error('directory_deleted');
     if (!directory.enabled) throw new Error('directory_disabled');
@@ -1372,6 +1409,7 @@ export async function runSync(
       skipped: new Set(),
       now: new Date(),
       signal: deps.signal,
+      leftGroups,
     };
     const readStart = Date.now();
     const read = full
@@ -1436,6 +1474,13 @@ export async function runSync(
   const status = error === null ? 'succeeded' : 'failed';
   const changed = CHANGE_STATS.some((name) => (stats[name] ?? 0) > 0);
   await db.transaction().execute(async (trx) => {
+    // The grant to create tracks that came with a role goes with the last one (T-087b): checked
+    // once every change of the run is in, so someone who moved to another group that runs a
+    // track keeps it. A failed run's changes that went in count as well.
+    const lapsed =
+      directory && leftGroups.size > 0
+        ? await dropLapsedCreateTracks(trx, directory.workspace_id, [...leftGroups])
+        : [];
     await trx
       .updateTable('ldap_sync_run')
       .set({
@@ -1463,7 +1508,7 @@ export async function runSync(
         .where(sql<boolean>`sync_cursor IS NOT DISTINCT FROM ${before}::jsonb`)
         .execute();
     }
-    if (directory && (changed || status === 'failed')) {
+    if (directory && (changed || status === 'failed' || lapsed.length > 0)) {
       await emitMany(trx, { workspaceId: run.workspace_id, actorId: null, ip: null }, [
         {
           type: 'directory.synced',
@@ -1476,6 +1521,7 @@ export async function runSync(
             stats,
             warnings: stats.warnings ?? 0,
             error,
+            ...lapsedPayload(lapsed),
           },
         },
       ]);

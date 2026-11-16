@@ -1595,6 +1595,8 @@ export const EVENT_TYPES = {
       stats: z.record(z.string(), z.number()),
       warnings: z.number().int().min(0),
       error: z.string().nullable(),
+      /** Grants that went as the run took their holders out of the last group running a track. */
+      createTracksGrantsRemoved,
     }),
   },
   /** An account the directory created, or an existing one it linked (`linked`). */

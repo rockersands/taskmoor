@@ -184,7 +184,10 @@ A person disabled in the directory, removed from it, or no longer matching the p
 is deactivated at the next sync, and their sessions end. Their account and work stay, and so do
 their roles. A permission to create tracks that came with a role that runs a track stays with the
 role, as with any deactivation, and works again when the account comes back
-([Letting a manager create tracks](invitations.md#letting-a-manager-create-tracks)). When the
+([Letting a manager create tracks](invitations.md#letting-a-manager-create-tracks)). A sync that
+takes someone out of the last group through which they ran a track, or deletes that group,
+removes it, active or not: the check comes once the whole run is in, so a move to another group
+that runs a track keeps it. When the
 entry comes back, the account is reactivated, but only if the sync deactivated it: a
 deactivation by an administrator stands. A sync never deactivates a break-glass account or the
 last active site administrator; it warns instead.

@@ -1,7 +1,7 @@
 ---
 title: "Inviting people and running a track"
 audience: admins
-sources: apps/server/src/routes/invitations.ts, apps/server/src/authz/track-admins.ts, apps/server/src/authz/permissions.ts, apps/server/src/routes/authz.ts, apps/server/src/email/invitation.ts, apps/server/src/sso/sign-in.ts, packages/db/src/migrations/0087_track_invitations.ts, apps/web/src/trackpeople/ManagedTracksPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/web/src/trackpeople/InviteDialog.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/trackpeople/CreateTracksBox.tsx, apps/server/src/authz/create-tracks.ts, packages/db/src/migrations/0097_invitation_create_tracks.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0118-track-invitations.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/trackpeople/ChecklistNoticesBox.tsx, apps/server/src/routes/tracks.ts, packages/db/src/migrations/0103_checklist_notices.ts, docs/adr/0120-ticket-tools.md, apps/web/src/sets/trackScope.tsx, apps/web/src/shell/StandaloneFrame.tsx, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts, apps/server/src/trackgroups/access.ts, apps/server/src/ldap/accounts.ts, docs/plan/decisions.csv, apps/web/src/trackpeople/client.ts, apps/web/src/api/managedTracks.ts, apps/web/src/shell/DangerAction.tsx
+sources: apps/server/src/routes/invitations.ts, apps/server/src/authz/track-admins.ts, apps/server/src/authz/permissions.ts, apps/server/src/routes/authz.ts, apps/server/src/email/invitation.ts, apps/server/src/sso/sign-in.ts, packages/db/src/migrations/0087_track_invitations.ts, apps/web/src/trackpeople/ManagedTracksPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/web/src/trackpeople/InviteDialog.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/trackpeople/CreateTracksBox.tsx, apps/server/src/authz/create-tracks.ts, packages/db/src/migrations/0097_invitation_create_tracks.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0118-track-invitations.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/trackpeople/ChecklistNoticesBox.tsx, apps/server/src/routes/tracks.ts, packages/db/src/migrations/0103_checklist_notices.ts, docs/adr/0120-ticket-tools.md, apps/web/src/sets/trackScope.tsx, apps/web/src/shell/StandaloneFrame.tsx, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts, apps/server/src/trackgroups/access.ts, apps/server/src/ldap/accounts.ts, apps/server/src/ldap/sync.ts, docs/plan/decisions.csv, apps/web/src/trackpeople/client.ts, apps/web/src/api/managedTracks.ts, apps/web/src/shell/DangerAction.tsx
 accessed: 2026-11-16
 attestation: own-words
 ---
@@ -104,8 +104,10 @@ this track.
   group's role that was how they ran it, withdraw the invitation that gave it, remove them from
   that group (or the group, or its place inside another group), take back the shared group of
   tracks that gave them their last role there (or they leave it, or it is deleted, or its owner is
-  erased), or erase them. Someone who still runs another track keeps it, including a track every
-  signed-in person runs.
+  erased), or erase them. A directory sync does the same when it takes them out of such a group,
+  deletes it, or takes it out of another group: it checks once the whole run is in, so someone
+  the directory moves to another group that runs a track keeps it. Someone who still runs another
+  track keeps it, including a track every signed-in person runs.
 - **Deactivating keeps it, with the role.** Deactivation (here, through SCIM, or when a directory
   removes or disables someone) keeps the person's roles, and the permission with them: it does
   nothing while they are deactivated, as none of their permissions does, and they have it again
@@ -119,12 +121,12 @@ this track.
 The grant shows in the audit log inside the event that gave the role: `createTracksGrantId` on
 `track_role.actor_added`, `track_invitation.created`, `.resent` or `.accepted`. Its removal shows
 inside the event of the change that took it, as `createTracksGrantsRemoved` (for example on
-`track_role.actor_removed`, `group.member_removed`, `track_group.unshared` or `user.erased`).
+`track_role.actor_removed`, `group.member_removed`, `track_group.unshared` or `user.erased`; for a
+directory sync, on the run's `directory.synced`).
 
 Changes that take no one's role away directly leave the permission until a site administrator
 removes it: an access policy's administer permission taken from a role, a track deleted or given
-another policy, and group changes that come from a directory sync or single sign-on for someone
-who stays active.
+another policy, and group changes that come from single sign-on.
 
 ### A track keeps someone to run it
 
