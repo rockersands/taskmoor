@@ -289,13 +289,13 @@ test('[CORE-008] the administrator adds a type set and a field rule set, changes
   await page.getByRole('button', { name: 'New type set' }).click();
   const addTypes = page.getByRole('form', { name: 'Add a type set' });
   await addTypes.getByLabel('Type set name').fill(types);
-  const boxes = addTypes.getByRole('checkbox');
-  await boxes.nth(0).check();
-  await boxes.nth(1).check();
+  // Ticked by name: another test may add a type for a while, and it would not leave a set.
+  await addTypes.getByRole('checkbox', { name: 'Bug', exact: true }).check();
+  await addTypes.getByRole('checkbox', { name: 'Chore', exact: true }).check();
   await addTypes.getByRole('button', { name: 'Add a type set' }).click();
   await expect(page.getByText(`${types} was added.`)).toBeVisible();
   const typePanel = page.getByRole('form', { name: `Settings of ${types}` });
-  await typePanel.getByRole('checkbox').nth(1).uncheck();
+  await typePanel.getByRole('checkbox', { name: 'Chore', exact: true }).uncheck();
   await typePanel.getByRole('button', { name: 'Save the set' }).click();
   await expect(page.getByText(`${types} was saved.`)).toBeVisible();
   await typePanel.getByRole('button', { name: `Delete set ${types}` }).click();
