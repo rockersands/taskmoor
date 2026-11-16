@@ -48,7 +48,9 @@ neutral palette whose dark variant followed only the operating system.
   skins. Every story runs its axe checks in both skins (two Vitest browser projects), so a skin
   cannot ship with a contrast failure.
 - **Motion** is short (120 to 200 ms) and stops under `prefers-reduced-motion`.
-- **Fonts** stay system fonts or self-hosted (no font CDN: installs may be air-gapped).
+- **Fonts** stay system fonts or self-hosted (no font CDN: installs may be air-gapped). A vendored
+  font may be under SIL OFL 1.1, shipped unmodified with its licence and a note in
+  `THIRD_PARTY_NOTICES` (Google Sans for Google's sign-in button, T-262).
 
 ## Options considered
 

@@ -33,6 +33,9 @@ needs GitHub Advanced Security.
 
 ## Consequences
 
-Adding a dependency with an unusual licence needs a decision recorded here first. Third-party
+Adding a dependency with an unusual licence needs a decision recorded here first. Recorded so far:
+fonts vendored into the repository (not npm packages, so outside the allowlist) may be under SIL
+OFL 1.1 (OFL-1.1), which allows bundling with any software. They ship unmodified with their licence
+beside them and a note in `THIRD_PARTY_NOTICES` (Google Sans, T-262; ADR-036). Third-party
 GitHub Actions (outside the `actions/` organisation) are pinned by commit SHA with the version in
 a comment; Dependabot keeps the pins current.
