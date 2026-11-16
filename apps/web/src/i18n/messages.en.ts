@@ -4193,7 +4193,7 @@ export const messagesEn = {
   'admin.priorities.defaultSetNote':
     'Tracks that choose no set use this one. The default set is not deleted: to delete it, make another set the default first.',
   'admin.priorities.makeDefault': 'Make this the default set',
-  'admin.priorities.makeDefaultOf': 'Make {name} the default set',
+  'admin.priorities.makeDefaultOf': 'Make this the default set: {name}',
   'admin.priorities.madeDefault':
     '{name} is the default set now. Tracks that choose no set offer its priorities.',
   'admin.priorities.deleteSetOf': 'Delete priority set {name}',

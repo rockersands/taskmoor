@@ -78,7 +78,7 @@ export const ManagingASet: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Manage priority set Support' }));
     await expect(canvas.getByRole('group', { name: 'Priorities it offers' })).toBeVisible();
     await expect(
-      canvas.getByRole('button', { name: 'Make Support the default set' }),
+      canvas.getByRole('button', { name: 'Make this the default set: Support' }),
     ).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Delete priority set Support' })).toBeVisible();
   },

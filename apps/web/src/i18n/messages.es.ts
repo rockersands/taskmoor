@@ -4297,7 +4297,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.priorities.defaultSetNote':
     'Los tracks que no eligen conjunto usan este. El conjunto predeterminado no se elimina: para eliminarlo, primero haz predeterminado otro conjunto.',
   'admin.priorities.makeDefault': 'Hacer este el conjunto predeterminado',
-  'admin.priorities.makeDefaultOf': 'Hacer {name} el conjunto predeterminado',
+  'admin.priorities.makeDefaultOf': 'Hacer este el conjunto predeterminado: {name}',
   'admin.priorities.madeDefault':
     '{name} es ahora el conjunto predeterminado. Los tracks que no eligen conjunto ofrecen sus prioridades.',
   'admin.priorities.deleteSetOf': 'Eliminar el conjunto de prioridades {name}',
