@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { ApiError } from '../../api/client';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import type { Locale } from '../../i18n/locale';
-import { untranslated, visibleTexts } from '../../test/backend';
+import { stubBackend, untranslated, visibleTexts } from '../../test/backend';
+import { jsonResponse } from '../../test/setup';
 import type { FieldRule, SavedTemplate, TemplateClient, TemplateOptions } from './client';
 import {
   bodyOf,
@@ -881,5 +882,49 @@ describe('the ticket template form’s assignee (CORE-029, T-269, T-283)', () =>
     const draft = { ...draftOf(hidden, fields), assignee: null };
     expect(bodyOf(draft, hidden, fields, 'SHOP').defaults.assigneeId).toBeUndefined();
     expect(bodyOf(draftOf(hidden, fields), hidden, fields, 'SHOP').defaults.assigneeId).toBe(21);
+  });
+});
+
+describe('the blocks of a template’s description (NTF-013, T-120)', () => {
+  it('[NTF-013] [CORE-029] links another ticket from the description, found by search, as its key only', async () => {
+    const user = userEvent.setup();
+    const calls = stubBackend({
+      'POST /search': () =>
+        jsonResponse(200, {
+          tickets: [
+            { id: 40, key: 'SHOP-4', summary: 'Retry a failed payment', status: { name: 'Open' } },
+          ],
+        }),
+    });
+    const { client, form } = renderForm(RELEASE_TEMPLATE);
+    const description = within(form).getByRole('textbox', { name: 'Description' });
+    await user.click(description);
+    await user.keyboard('See /another');
+    await screen.findByRole('listbox', { name: 'Blocks to add' });
+    await user.keyboard('{Enter}');
+    await screen.findByRole('combobox', { name: 'Another ticket' });
+    await user.keyboard('retry');
+    await user.click(await screen.findByRole('option', { name: /SHOP-4/ }));
+    expect(JSON.stringify(calls.find((c) => c.path === '/search')?.body)).toContain('retry');
+    // A template has no files of its own: the menu offers none.
+    await user.click(description);
+    await user.keyboard('/image');
+    expect(await screen.findByText('No block matches.')).toBeVisible();
+    await user.click(within(form).getByRole('button', { name: 'Save the template' }));
+    await waitFor(() => expect(client.saved).toHaveLength(1));
+    expect(client.saved[0]?.body.description).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'See ' },
+            { type: 'ticketRef', attrs: { key: 'SHOP-4' } },
+            { type: 'text', text: ' /image' },
+          ],
+        },
+      ],
+    });
+    expect(JSON.stringify(client.saved[0]?.body)).not.toContain('Retry a failed payment');
   });
 });
