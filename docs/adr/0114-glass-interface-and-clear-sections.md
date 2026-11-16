@@ -290,7 +290,7 @@ routes the server already had, through the track-scope pattern of section 8 (`se
   (`#/manage/tracks/<id>/configuration-sets`, `sets/OwnTypesSection.tsx`). New ticket type and
   Manage take a name, a description, a level and an icon, with the Ticket types page's own
   `IconPicker` and `LevelSelect`; each row says its level and whether the track's type set offers
-  it, since a type is offered only once it is ticked there. Delete type is a `DangerAction` (D13);
+  it, since a type is offered only once it is ticked there. Delete ticket type is a `DangerAction` (D13);
   the refusals say which set holds it (untick it there first) or count its tickets, and the
   keyboard goes to the card's heading once the row goes. No preview of a level change:
   `GET /hierarchy-levels/impact` counts tickets across tracks and is for administrators, so the
