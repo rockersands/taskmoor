@@ -38,8 +38,9 @@ const meta = {
     loading: false,
     failed: false,
     replacesWork: true,
+    draft: 3,
     busy: false,
-    onRestore: () => {},
+    onRestore: async () => true,
   },
   decorators: [
     (Story) => (
@@ -59,10 +60,46 @@ export const Loading: Story = { args: { versions: null, loading: true } };
 
 export const Failed: Story = { args: { versions: null, failed: true } };
 
+/** Over a draft, restoring asks first, saying what it replaces; focus waits on Cancel (D13). */
 export const ConfirmingRestore: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    const trigger = canvas.getByRole('button', { name: 'Restore version 1 as the draft' });
+    await expect(trigger).toHaveClass('button-danger-quiet');
+    await userEvent.click(trigger);
+    const question = canvas.getByRole('group', {
+      name: 'Restoring version 1 replaces the draft (version 3) and every unsaved change. The published version stays as it is.',
+    });
+    await expect(within(question).getByRole('button', { name: 'Restore version 1' })).toBeVisible();
+    await expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+  },
+};
+
+/** The question at a phone's width: it takes the row's whole line and nothing sticks out. */
+export const ConfirmingRestoreOnAPhone: Story = {
+  decorators: [
+    (Story) => (
+      <div data-testid="phone-width" style={{ width: 360 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Restore version 1 as the draft' }));
-    await expect(canvas.getByRole('button', { name: 'Restore version 1' })).toHaveFocus();
+    await expect(canvas.getByRole('group', { name: /^Restoring version 1/ })).toBeVisible();
+    const box = canvas.getByTestId('phone-width');
+    await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+  },
+};
+
+/** With no draft and no unsaved change, a restore loses nothing: a plain button that acts at once. */
+export const NothingToReplace: Story = {
+  args: { replacesWork: false, draft: null, versions: VERSIONS.slice(1) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      canvas.getByRole('button', { name: 'Restore version 1 as the draft' }),
+    ).toHaveClass('button-secondary');
   },
 };

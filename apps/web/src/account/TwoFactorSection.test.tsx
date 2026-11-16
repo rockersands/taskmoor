@@ -212,8 +212,13 @@ describe('account page: two-factor authentication', () => {
       },
     }));
     const tf = within(section());
-    await user.click(tf.getByRole('button', { name: 'Remove Blue key' }));
+    // A removal's first step has the danger look; the password is its question (D13, T-267).
+    const trigger = tf.getByRole('button', { name: 'Remove Blue key' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
     const confirm = tf.getByRole('form', { name: 'Remove Blue key' });
+    expect(confirm).toHaveAccessibleDescription('You can no longer sign in with Blue key.');
+    expect(within(confirm).getByRole('button', { name: 'Remove' })).toHaveClass('button-danger');
     const password = within(confirm).getByLabelText('Current password');
     expect(password).toHaveFocus();
     expect(password).toHaveAttribute('autocomplete', 'current-password');
@@ -292,8 +297,16 @@ describe('account page: two-factor authentication', () => {
     );
     const tf = within(section());
     expect(tf.getByText('7 recovery codes left.')).toBeVisible();
-    await user.click(tf.getByRole('button', { name: 'Switch off the app' }));
+    const trigger = tf.getByRole('button', { name: 'Switch off the app' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
     const confirm = tf.getByRole('form', { name: 'Switch off the app' });
+    expect(confirm).toHaveAccessibleDescription(
+      'Codes from your authenticator app no longer sign you in. To use it again, set it up afresh.',
+    );
+    expect(within(confirm).getByRole('button', { name: 'Switch off the app' })).toHaveClass(
+      'button-danger',
+    );
     await user.type(within(confirm).getByLabelText('Current password'), 'the current passphrase');
     await user.click(within(confirm).getByRole('button', { name: 'Switch off the app' }));
     expect(await tf.findByText('Authenticator app switched off.')).toBeVisible();

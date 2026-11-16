@@ -13,6 +13,7 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
 import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
@@ -71,7 +72,7 @@ type Load =
   | { status: 'missing' }
   | { status: 'loaded'; workflow: WorkflowView; statuses: Status[] };
 
-type Panel = 'publish' | 'history' | 'discard' | null;
+type Panel = 'publish' | 'history' | null;
 
 const NO_LOOKUPS: Lookups = { roles: null, groups: null, permissions: null };
 
@@ -124,7 +125,6 @@ export function WorkflowEditorPage({
   const checksHeading = useRef<HTMLHeadingElement>(null);
   const panelHeading = useRef<HTMLHeadingElement>(null);
   const publishButton = useRef<HTMLButtonElement>(null);
-  const discardConfirm = useRef<HTMLButtonElement>(null);
 
   const refuse = useCallback(
     (e: unknown) => {
@@ -218,9 +218,6 @@ export function WorkflowEditorPage({
     target?.current?.focus();
     if (focusTarget !== 'name') setFocusTarget(null);
   }, [focusTarget]);
-  useEffect(() => {
-    if (panel === 'discard') discardConfirm.current?.focus();
-  }, [panel]);
 
   // The breadcrumb ends at the workflow's name, under Workflows (AD-28); a workflow that does not
   // exist ends it at the not-found page, so Workflows is a link back to the list there too.
@@ -345,6 +342,8 @@ export function WorkflowEditorPage({
     }
   };
 
+  // Asked first by DangerAction (D13, T-267): the saved draft may be another administrator's work.
+  // A refusal says why and keeps the question open.
   const discard = async () => {
     setBusy(true);
     setError(null);
@@ -360,6 +359,7 @@ export function WorkflowEditorPage({
       setMessage(t('admin.workflow.discarded'));
     } catch (e) {
       if (!refuse(e)) setError(refusalMessage(t, e, names) ?? t('admin.workflows.actionFailed'));
+      throw e;
     } finally {
       setBusy(false);
     }
@@ -380,6 +380,7 @@ export function WorkflowEditorPage({
     }
   };
 
+  /** Whether it was restored: a refusal says why above. */
   const restore = async (version: number) => {
     setBusy(true);
     setError(null);
@@ -389,10 +390,12 @@ export function WorkflowEditorPage({
       setSelection(null);
       setMessage(t('admin.workflow.versions.restored', { version }));
       setVersions({ loading: false, failed: false, versions: await client.versions(workflow.id) });
+      return true;
     } catch (e) {
       if (!refuse(e)) {
         setError(refusalMessage(t, e, names, version) ?? t('admin.workflows.actionFailed'));
       }
+      return false;
     } finally {
       setBusy(false);
     }
@@ -667,15 +670,14 @@ export function WorkflowEditorPage({
           >
             {t('admin.workflow.publish')}
           </button>
-          <button
-            type="button"
-            className="button-secondary"
-            disabled={busy || (!dirty && !workflow.draft)}
-            aria-expanded={panel === 'discard'}
-            onClick={() => setPanel(panel === 'discard' ? null : 'discard')}
-          >
-            {t('admin.workflow.discard')}
-          </button>
+          <DangerAction
+            label={t('admin.workflow.discard')}
+            outcome={t('admin.workflow.confirmDiscard')}
+            confirmLabel={t('admin.workflow.confirmDiscardButton')}
+            busy={busy}
+            disabled={!dirty && !workflow.draft}
+            onConfirm={discard}
+          />
           <button
             type="button"
             className="button-secondary"
@@ -696,25 +698,6 @@ export function WorkflowEditorPage({
         </p>
       )}
 
-      {panel === 'discard' && (
-        <div className="token-confirm">
-          <p id={`${id}-discard`}>{t('admin.workflow.confirmDiscard')}</p>
-          <div className="token-confirm-actions">
-            <button
-              ref={discardConfirm}
-              type="button"
-              className="button-danger"
-              disabled={busy}
-              onClick={() => void discard()}
-            >
-              {t('admin.workflow.confirmDiscardButton')}
-            </button>
-            <button type="button" className="button-secondary" onClick={() => setPanel(null)}>
-              {t('admin.workflow.cancel')}
-            </button>
-          </div>
-        </div>
-      )}
       {panel === 'publish' && workflow.draft && (
         <PublishPanel
           version={workflow.draft.version}
@@ -743,9 +726,10 @@ export function WorkflowEditorPage({
           loading={versions.loading}
           failed={versions.failed}
           replacesWork={dirty || workflow.draft !== null}
+          draft={workflow.draft?.version ?? null}
           busy={busy}
           headingRef={panelHeading}
-          onRestore={(version) => void restore(version)}
+          onRestore={restore}
         />
       )}
 

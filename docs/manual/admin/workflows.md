@@ -239,7 +239,9 @@ in Administration does. The address of a workflow that does not exist, or no lon
   On a workflow with rules it adds only the status, and the
   steps into it are yours to draw. **Add a transition** adds a transition. A status's panel can **Make
   it the initial status** or remove it from the workflow.
-- **Discard draft** throws the draft away; the published version stays as it is.
+- **Discard draft**, in the danger colour, throws the draft away after asking: the saved draft,
+  which may be another administrator's work, and every unsaved change are deleted, and the
+  published version stays as it is. **Cancel**, which has the focus, or Escape keeps them.
 - A draft of the default workflow saved before workflows moved freely may still have the steps the
   site first came with: **Start**, **Send to review**, **Back to active**, **Close** (which asks
   for a close reason) and **Reopen**. The editor says so and offers **Let this draft move freely**,
@@ -262,7 +264,9 @@ status the new version drops that holds tickets, choose where the tickets go, th
 **Publish now**. They move with their history; their close reason stays as it is.
 
 **Version history** lists every version with who saved and published it. **Restore as draft**
-replaces the draft with an earlier version; publish it to use it again. A version that sets a close
+replaces the draft with an earlier version; publish it to use it again. With a draft or unsaved
+changes to replace, it is in the danger colour and asks first, naming the draft's version; with
+nothing to replace it acts at once. A version that sets a close
 reason deleted since cannot be restored, nor can a draft name one: every move through that
 transition would be refused. Set the reason on the current version instead.
 

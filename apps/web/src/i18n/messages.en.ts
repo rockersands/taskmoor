@@ -1397,6 +1397,8 @@ export const messagesEn = {
   'account.twoFactor.turnOnApp': 'Turn on',
   'account.twoFactor.appEnabled': 'Authenticator app set up.',
   'account.twoFactor.switchOffApp': 'Switch off the app',
+  'account.twoFactor.appOffOutcome':
+    'Codes from your authenticator app no longer sign you in. To use it again, set it up afresh.',
   'account.twoFactor.appDisabled': 'Authenticator app switched off.',
   'account.twoFactor.keys': 'Security keys',
   'account.twoFactor.keysIntro':
@@ -1407,6 +1409,7 @@ export const messagesEn = {
   'account.twoFactor.keyNeverUsed': 'Not used yet',
   'account.twoFactor.removeKey': 'Remove',
   'account.twoFactor.removeKeyNamed': 'Remove {name}',
+  'account.twoFactor.removeKeyOutcome': 'You can no longer sign in with {name}.',
   'account.twoFactor.keyRemoved': 'Removed {name}.',
   'account.twoFactor.addKey': 'Add a security key',
   'account.twoFactor.keyName': 'Name of the key',
@@ -3103,6 +3106,8 @@ export const messagesEn = {
   'trackPeople.linkMade': 'There is a new link for {who}; the old one no longer works.',
   'trackPeople.revoke': 'Withdraw',
   'trackPeople.revokeFor': 'Withdraw the invitation to {who}',
+  'trackPeople.revokeOutcome':
+    'The link sent to {who} stops working. If this invitation already gave them the role {role}, they lose it.',
   'trackPeople.revoked': 'The invitation to {who} was withdrawn.',
   'trackPeople.inviteTitle': 'Invite people to {key}',
   'trackPeople.addresses': 'Email addresses',
@@ -3241,11 +3246,8 @@ export const messagesEn = {
   'admin.tracks.archiveOf': 'Archive track {key}',
   'admin.tracks.restore': 'Restore track',
   'admin.tracks.restoreOf': 'Restore track {key}',
-  'admin.tracks.confirmArchive':
-    'Archive {key}? Its tickets stay readable and nobody can change them.',
-  'admin.tracks.confirmRestore': 'Restore {key}? Its tickets can be changed again.',
-  'admin.tracks.confirmYes': 'Yes',
-  'admin.tracks.confirmNo': 'No',
+  'admin.tracks.archiveOutcome':
+    'Nobody can change the tickets of {key} until it is restored, and search leaves them out. They stay readable.',
   'admin.tracks.archivedSaid': 'Track {key} was archived.',
   'admin.tracks.restored': 'Track {key} was restored.',
   'admin.tracks.problem.mapping':
@@ -3407,6 +3409,8 @@ export const messagesEn = {
   'admin.fields.optionEnableOf': 'Offer again {value}',
   'admin.fields.optionDelete': 'Delete',
   'admin.fields.optionDeleteOf': 'Delete {value}',
+  'admin.fields.optionDeleteOutcome':
+    '{children, plural, =0 {} one {Deleting {value} also deletes its second-level option, which this page does not show. } other {Deleting {value} also deletes its # second-level options, which this page does not show. }}{isDefault, select, yes {New tickets in {context} start with {value}: once it goes they start empty, and this page cannot set that again. } other {}}This cannot be undone.',
   'admin.fields.delete': 'Delete field',
   'admin.fields.deleteOf': 'Delete field {name}',
   'admin.fields.confirmDelete':
@@ -3489,6 +3493,9 @@ export const messagesEn = {
   'admin.permissions.removed': '{grantee} no longer has {permission}.',
   'admin.permissions.remove': 'Remove',
   'admin.permissions.removeOf': 'Remove {grantee} from {permission}',
+  'admin.permissions.removeOutcome':
+    '{grantee} loses {permission} in {count, plural, =0 {every track that uses this policy, and none does yet} one {{tracks}, the track that uses this policy} other {{tracks}, the # tracks that use this policy}}.',
+  'admin.permissions.removeGlobalOutcome': '{grantee} loses {permission} across the whole site.',
   'admin.permissions.global': 'Global permissions',
   'admin.permissions.newGrantIn': 'New permission in {name}',
   'admin.permissions.newGlobal': 'New global permission',
@@ -4099,7 +4106,7 @@ export const messagesEn = {
   'admin.workflow.fixTextFirst':
     'Fix the text first: the diagram can only show a definition that reads correctly.',
   'admin.workflow.confirmDiscard':
-    'Discard the draft and every unsaved change? The published version stays as it is.',
+    'The saved draft and every unsaved change are deleted. The published version stays as it is.',
   'admin.workflow.confirmDiscardButton': 'Discard draft',
   'admin.workflow.discarded': 'The draft is gone; the editor shows the published version.',
   'admin.workflow.cancel': 'Cancel',
@@ -4443,7 +4450,7 @@ export const messagesEn = {
   'admin.workflow.versions.restore': 'Restore as draft',
   'admin.workflow.versions.restoreNamed': 'Restore version {version} as the draft',
   'admin.workflow.versions.confirmRestore':
-    'Restoring version {version} replaces the current draft and every unsaved change.',
+    'Restoring version {version} replaces {draft, select, none {every unsaved change} other {the draft (version {draft}) and every unsaved change}}. The published version stays as it is.',
   'admin.workflow.versions.confirmRestoreButton': 'Restore version {version}',
   'admin.workflow.versions.restored':
     'Version {version} is the draft now. Publish it to use it again.',
@@ -6710,6 +6717,8 @@ export const messagesEn = {
   'ticketTools.links.added': 'Linked: {phrase} {key}.',
   'ticketTools.links.removed': 'Removed: {phrase} {key}.',
   'ticketTools.links.remove': 'Remove the link: {phrase} {key}',
+  'ticketTools.links.removeOutcome':
+    '{key} is in another track: once the link goes, this page cannot link it again.',
   'ticketTools.links.exists': 'That link is already there.',
   'ticketTools.links.disabled': 'Ticket links are turned off on this site.',
   'ticketTools.links.archived': 'That ticket’s track is archived, so its links cannot change.',
@@ -6765,6 +6774,8 @@ export const messagesEn = {
   'ticketTools.checklists.moved': 'The checklist {name} was moved.',
   'ticketTools.checklists.rename': 'Edit checklist {name}',
   'ticketTools.checklists.remove': 'Remove the checklist {name}',
+  'ticketTools.checklists.removeOutcome':
+    'Removing {name} deletes its {count, plural, one {# item} other {# items}} and the state of each: {done, plural, =0 {none was done} one {# was done} other {# were done}}. History keeps only the checklist’s name, so this cannot be undone.',
   'ticketTools.checklists.moveListUp': 'Move up the checklist {name}',
   'ticketTools.checklists.moveListDown': 'Move down the checklist {name}',
   'ticketTools.checklists.addItem': 'Add an item to {name}',
@@ -7124,6 +7135,9 @@ export const messagesEn = {
   'crossTrack.linked.choose': 'Choose',
   'crossTrack.linked.tooMany': 'One holds at most 100 releases.',
   'crossTrack.linked.remove': 'Remove {name}',
+  'crossTrack.linked.removeConfirm': 'Remove {track} {name}',
+  'crossTrack.linked.removeOutcome':
+    '{name} of {track} leaves this release across tracks: its tickets stop counting here, and its date no longer moves with this one. Only {track}’s administrators can link it again, and only while it is neither shipped nor archived.',
   'crossTrack.linked.removed': '{name} is no longer linked. Its date did not change.',
   'crossTrack.linked.removeFailed': 'The release could not be removed.',
   'crossTrack.edit.open': 'Edit',
@@ -7182,6 +7196,8 @@ export const messagesEn = {
   'release.crossTrack.add': 'Add to a release across tracks…',
   'release.crossTrack.listFailed': 'The releases across tracks could not be read.',
   'release.crossTrack.remove': 'Remove from {name}',
+  'release.crossTrack.removeOutcome':
+    '{name} of {track} leaves {crossTrack}: its tickets stop counting there, and its date no longer moves with it. Only {track}’s administrators can link it again, and only while it is neither shipped nor archived.',
   'release.crossTrack.linked': 'This release is now linked to {name}.',
   'release.crossTrack.unlinked':
     'This release is no longer linked to {name}. Its date did not change.',

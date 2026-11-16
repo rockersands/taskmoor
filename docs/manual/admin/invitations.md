@@ -1,7 +1,7 @@
 ---
 title: "Inviting people and running a track"
 audience: admins
-sources: apps/server/src/routes/invitations.ts, apps/server/src/authz/track-admins.ts, apps/server/src/authz/permissions.ts, apps/server/src/routes/authz.ts, apps/server/src/email/invitation.ts, apps/server/src/sso/sign-in.ts, packages/db/src/migrations/0087_track_invitations.ts, apps/web/src/trackpeople/ManagedTracksPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/web/src/trackpeople/InviteDialog.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/trackpeople/CreateTracksBox.tsx, apps/server/src/authz/create-tracks.ts, packages/db/src/migrations/0097_invitation_create_tracks.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0118-track-invitations.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/trackpeople/ChecklistNoticesBox.tsx, apps/server/src/routes/tracks.ts, packages/db/src/migrations/0103_checklist_notices.ts, docs/adr/0120-ticket-tools.md, apps/web/src/sets/trackScope.tsx, apps/web/src/shell/StandaloneFrame.tsx, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts, apps/server/src/trackgroups/access.ts, apps/server/src/ldap/accounts.ts, docs/plan/decisions.csv, apps/web/src/trackpeople/client.ts, apps/web/src/api/managedTracks.ts
+sources: apps/server/src/routes/invitations.ts, apps/server/src/authz/track-admins.ts, apps/server/src/authz/permissions.ts, apps/server/src/routes/authz.ts, apps/server/src/email/invitation.ts, apps/server/src/sso/sign-in.ts, packages/db/src/migrations/0087_track_invitations.ts, apps/web/src/trackpeople/ManagedTracksPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/web/src/trackpeople/InviteDialog.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/trackpeople/CreateTracksBox.tsx, apps/server/src/authz/create-tracks.ts, packages/db/src/migrations/0097_invitation_create_tracks.ts, apps/web/src/i18n/messages.en.ts, docs/adr/0118-track-invitations.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/trackpeople/ChecklistNoticesBox.tsx, apps/server/src/routes/tracks.ts, packages/db/src/migrations/0103_checklist_notices.ts, docs/adr/0120-ticket-tools.md, apps/web/src/sets/trackScope.tsx, apps/web/src/shell/StandaloneFrame.tsx, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts, apps/server/src/trackgroups/access.ts, apps/server/src/ldap/accounts.ts, docs/plan/decisions.csv, apps/web/src/trackpeople/client.ts, apps/web/src/api/managedTracks.ts, apps/web/src/shell/DangerAction.tsx
 accessed: 2026-11-16
 attestation: own-words
 ---
@@ -191,7 +191,10 @@ are.
 
 **Send again** and **New link** make a new link and end the old one. **New link** is there for those
 who may copy links ([Who may copy a link](#who-may-copy-a-link)), and shows the link to copy inside
-that invitation's row. **Withdraw** ends the invitation.
+that invitation's row. **Withdraw**, in the danger colour, ends the invitation after asking: the
+link sent to the address stops working, and a role this invitation already gave goes too. The
+question reads the same whether the address has an account or not. **Cancel**, which has the focus,
+or Escape keeps it.
 **Email not sent** means the mail server refused it; try **Send again**.
 
 ## What the invited person sees

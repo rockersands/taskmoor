@@ -9,6 +9,7 @@ import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import {
+  defaultOptionIds,
   FIELD_TYPES,
   type Field,
   type FieldContext,
@@ -381,6 +382,7 @@ function ContextOptions({
   const newId = useId();
   const [value, setValue] = useState('');
   const options = context.options ?? [];
+  const defaults = defaultOptionIds(context.defaultValue);
   const reload = () => client.field(field.id).then(onField, onProblem);
 
   return (
@@ -396,6 +398,8 @@ function ContextOptions({
             <OptionRow
               key={option.id}
               option={option}
+              context={context.name}
+              isDefault={[option, ...(option.children ?? [])].some((o) => defaults.includes(o.id))}
               onRename={(wanted) =>
                 client
                   .updateOption(field.id, context.id, option.id, { value: wanted })
@@ -419,12 +423,17 @@ function ContextOptions({
                     );
                   }, onProblem)
               }
-              onDelete={() =>
-                client.deleteOption(field.id, context.id, option.id).then(() => {
-                  void reload();
-                  onChanged(t('admin.fields.optionDeleted', { value: option.value }));
-                }, onProblem)
-              }
+              onDelete={async () => {
+                try {
+                  await client.deleteOption(field.id, context.id, option.id);
+                } catch (error) {
+                  // One a ticket holds is refused, and says so; a question stays open.
+                  onProblem(error);
+                  throw error;
+                }
+                void reload();
+                onChanged(t('admin.fields.optionDeleted', { value: option.value }));
+              }}
             />
           ))}
         </ul>
@@ -463,18 +472,32 @@ function ContextOptions({
   );
 }
 
+/**
+ * One option: rename, stop or start offering it, delete it. Deleting asks first only when it
+ * takes what this page cannot show or put back (D13, T-267): its second-level options, or the
+ * context's default. Without either, typing its name again brings it back, so it goes at once; one
+ * a ticket holds is refused by the server either way.
+ */
 function OptionRow({
   option,
+  context,
+  isDefault,
   onRename,
   onToggle,
   onDelete,
 }: {
   option: FieldOption;
+  /** The context's name, for the question. */
+  context: string;
+  /** Whether the context's default names it or one of its second-level options. */
+  isDefault: boolean;
   onRename: (value: string) => void;
   onToggle: () => void;
-  onDelete: () => void;
+  /** Rejects when the server refused, so a question stays open. */
+  onDelete: () => Promise<void>;
 }) {
   const t = useT();
+  const children = option.children?.length ?? 0;
   const inputId = useId();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(option.value);
@@ -545,14 +568,29 @@ function OptionRow({
         >
           {t(option.disabled ? 'admin.fields.optionEnable' : 'admin.fields.optionDisable')}
         </button>
-        <button
-          type="button"
-          className="button-secondary people-action"
-          aria-label={t('admin.fields.optionDeleteOf', { value: option.value })}
-          onClick={onDelete}
-        >
-          {t('admin.fields.optionDelete')}
-        </button>
+        {children > 0 || isDefault ? (
+          <DangerAction
+            label={t('admin.fields.optionDelete')}
+            name={t('admin.fields.optionDeleteOf', { value: option.value })}
+            outcome={t('admin.fields.optionDeleteOutcome', {
+              value: option.value,
+              children,
+              isDefault: isDefault ? 'yes' : 'no',
+              context,
+            })}
+            confirmLabel={t('admin.fields.optionDeleteOf', { value: option.value })}
+            onConfirm={onDelete}
+          />
+        ) : (
+          <button
+            type="button"
+            className="button-secondary people-action"
+            aria-label={t('admin.fields.optionDeleteOf', { value: option.value })}
+            onClick={() => void onDelete().catch(() => {})}
+          >
+            {t('admin.fields.optionDelete')}
+          </button>
+        )}
       </span>
     </li>
   );

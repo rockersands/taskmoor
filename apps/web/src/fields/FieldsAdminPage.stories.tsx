@@ -54,6 +54,23 @@ export const OptionInUse: Story = {
   },
 };
 
+/**
+ * Deleting an option that takes its second-level options and the default with it asks first,
+ * saying so (D13, T-267); at a phone's width nothing sticks out.
+ */
+export const DeletingAnOptionAsksAtPhoneWidth: Story = {
+  args: { client: fakeFieldsClient() },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Office' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Delete Madrid' }));
+    const question = canvas.getByRole('group', { name: /^Deleting Madrid also deletes/ });
+    await expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await fitsPhoneWidth(canvas);
+  },
+};
+
 export const NoFieldsYet: Story = {
   args: { client: { ...fakeFieldsClient(), fields: async () => [] } },
   play: async ({ canvasElement }) => {

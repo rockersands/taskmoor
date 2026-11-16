@@ -50,7 +50,7 @@ stays in the API for them.
 
 On **Global permissions**, **New global permission** opens the form above the list: **Give** it
 to **A group**, **A person** or **Anyone signed in**. **Remove**, in the danger colour, takes one
-back.
+back after asking: the question says who loses which permission across the whole site.
 
 | Permission | Code | What it allows | Given by default to |
 |---|---|---|---|
@@ -135,8 +135,9 @@ To work with policies under **Access policies**:
    policy's grants, or **No grants**, then **Add an access policy**.
 2. **Manage** a policy to see its grants by permission and the tracks it is **Used by**.
 3. **New permission in** the policy's name opens the form above its grants, as on **Global
-   permissions**: choose the **Permission** and who it goes **To**, then **Give**. **Remove**
-   takes a grant away.
+   permissions**: choose the **Permission** and who it goes **To**, then **Give**. **Remove**, in
+   the danger colour, takes a grant away after asking: one grant can reach a whole role, group or
+   everyone, so the question names who loses which permission and the tracks that use the policy.
 4. **Delete policy** works only when no track uses it. Like **Delete** on a role, it is in the
    danger colour and asks first, saying what will happen.
 

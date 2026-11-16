@@ -1011,7 +1011,11 @@ of a track's or a release's name in the filter and the rest can be found too.
 
 Linking moves no date. A release on another day reads as **Out of step** until someone moves it.
 Its track's administrators, its owner and administrators can **Remove** it, which changes no date
-either. Nobody removes a release they may not see. A release merged into another or deleted leaves
+either. **Remove**, in the danger colour, asks first, in the table, on the card or on the release's
+own page (**Remove from** and the name): it names the release and its track, and says that its
+tickets stop counting here, that its date no longer moves with this one, and that only that
+track's administrators can link it again, while it is neither shipped nor archived. **Cancel**, which
+has the focus, or Escape keeps it. Nobody removes a release they may not see. A release merged into another or deleted leaves
 by itself.
 
 ### Changing or deleting it

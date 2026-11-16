@@ -1437,6 +1437,8 @@ export const messagesEs: Record<MessageId, string> = {
   'account.twoFactor.turnOnApp': 'Activar',
   'account.twoFactor.appEnabled': 'Aplicación autenticadora configurada.',
   'account.twoFactor.switchOffApp': 'Desactivar la aplicación',
+  'account.twoFactor.appOffOutcome':
+    'Los códigos de tu aplicación autenticadora ya no sirven para iniciar sesión. Para volver a usarla, configúrala de nuevo.',
   'account.twoFactor.appDisabled': 'Aplicación autenticadora desactivada.',
   'account.twoFactor.keys': 'Llaves de seguridad',
   'account.twoFactor.keysIntro':
@@ -1447,6 +1449,7 @@ export const messagesEs: Record<MessageId, string> = {
   'account.twoFactor.keyNeverUsed': 'Aún sin usar',
   'account.twoFactor.removeKey': 'Quitar',
   'account.twoFactor.removeKeyNamed': 'Quitar {name}',
+  'account.twoFactor.removeKeyOutcome': 'Ya no puedes iniciar sesión con {name}.',
   'account.twoFactor.keyRemoved': 'Se quitó {name}.',
   'account.twoFactor.addKey': 'Añadir una llave de seguridad',
   'account.twoFactor.keyName': 'Nombre de la llave',
@@ -3190,6 +3193,8 @@ export const messagesEs: Record<MessageId, string> = {
   'trackPeople.linkMade': 'Hay un enlace nuevo para {who}; el anterior ya no funciona.',
   'trackPeople.revoke': 'Retirar',
   'trackPeople.revokeFor': 'Retirar la invitación a {who}',
+  'trackPeople.revokeOutcome':
+    'El enlace enviado a {who} deja de funcionar. Si esta invitación ya le dio el rol {role}, lo pierde.',
   'trackPeople.revoked': 'Se retiró la invitación a {who}.',
   'trackPeople.inviteTitle': 'Invitar personas a {key}',
   'trackPeople.addresses': 'Direcciones de correo',
@@ -3333,11 +3338,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.tracks.archiveOf': 'Archivar el track {key}',
   'admin.tracks.restore': 'Restaurar el track',
   'admin.tracks.restoreOf': 'Restaurar el track {key}',
-  'admin.tracks.confirmArchive':
-    '¿Archivar {key}? Sus tickets se pueden seguir leyendo y nadie puede cambiarlos.',
-  'admin.tracks.confirmRestore': '¿Restaurar {key}? Sus tickets se pueden volver a cambiar.',
-  'admin.tracks.confirmYes': 'Sí',
-  'admin.tracks.confirmNo': 'No',
+  'admin.tracks.archiveOutcome':
+    'Nadie puede cambiar los tickets de {key} hasta que se restaure, y la búsqueda los deja fuera. Se siguen pudiendo leer.',
   'admin.tracks.archivedSaid': 'Se archivó el track {key}.',
   'admin.tracks.restored': 'Se restauró el track {key}.',
   'admin.tracks.problem.mapping':
@@ -3500,6 +3502,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.fields.optionEnableOf': 'Volver a ofrecer {value}',
   'admin.fields.optionDelete': 'Eliminar',
   'admin.fields.optionDeleteOf': 'Eliminar {value}',
+  'admin.fields.optionDeleteOutcome':
+    '{children, plural, =0 {} one {Eliminar {value} también elimina su opción de segundo nivel, que esta página no muestra. } other {Eliminar {value} también elimina sus # opciones de segundo nivel, que esta página no muestra. }}{isDefault, select, yes {Los tickets nuevos de {context} empiezan con {value}: cuando se vaya empezarán vacíos, y esta página no puede volver a ponerlo. } other {}}No se puede deshacer.',
   'admin.fields.delete': 'Eliminar el campo',
   'admin.fields.deleteOf': 'Eliminar el campo {name}',
   'admin.fields.confirmDelete':
@@ -3582,6 +3586,9 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.permissions.removed': '{grantee} ya no tiene {permission}.',
   'admin.permissions.remove': 'Quitar',
   'admin.permissions.removeOf': 'Quitar a {grantee} de {permission}',
+  'admin.permissions.removeOutcome':
+    '{grantee} pierde {permission} en {count, plural, =0 {cada track que use esta política, y aún no la usa ninguno} one {{tracks}, el track que usa esta política} other {{tracks}, los # tracks que usan esta política}}.',
+  'admin.permissions.removeGlobalOutcome': '{grantee} pierde {permission} en todo el sitio.',
   'admin.permissions.global': 'Permisos globales',
   'admin.permissions.newGrantIn': 'Nuevo permiso en {name}',
   'admin.permissions.newGlobal': 'Nuevo permiso global',
@@ -4205,7 +4212,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.fixTextFirst':
     'Corrige antes el texto: el diagrama solo puede mostrar una definición que se lea correctamente.',
   'admin.workflow.confirmDiscard':
-    '¿Descartar el borrador y todos los cambios sin guardar? La versión publicada se queda como está.',
+    'El borrador guardado y todos los cambios sin guardar se eliminan. La versión publicada se queda como está.',
   'admin.workflow.confirmDiscardButton': 'Descartar el borrador',
   'admin.workflow.discarded': 'El borrador se descartó; el editor muestra la versión publicada.',
   'admin.workflow.cancel': 'Cancelar',
@@ -4556,7 +4563,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.versions.restore': 'Restaurar como borrador',
   'admin.workflow.versions.restoreNamed': 'Restaurar la versión {version} como borrador',
   'admin.workflow.versions.confirmRestore':
-    'Restaurar la versión {version} reemplaza el borrador actual y todos los cambios sin guardar.',
+    'Restaurar la versión {version} reemplaza {draft, select, none {todos los cambios sin guardar} other {el borrador (versión {draft}) y todos los cambios sin guardar}}. La versión publicada se queda como está.',
   'admin.workflow.versions.confirmRestoreButton': 'Restaurar la versión {version}',
   'admin.workflow.versions.restored':
     'La versión {version} es ahora el borrador. Publícala para volver a usarla.',
@@ -6861,6 +6868,8 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketTools.links.added': 'Enlazado: {phrase} {key}.',
   'ticketTools.links.removed': 'Quitado: {phrase} {key}.',
   'ticketTools.links.remove': 'Quitar el enlace: {phrase} {key}',
+  'ticketTools.links.removeOutcome':
+    '{key} está en otro track: cuando el enlace se vaya, esta página no puede volver a enlazarlo.',
   'ticketTools.links.exists': 'Ese enlace ya existe.',
   'ticketTools.links.disabled': 'Los enlaces entre tickets están desactivados en este sitio.',
   'ticketTools.links.archived':
@@ -6917,6 +6926,8 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketTools.checklists.moved': 'Se movió la lista {name}.',
   'ticketTools.checklists.rename': 'Editar la lista {name}',
   'ticketTools.checklists.remove': 'Quitar la lista {name}',
+  'ticketTools.checklists.removeOutcome':
+    'Quitar {name} elimina {count, plural, one {su # elemento} other {sus # elementos}} y el estado de cada uno: {done, plural, =0 {ninguno estaba hecho} one {# estaba hecho} other {# estaban hechos}}. El historial solo guarda el nombre de la lista, así que no se puede deshacer.',
   'ticketTools.checklists.moveListUp': 'Subir la lista {name}',
   'ticketTools.checklists.moveListDown': 'Bajar la lista {name}',
   'ticketTools.checklists.addItem': 'Añadir un elemento a {name}',
@@ -7284,6 +7295,9 @@ export const messagesEs: Record<MessageId, string> = {
   'crossTrack.linked.choose': 'Elegir',
   'crossTrack.linked.tooMany': 'Una admite como máximo 100 versiones.',
   'crossTrack.linked.remove': 'Quitar {name}',
+  'crossTrack.linked.removeConfirm': 'Quitar {track} {name}',
+  'crossTrack.linked.removeOutcome':
+    '{name} de {track} sale de esta versión entre tracks: sus tickets dejan de contar aquí, y su fecha ya no se mueve con esta. Solo los administradores de {track} pueden volver a enlazarla, y solo mientras no esté publicada ni archivada.',
   'crossTrack.linked.removed': '{name} ya no está enlazada. Su fecha no cambió.',
   'crossTrack.linked.removeFailed': 'No se pudo quitar la versión.',
   'crossTrack.edit.open': 'Editar',
@@ -7342,6 +7356,8 @@ export const messagesEs: Record<MessageId, string> = {
   'release.crossTrack.add': 'Añadir a una versión entre tracks…',
   'release.crossTrack.listFailed': 'No se pudieron leer las versiones entre tracks.',
   'release.crossTrack.remove': 'Quitar de {name}',
+  'release.crossTrack.removeOutcome':
+    '{name} de {track} sale de {crossTrack}: sus tickets dejan de contar allí, y su fecha ya no se mueve con ella. Solo los administradores de {track} pueden volver a enlazarla, y solo mientras no esté publicada ni archivada.',
   'release.crossTrack.linked': 'Esta versión ahora está enlazada a {name}.',
   'release.crossTrack.unlinked': 'Esta versión ya no está enlazada a {name}. Su fecha no cambió.',
   'release.crossTrack.noneToJoin': 'No hay ninguna a la que unirse',
