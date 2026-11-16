@@ -66,3 +66,25 @@ describe('the sources a plan may take (T-305)', () => {
     ]);
   });
 });
+
+describe('the teams a plan may take (T-286)', () => {
+  it('[PLN-005] offers every team, past the list’s first page', async () => {
+    const asked: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        const path = url.replace(/^\/api\/v1/, '');
+        asked.push(path);
+        const after = new URL(url, 'http://x').searchParams.get('after');
+        return after === null
+          ? jsonResponse(200, { teams: [{ id: 1, name: 'Data', memberCount: 4 }], next: 'n-1' })
+          : jsonResponse(200, { teams: [{ id: 9, name: 'Ops', memberCount: 1 }], next: null });
+      }),
+    );
+    expect(await planClient.teamOptions()).toEqual([
+      { id: 1, name: 'Data', memberCount: 4 },
+      { id: 9, name: 'Ops', memberCount: 1 },
+    ]);
+    expect(asked).toEqual(['/teams?limit=500', '/teams?limit=500&after=n-1']);
+  });
+});

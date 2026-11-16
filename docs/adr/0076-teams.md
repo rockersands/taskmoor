@@ -68,3 +68,16 @@ Another branch adds read-only info field types in a migration numbered before th
   pages for people who are not administrators.
 - A migration numbered after 0060 that rewrites `field_type_check` from a fixed list must keep
   `team`.
+
+## As built: the list a page at a time (T-286, answered on 2026-11-16)
+
+`GET /api/v1/teams` was the last list open to everyone signed in that built its whole answer at
+once. It now pages by a cursor, as tracks and saved searches do (T-305, T-310): by name ignoring
+case, then id, 100 teams unless `limit` asks for another number up to 500 (a picker asks for
+8, T-282). `after` (or `cursor`) takes the `next` of the page before, built by
+`routes/sort-cursor.ts` from the last row's lowered name and id, and every answer carries `next`,
+null after the last page. A cursor was chosen over the offset and total of `GET /users`: names
+are unique ignoring case, so the list cannot shift under a reader between pages. The web app's
+readers that want every team (the Teams page, a board's team and a plan's teams) follow the pages
+through `everyTeam` (`apps/web/src/api/teams.ts`). Not changed: `GET /groups`, which only
+administrators read, still answers in full.
