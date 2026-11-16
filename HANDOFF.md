@@ -22,7 +22,16 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: Google's button as Google draws it (2026-11-16, Windows)
+### Latest: touch stories in their own projects (2026-11-16, Windows)
+
+On `main` at `98dfd0f5` after a full gate (10,396 tests, 315 e2e).
+
+- T-328: stories that need a touch screen carry a literal tags: ['touch'] and run in stories-touch and
+  stories-dark-touch (Playwright context with hasTouch; one page each). The mid-story CDP toggle that stalled
+  under load is gone. Run all four story projects to cover both skins and both pointers.
+- Next: T-327 (story tests never ran axe) on wave26.
+
+### Earlier: Google's button as Google draws it (2026-11-16, Windows)
 
 On `main` at `083f806a` after a full gate (10,389 tests, 315 e2e). No migration (the next is 0114).
 
