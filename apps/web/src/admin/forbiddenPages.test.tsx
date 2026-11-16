@@ -8,11 +8,13 @@ import { fakeLayoutsClient } from '../layouts/fixtures';
 import { LayoutEditorPage } from '../layouts/LayoutEditorPage';
 import { PermissionExplainerPage } from '../permissions/PermissionExplainerPage';
 import { VisibilityPage } from '../permissions/VisibilityPage';
+import { fakePrioritiesClient } from '../priorities/fixtures';
+import { PrioritiesPage } from '../priorities/PrioritiesPage';
 import { SessionProvider } from '../session/SessionProvider';
 import { WebhooksPage } from '../webhooks/WebhooksPage';
 import { AdminOverviewPage } from './AdminOverviewPage';
 import { AiLimitsPage } from './AiLimitsPage';
-import { ADMIN, CONFIG_ADMIN, MEMBER } from './fixtures';
+import { ADMIN, CONFIG_ADMIN, MEMBER, TRACK_ADMIN } from './fixtures';
 import { type McpClient, McpPage } from './McpPage';
 
 /** MCP settings a site administrator would read; `refused` answers as the server does to others. */
@@ -73,6 +75,23 @@ describe('a page someone may not use says only so (T-144)', () => {
     const container = open(<TrackSetsPage />);
     expect(container.querySelector('.page-purpose')).toBeNull();
     expect(container.querySelector('.help-tip-button')).toBeNull();
+  });
+
+  it.each([
+    ['a member', MEMBER],
+    ['someone who only runs tracks', TRACK_ADMIN],
+  ])('[NFR-005] Priorities, for %s', async (_, session) => {
+    await refusedOnly(
+      open(<PrioritiesPage />, session),
+      'Priorities',
+      /^Only site and configuration administrators change priorities/,
+    );
+  });
+
+  it('[NFR-005] a configuration administrator still sees what Priorities is for', async () => {
+    const container = open(<PrioritiesPage client={fakePrioritiesClient()} />, CONFIG_ADMIN);
+    expect(await screen.findByText('Urgent')).toBeVisible();
+    expect(container.querySelector('.page-purpose')).not.toBeNull();
   });
 
   it('[NFR-005] layouts, for someone who runs no track', async () => {

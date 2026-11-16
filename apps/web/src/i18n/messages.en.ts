@@ -3592,6 +3592,111 @@ export const messagesEn = {
   'closeReason.name.notPlanned': 'Not planned',
   'closeReason.name.duplicate': 'Duplicate',
   'closeReason.name.notReproducible': 'Not reproducible',
+  // Priorities, priority sets and close reasons (T-320; CORE-014; ADR-114 section 1).
+  'settings.priorities': 'Priorities',
+  'settings.prioritiesHint':
+    'The priorities and close reasons tickets choose from, and which priorities each track offers.',
+  'admin.priorities.title': 'Priorities',
+  'admin.priorities.purpose':
+    'Keep the site’s priorities and close reasons, and the priority sets that decide which priorities a track offers.',
+  'admin.priorities.about':
+    'Every ticket has a priority. A track offers the priorities of its priority set, and a new ticket gets that set’s default unless someone chooses another. A close reason says why a ticket was closed; workflows set one as they close a ticket. A priority or close reason that is in use is deleted only once you choose which one takes its place.',
+  'admin.priorities.forbidden':
+    'Only site and configuration administrators change priorities and close reasons.',
+  'admin.priorities.loading': 'Reading the priorities…',
+  'admin.priorities.failed': 'The priorities could not be read. Try again in a moment.',
+  'admin.priorities.name': 'Name',
+  'admin.priorities.description': 'Description (optional)',
+  'admin.priorities.up': 'Up',
+  'admin.priorities.down': 'Down',
+  'admin.priorities.change': 'Change',
+  'admin.priorities.manage': 'Manage',
+  'admin.priorities.delete': 'Delete',
+  'admin.priorities.save': 'Save',
+  'admin.priorities.cancel': 'Cancel',
+  'admin.priorities.added': '{name} was added.',
+  'admin.priorities.saved': '{name} was saved.',
+  'admin.priorities.deleted': '{name} was deleted.',
+  'admin.priorities.movedUp': '{name} moved up.',
+  'admin.priorities.movedDown': '{name} moved down.',
+  'admin.priorities.replaceOf': 'What takes the place of {name}',
+  'admin.priorities.replaceWith': 'Instead, give them',
+  'admin.priorities.problem.nameTaken': 'That name is taken. Choose another.',
+  'admin.priorities.problem.defaultSet':
+    'The default set is not deleted. Make another set the default first.',
+  'admin.priorities.problem.limit':
+    'A priority set offers at most {limit} priorities on this site.',
+  'admin.priorities.problem.listChanged':
+    'The list changed since this page read it, so nothing moved. It has been read again: try once more.',
+  'admin.priorities.problem.gone': 'That is no longer there. The page has been read again.',
+  'admin.priorities.problem.forbidden':
+    'You may no longer change these. A site administrator can give you Change configuration.',
+  'admin.priorities.problem.other': 'That could not be saved. Try again in a moment.',
+  'admin.priorities.priorities': 'Priorities, most urgent first',
+  'admin.priorities.new': 'New priority',
+  'admin.priorities.add': 'Add a priority',
+  'admin.priorities.note':
+    'A new priority joins the default priority set. A priority’s icon comes from its place in this list, from the most urgent at the top to the least at the bottom, so moving one changes its icon.',
+  'admin.priorities.emptyTitle': 'There are no priorities.',
+  'admin.priorities.empty': 'Every ticket needs one: add the first.',
+  'admin.priorities.moveUp': 'Move priority {name} up',
+  'admin.priorities.moveDown': 'Move priority {name} down',
+  'admin.priorities.changeOf': 'Change priority {name}',
+  'admin.priorities.deleteOf': 'Delete priority {name}',
+  'admin.priorities.confirmDelete':
+    'Delete {name}? If tickets have it, you choose next which priority they get instead, and priority sets that offer {name} offer that one. This cannot be undone.',
+  'admin.priorities.inUse':
+    '{count, plural, one {# ticket has {name}.} other {# tickets have {name}.}} Choose the priority they get instead. Priority sets that offer {name} will offer it, and those that give {name} to new tickets give it instead.',
+  'admin.priorities.noOther': 'There is no other priority to give them. Add one first.',
+  'admin.priorities.deletedInto': '{name} was deleted; its tickets have {into} now.',
+  'admin.priorities.sets': 'Priority sets',
+  'admin.priorities.newSet': 'New priority set',
+  'admin.priorities.addSet': 'Add a priority set',
+  'admin.priorities.setsNote':
+    'A track offers the priorities of the set it uses, and a track that chooses none uses the default set. A ticket keeps a priority its track stops offering until someone changes it.',
+  'admin.priorities.setsLink': 'Choose a track’s set on Which sets a track uses.',
+  'admin.priorities.setName': 'Set name',
+  'admin.priorities.offers': 'Priorities it offers',
+  'admin.priorities.newTickets': 'New tickets get',
+  'admin.priorities.middle': 'The middle of what it offers',
+  'admin.priorities.newTicketsHint':
+    'Someone creating a ticket may still choose another priority the set offers.',
+  'admin.priorities.defaultSet': 'Default set',
+  'admin.priorities.setSummary':
+    'Offers {priorities}. New tickets get {priority}. {tracks, plural, =0 {No track uses it.} one {# track uses it.} other {# tracks use it.}}',
+  'admin.priorities.setSummaryMiddle':
+    'Offers {priorities}. New tickets get the middle one. {tracks, plural, =0 {No track uses it.} one {# track uses it.} other {# tracks use it.}}',
+  'admin.priorities.manageSetOf': 'Manage priority set {name}',
+  'admin.priorities.setChangeOf': 'Change priority set {name}',
+  'admin.priorities.defaultSetNote':
+    'Tracks that choose no set use this one. The default set is not deleted: to delete it, make another set the default first.',
+  'admin.priorities.makeDefault': 'Make this the default set',
+  'admin.priorities.makeDefaultOf': 'Make {name} the default set',
+  'admin.priorities.madeDefault':
+    '{name} is the default set now. Tracks that choose no set offer its priorities.',
+  'admin.priorities.deleteSetOf': 'Delete priority set {name}',
+  'admin.priorities.confirmDeleteSet':
+    'Delete {name}? {tracks, plural, =0 {No track uses it.} one {The # track that uses it goes back to the default set, {fallback}.} other {The # tracks that use it go back to the default set, {fallback}.}} This cannot be undone.',
+  'admin.priorities.reasons': 'Close reasons',
+  'admin.priorities.newReason': 'New close reason',
+  'admin.priorities.addReason': 'Add a close reason',
+  'admin.priorities.reasonsNote':
+    'Why a ticket was closed. Workflows set one as they close a ticket, or ask for one; their lists follow this order.',
+  'admin.priorities.reasonsEmptyTitle': 'There are no close reasons.',
+  'admin.priorities.reasonsEmpty':
+    'Add one so that workflows have a reason to set when they close a ticket.',
+  'admin.priorities.reasonMoveUp': 'Move close reason {name} up',
+  'admin.priorities.reasonMoveDown': 'Move close reason {name} down',
+  'admin.priorities.reasonChangeOf': 'Change close reason {name}',
+  'admin.priorities.reasonDeleteOf': 'Delete close reason {name}',
+  'admin.priorities.reasonConfirmDelete':
+    'Delete {name}? If tickets were closed with it, or a workflow sets it, you choose next which reason takes its place, and each workflow that sets {name} gets a new version that sets that one. This cannot be undone.',
+  'admin.priorities.reasonInUse':
+    '{count, plural, one {# ticket was closed with {name}.} other {# tickets were closed with {name}.}} Choose the reason they get instead. A workflow that sets {name} gets a new version that sets it too.',
+  'admin.priorities.reasonUsedBy':
+    '{count, plural, one {The workflow {workflows} sets {name}.} other {The workflows {workflows} set {name}.}} Choose the reason to set instead: each of them gets a new version that sets it.',
+  'admin.priorities.reasonNoOther': 'There is no other close reason to choose. Add one first.',
+  'admin.priorities.reasonDeletedInto': '{name} was deleted; {into} takes its place.',
   'ticketView.editLabels': 'Edit labels',
   'ticketView.save': 'Save',
   'ticketView.cancel': 'Cancel',
@@ -6543,7 +6648,7 @@ export const messagesEn = {
   'admin.trackSets.purpose':
     'Choose a track’s layouts, priorities, visibility policy and notifications from the sets that exist.',
   'admin.trackSets.about':
-    'This page only chooses. Layout sets and visibility policies are made on pages of their own; priority sets and notification policies are made through the API for now. Type sets, field rule sets and workflow maps are chosen where they are made.',
+    'This page only chooses. Layout sets, priority sets and visibility policies are made on pages of their own; notification policies are made through the API for now. Type sets, field rule sets and workflow maps are chosen where they are made.',
   'admin.trackSets.forbidden':
     'Only site and configuration administrators choose a track’s sets here.',
   'admin.trackSets.loading': 'Reading…',
@@ -6561,6 +6666,7 @@ export const messagesEn = {
   'admin.trackSets.priorityNone': 'The site’s default priorities',
   'admin.trackSets.priorityHint':
     'The priorities tickets choose from. A ticket keeps a priority its track stops offering.',
+  'admin.trackSets.priorityLink': 'Make and change priority sets on Priorities.',
   'admin.trackSets.visibility': 'Visibility policy',
   'admin.trackSets.visibilityNone': 'None: tickets have no level',
   'admin.trackSets.visibilityHint':

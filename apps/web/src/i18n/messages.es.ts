@@ -3690,6 +3690,112 @@ export const messagesEs: Record<MessageId, string> = {
   'closeReason.name.notPlanned': 'No planificado',
   'closeReason.name.duplicate': 'Duplicado',
   'closeReason.name.notReproducible': 'No reproducible',
+  // Prioridades, conjuntos de prioridades y motivos de cierre (T-320; CORE-014; ADR-114).
+  'settings.priorities': 'Prioridades',
+  'settings.prioritiesHint':
+    'Las prioridades y los motivos de cierre entre los que eligen los tickets, y qué prioridades ofrece cada track.',
+  'admin.priorities.title': 'Prioridades',
+  'admin.priorities.purpose':
+    'Mantén las prioridades y los motivos de cierre del sitio, y los conjuntos de prioridades que deciden qué prioridades ofrece un track.',
+  'admin.priorities.about':
+    'Todo ticket tiene una prioridad. Un track ofrece las prioridades de su conjunto de prioridades, y un ticket nuevo recibe la predeterminada de ese conjunto salvo que alguien elija otra. Un motivo de cierre dice por qué se cerró un ticket; los flujos de trabajo definen uno al cerrar un ticket. Una prioridad o un motivo de cierre en uso solo se elimina cuando eliges cuál ocupa su lugar.',
+  'admin.priorities.forbidden':
+    'Solo los administradores del sitio y de configuración cambian las prioridades y los motivos de cierre.',
+  'admin.priorities.loading': 'Leyendo las prioridades…',
+  'admin.priorities.failed':
+    'No se pudieron leer las prioridades. Inténtalo de nuevo en un momento.',
+  'admin.priorities.name': 'Nombre',
+  'admin.priorities.description': 'Descripción (opcional)',
+  'admin.priorities.up': 'Subir',
+  'admin.priorities.down': 'Bajar',
+  'admin.priorities.change': 'Cambiar',
+  'admin.priorities.manage': 'Gestionar',
+  'admin.priorities.delete': 'Eliminar',
+  'admin.priorities.save': 'Guardar',
+  'admin.priorities.cancel': 'Cancelar',
+  'admin.priorities.added': 'Se añadió {name}.',
+  'admin.priorities.saved': 'Se guardó {name}.',
+  'admin.priorities.deleted': 'Se eliminó {name}.',
+  'admin.priorities.movedUp': '{name} subió.',
+  'admin.priorities.movedDown': '{name} bajó.',
+  'admin.priorities.replaceOf': 'Qué ocupa el lugar de {name}',
+  'admin.priorities.replaceWith': 'En su lugar, darles',
+  'admin.priorities.problem.nameTaken': 'Ese nombre ya existe. Elige otro.',
+  'admin.priorities.problem.defaultSet':
+    'El conjunto predeterminado no se elimina. Primero haz predeterminado otro conjunto.',
+  'admin.priorities.problem.limit':
+    'Un conjunto de prioridades ofrece como mucho {limit} prioridades en este sitio.',
+  'admin.priorities.problem.listChanged':
+    'La lista cambió desde que esta página la leyó, así que nada se movió. Se ha leído de nuevo: inténtalo otra vez.',
+  'admin.priorities.problem.gone': 'Eso ya no existe. La página se ha leído de nuevo.',
+  'admin.priorities.problem.forbidden':
+    'Ya no puedes cambiar esto. Un administrador del sitio puede darte Cambiar la configuración.',
+  'admin.priorities.problem.other': 'No se pudo guardar. Inténtalo de nuevo en un momento.',
+  'admin.priorities.priorities': 'Prioridades, de la más urgente a la menos',
+  'admin.priorities.new': 'Nueva prioridad',
+  'admin.priorities.add': 'Añadir una prioridad',
+  'admin.priorities.note':
+    'Una prioridad nueva entra en el conjunto de prioridades predeterminado. El icono de una prioridad sale de su lugar en esta lista, de la más urgente arriba a la menos urgente abajo, así que moverla cambia su icono.',
+  'admin.priorities.emptyTitle': 'No hay prioridades.',
+  'admin.priorities.empty': 'Todo ticket necesita una: añade la primera.',
+  'admin.priorities.moveUp': 'Subir la prioridad {name}',
+  'admin.priorities.moveDown': 'Bajar la prioridad {name}',
+  'admin.priorities.changeOf': 'Cambiar la prioridad {name}',
+  'admin.priorities.deleteOf': 'Eliminar la prioridad {name}',
+  'admin.priorities.confirmDelete':
+    '¿Eliminar {name}? Si hay tickets que la tienen, eliges a continuación qué prioridad reciben en su lugar, y los conjuntos de prioridades que ofrecen {name} ofrecerán esa. No se puede deshacer.',
+  'admin.priorities.inUse':
+    '{count, plural, one {# ticket tiene {name}.} other {# tickets tienen {name}.}} Elige la prioridad que reciben en su lugar. Los conjuntos de prioridades que ofrecen {name} la ofrecerán, y los que dan {name} a los tickets nuevos darán esa.',
+  'admin.priorities.noOther': 'No hay otra prioridad que darles. Añade una primero.',
+  'admin.priorities.deletedInto': 'Se eliminó {name}; sus tickets tienen ahora {into}.',
+  'admin.priorities.sets': 'Conjuntos de prioridades',
+  'admin.priorities.newSet': 'Nuevo conjunto de prioridades',
+  'admin.priorities.addSet': 'Añadir un conjunto de prioridades',
+  'admin.priorities.setsNote':
+    'Un track ofrece las prioridades del conjunto que usa, y un track que no elige ninguno usa el conjunto predeterminado. Un ticket conserva una prioridad que su track deja de ofrecer hasta que alguien la cambia.',
+  'admin.priorities.setsLink': 'Elige el conjunto de un track en Qué conjuntos usa un track.',
+  'admin.priorities.setName': 'Nombre del conjunto',
+  'admin.priorities.offers': 'Prioridades que ofrece',
+  'admin.priorities.newTickets': 'Los tickets nuevos reciben',
+  'admin.priorities.middle': 'La del medio de las que ofrece',
+  'admin.priorities.newTicketsHint':
+    'Quien crea un ticket puede elegir aún otra prioridad que ofrezca el conjunto.',
+  'admin.priorities.defaultSet': 'Conjunto predeterminado',
+  'admin.priorities.setSummary':
+    'Ofrece {priorities}. Los tickets nuevos reciben {priority}. {tracks, plural, =0 {Ningún track lo usa.} one {# track lo usa.} other {# tracks lo usan.}}',
+  'admin.priorities.setSummaryMiddle':
+    'Ofrece {priorities}. Los tickets nuevos reciben la del medio. {tracks, plural, =0 {Ningún track lo usa.} one {# track lo usa.} other {# tracks lo usan.}}',
+  'admin.priorities.manageSetOf': 'Gestionar el conjunto de prioridades {name}',
+  'admin.priorities.setChangeOf': 'Cambiar el conjunto de prioridades {name}',
+  'admin.priorities.defaultSetNote':
+    'Los tracks que no eligen conjunto usan este. El conjunto predeterminado no se elimina: para eliminarlo, primero haz predeterminado otro conjunto.',
+  'admin.priorities.makeDefault': 'Hacer este el conjunto predeterminado',
+  'admin.priorities.makeDefaultOf': 'Hacer {name} el conjunto predeterminado',
+  'admin.priorities.madeDefault':
+    '{name} es ahora el conjunto predeterminado. Los tracks que no eligen conjunto ofrecen sus prioridades.',
+  'admin.priorities.deleteSetOf': 'Eliminar el conjunto de prioridades {name}',
+  'admin.priorities.confirmDeleteSet':
+    '¿Eliminar {name}? {tracks, plural, =0 {Ningún track lo usa.} one {El # track que lo usa vuelve al conjunto predeterminado, {fallback}.} other {Los # tracks que lo usan vuelven al conjunto predeterminado, {fallback}.}} No se puede deshacer.',
+  'admin.priorities.reasons': 'Motivos de cierre',
+  'admin.priorities.newReason': 'Nuevo motivo de cierre',
+  'admin.priorities.addReason': 'Añadir un motivo de cierre',
+  'admin.priorities.reasonsNote':
+    'Por qué se cerró un ticket. Los flujos de trabajo definen uno al cerrar un ticket, o lo piden; sus listas siguen este orden.',
+  'admin.priorities.reasonsEmptyTitle': 'No hay motivos de cierre.',
+  'admin.priorities.reasonsEmpty':
+    'Añade uno para que los flujos de trabajo tengan un motivo que definir al cerrar un ticket.',
+  'admin.priorities.reasonMoveUp': 'Subir el motivo de cierre {name}',
+  'admin.priorities.reasonMoveDown': 'Bajar el motivo de cierre {name}',
+  'admin.priorities.reasonChangeOf': 'Cambiar el motivo de cierre {name}',
+  'admin.priorities.reasonDeleteOf': 'Eliminar el motivo de cierre {name}',
+  'admin.priorities.reasonConfirmDelete':
+    '¿Eliminar {name}? Si hay tickets que se cerraron con él, o un flujo de trabajo lo define, eliges a continuación qué motivo ocupa su lugar, y cada flujo de trabajo que define {name} recibe una versión nueva que define ese. No se puede deshacer.',
+  'admin.priorities.reasonInUse':
+    '{count, plural, one {# ticket se cerró con {name}.} other {# tickets se cerraron con {name}.}} Elige el motivo que reciben en su lugar. Un flujo de trabajo que define {name} recibe una versión nueva que define ese también.',
+  'admin.priorities.reasonUsedBy':
+    '{count, plural, one {El flujo de trabajo {workflows} define {name}.} other {Los flujos de trabajo {workflows} definen {name}.}} Elige el motivo que definen en su lugar: cada uno recibe una versión nueva que lo define.',
+  'admin.priorities.reasonNoOther': 'No hay otro motivo de cierre que elegir. Añade uno primero.',
+  'admin.priorities.reasonDeletedInto': 'Se eliminó {name}; {into} ocupa su lugar.',
   'ticketView.editLabels': 'Editar las etiquetas',
   'ticketView.save': 'Guardar',
   'ticketView.cancel': 'Cancelar',
@@ -6693,7 +6799,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.trackSets.purpose':
     'Elige los diseños, prioridades, política de visibilidad y notificaciones de un track entre los conjuntos que existen.',
   'admin.trackSets.about':
-    'Esta página solo elige. Los conjuntos de diseños y las políticas de visibilidad se crean en sus propias páginas; los conjuntos de prioridades y las políticas de notificación se crean por ahora con la API. Los conjuntos de tipos, de reglas de campos y los mapas de flujos se eligen donde se crean.',
+    'Esta página solo elige. Los conjuntos de diseños, los conjuntos de prioridades y las políticas de visibilidad se crean en sus propias páginas; las políticas de notificación se crean por ahora con la API. Los conjuntos de tipos, de reglas de campos y los mapas de flujos se eligen donde se crean.',
   'admin.trackSets.forbidden':
     'Solo los administradores del sitio y de la configuración eligen aquí los conjuntos de un track.',
   'admin.trackSets.loading': 'Leyendo…',
@@ -6712,6 +6818,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.trackSets.priorityNone': 'Las prioridades predeterminadas del sitio',
   'admin.trackSets.priorityHint':
     'Las prioridades entre las que eligen los tickets. Un ticket conserva una prioridad que su track deja de ofrecer.',
+  'admin.trackSets.priorityLink': 'Crea y cambia los conjuntos de prioridades en Prioridades.',
   'admin.trackSets.visibility': 'Política de visibilidad',
   'admin.trackSets.visibilityNone': 'Ninguna: los tickets no tienen nivel',
   'admin.trackSets.visibilityHint':
