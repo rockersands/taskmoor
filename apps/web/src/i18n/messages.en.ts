@@ -7205,7 +7205,7 @@ export const messagesEn = {
   'admin.trackSets.purpose':
     'Choose a track’s layouts, priorities, visibility policy and notifications from the sets that exist.',
   'admin.trackSets.about':
-    'This page only chooses. Layout sets, priority sets and visibility policies are made on pages of their own; notification policies are made through the API for now. Type sets, field rule sets and workflow maps are chosen where they are made.',
+    'This page only chooses. Layout sets, priority sets, visibility policies and notification policies are made on pages of their own. Type sets, field rule sets and workflow maps are chosen where they are made.',
   'admin.trackSets.forbidden':
     'Only site and configuration administrators choose a track’s sets here.',
   'admin.trackSets.loading': 'Reading…',
@@ -7231,6 +7231,8 @@ export const messagesEn = {
   'admin.trackSets.notification': 'Notifications',
   'admin.trackSets.notificationNone': 'The site’s default notifications',
   'admin.trackSets.notificationHint': 'Who hears about which changes in this track.',
+  'admin.trackSets.notificationLink':
+    'Make and change notification policies on Notification policies.',
   'admin.trackSets.own': '{name} (its own)',
   'admin.trackSets.save': 'Save',
   'admin.trackSets.saved': '{key} was saved.',

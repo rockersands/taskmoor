@@ -56,6 +56,10 @@ const SETS: {
     labelId: 'admin.trackSets.notification',
     noneId: 'admin.trackSets.notificationNone',
     hintId: 'admin.trackSets.notificationHint',
+    made: {
+      href: '#/admin/notification-policies',
+      linkId: 'admin.trackSets.notificationLink',
+    },
   },
 ];
 

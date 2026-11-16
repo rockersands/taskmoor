@@ -19,8 +19,7 @@ export interface AdminGroup {
 export const ADMIN_HOME = '#/admin';
 
 /**
- * Administration's groups and pages (ADR-114). A control that has no page yet is not listed:
- * notification policies join their group with their page.
+ * Administration's groups and pages (ADR-114). A control that has no page yet is not listed.
  * The tracks someone runs lead the list, and are all a track's manager sees here.
  */
 export const ADMIN_GROUPS: readonly AdminGroup[] = [

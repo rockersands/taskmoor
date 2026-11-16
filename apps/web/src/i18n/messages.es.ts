@@ -7368,7 +7368,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.trackSets.purpose':
     'Elige los diseños, prioridades, política de visibilidad y notificaciones de un track entre los conjuntos que existen.',
   'admin.trackSets.about':
-    'Esta página solo elige. Los conjuntos de diseños, los conjuntos de prioridades y las políticas de visibilidad se crean en sus propias páginas; las políticas de notificación se crean por ahora con la API. Los conjuntos de tipos, de reglas de campos y los mapas de flujos se eligen donde se crean.',
+    'Esta página solo elige. Los conjuntos de diseños, los conjuntos de prioridades, las políticas de visibilidad y las políticas de notificaciones se crean en sus propias páginas. Los conjuntos de tipos, de reglas de campos y los mapas de flujos se eligen donde se crean.',
   'admin.trackSets.forbidden':
     'Solo los administradores del sitio y de la configuración eligen aquí los conjuntos de un track.',
   'admin.trackSets.loading': 'Leyendo…',
@@ -7395,6 +7395,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.trackSets.notification': 'Notificaciones',
   'admin.trackSets.notificationNone': 'Las notificaciones predeterminadas del sitio',
   'admin.trackSets.notificationHint': 'Quién se entera de qué cambios en este track.',
+  'admin.trackSets.notificationLink':
+    'Crea y cambia las políticas de notificaciones en Políticas de notificaciones.',
   'admin.trackSets.own': '{name} (propio)',
   'admin.trackSets.save': 'Guardar',
   'admin.trackSets.saved': 'Se guardó {key}.',

@@ -536,7 +536,9 @@ administrators, chooses a track's **Layouts**, **Priorities**, **Visibility poli
 **Notifications**. Pick the **Track**, change what you want and press **Save**; only what changed is
 sent. Each list holds the shared sets and a local-mode track's own, marked **(its own)**. The first
 choice in each list is the default, which for a visibility policy means none. **Manage** on the
-**Tracks** page has a link here for that track.
+**Tracks** page has a link here for that track. Under **Priorities** and **Notifications** a link
+leads to the page that makes them: [Priorities](#priorities-and-priority-sets) and
+[Notification policies](notifications.md#managing-policies).
 
 Changing the visibility policy moves tickets at a level the new policy lacks to its default level, so
 some may become visible to more people.
