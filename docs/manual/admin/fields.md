@@ -1,7 +1,7 @@
 ---
 title: "Fields, ticket types and layouts"
 audience: admins
-sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/workflows/close-reasons.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/layouts/LayoutCanvas.tsx, apps/web/src/layouts/GripMenu.tsx, apps/web/src/layouts/LayoutPreview.tsx, apps/web/src/layouts/refusal.ts, apps/web/src/layouts/model.ts, apps/web/src/layouts/client.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md, apps/server/src/tickets/priority-level.ts, packages/db/src/migrations/0095_points_field.ts, apps/web/src/sets/trackScope.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/server/src/workflows/board-managed.ts, apps/web/src/layouts/createForm.ts, apps/web/src/tickets/form.ts, apps/server/src/fields/values.ts, apps/server/src/import/load.ts, apps/web/src/priorities/PrioritiesPage.tsx, apps/web/src/priorities/PrioritySetsSection.tsx, apps/web/src/priorities/client.ts, apps/web/src/sets/TypeSetForm.tsx, apps/web/src/tickettypes/TicketTypesPage.tsx, apps/web/src/tickettypes/client.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/fields/FieldPanel.tsx, apps/web/src/fields/ContextsSection.tsx, apps/web/src/fields/OptionList.tsx, apps/web/src/fields/FormulaEditor.tsx, apps/web/src/fields/formulaWords.ts, apps/web/src/fields/FieldSettings.tsx, apps/web/src/fields/numberFormat.ts, apps/web/src/fields/defaultValue.ts, apps/web/src/tickets/defaults.ts, apps/web/src/search/columns.ts, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/notifications/NotificationPoliciesPage.tsx
+sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/workflows/close-reasons.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/layouts/LayoutCanvas.tsx, apps/web/src/layouts/GripMenu.tsx, apps/web/src/layouts/LayoutPreview.tsx, apps/web/src/layouts/refusal.ts, apps/web/src/layouts/model.ts, apps/web/src/layouts/client.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md, apps/server/src/tickets/priority-level.ts, packages/db/src/migrations/0095_points_field.ts, apps/web/src/sets/trackScope.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/server/src/workflows/board-managed.ts, apps/web/src/layouts/createForm.ts, apps/web/src/tickets/form.ts, apps/server/src/fields/values.ts, apps/server/src/import/load.ts, apps/web/src/priorities/PrioritiesPage.tsx, apps/web/src/priorities/PrioritySetsSection.tsx, apps/web/src/priorities/client.ts, apps/web/src/sets/TypeSetForm.tsx, apps/web/src/tickettypes/TicketTypesPage.tsx, apps/web/src/tickettypes/client.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/fields/FieldPanel.tsx, apps/web/src/fields/ContextsSection.tsx, apps/web/src/fields/OptionList.tsx, apps/web/src/fields/FormulaEditor.tsx, apps/web/src/fields/formulaWords.ts, apps/web/src/fields/FieldSettings.tsx, apps/web/src/fields/numberFormat.ts, apps/web/src/fields/defaultValue.ts, apps/web/src/tickets/defaults.ts, apps/web/src/search/columns.ts, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/notifications/NotificationPoliciesPage.tsx, apps/web/src/sets/OwnTypesSection.tsx
 accessed: 2026-11-16
 attestation: own-words
 ---
@@ -15,8 +15,8 @@ In the web app, site and configuration administrators use **Administration**, **
 **Administration**, **Ticket types**, **Administration**, **Configuration sets**,
 **Administration**, **Layout sets** and **Administration**,
 [**Priorities**](#priorities-and-priority-sets). The people
-who run a track with its own configuration (local mode) change that track's own sets on its own
-pages; see [A track's own sets](#a-tracks-own-sets). The rest is done through the
+who run a track with its own configuration (local mode) change that track's own sets, ticket types
+and fields on its own pages; see [A track's own sets](#a-tracks-own-sets). The rest is done through the
 [REST API](rest-api.md); a token that changes shared configuration needs the `admin` scope
 ([API tokens](api-tokens.md)). Everyone signed in may read these lists. With no custom field yet,
 the **Fields** page says so and what one is for.
@@ -176,10 +176,13 @@ that a formula reads cannot be deleted until the formula changes.
 
 ### Fields of local-mode tracks
 
-A local-mode track's administrators add fields the track owns (`trackId` on create), through the
-REST API: the **Fields** page is for site and configuration administrators, and tells anyone else
-only that. Their contexts cover only that track, and nothing about them reaches another track. The guardrail
-**Custom fields per track** (700 by default) counts every field that reaches a track.
+A local-mode track's administrators add fields the track owns on the track's own **Fields** page
+(`#/manage/tracks/<id>/fields`, see [A track's own sets](#a-tracks-own-sets)), or through the REST
+API with `trackId` on create. Their contexts cover only that track, and nothing about them reaches
+another track. The shared **Fields** page is for site and configuration administrators: someone
+who runs tracks but is no administrator finds there only links to the tracks they run with their
+own configuration, and anyone else is told only that they may not. The guardrail **Custom fields
+per track** (700 by default) counts every field that reaches a track.
 
 ## Formula fields
 
@@ -270,7 +273,9 @@ names they are stored with. Anyone else who opens the page is told only that the
 A change that would break a parent link is refused, with the number of links it would break and
 of tickets it would leave at the subticket level without a parent, and nothing changes. A type's
 colour is stored but nothing draws it, so it has no control on the page. A local-mode track's
-own types are made through the API (`trackId`).
+own types are not listed here: its administrators make them on the track's own **Configuration
+sets** page, under **Its own ticket types** (see [A track's own sets](#a-tracks-own-sets)), or
+through the API (`trackId`).
 
 Through the API:
 
@@ -568,7 +573,7 @@ some may become visible to more people.
 
 The people who run a track with its own configuration (local mode) change its own sets without
 being site or configuration administrators. On **Administration** > **Tracks you run**, **Manage**
-the track: under **Its own configuration** are three links.
+the track: under **Its own configuration** are links to its own pages.
 
 - **Layout sets** (`#/manage/tracks/<id>/layouts`) is the layout sets page for that track alone.
   The track's name is above the title, and the list holds only the sets it owns; the set it uses
@@ -577,12 +582,27 @@ the track: under **Its own configuration** are three links.
   its type set holds. The **Preview** uses that track's fields and rules, and says so: there is no
   choice of track. A set the track does not use yet has **Use this set for** the track; from then
   on the track's forms follow it.
-- **Configuration sets** (`#/manage/tracks/<id>/configuration-sets`) shows the track's own type
+- **Configuration sets** (`#/manage/tracks/<id>/configuration-sets`) starts with **Its own ticket
+  types**, the types only this track has. **New ticket type** adds one with a **Ticket type name**,
+  a **Description**, its **Level** and an **Icon**, as on the Ticket types page; **Manage** changes
+  them, and **Save the type**. Each type says its level and whether the track's type set offers
+  it: a new type is offered once it is ticked in the type set. **Delete type** asks first, and is
+  refused while the type set holds the type (untick it and save the set first) or while tickets
+  have it, with their number. A level that would leave tickets without the parent they need is
+  refused with the counts; the levels themselves are the site's. Next is the track's own type
   set: **Manage** it to choose its ticket types, the shared ones and the track's own, their order
   and the preselected type, and where the tickets of a type it drops go. A track keeps this one
   type set, so none is added or deleted here, and it is never a default. Below are the field rule sets the track
   owns: add one, set its rules as on the shared page, delete one the track does not use, and
   **Use this set for** the track.
+- **Fields** (`#/manage/tracks/<id>/fields`) lists the custom fields the track owns. **New field**
+  adds one as on the shared page, and **Manage** offers the same controls: its name, description
+  and settings or formula, its contexts with their defaults and options, and **Delete field**. Its
+  contexts cover the track alone. A person field's context offers **Anyone** or **The holders of
+  a track role**, from the track's roles, and a default person is found among the people who may
+  be mentioned in the track; the site's list of groups is for administrators, so a limit to a
+  group's members chosen before stays as it is, as **the group chosen before**. The shared fields
+  that reach the track are not listed: they are the administrators'.
 - **Notification policies** (`#/manage/tracks/<id>/notification-policies`) lists the notification
   policies the track owns and says which one it uses: add one, change its rules, delete one the
   track does not use, and **Use this policy for** the track. See [Managing
@@ -590,8 +610,8 @@ the track: under **Its own configuration** are three links.
 
 Going back to a shared set, and anything about a shared set or another track's, is for site and
 configuration administrators; the server refuses the rest whatever the page shows. The shared
-pages, **Administration** > **Layout sets**, **Configuration sets** and **Notification policies**,
-show someone who runs
+pages, **Administration** > **Layout sets**, **Configuration sets**, **Fields** and **Notification
+policies**, show someone who runs
 tracks but is no administrator only links to the tracks they run that have their own
 configuration. A track in shared mode owns no sets, and its page says so: whoever runs it, or works
 in it, gains nothing here. An archived track's sets wait until it is restored, and its pages say
