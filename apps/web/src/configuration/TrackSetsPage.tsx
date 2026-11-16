@@ -6,7 +6,7 @@ import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import { TypeMapping, type TypesInUse, ticketsOf } from '../sets/TypeSetForm';
-import { manageTrackHref } from '../sets/trackScope';
+import { ownSetsHref } from '../sets/trackScope';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import {
@@ -434,7 +434,7 @@ function TrackSetsForm({
         <div className="form-field">
           <p className="page-note">{t('admin.trackSets.ownKept', { key: track.key })}</p>
           <p className="form-hint form-hint-link">
-            <a href={routeHref(manageTrackHref(track.id))}>
+            <a href={routeHref(ownSetsHref(track.id))}>
               {t('admin.trackSets.ownLink', { key: track.key })}
             </a>
           </p>

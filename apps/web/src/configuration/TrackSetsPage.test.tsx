@@ -297,20 +297,20 @@ describe('a shared-mode track’s access policy and type set (T-322)', () => {
     expect(within(other).queryByRole('link', { name })).toBeNull();
   });
 
-  it('[IAM-010] says a local-mode track keeps its own access policy and type set, with the way to its page', async () => {
+  it('[IAM-010] says a local-mode track keeps its own access policy and type set, and where each changes', async () => {
     renderPage(CONFIG_ADMIN, { initialTrackId: 4 });
     const form = await screen.findByRole('form', { name: 'Sets of OPS' });
     expect(within(form).queryByRole('combobox', { name: 'Access policy' })).toBeNull();
     expect(within(form).queryByRole('combobox', { name: 'Type set' })).toBeNull();
     expect(
       within(form).getByText(
-        'OPS has its own access policy and type set, which its administrators change on its own pages.',
+        'OPS has its own access policy and type set. Its administrators change the type set on its own Configuration sets page, and the access policy through the API.',
       ),
     ).toBeVisible();
-    expect(within(form).getByRole('link', { name: 'Open the page of OPS' })).toHaveAttribute(
-      'href',
-      '#/manage/tracks/4',
-    );
+    // No page changes a track's own access policy: the link goes where its type set changes.
+    expect(
+      within(form).getByRole('link', { name: 'Open the configuration sets of OPS' }),
+    ).toHaveAttribute('href', '#/manage/tracks/4/configuration-sets');
   });
 
   it('[CORE-005] asks on a small phone', async () => {

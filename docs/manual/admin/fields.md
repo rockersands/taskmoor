@@ -587,11 +587,13 @@ what you want and press **Save**; only what changed is sent. **Access policy** a
 the shared policies and type sets and have no empty choice. In the other lists, which hold the
 shared sets and a local-mode track's own, marked **(its own)**, the first choice is the default,
 which for a visibility policy means none. A local-mode track keeps its own access policy and type
-set: in their place the page says so, with a link to the track's own page, where its
-administrators change them. **Manage** on the **Tracks** page has a link here for that track. A link
-under a list leads to the page that makes its sets: [Configuration sets](#type-sets) under
-**Type set**, [Priorities](#priorities-and-priority-sets) and
-[Notification policies](notifications.md#managing-policies), and, for site administrators only,
+set: in their place the page says so, with a link to the track's own **Configuration sets**, where
+its administrators change the type set. No page changes a track's own access policy: its
+administrators change its grants through the API (`POST` and `DELETE`
+`/api/v1/access-policies/:id/grants`). **Manage** on the **Tracks** page has a link here for that
+track. A link under a list leads to the page that makes its sets:
+[Configuration sets](#type-sets) under **Type set**, [Priorities](#priorities-and-priority-sets)
+and [Notification policies](notifications.md#managing-policies), and, for site administrators only,
 [Permissions](permissions.md) under **Access policy**.
 
 Switching the access policy changes at once who may see the track and what they may do in it.

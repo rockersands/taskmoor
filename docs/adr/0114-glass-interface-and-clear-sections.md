@@ -381,7 +381,9 @@ is unchanged.
 - **Access policy and type set (CORE-005, IAM-010).** **Which sets a track uses** gains **Access
   policy** and **Type set** for a shared-mode track, from the shared policies and type sets, with
   no empty choice; the link to Permissions is shown to site administrators only, as only they open
-  it. A local-mode track keeps its own, and the form says so with a link to the track's own page.
+  it. A local-mode track keeps its own, and the form says so with a link to the track's own
+  Configuration sets, where its type set changes. Its own access policy has no page, so the note
+  says it is changed through the API.
   A type set switch that the server refuses with `409 type_in_use` opens wave 22's mapping
   question (`TypeMapping` from `sets/TypeSetForm.tsx`, which gains words of its own for a track)
   under **Type set**: for each type the new set lacks, a kept type of its level, or why there is

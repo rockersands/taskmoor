@@ -7569,8 +7569,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Crea y cambia los conjuntos de tipos en Conjuntos de configuración.',
   'admin.trackSets.choose': 'Elige uno',
   'admin.trackSets.ownKept':
-    '{key} tiene su propia política de acceso y su propio conjunto de tipos, que sus administradores cambian en sus propias páginas.',
-  'admin.trackSets.ownLink': 'Abrir la página de {key}',
+    '{key} tiene su propia política de acceso y su propio conjunto de tipos. Sus administradores cambian el conjunto de tipos en su propia página de Conjuntos de configuración, y la política de acceso a través de la API.',
+  'admin.trackSets.ownLink': 'Abrir los conjuntos de configuración de {key}',
   'admin.trackSets.mapping': 'Tickets de los tipos que {set} no tiene',
   'admin.trackSets.mappingIntro':
     '{tickets, plural, one {# ticket de {key} tiene} other {# tickets de {key} tienen}} un tipo que {set} no tiene. Elige el tipo que toman, del mismo nivel, y vuelve a guardar.',

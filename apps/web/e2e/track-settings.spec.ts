@@ -193,7 +193,7 @@ test('[CORE-005] [IAM-010] the administrator switches a shared-mode track’s ac
   expect(after.body.ticket.ticketType.name).toBe('Chore');
 });
 
-test('[IAM-010] a local-mode track keeps its own access policy and type set, with the way to its page', async ({
+test('[IAM-010] a local-mode track keeps its own access policy and type set, and says where each changes', async ({
   page,
 }, testInfo) => {
   await signIn(page);
@@ -204,12 +204,12 @@ test('[IAM-010] a local-mode track keeps its own access policy and type set, wit
   const form = page.getByRole('form', { name: `Sets of ${key}` });
   await expect(
     form.getByText(
-      `${key} has its own access policy and type set, which its administrators change on its own pages.`,
+      `${key} has its own access policy and type set. Its administrators change the type set on its own Configuration sets page, and the access policy through the API.`,
     ),
   ).toBeVisible();
   await expect(form.getByRole('combobox', { name: 'Access policy' })).toHaveCount(0);
   await expect(form.getByRole('combobox', { name: 'Type set' })).toHaveCount(0);
-  await form.getByRole('link', { name: `Open the page of ${key}` }).click();
-  await expect(page).toHaveURL(new RegExp(`#/manage/tracks/${trackId}$`));
+  await form.getByRole('link', { name: `Open the configuration sets of ${key}` }).click();
+  await expect(page).toHaveURL(new RegExp(`#/manage/tracks/${trackId}/configuration-sets$`));
   expect(await fitsSideways(page)).toBe(true);
 });

@@ -7405,8 +7405,8 @@ export const messagesEn = {
   'admin.trackSets.typeSetLink': 'Make and change type sets on Configuration sets.',
   'admin.trackSets.choose': 'Choose one',
   'admin.trackSets.ownKept':
-    '{key} has its own access policy and type set, which its administrators change on its own pages.',
-  'admin.trackSets.ownLink': 'Open the page of {key}',
+    '{key} has its own access policy and type set. Its administrators change the type set on its own Configuration sets page, and the access policy through the API.',
+  'admin.trackSets.ownLink': 'Open the configuration sets of {key}',
   'admin.trackSets.mapping': 'Tickets of the types {set} lacks',
   'admin.trackSets.mappingIntro':
     '{tickets, plural, one {# ticket in {key} has} other {# tickets in {key} have}} a type {set} lacks. Choose the type they take, at the same level, then save again.',
