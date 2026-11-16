@@ -21,7 +21,7 @@ import {
   type TypeStatusMapping,
   type WorkflowMapSummary,
 } from './client';
-import { DeleteTrack, TRASH_HREF } from './DeleteTrack';
+import { DeleteTrack, TRASH_HREF, type TrackGone } from './DeleteTrack';
 import { NewTrackForm, trackRefusal } from './NewTrackForm';
 import {
   MigrationProgress,
@@ -199,9 +199,16 @@ export function TracksAdminPage({ client = configurationClient }: TracksAdminPag
                         setTrashed(track.key);
                         title.current?.focus();
                       }}
-                      onDeleteRefused={(text) => {
+                      onDeleteRefused={(text, gone) => {
                         setMessage('');
                         setProblem(text);
+                        if (!gone) return;
+                        // Someone else deleted it meanwhile: show the list as it is now, and the
+                        // way to Trash when it waits there.
+                        setOpen(null);
+                        setTrashed(gone === 'trash' ? track.key : null);
+                        title.current?.focus();
+                        void load();
                       }}
                     />
                   )}
@@ -489,7 +496,7 @@ function TrackPanel({
   onChanged: (message: string) => void;
   onProblem: (error: unknown) => void;
   onDeleted: () => void;
-  onDeleteRefused: (text: string) => void;
+  onDeleteRefused: (text: string, gone: TrackGone) => void;
 }) {
   const t = useT();
   const id = useId();

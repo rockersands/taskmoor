@@ -19,9 +19,21 @@ export function deleteRefusal(t: Translate, track: Track, error: unknown): strin
 }
 
 /**
+ * Where a track someone else deleted meanwhile is: in the trash (`409 in_trash`), or gone for good
+ * or out of sight (404); null for a refusal of a track still there.
+ */
+export type TrackGone = 'trash' | 'gone' | null;
+
+function goneOf(error: unknown): TrackGone {
+  if (error instanceof ApiError && error.code === 'in_trash') return 'trash';
+  return error instanceof ApiError && error.status === 404 ? 'gone' : null;
+}
+
+/**
  * Deleting a track (CORE-025, M1-101; T-322), for site and configuration administrators: a danger
  * action (ADR-114 D13) that says first what goes to the trash with the track and that it can be
- * restored from Trash. A refusal keeps the question open and is said by the page.
+ * restored from Trash. A refusal is said by the page; it keeps the question open unless the track
+ * is no longer there, which the page shows by reading its list again.
  */
 export function DeleteTrack({
   track,
@@ -32,7 +44,7 @@ export function DeleteTrack({
   track: Track;
   client: ConfigurationClient;
   onDeleted: () => void;
-  onProblem: (text: string) => void;
+  onProblem: (text: string, gone: TrackGone) => void;
 }) {
   const t = useT();
   return (
@@ -45,7 +57,7 @@ export function DeleteTrack({
         try {
           await client.deleteTrack(track.id);
         } catch (error) {
-          onProblem(deleteRefusal(t, track, error));
+          onProblem(deleteRefusal(t, track, error), goneOf(error));
           throw error;
         }
         onDeleted();

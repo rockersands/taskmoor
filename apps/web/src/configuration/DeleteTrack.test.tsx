@@ -77,13 +77,62 @@ describe('deleting a track (T-322)', () => {
     expect(client.calls).toEqual([{ action: 'deleteTrack', args: [9] }]);
   });
 
-  it('[CORE-025] says why when the track is in the trash already, and keeps the question open', async () => {
+  it('[CORE-025] a track someone else deleted meanwhile leaves the list, with the way to Trash', async () => {
+    const user = userEvent.setup();
+    const client = fakeConfigurationClient();
+    renderPage({ client });
+    await user.click(await screen.findByRole('button', { name: 'Manage track SHOP' }));
+    await user.click(screen.getByRole('button', { name: 'Delete track SHOP' }));
+    // Another administrator deletes it while the question is open.
+    await client.deleteTrack(3);
+    const question = screen.getByRole('group', { name: OUTCOME });
+    await user.click(within(question).getByRole('button', { name: 'Delete track SHOP' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Track SHOP is in the trash already.',
+    );
+    await waitFor(() => expect(screen.queryByText('SHOP · Shop')).toBeNull());
+    expect(screen.queryByRole('group', { name: OUTCOME })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Restore SHOP from Trash' })).toHaveAttribute(
+      'href',
+      '#/admin/trash',
+    );
+    expect(screen.getByRole('heading', { level: 1, name: 'Tracks' })).toHaveFocus();
+  });
+
+  it('[CORE-025] a track gone for good leaves the list, without the way to Trash', async () => {
+    const user = userEvent.setup();
+    const base = fakeConfigurationClient();
+    renderPage({
+      client: {
+        ...base,
+        deleteTrack: async () => {
+          throw new ApiError(404, { error: 'not_found' });
+        },
+      },
+    });
+    await user.click(await screen.findByRole('button', { name: 'Manage track SHOP' }));
+    await user.click(screen.getByRole('button', { name: 'Delete track SHOP' }));
+    // Deleted and purged meanwhile.
+    await base.deleteTrack(3);
+    await user.click(
+      within(screen.getByRole('group', { name: OUTCOME })).getByRole('button', {
+        name: 'Delete track SHOP',
+      }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Track SHOP is gone, or you may no longer see it.',
+    );
+    await waitFor(() => expect(screen.queryByText('SHOP · Shop')).toBeNull());
+    expect(screen.queryByRole('link', { name: 'Restore SHOP from Trash' })).toBeNull();
+  });
+
+  it('[CORE-025] says why the server refuses, and keeps the question open', async () => {
     const user = userEvent.setup();
     renderPage({
       client: {
         ...fakeConfigurationClient(),
         deleteTrack: async () => {
-          throw new ApiError(409, { error: 'in_trash' });
+          throw new ApiError(403, { error: 'forbidden' });
         },
       },
     });
@@ -91,35 +140,9 @@ describe('deleting a track (T-322)', () => {
     await user.click(screen.getByRole('button', { name: 'Delete track SHOP' }));
     const question = screen.getByRole('group', { name: OUTCOME });
     await user.click(within(question).getByRole('button', { name: 'Delete track SHOP' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Track SHOP is in the trash already.',
-    );
-    expect(question).toBeVisible();
-  });
-
-  it('[CORE-025] says when the track is gone, or the server refuses', async () => {
-    const user = userEvent.setup();
-    let answer = new ApiError(404, { error: 'not_found' });
-    renderPage({
-      client: {
-        ...fakeConfigurationClient(),
-        deleteTrack: async () => {
-          throw answer;
-        },
-      },
-    });
-    await user.click(await screen.findByRole('button', { name: 'Manage track SHOP' }));
-    await user.click(screen.getByRole('button', { name: 'Delete track SHOP' }));
-    const confirm = within(screen.getByRole('group', { name: OUTCOME })).getByRole('button', {
-      name: 'Delete track SHOP',
-    });
-    await user.click(confirm);
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Track SHOP is gone, or you may no longer see it.',
-    );
-    answer = new ApiError(403, { error: 'forbidden' });
-    await user.click(confirm);
     expect(await screen.findByRole('alert')).toHaveTextContent('You may not change this track.');
+    expect(question).toBeVisible();
+    expect(screen.getByText('SHOP · Shop')).toBeVisible();
   });
 
   it('[CORE-025] asks on a small phone', async () => {

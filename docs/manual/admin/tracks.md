@@ -506,8 +506,9 @@ Site and configuration administrators delete a track on **Administration**, **Tr
 track goes to the trash with its tickets, releases and areas, that its key stays taken, and that
 it can be restored from **Trash** until its time there is up; **Delete track** and the key does
 it, **Cancel** keeps it. An archived track can be deleted too. The track leaves the list, and the
-page links to **Trash** (**Restore** and the key **from Trash**). A track already in the trash, or
-gone, is refused in words. Through the API it is `DELETE /api/v1/tracks/:id` (`409 in_trash`).
+page links to **Trash** (**Restore** and the key **from Trash**). A track someone else deleted
+meanwhile is refused in words and leaves the list, which the page reads again, with the link to
+**Trash** when it waits there. Through the API it is `DELETE /api/v1/tracks/:id` (`409 in_trash`).
 While it is there:
 
 - nobody else sees the track or anything in it;

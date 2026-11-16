@@ -373,8 +373,10 @@ is unchanged.
   whose question names what goes to the trash with the track (tickets, releases, areas), that its
   key stays taken and that it can be restored from Trash until its time there is up. The track
   leaves the list, the page's heading takes the focus, and a link leads to Trash
-  (`#/admin/trash`), where configuration administrators restore tracks too. `409 in_trash`, a
-  gone track (404) and a refusal (403) are said in words, and the question stays open.
+  (`#/admin/trash`), where configuration administrators restore tracks too. Every refusal is
+  said in words. A refusal (403) keeps the question open; `409 in_trash` and a gone track (404)
+  mean someone else deleted it meanwhile, so the page reads its list again, the row and its
+  question go, the heading takes the focus and, for `in_trash`, the link to Trash is offered.
 - **Access policy and type set (CORE-005, IAM-010).** **Which sets a track uses** gains **Access
   policy** and **Type set** for a shared-mode track, from the shared policies and type sets, with
   no empty choice; the link to Permissions is shown to site administrators only, as only they open
