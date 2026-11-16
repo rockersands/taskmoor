@@ -2423,7 +2423,7 @@ export const messagesEn = {
   'admin.serviceAccounts.manage': 'Tokens',
   'admin.serviceAccounts.manageNamed': 'Show the tokens of {name}',
   'admin.serviceAccounts.hide': 'Hide tokens',
-  'admin.serviceAccounts.hideNamed': 'Hide the tokens of {name}',
+  'admin.serviceAccounts.hideNamed': 'Hide tokens of {name}',
   'admin.serviceAccounts.deactivate': 'Deactivate',
   'admin.serviceAccounts.deactivateNamed': 'Deactivate {name}',
   'admin.serviceAccounts.deactivateConfirm':
