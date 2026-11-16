@@ -1,14 +1,17 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { App } from '../App';
 import { MEMBER } from '../admin/fixtures';
+import { I18nProvider } from '../i18n/I18nProvider';
 import { type Handler, noContent, stubBackend, untranslated, visibleTexts } from '../test/backend';
 import { jsonResponse } from '../test/setup';
 import { setViewportWidth } from '../test/viewport';
 import { SHOP_41 } from '../tickets/view/fixtures';
+import { AttachmentPanel } from './AttachmentPanel';
 import type { Attachment } from './client';
-import { ATTACHMENTS, SERVER_LOG, ZIP_LISTING } from './fixtures';
+import { type AttachTarget, FileDropProvider } from './FileDrop';
+import { ATTACHMENTS, fakeAttachmentClient, SERVER_LOG, ZIP_LISTING } from './fixtures';
 
 // The whole ticket the page shows (M1-051).
 const TICKET = SHOP_41;
@@ -384,5 +387,71 @@ describe('files dropped anywhere on a ticket (T-162; ADR-114, section 12)', () =
     fireEvent.drop(title, { dataTransfer: carrying([new File(['z'], 'nope.txt')]) });
     expect(card()).toBeNull();
     expect(calls.some(isUpload)).toBe(false);
+  });
+});
+
+describe('a file sent from the ticket’s text editor (T-120)', () => {
+  /** The panel alone, in a ticket that takes what it offers. */
+  function panelIn(client = fakeAttachmentClient()) {
+    const offered: { current: AttachTarget | null } = { current: null };
+    render(
+      <I18nProvider locale="en">
+        <FileDropProvider
+          value={(target) => {
+            offered.current = target;
+          }}
+        >
+          <AttachmentPanel ticket="SHOP-41" client={client} />
+        </FileDropProvider>
+      </I18nProvider>,
+    );
+    return offered;
+  }
+
+  it('[CORE-021] goes through the panel’s own upload, which lists it and answers with what it added', async () => {
+    const client = fakeAttachmentClient({ attachments: [] });
+    const upload = vi.spyOn(client, 'upload');
+    const offered = panelIn(client);
+    await screen.findByLabelText('Attach files');
+    // The panel would come into view for a drop; jsdom has no scrolling of its own.
+    const scroll = vi.fn();
+    const proto = Element.prototype as { scrollIntoView?: unknown };
+    const before = proto.scrollIntoView;
+    proto.scrollIntoView = scroll;
+    onTestFinished(() => {
+      proto.scrollIntoView = before;
+    });
+    const target = offered.current;
+    expect(target?.ready).toBe(true);
+    let result: Awaited<ReturnType<AttachTarget['attach']>> | undefined;
+    await act(async () => {
+      result = await target?.attach([new File(['png'], 'shot.png', { type: 'image/png' })], {
+        quiet: true,
+      });
+    });
+    expect(upload).toHaveBeenCalledTimes(1);
+    expect(result?.added.map((a) => [a.name, a.kind])).toEqual([['shot.png', 'image']]);
+    expect(result?.problems).toEqual([]);
+    // Listed in the panel, which stays where it is on the page and says nothing itself.
+    expect(within(panel()).getByText('shot.png')).toBeVisible();
+    expect(scroll).not.toHaveBeenCalled();
+    expect(within(panel()).queryByText('shot.png attached.')).toBeNull();
+  });
+
+  it('[CORE-021] answers with the panel’s own words for a file over the limit, sending nothing', async () => {
+    const client = fakeAttachmentClient({ attachments: [], maxFileSize: 2 });
+    const upload = vi.spyOn(client, 'upload');
+    const offered = panelIn(client);
+    await screen.findByLabelText('Attach files');
+    let result: Awaited<ReturnType<AttachTarget['attach']>> | undefined;
+    await act(async () => {
+      result = await offered.current?.attach([new File(['too big'], 'big.log')], { quiet: true });
+    });
+    expect(upload).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      added: [],
+      problems: ['big.log is larger than the 2 B limit for one file.'],
+    });
+    expect(within(panel()).queryByRole('alert')).toBeNull();
   });
 });

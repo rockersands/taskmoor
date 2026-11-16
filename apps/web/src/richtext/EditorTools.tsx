@@ -18,6 +18,21 @@ export interface EditorAttachment {
   author?: string | null;
 }
 
+/** A file sent from the editor, as the ticket's attachments took it (T-120). */
+export interface EditorUpload {
+  /** The file added, or null when it was not. */
+  file: EditorAttachment | null;
+  /** What went wrong, in the person's words: the size limit, a quota, a lock, a refusal. */
+  problems: string[];
+}
+
+/** Where a file chosen in the editor goes: the ticket's attachments (T-120). */
+export interface EditorUploader {
+  /** The largest file allowed, in words. */
+  limit: string | null;
+  upload: (file: File) => Promise<EditorUpload>;
+}
+
 /**
  * The file an attachment reference shows (ADR-120): of the files with its name, the one whose
  * SHA-256 starts with the reference's digest, else the first listed (the oldest), else none.
@@ -33,13 +48,19 @@ export function attachmentFor(
 
 /**
  * What the page around an editor offers its blocks (NTF-013, NTF-014). Without a ticket around it,
- * such as in the create form, the menu leaves out what needs one.
+ * as in the create form and a template's, the menu leaves out the ticket's files; those forms
+ * still offer another ticket, through search (T-120).
  */
 export interface EditorTools {
   /** The ticket's files; `fresh` reads them again rather than the page's last answer. */
   attachments?: (fresh?: boolean) => Promise<EditorAttachment[]>;
   /** Tickets for what was typed, through search: only what the person may see. */
   tickets?: (typed: string) => Promise<PickedTicket[]>;
+  /**
+   * How to add a file to the ticket from the editor: through its Attachments panel's own upload
+   * (size limit, quotas, status locks, its list), or null while the person may not add files.
+   */
+  uploader?: () => EditorUploader | null;
 }
 
 const EditorToolsContext = createContext<EditorTools>({});

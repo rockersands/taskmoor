@@ -246,6 +246,36 @@ built, a choice per track, or a notice only when a checklist is completed. On 20
 they chose the choice per track, off by default. It is built: see
 [Checklist notices](#checklist-notices-ntf-015).
 
+## T-120: tools around the blocks (answered on 2026-11-16)
+
+T-120 asked what the `/` menu is missing. Checked against the schema, nothing a person makes: every
+block and inline node is in the menu, and the rest are parts of their parents (rows, cells, list
+items, single columns), the line break (Shift+Enter), or kept from imports (`unknownBlock`,
+`unknownInline`, `unknownMark`). The menu keeps two or three columns and the five panels; a layout
+of four to six columns from an import still shows and edits. Underline stays Ctrl+U with no button,
+and text colour and sub- and superscript stay import-only (see T-318 for their colour). The user
+accepted the recommendation on 2026-11-16 to build three tools around existing blocks instead,
+with no change to the schema, the formats or the fuzz targets:
+
+- **A table's rows and columns can be deleted.** The table toolbar gains **Delete this row** and
+  **Delete this column**, off on the table's last row or column (`tableLineDeletable`: the
+  commands themselves say yes there and then do nothing). With the caret in a table the menu offers
+  the five table edits, as **Column widths** shows only in columns (TT-2), and leaves out the ones
+  that are off. The icons are our own.
+- **The create form and a template's form find another ticket**, through an `EditorToolsProvider`
+  with only the ticket search the parent field already uses. Files stay out: there is no ticket to
+  hold one yet.
+- **A file can be uploaded from the file prompt** on the ticket page, where the person may add
+  files. It goes through the Attachments panel's own upload, by the drop target the panel already
+  registers (T-162), so there is one way in: its size limit, quotas, status locks and refusal words
+  apply, and the panel lists the file. The panel's `attach` now answers with the files it added and
+  what went wrong; a `quiet` call (the prompt's) neither moves the page nor repeats the outcome in
+  the panel, since the prompt says it: a status line while sending, the reasons under the button.
+  The reference goes in at once, with the file's digest, as a picked file's does (TT-4). No server
+  change: `POST /tickets/:id/attachments` already existed.
+- Left for later: a header-row toggle, merging cells, adding or removing one column of a layout,
+  and pasting a screenshot into the text, which could reuse this upload.
+
 ## T-318: text colours checked at the door (answered on 2026-11-16)
 
 A colour on text comes only from an import or another format; no tool makes one (T-120 below). Its

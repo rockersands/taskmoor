@@ -4011,6 +4011,9 @@ export const messagesEs: Record<MessageId, string> = {
   'richtext.table.addRow': 'Añadir una fila debajo',
   'richtext.table.addColumn': 'Añadir una columna a la derecha',
   'richtext.table.delete': 'Eliminar la tabla',
+  // Removing a row or a column (T-120).
+  'richtext.table.deleteRow': 'Eliminar esta fila',
+  'richtext.table.deleteColumn': 'Eliminar esta columna',
   'richtext.mention': 'Mencionar a alguien',
   'richtext.taskItem': 'Elemento de la lista: {text}',
   'richtext.taskItemEmpty': 'Elemento de la lista vacío',
@@ -6956,6 +6959,10 @@ export const messagesEs: Record<MessageId, string> = {
   'richtext.prompt.file': '{name} ({details})',
   'richtext.prompt.fileBy': 'de {author}',
   'richtext.prompt.fileNumber': 'archivo {number}',
+  // A file uploaded from the file prompt (T-120).
+  'richtext.prompt.upload': 'Subir un archivo',
+  'richtext.prompt.uploadHint': 'Hasta {limit}. También aparece en Adjuntos.',
+  'richtext.prompt.uploading': 'Subiendo {name}…',
   'richtext.columns.widths': 'Ancho de las {count} columnas',
   'richtext.columns.equal': 'Iguales',
   'richtext.columns.apply': 'Aplicar',

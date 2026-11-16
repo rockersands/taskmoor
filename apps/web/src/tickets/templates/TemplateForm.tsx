@@ -1,7 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
+import { type EditorTools, EditorToolsProvider } from '../../richtext/EditorTools';
 import { RichTextEditor } from '../../richtext/RichTextEditor';
 import { PersonPicker } from '../PersonPicker';
+import { pickerQuery, ticketToolsClient } from '../tools/client';
 import type {
   FieldChoice,
   FieldRule,
@@ -31,6 +33,17 @@ import {
 } from './draft';
 
 const MAX_SUBTICKETS = 50;
+
+/**
+ * What the description's blocks reach (NTF-013, T-120): another ticket, through search, as the
+ * person may see it. A template has no files of its own.
+ */
+const TEMPLATE_EDITOR_TOOLS: EditorTools = {
+  tickets: (typed) => {
+    const query = pickerQuery(typed);
+    return query ? ticketToolsClient.pick(query) : Promise.resolve([]);
+  },
+};
 
 /** Why the server refused a control's value, under it (T-291). */
 function Problem({ id, text }: { id: string; text: string | undefined }) {
@@ -759,11 +772,13 @@ export function TemplateForm({
         <span id={`${id}-description`} className="form-label rt-label">
           {t('workflow.field.description')}
         </span>
-        <RichTextEditor
-          labelledBy={`${id}-description`}
-          initial={template?.description ?? null}
-          onChange={(doc) => change({ description: doc })}
-        />
+        <EditorToolsProvider value={TEMPLATE_EDITOR_TOOLS}>
+          <RichTextEditor
+            labelledBy={`${id}-description`}
+            initial={template?.description ?? null}
+            onChange={(doc) => change({ description: doc })}
+          />
+        </EditorToolsProvider>
         <Problem id={`${id}-description-problem`} text={problemAt('description')} />
       </div>
       <div className="ticket-template-grid">

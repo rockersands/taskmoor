@@ -561,6 +561,22 @@
   overflow-y: auto;
 }
 
+/* A file uploaded from the file prompt (T-120): the chooser shows the focus of its hidden field. */
+.rt-prompt-choose:focus-within {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.rt-prompt-note {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+/* A status line with nothing to say stays for a screen reader and takes no line or gap. */
+.rt-prompt-note:empty {
+  position: absolute;
+}
+
 .rt-content details[data-expand],
 .rt-content .rt-expand {
   margin: 0 0 var(--space-2);
