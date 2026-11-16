@@ -59,7 +59,10 @@ export const Asking: Story = {
   },
 };
 
-/** A track already in the trash: the refusal goes to the page, and the question stays open. */
+/**
+ * A track someone else put in the trash meanwhile: the refusal goes to the page with where the
+ * track went, and the question stays open until the page reads its list again.
+ */
 export const Refused: Story = {
   args: {
     client: {
@@ -74,7 +77,10 @@ export const Refused: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Delete track SHOP' }));
     const question = canvas.getByRole('group', { name: /^SHOP goes to the trash/ });
     await userEvent.click(within(question).getByRole('button', { name: 'Delete track SHOP' }));
-    await expect(args.onProblem).toHaveBeenCalledWith('Track SHOP is in the trash already.');
+    await expect(args.onProblem).toHaveBeenCalledWith(
+      'Track SHOP is in the trash already.',
+      'trash',
+    );
     await expect(question).toBeVisible();
   },
 };
