@@ -52,6 +52,8 @@ export interface NewTicketType {
   description?: string;
   icon?: string;
   levelId: number;
+  /** A local-mode track that owns the type (T-322); shared when left out. */
+  trackId?: number;
 }
 
 export interface TicketTypeChange {

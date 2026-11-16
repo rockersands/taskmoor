@@ -96,6 +96,8 @@ export const TrackAdministrator: Story = {
     await expect(await canvas.findByRole('group', { name: 'Ops notes' })).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Use this set for OPS' })).toBeVisible();
     await expect(canvas.queryByText('Default field rules')).toBeNull();
+    // Its own ticket types come first (T-322).
+    await expect(canvas.getByRole('region', { name: 'Its own ticket types' })).toBeVisible();
   },
 };
 

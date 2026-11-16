@@ -3518,7 +3518,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.maps.title': 'Mapas de flujos',
   'admin.maps.intro':
     'Un mapa de flujos dice qué flujo de trabajo sigue cada tipo de ticket en los tracks que lo usan. Los tipos que no nombra siguen su flujo de trabajo predeterminado.',
-  'admin.maps.forbidden': 'Solo los administradores gestionan los mapas de flujos.',
+  'admin.maps.forbidden':
+    'Solo los administradores del sitio y de la configuración, y quienes llevan un track con configuración propia, gestionan los mapas de flujos.',
   'admin.maps.loading': 'Leyendo los mapas de flujos…',
   'admin.maps.failed': 'No se pudieron leer los mapas de flujos. Inténtalo de nuevo en un momento.',
   'admin.maps.new': 'Nuevo mapa de flujos de trabajo',
@@ -3747,7 +3748,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.fields.intro':
     'Los campos personalizados añaden lo que los tickets necesitan guardar además de los integrados. Un campo conserva su tipo; sus opciones pueden cambiar sin tocar los tickets.',
   'admin.fields.forbidden':
-    'Solo los administradores del sitio y de configuración gestionan los campos.',
+    'Solo los administradores del sitio y de configuración gestionan los campos. Quienes administran un track con configuración propia gestionan sus campos propios desde la página del track.',
   'admin.fields.loading': 'Leyendo los campos…',
   'admin.fields.failed': 'No se pudieron leer los campos. Inténtalo de nuevo en un momento.',
   'admin.fields.none': 'Aún no hay campos personalizados.',
@@ -4322,6 +4323,56 @@ export const messagesEs: Record<MessageId, string> = {
     '{count, plural, one {El flujo de trabajo {workflows} define {name}.} other {Los flujos de trabajo {workflows} definen {name}.}} Elige el motivo que definen en su lugar: cada uno recibe una versión nueva que lo define.',
   'admin.priorities.reasonNoOther': 'No hay otro motivo de cierre que elegir. Añade uno primero.',
   'admin.priorities.reasonDeletedInto': 'Se eliminó {name}; {into} ocupa su lugar.',
+  // Etiquetas: fusionar varias en una, que también renombra una (T-322; CORE-017; ADR-114).
+  'settings.labels': 'Etiquetas',
+  'settings.labelsHint':
+    'Fusiona las etiquetas que significan lo mismo, o renombra una, en todos los tickets a la vez.',
+  'admin.labels.title': 'Etiquetas',
+  'admin.labels.about':
+    'Las etiquetas son palabras libres en los tickets, sugeridas entre todas las que están en uso mientras se escribe. Cuando se escribe una misma idea de varias formas, como front-end, frontend y FE, fusiónalas: cada ticket que tiene una de ellas recibe la etiqueta en la que se convierten, una sola vez, y su historial registra el cambio. Fusionar una sola etiqueta en una palabra nueva la renombra. Los recuentos incluyen los tickets de la papelera, que una fusión también cambia.',
+  'admin.labels.forbidden':
+    'Solo los administradores del sitio y de configuración fusionan y renombran etiquetas.',
+  'admin.labels.merging': 'Fusionar o renombrar',
+  'admin.labels.mergingNote':
+    'Marca etiquetas en la lista de abajo y escribe la etiqueta en la que se convierten: una que ya está en uso, para fusionarlas en ella, o una palabra nueva, para renombrarlas.',
+  'admin.labels.nothingTicked': 'Aún no hay ninguna etiqueta marcada.',
+  'admin.labels.chosen': 'Marcadas: {labels}.',
+  'admin.labels.withCount':
+    '{name} ({count, plural, =0 {ningún ticket} one {# ticket} other {# tickets}})',
+  'admin.labels.into': 'Se convierten en',
+  'admin.labels.intoHint':
+    'Una palabra, sin espacios. Las mayúsculas cuentan: FE y fe son dos etiquetas, y fusionar una en la otra las hace una.',
+  'admin.labels.oneWord': 'Una etiqueta es una palabra de hasta 255 caracteres, sin espacios.',
+  'admin.labels.chooseOther':
+    'Las etiquetas marcadas ya son {into}: marca otra etiqueta o escribe otra palabra.',
+  'admin.labels.tooMany': 'Marca como mucho {max} etiquetas a la vez.',
+  'admin.labels.merge': 'Fusionar',
+  'admin.labels.rename': 'Renombrar',
+  'admin.labels.mergeInto': 'Fusionar en {into}',
+  'admin.labels.renameTo': 'Renombrar {label} como {into}',
+  'admin.labels.confirmMerge':
+    '{count, plural, =0 {¿Fusionar {labels} en {into}? Ningún ticket las tiene ahora, así que solo cambian las sugerencias.} one {¿Fusionar {labels} en {into}? El ticket que las tiene recibe {into} en su lugar, y su historial lo registra.} other {¿Fusionar {labels} en {into}? Los tickets que las tienen, # como mucho, reciben {into} en su lugar, una vez cada uno, y su historial lo registra.}} No se puede deshacer.',
+  'admin.labels.confirmRename':
+    '{count, plural, =0 {¿Renombrar {label} como {into}? Ningún ticket la tiene ahora, así que solo cambian las sugerencias.} one {¿Renombrar {label} como {into}? Su ticket recibe {into} en su lugar, y su historial lo registra.} other {¿Renombrar {label} como {into}? Sus # tickets reciben {into} en su lugar, y su historial lo registra.}} Si {into} ya es una etiqueta, las dos pasan a ser una. No se puede deshacer.',
+  'admin.labels.done':
+    '{count, plural, =0 {{into} sustituye a {labels}; ningún ticket cambió.} one {{into} sustituye a {labels} en # ticket.} other {{into} sustituye a {labels} en # tickets.}}',
+  'admin.labels.clear': 'Quitar las marcas',
+  'admin.labels.list': 'Etiquetas de este sitio',
+  'admin.labels.search': 'Buscar las etiquetas que empiezan por',
+  'admin.labels.count': '{count, plural, =0 {Ningún ticket} one {# ticket} other {# tickets}}',
+  'admin.labels.loading': 'Leyendo las etiquetas…',
+  'admin.labels.failed': 'No se pudieron leer las etiquetas. Inténtalo de nuevo en un momento.',
+  'admin.labels.emptyTitle': 'Aún no hay etiquetas',
+  'admin.labels.empty':
+    'Una etiqueta aparece aquí cuando un ticket la tiene. Las personas añaden etiquetas en un ticket, y las importaciones traen las suyas.',
+  'admin.labels.noneMatchTitle': 'Ninguna etiqueta empieza por {q}',
+  'admin.labels.noneMatch': 'Prueba con menos letras, o vacía la búsqueda para ver todas.',
+  'admin.labels.more': 'Mostrar más etiquetas',
+  'admin.labels.moreFailed': 'No se pudieron leer más etiquetas. Inténtalo de nuevo en un momento.',
+  'admin.labels.problem.labels':
+    'Esas etiquetas no se pueden fusionar: marca como mucho {max}, distintas de la que resulta.',
+  'admin.labels.problem.other':
+    'No se pudieron fusionar las etiquetas. Inténtalo de nuevo en un momento.',
   'ticketView.editLabels': 'Editar las etiquetas',
   'ticketView.save': 'Guardar',
   'ticketView.cancel': 'Cancelar',
@@ -7125,7 +7176,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Un nivel oculta tickets concretos a todos menos a sus miembros. Un track usa una política, que contiene sus niveles.',
   'admin.visibility.about':
     'Para ver un ticket de un nivel hay que ver el track y ser miembro del nivel. También vale para los administradores del sitio. Un ticket sin nivel lo ve todo el que ve su track.',
-  'admin.visibility.forbidden': 'Solo los administradores del sitio usan esta página.',
+  'admin.visibility.forbidden':
+    'Solo los administradores del sitio y de la configuración, y quienes llevan un track con configuración propia, gestionan las políticas de visibilidad.',
   'admin.visibility.loading': 'Leyendo las políticas…',
   'admin.visibility.failed': 'No se pudieron leer las políticas. Inténtalo de nuevo en un momento.',
   'admin.visibility.emptyTitle': 'Aún no hay políticas de visibilidad',
@@ -7191,6 +7243,57 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.visibility.problem.limit':
     'Esto supera un límite. La página de Salvaguardas tiene el límite de niveles.',
   'admin.visibility.problem.other': 'No se pudo hacer. Inténtalo de nuevo en un momento.',
+  // La configuración propia de un track en modo local: su mapa de flujos y sus políticas de
+  // visibilidad, y los administradores de la configuración en Políticas de visibilidad (T-322).
+  'admin.visibility.problem.forbidden':
+    'No puedes cambiar esta política. Solo la cambian quienes llevan su track y los administradores del sitio y de la configuración.',
+  'admin.visibility.trackAbout':
+    'Este track tiene su propia configuración, así que puede tener sus propias políticas de visibilidad: niveles solo para sus tickets. Los demás tracks no se ven afectados.',
+  'admin.visibility.trackIntro':
+    'Las políticas de visibilidad propias de este track. Las compartidas son cosa de los administradores del sitio y de la configuración.',
+  'admin.visibility.trackUsesOwn': '{key} usa {name}.',
+  'admin.visibility.trackUsesShared':
+    '{key} usa ahora una política compartida. Usa una propia para elegir quién ve cuáles de sus tickets.',
+  'admin.visibility.trackUsesNoPolicy':
+    '{key} no usa ahora ninguna política de visibilidad, así que quien lo ve ve todos sus tickets. Usa una propia para dar niveles a sus tickets.',
+  'admin.visibility.ownEmpty':
+    'Añade una con Nueva política de visibilidad, dale niveles y úsala para {key}.',
+  'admin.visibility.useFor': 'Usar esta política para {key}',
+  'admin.visibility.useHint':
+    'Los tickets de un nivel que esta política no tiene toman su nivel predeterminado, o ninguno, así que algunos pueden quedar a la vista de más personas. Solo los administradores del sitio y de la configuración pueden volver a darle al track una política compartida, o ninguna.',
+  'admin.visibility.usedFor': '{key} usa ahora {name}.',
+  'admin.visibility.choose.intro':
+    'Llevas estos tracks con configuración propia. Elige uno para gestionar sus propias políticas de visibilidad.',
+  'admin.visibility.choose.none':
+    'Ninguno de los tracks que llevas tiene configuración propia. Usan políticas de visibilidad compartidas, que cambian los administradores del sitio y de la configuración.',
+  'admin.visibility.choose.open': 'Políticas de visibilidad de {key} · {name}',
+  'admin.visibility.scope.shared':
+    '{key} usa configuración compartida, así que usa una política de visibilidad compartida, o ninguna, que eligen los administradores del sitio y de la configuración.',
+  'admin.maps.trackTitle': 'Mapa de flujos',
+  'admin.maps.trackAbout':
+    'Este track tiene su propia configuración, así que tiene su propio mapa de flujos: qué flujo de trabajo sigue cada uno de sus tipos de ticket, también sus flujos propios. Los demás tracks no se ven afectados.',
+  'admin.maps.trackIntro':
+    'El mapa de flujos propio de este track, creado con él. Los mapas compartidos son cosa de los administradores del sitio y de la configuración.',
+  'admin.maps.trackNote':
+    'Qué flujo de trabajo sigue cada tipo de ticket que ofrece {key}. Un tipo que el mapa no nombra sigue el flujo de trabajo para todos los demás tipos.',
+  'admin.maps.trackFailed':
+    'No se pudo leer el mapa de flujos del track. Inténtalo de nuevo en un momento.',
+  'admin.maps.ownWorkflow': '{name} (propio de {key})',
+  'admin.maps.choose.intro':
+    'Llevas estos tracks con configuración propia. Elige uno para cambiar su propio mapa de flujos.',
+  'admin.maps.choose.none':
+    'Ninguno de los tracks que llevas tiene configuración propia. Usan mapas de flujos compartidos, que cambian los administradores del sitio y de la configuración.',
+  'admin.maps.choose.open': 'Mapa de flujos de {key} · {name}',
+  'admin.maps.scope.shared':
+    '{key} usa configuración compartida, así que sigue un mapa de flujos compartido, que eligen y cambian los administradores del sitio y de la configuración.',
+  'admin.maps.problem.archived':
+    'El track está archivado, así que su mapa solo se puede cambiar cuando se restaure.',
+  'admin.maps.problem.forbidden':
+    'No puedes cambiar este mapa. Solo lo cambian quienes llevan su track y los administradores del sitio y de la configuración.',
+  'trackPeople.workflowMapLink':
+    'Mapa de flujos: qué flujo de trabajo sigue cada uno de sus tipos de ticket',
+  'trackPeople.visibilityLink':
+    'Políticas de visibilidad: cuáles de sus tickets solo ven algunas personas',
   'admin.explain.title': 'Explicador de permisos',
   'admin.explain.about':
     'Elige una persona y luego un track o un ticket y un permiso. La respuesta dice sí o no y nombra lo que lo decidió: un rol en el track, un grupo, un permiso global o un nivel de visibilidad. Solo lee; aquí no cambia nada.',
@@ -7404,12 +7507,12 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.aiLimits.savePrice': 'Guardar la tarifa',
   'settings.trackSets': 'Qué conjuntos usa un track',
   'settings.trackSetsHint':
-    'Elegir los diseños, prioridades, política de visibilidad y notificaciones de un track.',
+    'Elegir la política de acceso, el conjunto de tipos, los diseños, prioridades, política de visibilidad y notificaciones de un track.',
   'admin.trackSets.title': 'Qué conjuntos usa un track',
   'admin.trackSets.purpose':
-    'Elige los diseños, prioridades, política de visibilidad y notificaciones de un track entre los conjuntos que existen.',
+    'Elige la política de acceso, el conjunto de tipos, los diseños, prioridades, política de visibilidad y notificaciones de un track entre los conjuntos que existen.',
   'admin.trackSets.about':
-    'Esta página solo elige. Los conjuntos de diseños, los conjuntos de prioridades, las políticas de visibilidad y las políticas de notificaciones se crean en sus propias páginas. Los conjuntos de tipos, de reglas de campos y los mapas de flujos se eligen donde se crean.',
+    'Esta página solo elige. Las políticas de acceso, los conjuntos de tipos, de diseños y de prioridades, las políticas de visibilidad y las de notificaciones se crean en sus propias páginas. Los conjuntos de reglas de campos y los mapas de flujos se eligen donde se crean. Un track con configuración propia conserva su propia política de acceso y su conjunto de tipos.',
   'admin.trackSets.forbidden':
     'Solo los administradores del sitio y de la configuración eligen aquí los conjuntos de un track.',
   'admin.trackSets.loading': 'Leyendo…',
@@ -7446,6 +7549,48 @@ export const messagesEs: Record<MessageId, string> = {
     'No puedes elegir eso para este track. Un administrador del sitio o de la configuración puede.',
   'admin.trackSets.problem.other': 'No se pudo guardar. Inténtalo de nuevo en un momento.',
   'admin.tracks.setsLink': 'Elegir los conjuntos que usa {key}',
+  // Deleting a track to the trash, and a shared-mode track's access policy and type set (T-322).
+  'admin.tracks.delete': 'Eliminar el track',
+  'admin.tracks.deleteOf': 'Eliminar el track {key}',
+  'admin.tracks.deleteOutcome':
+    '{key} va a la papelera con sus tickets, versiones y áreas. Allí nadie lo ve, y su clave sigue ocupada. Se puede restaurar desde Papelera hasta que se cumpla su tiempo allí; después se elimina para siempre.',
+  'admin.tracks.deletedSaid': 'El track {key} está en la papelera.',
+  'admin.tracks.trashLink': 'Restaurar {key} desde Papelera',
+  'admin.tracks.problem.inTrash': 'El track {key} ya está en la papelera.',
+  'admin.tracks.problem.gone': 'El track {key} ya no existe, o ya no puedes verlo.',
+  'admin.trackSets.access': 'Política de acceso',
+  'admin.trackSets.accessHint':
+    'Quién puede ver el track y qué puede hacer en él. Al cambiarla, eso cambia al momento para todos.',
+  'admin.trackSets.accessLink': 'Crea y cambia las políticas de acceso en Permisos.',
+  'admin.trackSets.typeSet': 'Conjunto de tipos',
+  'admin.trackSets.typeSetHint':
+    'Los tipos de ticket que ofrece el track. Si hay tickets de un tipo que el nuevo conjunto no tiene, al guardar se pregunta qué tipo toman.',
+  'admin.trackSets.typeSetLink':
+    'Crea y cambia los conjuntos de tipos en Conjuntos de configuración.',
+  'admin.trackSets.choose': 'Elige uno',
+  'admin.trackSets.ownKept':
+    '{key} tiene su propia política de acceso y su propio conjunto de tipos. Sus administradores cambian el conjunto de tipos en su propia página de Conjuntos de configuración, y la política de acceso a través de la API.',
+  'admin.trackSets.ownLink': 'Abrir los conjuntos de configuración de {key}',
+  'admin.trackSets.mapping': 'Tickets de los tipos que {set} no tiene',
+  'admin.trackSets.mappingIntro':
+    '{tickets, plural, one {# ticket de {key} tiene} other {# tickets de {key} tienen}} un tipo que {set} no tiene. Elige el tipo que toman, del mismo nivel, y vuelve a guardar.',
+  'admin.trackSets.mappingIntroUncounted':
+    'Hay tickets de {key} con un tipo que {set} no tiene. Elige el tipo que toman, del mismo nivel, y vuelve a guardar.',
+  'admin.trackSets.mappingNowhere':
+    '{set} no tiene ningún tipo del nivel {level}, así que los tickets de {name} no tienen adónde ir: elige otro conjunto de tipos, o añade a {set} un tipo de ese nivel.',
+  'admin.trackSets.savedMapped':
+    'Se guardó {key}; {tickets, plural, one {# ticket tomó otro tipo} other {# tickets tomaron otro tipo}}.',
+  'admin.trackSets.savedMappedUncounted':
+    'Se guardó {key}; los tickets de los tipos que faltaban tomaron otro tipo.',
+  'admin.trackSets.problem.typeInUse':
+    'Hay tickets de {key} con un tipo que {set} no tiene: elige el tipo que toman y vuelve a guardar.',
+  'admin.trackSets.problem.mapping':
+    'Cada tipo que {set} no tiene necesita un tipo del mismo nivel que {set} sí tenga.',
+  'admin.trackSets.problem.archived':
+    '{key} está archivado: restáuralo en Tracks antes de cambiar lo que usa.',
+  'admin.trackSets.problem.gone':
+    'Un conjunto que elegiste ya no existe, o es de un track con configuración propia. Vuelve a abrir la página y elige otro.',
+  'admin.trackSets.problem.trackGone': '{key} ya no existe, o ya no puedes verlo.',
   'summary.templates': 'Plantillas de ticket',
   'settings.ticketTemplates': 'Plantillas de ticket',
   'settings.ticketTemplatesHint':
@@ -7747,6 +7892,39 @@ export const messagesEs: Record<MessageId, string> = {
   'ownSets.archived': '{key} está archivado: su configuración se puede cambiar cuando se restaure.',
   'ownSets.useHint':
     'Desde entonces el track sigue este conjunto. Solo los administradores del sitio y de la configuración pueden volver a darle uno compartido.',
+  // Los tipos de ticket y los campos propios de un track con configuración propia (T-322).
+  'ownTypes.title': 'Sus tipos de ticket propios',
+  'ownTypes.intro':
+    'Tipos de ticket que solo tiene {key}. Su conjunto de tipos, más abajo, ofrece uno cuando lo marcas allí.',
+  'ownTypes.listOf': 'Tipos de ticket de {key}',
+  'ownTypes.none': '{key} aún no tiene tipos de ticket propios.',
+  'ownTypes.noneBody':
+    'Añade uno para el trabajo que solo hace este track. Los tipos compartidos no cambian.',
+  'ownTypes.summary':
+    'Nivel {level} · {offered, select, yes {en su conjunto de tipos} other {aún no está en su conjunto de tipos}}',
+  'ownTypes.added': 'Se añadió {name}. Márcalo en el conjunto de tipos para ofrecerlo.',
+  'ownTypes.levelHint':
+    'Otro nivel se rechaza si los tickets de este tipo se quedaran sin el padre que necesitan, y la página dice cuántos.',
+  'ownTypes.problem.inTypeSet':
+    '{name} está en {sets}: desmárcalo allí y guarda antes el conjunto.',
+  'ownFields.about':
+    'Este track tiene configuración propia: los campos que le pertenecen solo lo cubren a él, y los demás tracks no se ven afectados. Los campos compartidos que le llegan son cosa de los administradores del sitio y de la configuración.',
+  'ownFields.intro':
+    'Los campos propios de este track. Los compartidos son cosa de los administradores del sitio y de la configuración.',
+  'ownFields.none': '{key} aún no tiene campos propios.',
+  'ownFields.noneBody':
+    'Un campo propio guarda lo que solo necesitan los tickets de este track, y nada de él llega a otro track.',
+  'ownFields.choose.intro':
+    'Administras estos tracks con configuración propia. Elige uno para gestionar sus campos propios.',
+  'ownFields.choose.none':
+    'Ninguno de los tracks que administras tiene configuración propia. Sus campos son compartidos, y los cambian los administradores del sitio y de la configuración.',
+  'ownFields.choose.open': 'Campos de {key} · {name}',
+  'ownFields.scope.shared':
+    '{key} usa configuración compartida, así que sus campos son compartidos, y los cambian los administradores del sitio y de la configuración.',
+  'admin.fields.contexts.groupChosen': 'El grupo elegido antes',
+  'admin.fields.contexts.peopleChosenGroup':
+    'Personas para elegir: los miembros del grupo elegido antes',
+  'trackPeople.fieldsLink': 'Campos: los campos personalizados que le pertenecen',
   'layouts.loading': 'Leyendo los diseños…',
   'layouts.failed':
     'No se pudieron leer los conjuntos de diseños. Inténtalo de nuevo en un momento.',

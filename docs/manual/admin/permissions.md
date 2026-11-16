@@ -1,7 +1,7 @@
 ---
 title: "Permissions and access"
 audience: admins
-sources: apps/web/src/admin/sections.ts, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/permissions/visibilityClient.ts, apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx, apps/server/src/authz/track-admins.ts, apps/server/src/authz/create-tracks.ts, apps/server/src/routes/setup.ts, docs/adr/0118-track-invitations.md, apps/web/src/admin/NewButton.tsx, apps/web/src/permissions/client.ts, apps/server/src/routes/fields.ts, apps/server/src/fields/values.ts, apps/server/src/routes/ticket-templates.ts
+sources: apps/web/src/admin/sections.ts, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/permissions/visibilityClient.ts, apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx, apps/server/src/authz/track-admins.ts, apps/server/src/authz/create-tracks.ts, apps/server/src/routes/setup.ts, docs/adr/0118-track-invitations.md, apps/web/src/admin/NewButton.tsx, apps/web/src/permissions/client.ts, apps/server/src/routes/fields.ts, apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/sets/trackScope.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/server/src/fields/values.ts, apps/server/src/routes/ticket-templates.ts
 accessed: 2026-11-16
 attestation: own-words
 ---
@@ -24,14 +24,15 @@ Groups and people are managed on [People and groups](people-and-groups.md).
 - **Administration** > **Tracks** > **Manage** shows "Who does what in" the track: the people and
   groups in each role.
 - **Administration** > **Visibility policies** (`#/admin/visibility`) manages policies and their
-  levels; see [Visibility levels](#visibility-levels).
+  levels; a local-mode track's own policies are on a page of that track. See
+  [Visibility levels](#visibility-levels).
 - **Administration** > **Permission explainer** (`#/admin/permission-explainer`) says who can do what
   and why; see [How Taskmoor decides](#how-taskmoor-decides).
 
 [Administration](administration.md) is for site administrators. A configuration administrator
-sees its **Tracks and setup** pages and does that work in the web app; the rest of what they may do
-(roles, access policies, visibility policies) has its pages among those of site administrators, and
-stays in the API for them.
+sees its **Tracks and setup** pages and **Visibility policies**, and does that work in the web app;
+the rest of what they may do (roles and access policies) has its pages among those of site
+administrators, and stays in the API for them.
 
 ## Site and configuration administrators
 
@@ -151,8 +152,11 @@ To work with policies under **Access policies**:
 One permission may go to at most 50 grantees in one policy. The **Guardrails** page changes
 that limit (`grants_per_permission`).
 
-A shared-mode track switches policy with `PATCH /api/v1/tracks/:id` and `accessPolicyId`, by a
-site or configuration administrator.
+Site and configuration administrators switch a shared-mode track's policy on
+[Which sets a track uses](fields.md#which-sets-a-track-uses), under **Access policy**, which lists
+the shared policies. Once saved, the new policy applies at once to everyone in the track. Through
+the API it is `PATCH /api/v1/tracks/:id` with `accessPolicyId`. A local-mode track keeps its own
+policy, and the page says so.
 
 ### Track permissions
 
@@ -196,7 +200,8 @@ The ticket view shows **Visibility level** ("Everyone" when there is none).
 
 ### Managing policies and levels
 
-Site administrators open **Administration** > **Visibility policies**:
+Site and configuration administrators open **Administration** > **Visibility policies**, under
+**People and access**; a configuration administrator sees only this page of that group:
 
 1. **New visibility policy**, at the top of the page, opens the form: give a **Policy name** and
    choose **Add a visibility policy**.
@@ -218,9 +223,19 @@ Site administrators open **Administration** > **Visibility policies**:
 A track chooses its policy on [Which sets a track uses](fields.md#which-sets-a-track-uses), which
 configuration administrators can use too.
 
-A local-mode track's own policy is managed only through the API, and its levels may also name
-that track's own fields. A configuration administrator may also change policies through the
-API; the page is for site administrators.
+A local-mode track's own policies are on its own **Visibility policies** page: on
+**Administration** > **Tracks you run**, **Manage** the track, then **Visibility policies** under
+**Its own configuration** (the address ends in `/manage/tracks/<id>/visibility-policies`).
+Whoever runs the track works there as above, on the policies the track owns and no other. A
+level's members may also be the people or groups in the track's own user and group fields, and
+**Find a person** looks among the people who may be named in the track. Site and configuration
+administrators, who need no role in the track, find anyone on the site instead, and only they are
+offered groups. The page says which policy the track uses, or that
+it uses a shared one or none. **Use this policy for** the track makes it use one of its own:
+tickets at a level that policy lacks take its default level, or none, so some may become visible
+to more people. Giving it a shared policy, or none, again is for site and configuration
+administrators. On the shared page, someone who runs tracks but is no administrator sees only
+links to the tracks they run that have their own configuration.
 
 The same through the API:
 

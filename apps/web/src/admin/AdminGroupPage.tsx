@@ -25,7 +25,9 @@ export function AdminGroupPage({ group }: { group: AdminGroup }) {
   const t = useT();
   const titleId = useId();
   const access = useAdminAccess();
-  const allowed = groupsFor(access ?? 'none').some((g) => g.id === group.id);
+  // The group as this person sees it: a configuration administrator only its setup pages (T-322).
+  const shown = groupsFor(access ?? 'none').find((g) => g.id === group.id);
+  const allowed = shown !== undefined;
   return (
     <section aria-labelledby={titleId} className="page admin-page">
       <PageHeader
@@ -34,9 +36,9 @@ export function AdminGroupPage({ group }: { group: AdminGroup }) {
         {...(allowed ? { purpose: t(group.purposeId), about: t('admin.group.about') } : {})}
       />
       {access && !allowed && <p className="page-note">{t('admin.forbidden')}</p>}
-      {allowed && (
+      {shown && (
         <div className="glass-card admin-panel">
-          <AdminPageLinks group={group} />
+          <AdminPageLinks group={shown} />
         </div>
       )}
     </section>

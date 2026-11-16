@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
-import { ADMIN } from '../admin/fixtures';
-import { SessionProvider } from '../session/SessionProvider';
+import { ADMIN, TRACK_ADMIN } from '../admin/fixtures';
+import { type Session, SessionProvider } from '../session/SessionProvider';
 import { FieldsAdminPage } from './FieldsAdminPage';
 import { fakeFieldsClient } from './fixtures';
 
@@ -22,8 +22,8 @@ const meta = {
   component: FieldsAdminPage,
   args: { client: fakeFieldsClient() },
   decorators: [
-    (Story) => (
-      <SessionProvider session={ADMIN}>
+    (Story, context) => (
+      <SessionProvider session={(context.parameters.session as Session) ?? ADMIN}>
         <main style={{ padding: 24 }}>
           <Story />
         </main>
@@ -126,5 +126,46 @@ export const AtPhoneWidth: Story = {
     await expect(await canvas.findByRole('button', { name: 'Rename Madrid' })).toBeVisible();
     await expect(canvas.getByText(/^Add custom fields and keep/)).toBeVisible();
     await fitsPhoneWidth(canvas);
+  },
+};
+
+/**
+ * Someone who runs OPS, a track with its own configuration, on its own page (T-322): its own
+ * field open, whose context covers OPS alone.
+ */
+export const TrackAdministrator: Story = {
+  args: { client: fakeFieldsClient(), trackId: 4 },
+  parameters: { session: TRACK_ADMIN },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('OPS · Operations')).toBeVisible();
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Components' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Change context OPS' }));
+    await expect(
+      canvas.getByText('It covers Operations only: the field belongs to that track.'),
+    ).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Manage field Severity' })).toBeNull();
+  },
+};
+
+/** The same at a phone's width: nothing sticks out sideways. */
+export const TrackAdministratorAtPhoneWidth: Story = {
+  ...TrackAdministrator,
+  decorators: [atPhoneWidth],
+  play: async (context) => {
+    await TrackAdministrator.play?.(context);
+    await fitsPhoneWidth(within(context.canvasElement));
+  },
+};
+
+/** On the shared page, someone who runs tracks chooses one with its own configuration. */
+export const TracksToChoose: Story = {
+  args: { client: fakeFieldsClient() },
+  parameters: { session: TRACK_ADMIN },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('link', { name: 'Fields of OPS · Operations' }),
+    ).toBeVisible();
   },
 };

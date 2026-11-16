@@ -1,6 +1,13 @@
 import { api } from '../api/client';
 import { everyTrack } from '../api/tracks';
-import { findSitePeople, findTeams } from '../tickets/pickerSources';
+import { type TrackScopeClient, trackScopeClient } from '../sets/trackScope';
+import {
+  findGroups as findFieldGroups,
+  findSitePeople,
+  findTeams,
+  findPeople as findTrackPeople,
+  PICKER_LIMIT,
+} from '../tickets/pickerSources';
 
 /** The field types an administrator adds from this page, formulas included (T-320). */
 export const FIELD_TYPES = [
@@ -151,8 +158,12 @@ export interface ContextBody {
 }
 
 /** The endpoints the fields page uses. Stories and tests pass their own. */
-export interface FieldsClient {
-  fields: () => Promise<Field[]>;
+export interface FieldsClient extends TrackScopeClient {
+  /**
+   * Every field the caller may read; with a track, the shared fields that reach it and the ones it
+   * owns (T-322).
+   */
+  fields: (trackId?: number) => Promise<Field[]>;
   field: (id: number) => Promise<Field>;
   createField: (body: {
     name: string;
@@ -160,6 +171,8 @@ export interface FieldsClient {
     description?: string;
     multiple?: boolean;
     config?: FieldConfig;
+    /** A local-mode track that owns the field (T-322); shared when left out. */
+    trackId?: number;
   }) => Promise<Field>;
   updateField: (
     id: number,
@@ -208,6 +221,16 @@ export interface FieldsClient {
   /** People and teams by name, for a default value. */
   findPeople: (typed: string) => Promise<Named[]>;
   findTeams: (typed: string) => Promise<Named[]>;
+  /**
+   * The groups a group field's default may name, by name: the site's list (`GET /groups`), which
+   * site and configuration administrators may always read.
+   */
+  findGroups: (fieldId: number, typed: string) => Promise<Named[]>;
+  /** What a local-mode track's runners read instead of the site's lists (T-322). */
+  trackRoles: (trackId: number) => Promise<Named[]>;
+  findTrackPeople: (trackKey: string, typed: string) => Promise<Named[]>;
+  /** The same groups through the field (`GET /fields/:id/groups`, Browse users and groups). */
+  findFieldGroups: (fieldId: number, typed: string) => Promise<Named[]>;
 }
 
 const optionPath = (fieldId: number, contextId: number) =>
@@ -215,7 +238,13 @@ const optionPath = (fieldId: number, contextId: number) =>
 const named = (rows: Named[]) => rows.map(({ id, name }) => ({ id, name }));
 
 export const fieldsClient: FieldsClient = {
-  fields: async () => (await api<{ fields: Field[] }>('/fields')).fields,
+  ...trackScopeClient,
+  fields: async (trackId) =>
+    (
+      await api<{ fields: Field[] }>(
+        trackId === undefined ? '/fields' : `/fields?trackId=${trackId}`,
+      )
+    ).fields,
   field: async (id) => (await api<{ field: Field }>(`/fields/${id}`)).field,
   createField: async (body) =>
     (await api<{ field: Field }>('/fields', { method: 'POST', body })).field,
@@ -284,4 +313,41 @@ export const fieldsClient: FieldsClient = {
   roles: async () => named((await api<{ roles: Named[] }>('/roles')).roles),
   findPeople: findSitePeople,
   findTeams,
+  findGroups: async (_fieldId, typed) =>
+    named(
+      (await api<{ groups: Named[] }>(`/groups?query=${encodeURIComponent(typed)}`)).groups,
+    ).slice(0, PICKER_LIMIT),
+  trackRoles: async (trackId) =>
+    named((await api<{ roles: Named[] }>(`/tracks/${trackId}/roles`)).roles),
+  findTrackPeople: (trackKey, typed) => findTrackPeople(trackKey, typed),
+  findFieldGroups,
 };
+
+/**
+ * The client of a local-mode track's own Fields page (T-322; T-163a's pattern): the fields that
+ * reach the track, new fields the track owns, and the track alone as the list of tracks, since its
+ * fields cover it only. Site and configuration administrators keep the site's lists of groups,
+ * roles and people. Anyone else, who runs the track, reads only what that lets them read: the
+ * roles from the track's own list, people who may be mentioned in it, and no groups, whose list is
+ * for administrators; a group field's default finds groups by name through the field instead.
+ */
+export function trackFieldsClient(
+  client: FieldsClient,
+  track: NamedTrack,
+  admin: boolean,
+): FieldsClient {
+  return {
+    ...client,
+    fields: () => client.fields(track.id),
+    createField: (body) => client.createField({ ...body, trackId: track.id }),
+    tracks: async () => [{ id: track.id, key: track.key, name: track.name }],
+    ...(admin
+      ? {}
+      : {
+          groups: async () => [],
+          roles: () => client.trackRoles(track.id),
+          findPeople: (typed: string) => client.findTrackPeople(track.key, typed),
+          findGroups: (fieldId: number, typed: string) => client.findFieldGroups(fieldId, typed),
+        }),
+  };
+}
