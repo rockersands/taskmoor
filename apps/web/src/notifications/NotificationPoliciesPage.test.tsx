@@ -204,6 +204,106 @@ describe('notification policies (NTF-001, T-155)', () => {
     expect(client.calls.filter((c) => c.action === 'update')).toEqual([]);
   });
 
+  it('[NTF-001] never names a person the choice no longer shows', async () => {
+    const client = renderPage();
+    const user = await openPolicy('Payments');
+    const form = screen.getByRole('form', { name: 'Add a rule to Payments' });
+    const person = () => within(form).getByLabelText('Person');
+    await user.selectOptions(within(form).getByLabelText('Event'), 'Comment added');
+    await user.selectOptions(within(form).getByLabelText('Who hears of it'), 'A person');
+    const find = within(form).getByRole('searchbox', { name: 'Find a person' });
+    // A search emptied again lists no one, and so leaves no one chosen.
+    await user.type(find, 'ana');
+    await waitFor(() => expect(person()).toHaveDisplayValue('Ana Ruiz'));
+    await user.clear(find);
+    await waitFor(() => expect(person()).toHaveDisplayValue('Type a name above to find someone'));
+    await user.click(within(form).getByRole('button', { name: 'Add rule' }));
+    expect(within(form).getByRole('alert')).toHaveTextContent('Choose who the rule names first.');
+    expect(client.calls.filter((c) => c.action === 'update')).toEqual([]);
+
+    // After a person is added, another event does not silently take the same person.
+    await user.type(find, 'bo');
+    await waitFor(() => expect(person()).toHaveDisplayValue('Bo Lindqvist'));
+    await user.click(within(form).getByRole('button', { name: 'Add rule' }));
+    await screen.findByText('Rule added for Comment added: Bo Lindqvist.');
+    expect(person()).toHaveDisplayValue('Type a name above to find someone');
+    await user.selectOptions(within(form).getByLabelText('Event'), 'Ticket updated');
+    await user.click(within(form).getByRole('button', { name: 'Add rule' }));
+    expect(within(form).getByRole('alert')).toHaveTextContent('Choose who the rule names first.');
+    expect(client.calls.filter((c) => c.action === 'update')).toHaveLength(1);
+  });
+
+  it('[NTF-001] a rule naming a field since deleted goes with the next change, and is said', async () => {
+    const client = renderPage({ client: fakePoliciesClient({ goneField: true }) });
+    const user = await openPolicy('Payments');
+    const note =
+      'A rule names a field since deleted, so it reaches nobody. The next change to these rules removes it.';
+    expect(screen.getByText(note)).toBeVisible();
+    const created = screen.getByRole('list', { name: 'Ticket created' });
+    expect(within(created).getByText('People in something since deleted')).toBeVisible();
+
+    // Adding a rule is not refused for the one naming the deleted field: that one goes.
+    const form = screen.getByRole('form', { name: 'Add a rule to Payments' });
+    await user.selectOptions(within(form).getByLabelText('Event'), 'Ticket updated');
+    await user.selectOptions(within(form).getByLabelText('Who hears of it'), 'The followers');
+    await user.click(within(form).getByRole('button', { name: 'Add rule' }));
+    expect(
+      await screen.findByText(
+        'Rule added for Ticket updated: The followers. The rule naming a field since deleted was removed too.',
+      ),
+    ).toBeInTheDocument();
+    expect(lastRules(client)).toHaveLength(7);
+    expect(lastRules(client)).not.toContainEqual(expect.objectContaining({ fieldKey: 'cf[39]' }));
+    expect(screen.queryByText(note)).toBeNull();
+    expect(screen.queryByText('People in something since deleted')).toBeNull();
+  });
+
+  it('[NTF-001] removes a rule naming a field since deleted, or another rule beside it', async () => {
+    const client = renderPage({ client: fakePoliciesClient({ goneField: true }) });
+    const user = await openPolicy('Payments');
+    await user.click(
+      screen.getByRole('button', { name: 'Remove The followers from Comment added' }),
+    );
+    expect(
+      await screen.findByText(
+        'Rule removed for Comment added: The followers. The rule naming a field since deleted was removed too.',
+      ),
+    ).toBeInTheDocument();
+    expect(lastRules(client)).toHaveLength(5);
+    expect(screen.queryByText('People in something since deleted')).toBeNull();
+  });
+
+  it('[NTF-001] removing the rule naming a field since deleted says only that', async () => {
+    renderPage({ client: fakePoliciesClient({ goneField: true }) });
+    const user = await openPolicy('Payments');
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Remove People in something since deleted from Ticket created',
+      }),
+    );
+    expect(
+      await screen.findByText(
+        'Rule removed for Ticket created: People in something since deleted.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/was removed too/)).toBeNull();
+  });
+
+  it('[NTF-001] a copy of a policy leaves out a rule naming a field since deleted', async () => {
+    const user = userEvent.setup();
+    const client = renderPage({ client: fakePoliciesClient({ goneField: true }) });
+    await user.click(await screen.findByRole('button', { name: 'New policy' }));
+    const form = screen.getByRole('form', { name: 'Add policy' });
+    await user.selectOptions(within(form).getByLabelText('Start with'), 'The rules of Payments');
+    await user.type(within(form).getByLabelText('Policy name'), 'Payments copy');
+    await user.click(within(form).getByRole('button', { name: 'Add policy' }));
+    expect(await screen.findByText('Policy Payments copy was added.')).toBeInTheDocument();
+    const made = client.calls.find((c) => c.action === 'create')?.args[0] as {
+      rules: RuleInput[];
+    };
+    expect(made.rules).toHaveLength(6);
+  });
+
   it('[NTF-001] adds a policy that starts with the default’s rules, and opens it', async () => {
     const user = userEvent.setup();
     const client = renderPage();

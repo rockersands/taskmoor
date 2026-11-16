@@ -205,9 +205,13 @@ default's line says that tracks naming no other policy use it) and how many rule
   new policy opens once it is added.
 - **Manage** a policy to open it. Under **Who hears of what in** the policy, its rules are grouped
   by event, in the order of the table above, then the events transitions fire; each recipient has
-  **Remove**. A rule names the person, group, role or field it points at by name.
+  **Remove**. A rule names the person, group, role or field it points at by name. Deleting a
+  group or role takes its rules with it; deleting a field leaves its rules, which then
+  reach nobody and read "something since deleted". The policy says so, and the next change to its
+  rules (adding or removing any rule) removes them, as a copy of the policy leaves them out.
 - **Add a rule**: choose the **Event**, **Who hears of it**, and, for a recipient type that names
-  one, the person (found by name), group, track role, user field or group field. **Events that
+  one, the person (found by name; emptying the search leaves no one chosen), group, track role, user
+  field or group field. **Events that
   transitions fire** lists the events of the published workflows; **Another transition event…**
   takes a name you type, checked as the API checks it. A recipient type with nothing to choose from,
   such as group fields on a site with none, is not offered. A rule the policy has already is

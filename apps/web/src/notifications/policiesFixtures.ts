@@ -108,13 +108,23 @@ export interface FakePoliciesClient extends PoliciesClient {
   stored: () => NotificationPolicy[];
 }
 
+/** A field since deleted: a rule may still name it, and the server refuses a list that does. */
+const GONE_FIELD = 'cf[39]';
+
 /**
  * An in-memory backend for stories and tests that answers as the API would. The default policy
  * serves SHOP (which names none); Payments is unused; OPS owns On-call alerts, which it uses.
- * Deleting a policy in use answers `409 in_use`; a name already taken, `409 name_taken`.
+ * Deleting a policy in use answers `409 in_use`; a name already taken, `409 name_taken`; a rule
+ * naming a field no longer there, `400 invalid_request`. With `goneField`, Payments also tells
+ * Reviewer of new tickets through a field since deleted.
  */
 export function fakePoliciesClient(
-  options: { runs?: RunTrack[]; groups?: Choice[]; fail?: 'load' | 'forbidden' } = {},
+  options: {
+    runs?: RunTrack[];
+    groups?: Choice[];
+    fail?: 'load' | 'forbidden';
+    goneField?: boolean;
+  } = {},
 ): FakePoliciesClient {
   let nextRule = 100;
   let nextPolicy = 50;
@@ -136,7 +146,12 @@ export function fakePoliciesClient(
       description: 'The team hears of new tickets; followers of comments.',
       trackId: null,
       isDefault: false,
-      rules: rulesOf(PAYMENTS_RULES),
+      rules: rulesOf([
+        ...PAYMENTS_RULES,
+        ...(options.goneField
+          ? [{ event: 'ticket_created', recipient: 'user_field' as const, fieldKey: GONE_FIELD }]
+          : []),
+      ]),
       usedBy: [],
     },
     {
@@ -162,6 +177,11 @@ export function fakePoliciesClient(
     }
   };
   const answer = (policy: NotificationPolicy) => structuredClone(policy);
+  const refuseGone = (rules: RuleInput[] = []) => {
+    if (rules.some((r) => r.fieldKey && !FIELDS.some((f) => f.key === r.fieldKey))) {
+      throw new ApiError(400, { error: 'invalid_request', detail: 'rules: fieldKey' });
+    }
+  };
   return {
     calls,
     stored: () => structuredClone(policies),
@@ -185,6 +205,7 @@ export function fakePoliciesClient(
     }),
     create: async (body) => {
       log('create', body);
+      refuseGone(body.rules);
       refuseTaken(body.name);
       const made: NotificationPolicy = {
         id: nextPolicy++,
@@ -201,6 +222,7 @@ export function fakePoliciesClient(
     update: async (id, change) => {
       log('update', id, change);
       const policy = find(id);
+      refuseGone(change.rules);
       if (change.name !== undefined) refuseTaken(change.name, id);
       const next: NotificationPolicy = {
         ...policy,

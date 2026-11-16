@@ -1332,6 +1332,11 @@ export const messagesEn = {
     'That was not saved: a rule names something that is no longer there, or a field of another kind. Read the page again and check the rule.',
   'notificationPolicies.problem.forbidden': 'You may no longer change this policy.',
   'notificationPolicies.problem.other': 'That could not be saved. Try again in a moment.',
+  // A rule naming a field since deleted (T-155): it reaches nobody and goes with the next change.
+  'notificationPolicies.goneRulesNote':
+    '{count, plural, one {A rule names a field} other {# rules name fields}} since deleted, so {count, plural, one {it reaches} other {they reach}} nobody. The next change to these rules removes {count, plural, one {it} other {them}}.',
+  'notificationPolicies.goneRulesRemoved':
+    '{count, plural, one {The rule naming a field since deleted was} other {# rules naming fields since deleted were}} removed too.',
   'emailSettings.title': 'Email',
   'emailSettings.about':
     'Taskmoor emails notifications through an SMTP server named where it runs (TASKMOOR_SMTP_URL and the variables beside it) or in the first-run setup form; its password only ever comes from the environment, never from this page. Here you see whether a server is set up, and choose how long changes to one ticket wait so that they arrive in one email, and the hour digests go out.',

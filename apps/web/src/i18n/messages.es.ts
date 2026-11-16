@@ -1369,6 +1369,11 @@ export const messagesEs: Record<MessageId, string> = {
     'No se guardó: una regla nombra algo que ya no existe, o un campo de otro tipo. Vuelve a leer la página y revisa la regla.',
   'notificationPolicies.problem.forbidden': 'Ya no puedes cambiar esta política.',
   'notificationPolicies.problem.other': 'No se pudo guardar. Inténtalo de nuevo en un momento.',
+  // A rule naming a field since deleted (T-155): it reaches nobody and goes with the next change.
+  'notificationPolicies.goneRulesNote':
+    '{count, plural, one {Una regla nombra un campo ya eliminado, así que no avisa} other {# reglas nombran campos ya eliminados, así que no avisan}} a nadie. El próximo cambio en estas reglas {count, plural, one {la quita} other {las quita}}.',
+  'notificationPolicies.goneRulesRemoved':
+    '{count, plural, one {También se quitó la regla que nombraba un campo ya eliminado} other {También se quitaron # reglas que nombraban campos ya eliminados}}.',
   'emailSettings.title': 'Correo',
   'emailSettings.about':
     'Taskmoor envía las notificaciones por correo a través de un servidor SMTP indicado donde se ejecuta (TASKMOOR_SMTP_URL y las variables que lo acompañan) o en el formulario de la primera configuración; su contraseña solo sale del entorno, nunca de esta página. Aquí ves si hay un servidor configurado y eliges cuánto esperan los cambios de un ticket para llegar en un solo correo, y a qué hora salen los resúmenes.',

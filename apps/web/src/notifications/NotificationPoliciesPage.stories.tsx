@@ -55,6 +55,17 @@ export const PolicyOpen: Story = {
   },
 };
 
+/** A rule naming a field since deleted: the policy says it reaches nobody and goes next change. */
+export const RuleNamingAGoneField: Story = {
+  args: { client: fakePoliciesClient({ goneField: true }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage Payments' }));
+    await expect(canvas.getByText(/^A rule names a field since deleted/)).toBeVisible();
+    await expect(canvas.getByText('People in something since deleted')).toBeVisible();
+  },
+};
+
 /** A rule naming a transition's own event, typed, about to be added. */
 export const TypedTransitionEvent: Story = {
   args: { client: fakePoliciesClient() },

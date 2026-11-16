@@ -89,6 +89,16 @@ function recipientLabel(t: Translate, rule: PolicyRule): string {
   }
 }
 
+/**
+ * A rule naming a field since deleted (T-155): deleting a field leaves its rules, which then reach
+ * nobody, and the server refuses a rule list that names a field no longer there. Every change to
+ * the rules sends the whole list, so these are left out of it, and the page says so.
+ */
+const namesGoneField = (rule: PolicyRule) => rule.fieldKey !== null && rule.fieldName === null;
+/** The rules a save sends: the policy's own, without those naming a field since deleted. */
+const keptRules = (rules: readonly PolicyRule[]) =>
+  rules.filter((r) => !namesGoneField(r)).map(ruleInput);
+
 /** A recipient type in the rule form's choice. */
 const kindLabel = (t: Translate, kind: Recipient) =>
   t(
@@ -477,7 +487,7 @@ function NewPolicy({
         name: wanted,
         ...(description.trim() ? { description: description.trim() } : {}),
         ...(track ? { trackId: track.id } : {}),
-        rules: source ? source.rules.map(ruleInput) : [],
+        rules: source ? keptRules(source.rules) : [],
       })
       .then(onAdded, failed);
   };
@@ -578,11 +588,20 @@ function PolicyPanel({
       return (ia === -1 ? known.length : ia) - (ib === -1 ? known.length : ib);
     return a.localeCompare(b);
   });
-  const save = (rules: RuleInput[], text: string) =>
-    client.update(policy.id, { rules }).then((saved) => {
+  // A rule naming a field since deleted goes with the next change to the rules, and is said.
+  const goneRules = policy.rules.filter(namesGoneField).length;
+  /** Saves the rules kept plus those added; one kept that names a field since deleted goes. */
+  const save = (keep: readonly PolicyRule[], added: RuleInput[], text: string) => {
+    const dropped = keep.filter(namesGoneField).length;
+    return client.update(policy.id, { rules: [...keptRules(keep), ...added] }).then((saved) => {
       put(saved);
-      said(text);
+      said(
+        dropped > 0
+          ? `${text} ${t('notificationPolicies.goneRulesRemoved', { count: dropped })}`
+          : text,
+      );
     });
+  };
   const mayUse =
     track !== null &&
     policy.trackId === track.id &&
@@ -592,6 +611,9 @@ function PolicyPanel({
       <h3 ref={heading} tabIndex={-1} className="facts-title">
         {t('notificationPolicies.rulesOf', { name: policy.name })}
       </h3>
+      {goneRules > 0 && (
+        <p className="form-hint">{t('notificationPolicies.goneRulesNote', { count: goneRules })}</p>
+      )}
       {events.length === 0 ? (
         <EmptyState compact title={t('notificationPolicies.noRules')}>
           {t('notificationPolicies.noRulesBody')}
@@ -621,7 +643,8 @@ function PolicyPanel({
                           })}
                           onClick={() => {
                             save(
-                              policy.rules.filter((r) => r.id !== rule.id).map(ruleInput),
+                              policy.rules.filter((r) => r.id !== rule.id),
+                              [],
                               t('notificationPolicies.ruleRemoved', { recipient, event: label }),
                             ).then(
                               // Its button is gone: the policy's rules heading takes the focus.
@@ -646,10 +669,7 @@ function PolicyPanel({
         lists={lists}
         client={client}
         onAdd={(rule, labels) =>
-          save(
-            [...policy.rules.map(ruleInput), rule],
-            t('notificationPolicies.ruleAdded', labels),
-          ).then(
+          save(policy.rules, [rule], t('notificationPolicies.ruleAdded', labels)).then(
             () => true,
             (error: unknown) => {
               failed(error);
@@ -764,8 +784,14 @@ function AddRule({
               : [];
 
   useEffect(() => {
-    if (kind !== 'user' || query.trim() === '') {
+    if (kind !== 'user') {
       setPeople([]);
+      return;
+    }
+    if (query.trim() === '') {
+      // No one is listed, so no one stays chosen: Add rule must not name a person not shown.
+      setPeople([]);
+      setTarget('');
       return;
     }
     let live = true;
@@ -798,7 +824,8 @@ function AddRule({
       return;
     }
     const chosen = event === TYPED ? `${CUSTOM}${name}` : event;
-    if (TARGETED.has(kind) && !target) {
+    // Only one the choice shows: never a person left chosen from an earlier search.
+    if (TARGETED.has(kind) && !targets.some((x) => x.value === target)) {
       setError(t('notificationPolicies.pickTarget'));
       return;
     }

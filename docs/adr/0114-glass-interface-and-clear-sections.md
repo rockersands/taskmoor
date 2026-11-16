@@ -111,6 +111,11 @@ under its title.
     transition event no workflow lists can still be typed. What is left out: a group recipient
     on a track's own page for someone who is no administrator (groups are listed for
     administrators only), and a test-mail button.
+    Every rule change sends the whole list, and the server refuses a list naming a field no
+    longer there (deleting a field leaves its rules), so a rule naming a field since deleted is
+    left out of the next change, and of a copy, with a line on the policy saying so beforehand
+    and the status line after; the person choice of the rule form never keeps a person its list
+    no longer shows (an emptied search, or the next rule after one is added).
 - **As built (T-320, 2026-11-16): Priorities.** One page, `#/admin/priorities`, in Tracks and
   setup after Layout sets, for site and configuration administrators; anyone else, a track's
   manager included, sees the refusal alone, since the lists are the site's. Three cards, each with
