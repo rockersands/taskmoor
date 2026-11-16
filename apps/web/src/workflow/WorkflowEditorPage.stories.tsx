@@ -145,7 +145,7 @@ export const History: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Version history' }));
     await expect(
-      await canvas.findByRole('button', { name: 'Restore version 1 as the draft' }),
+      await canvas.findByRole('button', { name: 'Restore as draft from version 1' }),
     ).toBeVisible();
   },
 };

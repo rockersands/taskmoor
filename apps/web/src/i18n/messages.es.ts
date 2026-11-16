@@ -5228,7 +5228,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.versions.publishedAt': 'Publicada {when} por {name}',
   'admin.workflow.versions.publishedBySystem': 'Publicada {when}',
   'admin.workflow.versions.restore': 'Restaurar como borrador',
-  'admin.workflow.versions.restoreNamed': 'Restaurar la versión {version} como borrador',
+  'admin.workflow.versions.restoreNamed': 'Restaurar como borrador desde la versión {version}',
   'admin.workflow.versions.confirmRestore':
     'Restaurar la versión {version} reemplaza {draft, select, none {todos los cambios sin guardar} other {el borrador (versión {draft}) y todos los cambios sin guardar}}. La versión publicada se queda como está.',
   'admin.workflow.versions.confirmRestoreButton': 'Restaurar la versión {version}',

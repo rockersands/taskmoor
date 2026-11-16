@@ -5105,7 +5105,7 @@ export const messagesEn = {
   'admin.workflow.versions.publishedAt': 'Published {when} by {name}',
   'admin.workflow.versions.publishedBySystem': 'Published {when}',
   'admin.workflow.versions.restore': 'Restore as draft',
-  'admin.workflow.versions.restoreNamed': 'Restore version {version} as the draft',
+  'admin.workflow.versions.restoreNamed': 'Restore as draft from version {version}',
   'admin.workflow.versions.confirmRestore':
     'Restoring version {version} replaces {draft, select, none {every unsaved change} other {the draft (version {draft}) and every unsaved change}}. The published version stays as it is.',
   'admin.workflow.versions.confirmRestoreButton': 'Restore version {version}',
