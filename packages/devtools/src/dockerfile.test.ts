@@ -142,9 +142,9 @@ describe('the image build installing dependencies', () => {
     'PNPM_INSTALL_NETWORK_CONCURRENCY',
   ];
 
-  it('[OPS-001] bounds the step to thirty minutes unless raised, and pnpm’s downloads in it', () => {
+  it('[OPS-001] bounds the step to an hour unless raised, and pnpm’s downloads in it', () => {
     expect(Object.fromEntries(INSTALL_ARGS.map((a) => [a, argDefault(a)]))).toEqual({
-      PNPM_INSTALL_TIMEOUT: '1800',
+      PNPM_INSTALL_TIMEOUT: '3600',
       PNPM_INSTALL_FETCH_TIMEOUT: '60',
       PNPM_INSTALL_FETCH_RETRIES: '5',
       PNPM_INSTALL_NETWORK_CONCURRENCY: '8',
@@ -340,7 +340,7 @@ describe.skipIf(!hasSh || process.platform === 'win32')('the image’s install s
     expect(run.status).toBe(0);
     expect(run.stderr).toBe('');
     expect(run.log).toEqual([
-      'timeout 1800',
+      'timeout 3600',
       'pnpm install --frozen-lockfile --ignore-scripts --filter @taskmoor/server... --filter @taskmoor/web...',
       'npm_config_fetch_retries=5',
       'npm_config_fetch_retry_maxtimeout=120000',
@@ -357,7 +357,7 @@ describe.skipIf(!hasSh || process.platform === 'win32')('the image’s install s
     const run = installDeps('stall', '1');
     expect(run.status).not.toBe(0);
     expect(run.stderr).toContain('pnpm install: stopped after 1 s');
-    expect(run.stderr).toContain('--build-arg PNPM_INSTALL_TIMEOUT=3600');
+    expect(run.stderr).toContain('--build-arg PNPM_INSTALL_TIMEOUT=7200');
   });
 
   it('[OPS-001] passes another failure through as it is, without blaming the limit', () => {
