@@ -493,6 +493,7 @@ function AdvancedForm({
   const error = check && !check.ok ? check.error : null;
   const listId = `${id}-suggestions`;
   const errorId = `${id}-error`;
+  const hintId = `${id}-hint`;
   const open = offer !== null && offer.items.length > 0;
   return (
     <form
@@ -514,12 +515,14 @@ function AdvancedForm({
           autoComplete="off"
           // A multi-line text box that offers a list (ARIA's textbox with aria-autocomplete): the
           // combobox role is not allowed on a textarea (axe aria-allowed-role, T-327), and the
-          // option in hand is the active descendant while the list is open.
+          // option in hand is the active descendant while the list is open. A textbox has no
+          // aria-expanded, so the status line below says when the list opens and how long it is,
+          // and the hint (which keys take a suggestion) is part of the box's description.
           aria-autocomplete="list"
           aria-controls={listId}
           {...(open ? { 'aria-activedescendant': `${listId}-${active}` } : {})}
           aria-invalid={error ? true : undefined}
-          aria-describedby={error ? errorId : undefined}
+          aria-describedby={error ? `${errorId} ${hintId}` : hintId}
           value={text}
           onChange={(event) => {
             onChange(event.target.value);
@@ -585,7 +588,12 @@ function AdvancedForm({
               </div>
             ))}
         </div>
-        <p className="form-hint">{t('search.hint')}</p>
+        <p role="status" className="visually-hidden">
+          {open ? t('search.suggestionCount', { count: offer.items.length }) : ''}
+        </p>
+        <p id={hintId} className="form-hint">
+          {t('search.hint')}
+        </p>
         {error && (
           <p id={errorId} role="alert" className="form-error">
             {t('search.errorAt', {

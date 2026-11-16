@@ -767,6 +767,7 @@ export const messagesEs: Record<MessageId, string> = {
   'search.run': 'Buscar',
   'search.query': 'Consulta',
   'search.suggestions': 'Sugerencias',
+  'search.suggestionCount': '{count, plural, one {# sugerencia} other {# sugerencias}}',
   'search.hint': 'Ctrl+Espacio sugiere; Tab o Intro toma una sugerencia; Intro busca.',
   'search.errorAt': '{message} (en la columna {column}, cerca de "{near}")',
   'search.results': 'Resultados',

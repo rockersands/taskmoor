@@ -255,8 +255,15 @@ describe('the search page (M1-041)', () => {
         .getAllByRole('option')
         .map((o) => o.textContent),
     ).toEqual(['track', 'trackCategory', 'trackType']);
+    // A text box has no expanded state: a polite status line says the list opened, and the
+    // keys that take a suggestion are part of the box's description.
+    expect(screen.getByText('3 suggestions')).toHaveAttribute('role', 'status');
+    expect(query).toHaveAccessibleDescription(
+      'Ctrl+Space suggests; Tab or Enter takes a suggestion; Enter searches.',
+    );
     await user.keyboard('{Tab}');
     expect(query).toHaveValue('track ');
+    expect(screen.queryByText(/suggestions?$/)).toBeNull();
     await user.type(query, '= ');
     expect(
       within(listbox)

@@ -745,6 +745,7 @@ export const messagesEn = {
   'search.run': 'Search',
   'search.query': 'Query',
   'search.suggestions': 'Suggestions',
+  'search.suggestionCount': '{count, plural, one {# suggestion} other {# suggestions}}',
   'search.hint': 'Ctrl+Space suggests; Tab or Enter takes a suggestion; Enter searches.',
   'search.errorAt': '{message} (at column {column}, near "{near}")',
   'search.results': 'Results',
