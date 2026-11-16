@@ -50,6 +50,12 @@
   box-shadow: var(--glass-highlight-flat);
 }
 
+/* An account's name and what it is for, changed under its row (T-320). */
+.service-account-details {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--glass-edge);
+}
+
 .token-main {
   flex: 1 1 18rem;
   min-width: 0;

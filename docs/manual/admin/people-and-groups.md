@@ -1,8 +1,8 @@
 ---
 title: "People, groups and teams"
 audience: admins
-sources: apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/api/pages.ts, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, apps/server/src/tracks/membership.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx, apps/server/src/security/alerts.ts, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, apps/server/src/security/refusals.ts, apps/server/src/routes/security-alerts.ts, apps/server/src/audit/record.ts, apps/web/src/admin/SecurityAlertsForm.tsx, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/privacy/erase.ts, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, apps/server/src/audit/query.ts, apps/web/src/people/EraseUserForm.tsx, apps/web/src/account/PersonalDataSection.tsx, docs/adr/0111-personal-data-and-database-tls.md, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md, apps/web/src/shell/DangerAction.tsx, apps/server/src/authz/create-tracks.ts, apps/server/src/trackgroups/access.ts, docs/adr/0122-multi-track.md, docs/adr/0118-track-invitations.md
-accessed: 2026-11-14
+sources: apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/api/pages.ts, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, apps/server/src/tracks/membership.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx, apps/server/src/security/alerts.ts, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, apps/server/src/security/refusals.ts, apps/server/src/routes/security-alerts.ts, apps/server/src/audit/record.ts, apps/web/src/admin/SecurityAlertsForm.tsx, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/privacy/erase.ts, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, apps/server/src/audit/query.ts, apps/web/src/people/EraseUserForm.tsx, apps/web/src/account/PersonalDataSection.tsx, docs/adr/0111-personal-data-and-database-tls.md, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md, apps/web/src/shell/DangerAction.tsx, apps/server/src/authz/create-tracks.ts, apps/server/src/trackgroups/access.ts, docs/adr/0122-multi-track.md, docs/adr/0118-track-invitations.md, apps/server/src/routes/service-accounts.ts, apps/server/src/ldap/gateway.ts
+accessed: 2026-11-16
 attestation: own-words
 ---
 # People, groups and teams
@@ -299,16 +299,24 @@ restrict who sees tickets, or share dashboards and saved searches with them.
 - **New group** opens the form above the list: **Add a group** asks for a **Group name** and a
   **Description (optional)**. Names are unique.
 - Each group in the list shows how many members and groups inside it has. **Manage** opens it.
+- At the top of an open group, change its **Group name** and **Description (optional)**, then
+  select **Save**. A name another group has is refused: "There is a group with that name
+  already." A group a [directory](ldap.md) keeps shows no name field: the page names the
+  directory, where the group is renamed, and only the description changes here.
 - Under **Members of** a group, **Add a person**: type two letters or more of a name or email,
   then select **Add**. **Remove** takes a person out.
+- **Add a service account** offers the active [service accounts](api-tokens.md#service-accounts)
+  not yet in the group: choose one and select **Add the account**. In the list a service account
+  is marked **Service account**; **Remove** takes it out as it does a person. A group a directory
+  keeps takes its members from the directory, so it offers no service account.
 - Under **Groups inside** a group, **Put a group inside** and **Choose a group**. The page also
   says which groups this one is inside.
 - **Delete group**, in the danger colour, first says what will happen: its members stay;
   permissions given to the group go. **Delete group** and its name, beside **Cancel**, does it, and
   the page's heading takes the focus.
 
-Renaming a group is done through the API (`PATCH /api/v1/groups/:id`); the page does not
-rename yet.
+Through the API, `PATCH /api/v1/groups/:id` renames a group, and `GET /api/v1/groups/:id`
+gives each member's `kind`: `person` or `service`.
 
 ### Groups inside groups
 

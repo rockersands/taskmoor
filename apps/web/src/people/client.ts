@@ -28,9 +28,19 @@ export interface GroupSummary {
 
 export interface GroupDetail {
   group: { id: number; name: string; description: string };
-  members: User[];
+  /** People and service accounts (IAM-007): `kind` says which (T-320). */
+  members: (User & { kind?: 'person' | 'service' })[];
   children: { id: number; name: string }[];
   parents: { id: number; name: string }[];
+  /** The directory that keeps the group (M1-082), which owns its name; null for the site's own. */
+  directory?: { id: number; name: string } | null;
+}
+
+/** An active service account, as a group's panel offers it (IAM-007; T-320). */
+export interface ServiceAccountChoice {
+  id: number;
+  name: string;
+  email: string;
 }
 
 /** People the People page asks for at a time; Show more reads the next page (T-307). */
@@ -69,6 +79,8 @@ export interface PeopleClient {
   removeMember: (id: number, userId: number) => Promise<void>;
   addChild: (id: number, childId: number) => Promise<void>;
   removeChild: (id: number, childId: number) => Promise<void>;
+  /** Active service accounts, which the people list leaves out (T-320). */
+  serviceAccounts: () => Promise<ServiceAccountChoice[]>;
 }
 
 export const peopleClient: PeopleClient = {
@@ -128,4 +140,8 @@ export const peopleClient: PeopleClient = {
   removeChild: async (id, childId) => {
     await api<unknown>(`/groups/${id}/children/${childId}`, { method: 'DELETE' });
   },
+  serviceAccounts: async () =>
+    (
+      await api<{ serviceAccounts: ServiceAccountChoice[] }>('/service-accounts?status=active')
+    ).serviceAccounts.map((a) => ({ id: a.id, name: a.name, email: a.email })),
 };
