@@ -2621,7 +2621,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.sso.spEntityId': 'ID de entidad que registrar',
   'admin.sso.acsUrl': 'URL del servicio consumidor de aserciones (HTTP-POST)',
   'admin.sso.spMetadata': 'Metadatos que importar',
-  'admin.sso.spMetadataNamed': 'Metadatos de Taskmoor para {name}',
+  'admin.sso.spMetadataNamed': '{url} (metadatos de Taskmoor para {name})',
   'admin.sso.form.protocol': 'Tipo de proveedor',
   'admin.sso.form.protocolOidc': 'OpenID Connect',
   'admin.sso.form.protocolSaml': 'SAML 2.0',

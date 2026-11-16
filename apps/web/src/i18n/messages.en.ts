@@ -2553,7 +2553,7 @@ export const messagesEn = {
   'admin.sso.spEntityId': 'Entity ID to register',
   'admin.sso.acsUrl': 'Assertion consumer service URL (HTTP-POST)',
   'admin.sso.spMetadata': 'Metadata to import',
-  'admin.sso.spMetadataNamed': 'Taskmoor metadata for {name}',
+  'admin.sso.spMetadataNamed': '{url} (Taskmoor metadata for {name})',
   'admin.sso.form.protocol': 'Type of provider',
   'admin.sso.form.protocolOidc': 'OpenID Connect',
   'admin.sso.form.protocolSaml': 'SAML 2.0',
