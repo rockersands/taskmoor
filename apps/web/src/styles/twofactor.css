@@ -114,6 +114,13 @@
   min-width: 0;
 }
 
+/* What a removal takes away, said before the password (D13, T-267). */
+.confirm-password-outcome {
+  margin: 0;
+  font-weight: var(--font-weight-strong);
+  overflow-wrap: anywhere;
+}
+
 .security-page .form {
   max-width: 40rem;
 }

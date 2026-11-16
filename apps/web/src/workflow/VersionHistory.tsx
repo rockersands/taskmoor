@@ -2,6 +2,7 @@ import { type Ref, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { DangerAction } from '../shell/DangerAction';
 import type { VersionEntry } from './client';
 
 export interface VersionHistoryProps {
@@ -10,8 +11,11 @@ export interface VersionHistoryProps {
   failed: boolean;
   /** Whether restoring would replace a draft or unsaved changes, which asks first. */
   replacesWork: boolean;
+  /** The saved draft's version that a restore replaces, for the question; null for none. */
+  draft?: number | null;
   busy: boolean;
-  onRestore: (version: number) => void;
+  /** Resolves to whether it was restored; a refusal keeps the question open. */
+  onRestore: (version: number) => Promise<boolean>;
   headingRef?: Ref<HTMLHeadingElement>;
 }
 
@@ -23,13 +27,16 @@ const STATE_LABELS: Record<VersionEntry['state'], MessageId> = {
 
 /**
  * Every version of a workflow, newest first (WF-002 (3)): who saved and published each, and a
- * way to bring an earlier one back as the draft, to publish like any other.
+ * way to bring an earlier one back as the draft, to publish like any other. Restoring over a
+ * draft or unsaved changes replaces that work, so it asks first (D13, T-267); with nothing to
+ * replace it acts at once.
  */
 export function VersionHistory({
   versions,
   loading,
   failed,
   replacesWork,
+  draft = null,
   busy,
   onRestore,
   headingRef,
@@ -37,13 +44,16 @@ export function VersionHistory({
   const t = useT();
   const intl = useIntl();
   const id = useId();
-  const confirmButton = useRef<HTMLButtonElement>(null);
-  const [confirming, setConfirming] = useState<number | null>(null);
+  const list = useRef<HTMLOListElement>(null);
+  /** A version restored at once: its button, now one that asks, gets the focus back. */
+  const [restored, setRestored] = useState<number | null>(null);
   const when = (iso: string) => intl.formatDate(iso, { dateStyle: 'medium', timeStyle: 'short' });
 
   useEffect(() => {
-    if (confirming !== null) confirmButton.current?.focus();
-  }, [confirming]);
+    if (restored === null) return;
+    setRestored(null);
+    list.current?.querySelector<HTMLButtonElement>(`[data-version="${restored}"] button`)?.focus();
+  }, [restored]);
 
   return (
     <section aria-labelledby={`${id}-title`} className="glass-card workflow-panel">
@@ -61,9 +71,9 @@ export function VersionHistory({
         </p>
       )}
       {versions && (
-        <ol className="workflow-versions" aria-labelledby={`${id}-title`}>
+        <ol ref={list} className="workflow-versions" aria-labelledby={`${id}-title`}>
           {versions.map((v) => (
-            <li key={v.version} className="workflow-version">
+            <li key={v.version} className="workflow-version" data-version={v.version}>
               <div className="trash-main">
                 <p className="trash-name">
                   {t('admin.workflow.versions.version', { version: v.version })}{' '}
@@ -95,37 +105,33 @@ export function VersionHistory({
                 </p>
               </div>
               {v.state !== 'draft' &&
-                (confirming === v.version ? (
-                  <div className="token-confirm">
-                    <p id={`${id}-c-${v.version}`}>
-                      {t('admin.workflow.versions.confirmRestore', { version: v.version })}
-                    </p>
-                    <div className="token-confirm-actions">
-                      <button
-                        ref={confirmButton}
-                        type="button"
-                        className="button-primary"
-                        disabled={busy}
-                        onClick={() => onRestore(v.version)}
-                      >
-                        {t('admin.workflow.versions.confirmRestoreButton', { version: v.version })}
-                      </button>
-                      <button
-                        type="button"
-                        className="button-secondary"
-                        onClick={() => setConfirming(null)}
-                      >
-                        {t('admin.workflow.cancel')}
-                      </button>
-                    </div>
-                  </div>
+                (replacesWork ? (
+                  <DangerAction
+                    label={t('admin.workflow.versions.restore')}
+                    name={t('admin.workflow.versions.restoreNamed', { version: v.version })}
+                    outcome={t('admin.workflow.versions.confirmRestore', {
+                      version: v.version,
+                      draft: draft ?? 'none',
+                    })}
+                    confirmLabel={t('admin.workflow.versions.confirmRestoreButton', {
+                      version: v.version,
+                    })}
+                    busy={busy}
+                    onConfirm={async () => {
+                      if (!(await onRestore(v.version))) throw new Error('refused');
+                    }}
+                  />
                 ) : (
                   <button
                     type="button"
                     className="button-secondary"
                     disabled={busy}
                     aria-label={t('admin.workflow.versions.restoreNamed', { version: v.version })}
-                    onClick={() => (replacesWork ? setConfirming(v.version) : onRestore(v.version))}
+                    onClick={() =>
+                      void onRestore(v.version).then((done) => {
+                        if (done) setRestored(v.version);
+                      })
+                    }
                   >
                     {t('admin.workflow.versions.restore')}
                   </button>

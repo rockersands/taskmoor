@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { tooManyAttemptsMessage } from '../session/errors';
@@ -11,6 +11,11 @@ export interface ConfirmPasswordFormProps {
   /** Names the form after the change it confirms, such as "Remove Blue key". */
   label: string;
   submitLabel: string;
+  /**
+   * What a removal takes away, said before the password (D13, T-267), such as "You can no
+   * longer sign in with Blue key."; it also makes the submit button the danger one.
+   */
+  outcome?: ReactNode;
   /** Runs the change with the password; a rejection is reported in the form. */
   onConfirm: (password: string) => Promise<void>;
   onCancel: () => void;
@@ -19,11 +24,14 @@ export interface ConfirmPasswordFormProps {
 /**
  * Asks for the password again before a change to the second factors (ASVS 3.7.1): switching
  * the app off, removing a key, new recovery codes. Wrong passwords count against the lockout.
+ * For a removal it is the question D13 asks, with the password as the answer: the outcome comes
+ * first and the submit has the danger look, while the focus goes to the password.
  */
 export function ConfirmPasswordForm({
   email,
   label,
   submitLabel,
+  outcome,
   onConfirm,
   onCancel,
 }: ConfirmPasswordFormProps) {
@@ -35,6 +43,7 @@ export function ConfirmPasswordForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<{ message: string; wrongPassword: boolean } | null>(null);
   const errorId = `${id}-error`;
+  const outcomeId = `${id}-outcome`;
 
   useEffect(() => {
     input.current?.focus();
@@ -69,7 +78,17 @@ export function ConfirmPasswordForm({
   };
 
   return (
-    <form className="form confirm-password" onSubmit={submit} aria-label={label}>
+    <form
+      className="form confirm-password"
+      onSubmit={submit}
+      aria-label={label}
+      aria-describedby={outcome ? outcomeId : undefined}
+    >
+      {outcome && (
+        <p id={outcomeId} className="confirm-password-outcome">
+          {outcome}
+        </p>
+      )}
       <p className="page-note">{t('account.twoFactor.confirmIntro')}</p>
       {/* Lets password managers offer the password of the right account. */}
       <input type="email" autoComplete="username" value={email} readOnly hidden />
@@ -89,7 +108,11 @@ export function ConfirmPasswordForm({
         </p>
       )}
       <div className="form-actions">
-        <button type="submit" className="button-primary" disabled={busy}>
+        <button
+          type="submit"
+          className={outcome ? 'button-danger' : 'button-primary'}
+          disabled={busy}
+        >
           {submitLabel}
         </button>
         <button type="button" className="button-secondary" onClick={onCancel}>

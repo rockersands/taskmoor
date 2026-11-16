@@ -106,6 +106,20 @@ export const TracksAtPhoneWidth: Story = {
   },
 };
 
+/** Archiving asks first, saying what it locks (D13, T-267); on a phone nothing sticks out. */
+export const ArchiveAsksAtPhoneWidth: Story = {
+  args: { client: fakeConfigurationClient() },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage track SHOP' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Archive track SHOP' }));
+    const question = canvas.getByRole('group', { name: /^Nobody can change the tickets of SHOP/ });
+    await expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await fitsPhoneWidth(canvas);
+  },
+};
+
 export const WorkflowMapsAtPhoneWidth: Story = {
   decorators: [atPhoneWidth],
   render: () => <WorkflowMapsPage client={fakeConfigurationClient()} />,

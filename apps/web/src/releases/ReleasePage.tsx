@@ -5,6 +5,7 @@ import { dayText, shippedDay } from '../i18n/days';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { NotFoundPage } from '../shell/NotFoundPage';
 import { PageHeader } from '../shell/PageHeader';
@@ -311,6 +312,7 @@ export function ReleasePage({
         {overview.viewer.mayManage && (
           <CrossTrackLink
             release={release}
+            track={track.name}
             client={crossTrack}
             onChanged={(message) => {
               setNotice(message);
@@ -389,18 +391,26 @@ export function ReleasePage({
 /**
  * For the track's administrators: adding this release to a release across tracks, or taking it out
  * (PLN-007). Neither changes its date: on another day it reads as out of step until someone moves it.
+ * Taking it out asks first (D13, T-267): other teams plan by that release across tracks, and a
+ * release that has shipped or is archived can never join one again.
  */
 function CrossTrackLink({
   release,
+  track,
   client,
   onChanged,
 }: {
   release: Release;
+  /** The track's name, for the question. */
+  track: string;
   client: CrossTrackClient;
   onChanged: (message: string) => void;
 }) {
   const t = useT();
   const id = useId();
+  const addButton = useRef<HTMLButtonElement>(null);
+  /** Set once it is taken out: the add button, which takes the question's place, gets the focus. */
+  const [unlinked, setUnlinked] = useState(false);
   const [opened, setOpened] = useState(false);
   const [rows, setRows] = useState<CrossTrackRow[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -442,31 +452,51 @@ function CrossTrackLink({
       );
     }
   };
+  // A refusal says why below and keeps the question open.
   const unlink = async () => {
     if (!linked) return;
     setProblem(null);
     const done = await client.unlink(linked.id, release.id);
-    if (done.ok) onChanged(t('release.crossTrack.unlinked', { name: linked.name }));
-    else {
+    if (!done.ok) {
       setProblem(
         done.code === UNREACHABLE
           ? t('crossTrack.unreachable')
           : t('crossTrack.linked.removeFailed'),
       );
+      throw new Error(done.code);
     }
+    setUnlinked(true);
+    onChanged(t('release.crossTrack.unlinked', { name: linked.name }));
   };
+  useEffect(() => {
+    if (!unlinked || linked) return;
+    setUnlinked(false);
+    addButton.current?.focus();
+  }, [unlinked, linked]);
 
   if (!linked && (release.shipped || release.archived)) return null;
   return (
     <section className="glass-card release-section" aria-labelledby={`${id}-cross`}>
       <h2 id={`${id}-cross`}>{t('release.crossTrack.fact')}</h2>
       {linked ? (
-        <button type="button" className="button-secondary" onClick={() => void unlink()}>
-          {t('release.crossTrack.remove', { name: linked.name })}
-        </button>
+        <DangerAction
+          label={t('release.crossTrack.remove', { name: linked.name })}
+          outcome={t('release.crossTrack.removeOutcome', {
+            name: release.name,
+            track,
+            crossTrack: linked.name,
+          })}
+          confirmLabel={t('release.crossTrack.remove', { name: linked.name })}
+          onConfirm={unlink}
+        />
       ) : !opened ? (
         <>
-          <button type="button" className="button-secondary" onClick={() => setOpened(true)}>
+          <button
+            ref={addButton}
+            type="button"
+            className="button-secondary"
+            onClick={() => setOpened(true)}
+          >
             {t('release.crossTrack.add')}
           </button>
           <p className="board-hint">

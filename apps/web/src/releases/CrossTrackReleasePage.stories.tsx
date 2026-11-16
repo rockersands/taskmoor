@@ -83,6 +83,35 @@ export const Linking: Story = {
   },
 };
 
+/**
+ * Taking a release out asks first, in its table cell, naming it, its track and what follows
+ * (D13, T-267).
+ */
+export const RemovingALinkedRelease: Story = {
+  args: { client: fakeCrossTrackClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Remove 2.0' }));
+    const question = canvas.getByRole('group', { name: /^2\.0 of Shop leaves/ });
+    await expect(within(question).getByRole('button', { name: 'Remove Shop 2.0' })).toBeVisible();
+    await expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+  },
+};
+
+/** The same question on a phone's card, with nothing sideways (ADR-033). */
+export const RemovingALinkedReleaseOnAPhone: Story = {
+  args: { client: fakeCrossTrackClient() },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const cards = await canvas.findByRole('list', { name: 'Linked releases' });
+    await userEvent.click(within(cards).getByRole('button', { name: 'Remove 2.0' }));
+    await expect(within(cards).getByRole('group', { name: /^2\.0 of Shop leaves/ })).toBeVisible();
+    const page = canvasElement.ownerDocument.documentElement;
+    await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+  },
+};
+
 /** At a phone's width: the linked releases as cards, nothing sticking out. */
 export const AtPhoneWidth: Story = {
   decorators: [atPhoneWidth],

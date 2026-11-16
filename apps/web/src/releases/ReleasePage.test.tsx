@@ -60,6 +60,55 @@ describe('a release in a release across tracks (PLN-007)', () => {
     expect(screen.queryByRole('button', { name: /Add to a release across tracks/ })).toBeNull();
   });
 
+  it('[PLN-007] asks before taking it out, naming it, its track and what follows (D13)', async () => {
+    const user = userEvent.setup();
+    const client = fakeReleaseClient({ linked: true });
+    const crossTrack = fakeCrossTrackClient();
+    let refuse = true;
+    const unlink = vi.fn(async (_id: number, releaseId: number) => {
+      if (refuse) {
+        refuse = false;
+        return { ok: false as const, code: 'forbidden' };
+      }
+      const linked = client.releases().find((r) => r.id === releaseId);
+      if (linked) linked.crossTrack = null;
+      return { ok: true as const, value: null };
+    });
+    crossTrack.unlink = unlink;
+    render(
+      <I18nProvider locale="en">
+        <ReleasePage
+          releaseId={3}
+          client={client}
+          tracks={fakeTrackClient()}
+          crossTrack={crossTrack}
+        />
+      </I18nProvider>,
+    );
+    const trigger = await screen.findByRole('button', { name: 'Remove from Spring launch' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    const question = screen.getByRole('group', {
+      name: '2.1 of Checkout leaves Spring launch: its tickets stop counting there, and its date no longer moves with it. Only Checkout’s administrators can link it again, and only while it is neither shipped nor archived.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    expect(unlink).not.toHaveBeenCalled();
+    // A refusal says why and keeps the question open; a second answer takes it out.
+    await user.click(within(question).getByRole('button', { name: 'Remove from Spring launch' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('The release could not be removed.');
+    await user.click(within(question).getByRole('button', { name: 'Remove from Spring launch' }));
+    expect(
+      await screen.findByText(
+        'This release is no longer linked to Spring launch. Its date did not change.',
+      ),
+    ).toBeVisible();
+    expect(unlink).toHaveBeenLastCalledWith(5, 3);
+    // The question's place goes to the way back in, which has the focus.
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Add to a release across tracks…' })).toHaveFocus(),
+    );
+  });
+
   it('[PLN-007] adds an upcoming release to one, and offers only those its track is not yet in', async () => {
     const user = userEvent.setup();
     const crossTrack = fakeCrossTrackClient();

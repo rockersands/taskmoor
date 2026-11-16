@@ -150,6 +150,17 @@ export const History: Story = {
   },
 };
 
+/** Discarding asks first, in the toolbar's place, saying what goes (D13, T-267). */
+export const DiscardAsks: Story = {
+  args: { client: withDraft() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Discard draft' }));
+    const question = canvas.getByRole('group', { name: /^The saved draft and every unsaved/ });
+    await expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+  },
+};
+
 /** The diagram scrolls inside its own card; the page does not scroll sideways. */
 export const DiagramAtPhoneWidth: Story = {
   decorators: [atPhoneWidth],

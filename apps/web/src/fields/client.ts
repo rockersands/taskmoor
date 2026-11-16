@@ -44,6 +44,28 @@ export interface FieldContext {
   trackIds: number[] | null;
   ticketTypeIds: number[] | null;
   options?: FieldOption[];
+  /**
+   * The value a new ticket starts with, as the API shows it: for an option field the option it
+   * names (`{ id, value }`), several of them, or a cascading pair with its `child`; null for none.
+   */
+  defaultValue?: unknown;
+}
+
+/**
+ * The options a context's default names: every `id`, and a cascading default's `child` too.
+ * Deleting one of them, or the option above one, leaves the context with no default
+ * (routes/fields.ts).
+ */
+export function defaultOptionIds(value: unknown): number[] {
+  const ids: number[] = [];
+  const add = (one: unknown) => {
+    if (one === null || typeof one !== 'object') return;
+    const { id, child } = one as { id?: unknown; child?: unknown };
+    if (typeof id === 'number') ids.push(id);
+    add(child);
+  };
+  for (const one of Array.isArray(value) ? value : [value]) add(one);
+  return ids;
 }
 
 /** A custom field as `GET /api/v1/fields` and `/fields/:id` show it. */

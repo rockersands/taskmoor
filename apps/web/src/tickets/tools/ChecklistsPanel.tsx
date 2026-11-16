@@ -10,6 +10,7 @@ import {
 import { ApiError } from '../../api/client';
 import { useT } from '../../i18n/I18nProvider';
 import { useLockText } from '../../locks/useLockText';
+import { DangerAction } from '../../shell/DangerAction';
 import { EmptyState } from '../../shell/EmptyState';
 import { ITEM_STATE_LABELS, ITEM_STATES, type ItemState } from './checklistStates';
 import type {
@@ -590,21 +591,46 @@ function ChecklistBlock({
               onFocused={onMoveFocused}
               onMove={moveList}
             />
-            <button
-              type="button"
-              className="button-secondary ticket-action"
-              disabled={busy}
-              aria-label={t('ticketTools.checklists.remove', { name: list.name })}
-              onClick={() =>
-                void run(
-                  () => client.removeChecklist(ticketId, list.id),
-                  t('ticketTools.checklists.removed', { name: list.name }),
-                  onRemoved,
-                )
-              }
-            >
-              {t('ticketTools.remove')}
-            </button>
+            {list.items.length > 0 ? (
+              // Its items and their states go with it, and history keeps only its name: asked
+              // first (D13, T-267). An empty one loses only a name, so it goes at once.
+              <DangerAction
+                label={t('ticketTools.remove')}
+                name={t('ticketTools.checklists.remove', { name: list.name })}
+                outcome={t('ticketTools.checklists.removeOutcome', {
+                  name: list.name,
+                  count: list.items.length,
+                  done: list.items.filter((item) => item.state === 'done').length,
+                })}
+                confirmLabel={t('ticketTools.checklists.remove', { name: list.name })}
+                busy={busy}
+                onConfirm={async () => {
+                  const ok = await run(
+                    () => client.removeChecklist(ticketId, list.id),
+                    t('ticketTools.checklists.removed', { name: list.name }),
+                    onRemoved,
+                  );
+                  // Refused: the reason shows above, and the question stays open.
+                  if (!ok) throw new Error('refused');
+                }}
+              />
+            ) : (
+              <button
+                type="button"
+                className="button-secondary ticket-action"
+                disabled={busy}
+                aria-label={t('ticketTools.checklists.remove', { name: list.name })}
+                onClick={() =>
+                  void run(
+                    () => client.removeChecklist(ticketId, list.id),
+                    t('ticketTools.checklists.removed', { name: list.name }),
+                    onRemoved,
+                  )
+                }
+              >
+                {t('ticketTools.remove')}
+              </button>
+            )}
           </span>
         )}
       </div>
