@@ -7424,7 +7424,7 @@ export const messagesEs: Record<MessageId, string> = {
   'webhooks.deliveryFacts': '{when}, {attempts, plural, one {# intento} other {# intentos}}.',
   'webhooks.lastStatus': 'Última respuesta {status}.',
   'webhooks.replay': 'Enviar de nuevo',
-  'webhooks.replayOne': 'Enviar {event} de nuevo',
+  'webhooks.replayOne': 'Enviar de nuevo: {event}',
   'webhooks.replayAll': 'Enviar de nuevo todas las fallidas',
   'webhooks.replayed': 'Se pidió enviarlas de nuevo, con el mismo id y contenido.',
   'webhooks.replayFailed': 'No se pudieron enviar de nuevo. Inténtalo de nuevo en un momento.',

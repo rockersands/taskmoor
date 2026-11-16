@@ -7267,7 +7267,7 @@ export const messagesEn = {
   'webhooks.deliveryFacts': '{when}, {attempts, plural, one {# attempt} other {# attempts}}.',
   'webhooks.lastStatus': 'Last answer {status}.',
   'webhooks.replay': 'Send again',
-  'webhooks.replayOne': 'Send {event} again',
+  'webhooks.replayOne': 'Send again: {event}',
   'webhooks.replayAll': 'Send all failed ones again',
   'webhooks.replayed': 'They are asked to go again, with the same id and body.',
   'webhooks.replayFailed': 'They could not be sent again. Try again in a moment.',

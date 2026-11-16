@@ -144,7 +144,7 @@ describe('webhooks page (UI-T18)', () => {
     expect(await within(panel).findByText('Service Unavailable')).toBeVisible();
     expect(within(panel).getByText(/6 attempts/)).toBeVisible();
     expect(within(panel).getByText(/Last answer 503/)).toBeVisible();
-    await user.click(within(panel).getByRole('button', { name: 'Send ticket.created again' }));
+    await user.click(within(panel).getByRole('button', { name: 'Send again: ticket.created' }));
     expect(await within(panel).findByText(/asked to go again/)).toBeInTheDocument();
     await user.click(within(panel).getByRole('button', { name: 'Send all failed ones again' }));
     await user.selectOptions(within(panel).getByLabelText('Show'), 'Delivered');
