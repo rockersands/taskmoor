@@ -430,4 +430,84 @@ describe('notification rules (M1-056)', () => {
     });
     expect(bad.statusCode).toBe(400);
   });
+
+  it('[NTF-001] a policy names what each rule points at, for the web page (T-155)', async () => {
+    const list = await as('admin', { method: 'GET', url: '/api/v1/notification-policies' });
+    const everyone = (
+      list.json().notificationPolicies as {
+        name: string;
+        rules: {
+          event: string;
+          recipient: string;
+          userName: string | null;
+          groupName: string | null;
+          roleName: string | null;
+          fieldName: string | null;
+        }[];
+      }[]
+    ).find((p) => p.name === 'Everyone');
+    const named = (recipient: string) =>
+      everyone?.rules.find((r) => r.event === 'ticket_updated' && r.recipient === recipient);
+    expect(named('group')).toMatchObject({ groupName: 'Release managers', userName: null });
+    expect(named('role')).toMatchObject({ roleName: 'Viewers', groupName: null });
+    expect(named('user')).toMatchObject({ userName: 'ula', roleName: null });
+    expect(named('user_field')).toMatchObject({ fieldName: 'Reviewer', userName: null });
+    expect(named('assignee')).toMatchObject({
+      userName: null,
+      groupName: null,
+      roleName: null,
+      fieldName: null,
+    });
+  });
+
+  it('[NTF-001] lists the events transitions fire to those who make policies (T-155)', async () => {
+    const statuses = (await as('admin', { method: 'GET', url: '/api/v1/statuses' })).json()
+      .statuses as { id: number; stage: string }[];
+    const start = statuses.find((s) => s.stage === 'new')?.id as number;
+    const working = statuses.find((s) => s.stage === 'active')?.id as number;
+    const workflow = (name: string, event: string, trackId?: number) =>
+      as('admin', {
+        method: 'POST',
+        url: '/api/v1/workflows',
+        payload: {
+          name,
+          ...(trackId ? { trackId } : {}),
+          definition: {
+            initialStatusId: start,
+            statuses: [{ statusId: start }, { statusId: working }],
+            transitions: [
+              { id: 1, name: 'Hand over', from: [start], to: working, event },
+              { id: 2, name: 'Back', from: [working], to: start },
+            ],
+          },
+        },
+      });
+    expect((await workflow('Reviewed', 'ready-for-review')).statusCode).toBe(201);
+    // Owen runs a local-mode track with a workflow of its own.
+    const local = await as('admin', {
+      method: 'POST',
+      url: '/api/v1/tracks',
+      payload: { key: 'NTFL', name: 'Night shift', mode: 'local', ownerId: users.owen.id },
+    });
+    expect(local.statusCode, local.body).toBe(201);
+    const localId = local.json().track.id as number;
+    const own = await workflow('Night shift flow', 'handed-to-night', localId);
+    expect(own.statusCode, own.body).toBe(201);
+
+    const events = async (who: Person, query = '') =>
+      (await as(who, { method: 'GET', url: `/api/v1/notification-events${query}` })).json()
+        .customEvents as string[];
+    expect(await events('admin')).toContain('custom:ready-for-review');
+    expect(await events('admin')).not.toContain('custom:handed-to-night');
+    expect(await events('admin', `?trackId=${localId}`)).toEqual(
+      expect.arrayContaining(['custom:ready-for-review', 'custom:handed-to-night']),
+    );
+    // The track's administrator sees them for their track only; anyone else sees none.
+    expect(await events('owen', `?trackId=${localId}`)).toContain('custom:handed-to-night');
+    expect(await events('owen')).toEqual([]);
+    expect(await events('ann', `?trackId=${localId}`)).toEqual([]);
+    expect(
+      (await as('ann', { method: 'GET', url: '/api/v1/notification-events?trackId=x' })).statusCode,
+    ).toBe(400);
+  });
 });

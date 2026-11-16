@@ -145,6 +145,12 @@ export const ADMIN_GROUPS: readonly AdminGroup[] = [
         labelId: 'settings.trackSets',
         hintId: 'settings.trackSetsHint',
       },
+      {
+        id: 'notification-policies',
+        href: '#/admin/notification-policies',
+        labelId: 'settings.notificationPolicies',
+        hintId: 'settings.notificationPoliciesHint',
+      },
     ],
   },
   {
@@ -263,6 +269,12 @@ export const ADMIN_GROUPS: readonly AdminGroup[] = [
         href: '#/admin/guardrails',
         labelId: 'settings.guardrails',
         hintId: 'settings.guardrailsHint',
+      },
+      {
+        id: 'email',
+        href: '#/admin/email',
+        labelId: 'settings.email',
+        hintId: 'settings.emailHint',
       },
     ],
   },

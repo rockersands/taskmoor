@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '../api/client';
@@ -6,6 +6,8 @@ import { TrackSetsPage } from '../configuration/TrackSetsPage';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { fakeLayoutsClient } from '../layouts/fixtures';
 import { LayoutEditorPage } from '../layouts/LayoutEditorPage';
+import { NotificationPoliciesPage } from '../notifications/NotificationPoliciesPage';
+import { fakePoliciesClient } from '../notifications/policiesFixtures';
 import { PermissionExplainerPage } from '../permissions/PermissionExplainerPage';
 import { VisibilityPage } from '../permissions/VisibilityPage';
 import { fakePrioritiesClient } from '../priorities/fixtures';
@@ -16,6 +18,7 @@ import { TicketTypesPage } from '../tickettypes/TicketTypesPage';
 import { WebhooksPage } from '../webhooks/WebhooksPage';
 import { AdminOverviewPage } from './AdminOverviewPage';
 import { AiLimitsPage } from './AiLimitsPage';
+import { EmailSettingsPage } from './EmailSettingsPage';
 import { ADMIN, CONFIG_ADMIN, MEMBER, TRACK_ADMIN } from './fixtures';
 import { type McpClient, McpPage } from './McpPage';
 
@@ -99,6 +102,22 @@ describe('a page someone may not use says only so (T-144)', () => {
     const container = open(<PrioritiesPage client={fakePrioritiesClient()} />, CONFIG_ADMIN);
     expect(await screen.findByText('Urgent')).toBeVisible();
     expect(container.querySelector('.page-purpose')).not.toBeNull();
+  });
+
+  it('[NFR-005] notification policies, for someone who runs no track (T-155)', async () => {
+    await refusedOnly(
+      open(<NotificationPoliciesPage client={fakePoliciesClient()} />),
+      'Notification policies',
+      /^Only site and configuration administrators, and the people who run a track/,
+    );
+  });
+
+  it('[NFR-005] email, for anyone but a site administrator (T-155)', async () => {
+    for (const session of [MEMBER, CONFIG_ADMIN]) {
+      const container = open(<EmailSettingsPage />, session);
+      await refusedOnly(container, 'Email', /^Only site administrators change the email/);
+      cleanup();
+    }
   });
 
   it('[NFR-005] layouts, for someone who runs no track', async () => {

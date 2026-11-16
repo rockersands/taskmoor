@@ -78,6 +78,26 @@ under its title.
   permission explainer; webhooks; AI limits and prices; which layout, priority, visibility and
   notification sets a track uses. The rest of what the manual marks as API-only is listed in
   `docs/plan/ui-overhaul-tasks.md`.
+  - **As built (T-320; T-155, UI-T21: notification policies and email, 2026-11-16).**
+    **Notification policies** (`#/admin/notification-policies`) is the last page of Tracks and
+    setup, for site and configuration administrators: the shared policies, the default first, each
+    with the tracks that use it and its rule count; **Manage** opens one with its rules grouped by
+    event, **Remove** on each, a rule form (event, who hears of it, and the person, group, role or
+    field that kind names), name and description, and **Delete** (DangerAction, D13) only for a
+    policy no track uses; the default and one in use say why they stay. **New policy** starts
+    from the default's rules. A local-mode track's own policies are on
+    `#/manage/tracks/<id>/notification-policies`, through `sets/trackScope.tsx` as its layout and
+    configuration sets are, linked from its Manage page, with **Use this policy for** the track.
+    **Email** (`#/admin/email`) is the last page of System, for site administrators only, as its
+    route is: whether a mail server is set up (never its address or password), the batch window in
+    minutes (0 to 60; seconds set through the API show as a part of a minute) and the digest hour.
+    Two small server additions: a policy's rules name what they point at (`userName`,
+    `groupName`, `roleName`, `fieldName`), so the page needs no list only administrators may read;
+    and `GET /api/v1/notification-events` lists the events published transitions fire
+    (`customEvents`) to those who make policies, with `?trackId=` for a track's own workflows. A
+    transition event no workflow lists can still be typed. What is left out: a group recipient
+    on a track's own page for someone who is no administrator (groups are listed for
+    administrators only), and a test-mail button.
 - **As built (T-320, 2026-11-16): Priorities.** One page, `#/admin/priorities`, in Tracks and
   setup after Layout sets, for site and configuration administrators; anyone else, a track's
   manager included, sees the refusal alone, since the lists are the site's. Three cards, each with

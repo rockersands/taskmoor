@@ -197,6 +197,11 @@ export function allRoutes(ids, source) {
       'manage-track-configuration-sets',
       `#/manage/tracks/${ids.localTrackId}/configuration-sets`,
     ),
+    route(
+      'admin',
+      'manage-track-notification-policies',
+      `#/manage/tracks/${ids.localTrackId}/notification-policies`,
+    ),
 
     route('other', 'account', '#/account'),
     route('other', 'account-notifications', '#/account/notifications'),

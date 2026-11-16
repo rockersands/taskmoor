@@ -1,7 +1,7 @@
 ---
 title: "Fields, ticket types and layouts"
 audience: admins
-sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/workflows/close-reasons.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/layouts/LayoutCanvas.tsx, apps/web/src/layouts/GripMenu.tsx, apps/web/src/layouts/LayoutPreview.tsx, apps/web/src/layouts/refusal.ts, apps/web/src/layouts/model.ts, apps/web/src/layouts/client.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md, apps/server/src/tickets/priority-level.ts, packages/db/src/migrations/0095_points_field.ts, apps/web/src/sets/trackScope.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/server/src/workflows/board-managed.ts, apps/web/src/layouts/createForm.ts, apps/web/src/tickets/form.ts, apps/server/src/fields/values.ts, apps/server/src/import/load.ts, apps/web/src/priorities/PrioritiesPage.tsx, apps/web/src/priorities/PrioritySetsSection.tsx, apps/web/src/priorities/client.ts, apps/web/src/sets/TypeSetForm.tsx, apps/web/src/tickettypes/TicketTypesPage.tsx, apps/web/src/tickettypes/client.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/fields/FieldPanel.tsx, apps/web/src/fields/ContextsSection.tsx, apps/web/src/fields/OptionList.tsx, apps/web/src/fields/FormulaEditor.tsx, apps/web/src/fields/formulaWords.ts, apps/web/src/fields/FieldSettings.tsx, apps/web/src/fields/numberFormat.ts, apps/web/src/fields/defaultValue.ts, apps/web/src/tickets/defaults.ts, apps/web/src/search/columns.ts, apps/web/src/tickets/view/TicketPage.tsx
+sources: apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/configuration/trackSetsClient.ts, apps/server/src/fields/types.ts, apps/server/src/fields/catalog.ts, apps/server/src/fields/form-model.ts, apps/server/src/fields/layouts.ts, apps/server/src/fields/formulas.ts, apps/server/src/routes/fields.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/ticket-types.ts, apps/server/src/routes/priorities.ts, apps/server/src/workflows/close-reasons.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/tickets.ts, apps/server/src/tickets/hierarchy.ts, apps/server/src/tickets/configuration.ts, packages/formula/src/check.ts, packages/formula/src/lexer.ts, packages/formula/src/program.ts, packages/db/src/migrations/0011_ticket_types.ts, packages/db/src/migrations/0018_ticket_fields.ts, packages/db/src/migrations/0028_field_rules_layouts.ts, packages/db/src/migrations/0092_very_low_priority.ts, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/fields/client.ts, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/sets/client.ts, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/layouts/LayoutCanvas.tsx, apps/web/src/layouts/GripMenu.tsx, apps/web/src/layouts/LayoutPreview.tsx, apps/web/src/layouts/refusal.ts, apps/web/src/layouts/model.ts, apps/web/src/layouts/client.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/messages.en.ts, docs/adr/0008-field-storage.md, docs/adr/0009-configuration-model.md, docs/specs/01a-core-work-tracking.md, apps/server/src/tickets/priority-level.ts, packages/db/src/migrations/0095_points_field.ts, apps/web/src/sets/trackScope.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/server/src/workflows/board-managed.ts, apps/web/src/layouts/createForm.ts, apps/web/src/tickets/form.ts, apps/server/src/fields/values.ts, apps/server/src/import/load.ts, apps/web/src/priorities/PrioritiesPage.tsx, apps/web/src/priorities/PrioritySetsSection.tsx, apps/web/src/priorities/client.ts, apps/web/src/sets/TypeSetForm.tsx, apps/web/src/tickettypes/TicketTypesPage.tsx, apps/web/src/tickettypes/client.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/fields/FieldPanel.tsx, apps/web/src/fields/ContextsSection.tsx, apps/web/src/fields/OptionList.tsx, apps/web/src/fields/FormulaEditor.tsx, apps/web/src/fields/formulaWords.ts, apps/web/src/fields/FieldSettings.tsx, apps/web/src/fields/numberFormat.ts, apps/web/src/fields/defaultValue.ts, apps/web/src/tickets/defaults.ts, apps/web/src/search/columns.ts, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/notifications/NotificationPoliciesPage.tsx
 accessed: 2026-11-16
 attestation: own-words
 ---
@@ -527,7 +527,7 @@ every one of those tracks.
 | Workflow map | `workflowMapId` | Default workflow map | **Workflow maps** |
 | Access policy | `accessPolicyId` | Default access policy | **Permissions** |
 | Visibility policy | `visibilityPolicyId` | None | Chosen on **Which sets a track uses**; made on **Visibility policies** |
-| Notification policy | `notificationPolicyId` | The site's default | Chosen on **Which sets a track uses**; made through the API |
+| Notification policy | `notificationPolicyId` | The site's default | Chosen on **Which sets a track uses**; made on **Notification policies** |
 
 ### Which sets a track uses
 
@@ -556,7 +556,7 @@ some may become visible to more people.
 
 The people who run a track with its own configuration (local mode) change its own sets without
 being site or configuration administrators. On **Administration** > **Tracks you run**, **Manage**
-the track: under **Its own configuration** are two links.
+the track: under **Its own configuration** are three links.
 
 - **Layout sets** (`#/manage/tracks/<id>/layouts`) is the layout sets page for that track alone.
   The track's name is above the title, and the list holds only the sets it owns; the set it uses
@@ -571,10 +571,15 @@ the track: under **Its own configuration** are two links.
   type set, so none is added or deleted here, and it is never a default. Below are the field rule sets the track
   owns: add one, set its rules as on the shared page, delete one the track does not use, and
   **Use this set for** the track.
+- **Notification policies** (`#/manage/tracks/<id>/notification-policies`) lists the notification
+  policies the track owns and says which one it uses: add one, change its rules, delete one the
+  track does not use, and **Use this policy for** the track. See [Managing
+  policies](notifications.md#managing-policies).
 
 Going back to a shared set, and anything about a shared set or another track's, is for site and
 configuration administrators; the server refuses the rest whatever the page shows. The shared
-pages, **Administration** > **Layout sets** and **Configuration sets**, show someone who runs
+pages, **Administration** > **Layout sets**, **Configuration sets** and **Notification policies**,
+show someone who runs
 tracks but is no administrator only links to the tracks they run that have their own
 configuration. A track in shared mode owns no sets, and its page says so: whoever runs it, or works
 in it, gains nothing here. An archived track's sets wait until it is restored, and its pages say

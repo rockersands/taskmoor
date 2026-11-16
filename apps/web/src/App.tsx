@@ -10,6 +10,7 @@ import { AiUsagePage } from './admin/AiUsagePage';
 import { ApiUsagePage } from './admin/ApiUsagePage';
 import { adminAccessOf } from './admin/access';
 import { AuditPage } from './admin/audit/AuditPage';
+import { EmailSettingsPage } from './admin/EmailSettingsPage';
 import { FrontendsPage } from './admin/FrontendsPage';
 import { ImportsPage } from './admin/imports/ImportsPage';
 import { McpPage } from './admin/McpPage';
@@ -45,6 +46,7 @@ import { LayoutEditorPage } from './layouts/LayoutEditorPage';
 import { ListPage } from './list/ListPage';
 import type { MetaClient } from './meta/client';
 import { VersionGate } from './meta/VersionGate';
+import { NotificationPoliciesPage } from './notifications/NotificationPoliciesPage';
 import { UnsubscribePage } from './notifications/UnsubscribePage';
 import { ConsentPage } from './oauth/ConsentPage';
 import { GroupsPage } from './people/GroupsPage';
@@ -213,6 +215,11 @@ const ADMIN_FRONTENDS = '#/admin/frontends';
 const ADMIN_AI = '#/admin/ai';
 const ADMIN_WEBHOOKS = '#/admin/webhooks';
 const ADMIN_DIRECTORIES = '#/admin/directories';
+/** Notification policies (NTF-001) and the site's email settings (NTF-002), T-155. */
+const ADMIN_NOTIFICATION_POLICIES = '#/admin/notification-policies';
+const ADMIN_EMAIL = '#/admin/email';
+/** A local-mode track's own notification policies, beside its own sets (T-163a's pattern). */
+const OWN_NOTIFICATION_POLICIES = /^#\/manage\/tracks\/(\d{1,10})\/notification-policies(?:[/?]|$)/;
 const CREATE_TICKET = '#/create';
 const ADMIN_WORKFLOWS = '#/admin/workflows';
 const ADMIN_USERS = '#/admin/users';
@@ -461,6 +468,22 @@ function Pages() {
               labelId: 'admin.system.title' as const,
               run: () => {
                 navigate(ADMIN_SYSTEM);
+              },
+            },
+            {
+              id: 'go-notification-policies',
+              labelId: 'notificationPolicies.title' as const,
+              keywords: ['notifications', 'notify', 'recipients', 'events', 'who hears'],
+              run: () => {
+                navigate(ADMIN_NOTIFICATION_POLICIES);
+              },
+            },
+            {
+              id: 'go-email',
+              labelId: 'emailSettings.title' as const,
+              keywords: ['email', 'mail', 'smtp', 'digest', 'batch'],
+              run: () => {
+                navigate(ADMIN_EMAIL);
               },
             },
             {
@@ -741,6 +764,13 @@ function Pages() {
     content = <WebhooksPage />;
   } else if (isRoute(hash, ADMIN_DIRECTORIES)) {
     content = <DirectoriesPage />;
+  } else if (isRoute(hash, ADMIN_NOTIFICATION_POLICIES)) {
+    content = <NotificationPoliciesPage />;
+  } else if (isRoute(hash, ADMIN_EMAIL)) {
+    content = <EmailSettingsPage />;
+  } else if (OWN_NOTIFICATION_POLICIES.test(hash)) {
+    const trackId = Number(OWN_NOTIFICATION_POLICIES.exec(hash)?.[1]);
+    content = <NotificationPoliciesPage key={`${trackId}-notifications`} trackId={trackId} />;
   } else if (isRoute(hash, ADMIN_USERS)) {
     content = <UsersPage />;
   } else if (isRoute(hash, ADMIN_GROUPS)) {
