@@ -68,21 +68,6 @@ marks no section then.
 
 Press **Save profile**. The time zone applies at once, with no reload.
 
-### Your time zone
-
-Taskmoor keeps one clock for you: the zone saved here, or with **Automatic** the zone of the
-device you are using. Every "today" and every day boundary you see is on that clock: the today
-line of a timeline, the calendar's month and today, the days a report counts, whether a release
-is overdue, a search's `startOfDay()` and its other dates, a plan's overdue count and the first
-day its periods start from, a template's `{date}`, and the date the **/** menu offers. Times of
-day are on it too: when a ticket was created, a comment's and a change's time, and the time you
-type into a date-and-time field. A zone saved here keeps your days the same on every device, for
-example a laptop left on another zone or a phone that travels with you.
-
-Work done with no device behind it, such as digests, quiet hours and search subscription emails,
-uses the zone saved here; with **Automatic** it uses UTC. A new search subscription starts with
-your zone at the time you make it, and keeps it.
-
 **Language and region** also chooses the language of the web app, on every device you sign in on
 (see [Language](#language)).
 
@@ -97,6 +82,21 @@ fits Swiss German settings exactly: they write numbers as 1.5, so Automatic give
 there expects semicolons. **Semicolons, numbers as 1,5** opens such files in columns, though a
 number with a fraction may then read as text. The choice is saved with your account and is part of
 [your data](#your-data).
+
+### Your time zone
+
+Taskmoor keeps one clock for you: the zone saved here, or with **Automatic** the zone of the
+device you are using. Every "today" and every day boundary you see is on that clock: the today
+line of a timeline, the calendar's month and today, the days a report counts, whether a release
+is overdue, a search's `startOfDay()` and its other dates, a plan's overdue count and the first
+day its periods start from, a template's `{date}`, and the date the **/** menu offers. Times of
+day are on it too: when a ticket was created, a comment's and a change's time, and the time you
+type into a date-and-time field. A zone saved here keeps your days the same on every device, for
+example a laptop left on another zone or a phone that travels with you.
+
+Work done with no device behind it, such as digests, quiet hours and search subscription emails,
+uses the zone saved here; with **Automatic** it uses UTC. A new search subscription starts with
+your zone at the time you make it, and keeps it.
 
 ## Appearance
 
