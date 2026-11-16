@@ -83,7 +83,7 @@ function editableCustom(field: CustomField | undefined): boolean {
 const pad = (n: number) => String(n).padStart(2, '0');
 
 /** An instant as a local date and time, as `datetime-local` takes it. */
-function localDateTime(value: string): string {
+export function localDateTime(value: string): string {
   const at = new Date(value);
   if (Number.isNaN(at.getTime())) return '';
   return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}T${pad(at.getHours())}:${pad(at.getMinutes())}`;

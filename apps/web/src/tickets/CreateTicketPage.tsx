@@ -20,6 +20,14 @@ import { PriorityGlyph, TypeGlyph } from '../shell/TicketIcons';
 import { TrackSelect } from '../shell/TrackSelect';
 import { type DuplicateLookup, DuplicateSuggestions } from './DuplicateSuggestions';
 import {
+  emptiedDefaults,
+  type FormDefaults,
+  formDefaults,
+  NO_DEFAULTS,
+  overlay,
+  refill,
+} from './defaults';
+import {
   type CustomField,
   createBody,
   customId,
@@ -270,6 +278,21 @@ function shownKeys(form: TicketForm, client: CreateClient): Set<string> {
   return out;
 }
 
+/**
+ * The custom fields that start with their context's default (T-320): those the form sets with a
+ * control or a picker, not locked for the person. The others stay as the server fills them.
+ */
+function prefilledKeys(form: TicketForm, client: CreateClient): Set<string> {
+  const out = new Set<string>();
+  for (const field of form.layout.tabs.flatMap((tab) => tab.sections.flatMap((s) => s.fields))) {
+    const custom = customField(form, field.key);
+    if (!custom || lockOfField(form.locks, field.key) !== null) continue;
+    const kind = kindOf(form, field, custom, client);
+    if (kind === 'control' || kind === 'multiple' || kind === 'picker') out.add(field.key);
+  }
+  return out;
+}
+
 /** The release fields, whose picker lists the track's releases. */
 const RELEASE_KEYS = new Set(['targetRelease', 'foundInRelease']);
 /** Durations typed as time tracking reads them ('2h 30m'). */
@@ -362,6 +385,8 @@ export function CreateTicketPage({
   const [form, setForm] = useState<Loaded<TicketForm> | null>(null);
   const [priorities, setPriorities] = useState<{ id: number; name: string; level?: number }[]>([]);
   const [values, setValues] = useState<FormValues>({});
+  // The defaults the form started with, for the track and type chosen (T-320).
+  const prefilled = useRef<FormDefaults>(NO_DEFAULTS);
   // People chosen in person pickers, by field key, and the parent chosen (T-253).
   const [picks, setPicks] = useState<Record<string, PickedPerson[]>>({});
   const [parent, setParent] = useState<PickedTicket | null>(null);
@@ -379,6 +404,8 @@ export function CreateTicketPage({
   const [docs, setDocs] = useState<Record<string, PmJson | null>>({});
   // What rich text editors start with: a template's documents, until the next clear.
   const [seed, setSeed] = useState<Record<string, PmJson | null>>({});
+  const docsNow = useRef(docs);
+  docsNow.current = docs;
   const [templateKey, setTemplateKey] = useState('');
   const [formKey, setFormKey] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -476,7 +503,25 @@ export function CreateTicketPage({
     setErrors({});
     try {
       const value = await client.form(track, typeId);
-      if (asked === latestForm.current) setForm({ status: 'loaded', value });
+      if (asked !== latestForm.current) return;
+      // Each field starts with its context's default; what the person typed stays (T-320). The
+      // rich text editors start again with the form, from their seeds.
+      const next = formDefaults(value, prefilledKeys(value, client));
+      const prev = prefilled.current;
+      prefilled.current = next;
+      setValues((v) => refill(v, prev.values, next.values));
+      setPicks((p) => refill(p, prev.picks, next.picks));
+      const nextDocs = refill(docsNow.current, prev.docs, next.docs);
+      setDocs(nextDocs);
+      setSeed((s) => {
+        const out = { ...s };
+        for (const key of new Set([...Object.keys(prev.docs), ...Object.keys(next.docs)])) {
+          if (key in nextDocs) out[key] = nextDocs[key] ?? null;
+          else delete out[key];
+        }
+        return out;
+      });
+      setForm({ status: 'loaded', value });
     } catch {
       if (asked === latestForm.current) setForm({ status: 'failed' });
     }
@@ -552,12 +597,14 @@ export function CreateTicketPage({
     () => (track === '' ? undefined : client.mentions?.(track)),
     [client, track],
   );
+  // Back to the form's defaults, as a new form starts (T-320).
   const clearForm = () => {
-    setValues({});
-    setPicks({});
+    const start = prefilled.current;
+    setValues(start.values);
+    setPicks(start.picks);
     setParent(null);
-    setDocs({});
-    setSeed({});
+    setDocs(start.docs);
+    setSeed(start.docs);
     setFormKey((k) => k + 1);
   };
 
@@ -575,11 +622,13 @@ export function CreateTicketPage({
         setTrack(from.track);
       }
       setPicked(null);
-      setValues(from.values);
-      setPicks({});
+      // Custom fields are not copied: they keep the form's defaults (T-320).
+      const start = prefilled.current;
+      setValues(overlay(start.values, from.values));
+      setPicks(start.picks);
       setParent(null);
-      setDocs(from.docs);
-      setSeed(from.docs);
+      setDocs({ ...start.docs, ...from.docs });
+      setSeed({ ...start.docs, ...from.docs });
       setFormKey((k) => k + 1);
       setErrors({});
       setMessage(t('tickets.create.copied', { key }));
@@ -609,7 +658,14 @@ export function CreateTicketPage({
             : '';
       }
       if (parent) chosen.parent = String(parent.id);
-      const body = createBody(track, typeId, form.value, chosen, docs);
+      const body = createBody(
+        track,
+        typeId,
+        form.value,
+        chosen,
+        docs,
+        emptiedDefaults(prefilled.current, values, docs, picks),
+      );
       let made: { key: string };
       if (picked && client.ticketTemplates) {
         const applied = await client.ticketTemplates.apply(picked.template.id, {
@@ -1222,11 +1278,13 @@ export function CreateTicketPage({
               onChange={setPicked}
               onPick={(next, fill) => {
                 setPicked(next);
-                setValues(fill?.values ?? {});
-                setPicks(fill?.picks ?? {});
+                // The template's values over the form's defaults (T-320).
+                const start = prefilled.current;
+                setValues(overlay(start.values, fill?.values ?? {}));
+                setPicks({ ...start.picks, ...(fill?.picks ?? {}) });
                 setParent(null);
-                setDocs(fill?.docs ?? {});
-                setSeed(fill?.docs ?? {});
+                setDocs({ ...start.docs, ...(fill?.docs ?? {}) });
+                setSeed({ ...start.docs, ...(fill?.docs ?? {}) });
                 setFormKey((k) => k + 1);
                 setErrors({});
                 setMessage(next ? t('tickets.templates.filled', { name: next.template.name }) : '');
