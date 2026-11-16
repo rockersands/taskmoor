@@ -627,9 +627,9 @@ the track: under **Its own configuration** are links to its own pages.
   types**, the types only this track has. **New ticket type** adds one with a **Ticket type name**,
   a **Description**, its **Level** and an **Icon**, as on the Ticket types page; **Manage** changes
   them, and **Save the type**. Each type says its level and whether the track's type set offers
-  it: a new type is offered once it is ticked in the type set. **Delete type** asks first, and is
-  refused while the type set holds the type (untick it and save the set first) or while tickets
-  have it, with their number. A level that would leave tickets without the parent they need is
+  it: a new type is offered once it is ticked in the type set. **Delete ticket type** asks first,
+  and is refused while the type set holds the type (untick it and save the set first) or while
+  tickets have it, with their number. A level that would leave tickets without the parent they need is
   refused with the counts; the levels themselves are the site's. Next is the track's own type
   set: **Manage** it to choose its ticket types, the shared ones and the track's own, their order
   and the preselected type, and where the tickets of a type it drops go. A track keeps this one

@@ -296,7 +296,7 @@ function NewOwnTypeForm({
   );
 }
 
-/** One of the track's types: its settings, then Delete type, which asks first (D13). */
+/** One of the track's types: its settings, then Delete ticket type, which asks first (D13). */
 function OwnTypePanel({
   type,
   levels,

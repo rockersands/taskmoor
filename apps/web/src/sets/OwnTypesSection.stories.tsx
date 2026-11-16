@@ -86,7 +86,7 @@ export const NewType: Story = {
   },
 };
 
-/** A type open, with Delete type. */
+/** A type open, with Delete ticket type. */
 export const TypeOpen: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
