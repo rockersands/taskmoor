@@ -2,7 +2,7 @@
 title: "Workflows"
 audience: admins
 sources: packages/workflow/src/model.ts, packages/workflow/src/pattern.ts, apps/server/src/workflows/transfer.ts, apps/server/src/workflows/transfer-store.ts, docs/adr/0073-workflow-files.md, packages/workflow/src/engine.ts, apps/server/src/workflows/model.ts, apps/server/src/workflows/fields.ts, apps/server/src/workflows/locks.ts, apps/server/src/workflows/maps.ts, apps/server/src/workflows/migration.ts, apps/server/src/workflows/state.ts, apps/server/src/workflows/store.ts, apps/server/src/routes/workflows.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/tracks.ts, apps/web/src/workflow/WorkflowsPage.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/workflow/definition.ts, apps/web/src/workflow/StatusesSection.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/PublishPanel.tsx, apps/web/src/workflow/VersionHistory.tsx, apps/web/src/workflow/lint.ts, apps/web/src/workflow/catalogue.ts, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0024_workflows.ts, packages/db/src/migrations/0042_workflow_maps.ts, packages/db/src/migrations/0089_seamless_default_workflow.ts, packages/db/src/migrations/0104_default_workflow_left_strict.ts, packages/db/src/migrations/0107_workflows_left_without_moves.ts, apps/server/src/workflows/free-moving.ts, apps/server/src/workflows/free-moves.ts, apps/server/src/cli.ts, apps/server/src/workflows/close-reasons.ts, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0042-edit-locks.md, docs/adr/0045-workflow-maps.md, docs/specs/01a-core-work-tracking.md, apps/server/src/workflows/board-managed.ts, docs/adr/0079-board-managed-workflows.md, docs/adr/0116-one-place-per-track.md, apps/web/src/workflow/client.ts, apps/web/src/workflow/WorkflowDiagram.tsx, apps/web/src/workflow/diagram.ts, apps/web/src/workflow/StructureLists.tsx, apps/web/src/admin/NewButton.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/shell/NotFoundPage.tsx, apps/web/src/admin/ActionSlot.tsx
-accessed: 2026-11-14
+accessed: 2026-11-16
 attestation: own-words
 ---
 # Workflows
@@ -239,7 +239,9 @@ in Administration does. The address of a workflow that does not exist, or no lon
   On a workflow with rules it adds only the status, and the
   steps into it are yours to draw. **Add a transition** adds a transition. A status's panel can **Make
   it the initial status** or remove it from the workflow.
-- **Discard draft** throws the draft away; the published version stays as it is.
+- **Discard draft**, in the danger colour, throws the draft away after asking: the saved draft,
+  which may be another administrator's work, and every unsaved change are deleted, and the
+  published version stays as it is. **Cancel**, which has the focus, or Escape keeps them.
 - A draft of the default workflow saved before workflows moved freely may still have the steps the
   site first came with: **Start**, **Send to review**, **Back to active**, **Close** (which asks
   for a close reason) and **Reopen**. The editor says so and offers **Let this draft move freely**,
@@ -262,7 +264,9 @@ status the new version drops that holds tickets, choose where the tickets go, th
 **Publish now**. They move with their history; their close reason stays as it is.
 
 **Version history** lists every version with who saved and published it. **Restore as draft**
-replaces the draft with an earlier version; publish it to use it again. A version that sets a close
+replaces the draft with an earlier version; publish it to use it again. With a draft or unsaved
+changes to replace, it is in the danger colour and asks first, naming the draft's version; with
+nothing to replace it acts at once. A version that sets a close
 reason deleted since cannot be restored, nor can a draft name one: every move through that
 transition would be refused. Set the reason on the current version instead.
 

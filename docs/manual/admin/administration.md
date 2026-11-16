@@ -2,7 +2,7 @@
 title: "Administration"
 audience: admins
 sources: docs/adr/0114-glass-interface-and-clear-sections.md, docs/plan/page-review-findings.md, apps/web/src/admin/sections.ts, apps/web/src/admin/access.ts, apps/web/src/admin/AdminLayout.tsx, apps/web/src/styles/admin.css, apps/web/src/sets/trackScope.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/admin/AdminOverviewPage.tsx, apps/web/src/admin/AdminGroupPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/App.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/session.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/users.ts, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/EmptyState.tsx, apps/web/src/webhooks/WebhooksPage.tsx, apps/web/src/admin/AiLimitsPage.tsx, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/layouts/LayoutEditorPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/admin/NewButton.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/sets/ConfigurationSetsPage.tsx, apps/web/src/tokens/ServiceAccountsPage.tsx, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/TeamsPage.tsx, apps/web/src/fields/FieldsAdminPage.tsx, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/directories/DirectoriesPage.tsx, apps/web/src/sso/IdentityProvidersPage.tsx, apps/web/src/admin/FrontendsPage.tsx, apps/web/src/admin/AiSettingsPage.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx
-accessed: 2026-11-13
+accessed: 2026-11-16
 attestation: own-words
 ---
 # Administration
@@ -34,6 +34,15 @@ wait; if Taskmoor refuses, the question stays open with the reason, to try again
 it is done, the focus goes back to the button, or, when the thing is gone with its button, to the
 heading of its list. **Erase…** has the same danger colour but asks you to type the person's
 email instead.
+
+A smaller removal asks the same question only when it loses what its page cannot put back, or
+takes something from other people: a checklist that holds items, a link to a ticket in another
+track, a field option with second-level options or that is its context's default, a release taken
+out of a release across tracks, an invitation withdrawn, a permission grant removed, a track
+archived, a workflow draft discarded, or a version restored over a draft. One its page puts back at
+once, with nothing lost, goes at once and keeps the plain look: a checklist item, a link inside
+the track, an unused option, one person's role, a track restored. Removing a security key or
+switching off the authenticator app asks for your password instead, saying first what goes.
 
 Every page here opens with its name and a line on what it is for, and a small round button
 beside the name explains more, the group pages too. Pages of forms and lists keep a reading
