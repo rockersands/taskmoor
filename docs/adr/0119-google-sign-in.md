@@ -127,6 +127,11 @@ them. So the button now uses Google's files rather than ours:
   filters cannot clash between the two Google buttons the sign-in page can draw. The build puts it
   in the script as a data URL, which `img-src data:` allows in every policy of the app (the
   backend's header, the kits' meta element, the single-file kit).
+- The G comes with no licence. Google owns it as a trademark, and Taskmoor shows it on the terms
+  Google sets for it, the Sign in with Google branding guidelines, which ask apps that offer
+  Google sign-in to show it on the button. Taskmoor shows it only there. This is the clean-room
+  checklist's exception for another company's logo shown on its owner's terms
+  (`docs/legal/clean-room.md`, ADR-029), and `THIRD_PARTY_NOTICES` says so.
 - The words are in Google Sans Medium: Google's own weight-500 files for latin and latin-ext,
   unmodified (SIL OFL 1.1, no Reserved Font Name), 37 KB together, with their licence beside them
   (`apps/web/src/fonts`). They are declared in `@font-face` rules with Google Fonts' own

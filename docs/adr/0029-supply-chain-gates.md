@@ -36,6 +36,9 @@ needs GitHub Advanced Security.
 Adding a dependency with an unusual licence needs a decision recorded here first. Recorded so far:
 fonts vendored into the repository (not npm packages, so outside the allowlist) may be under SIL
 OFL 1.1 (OFL-1.1), which allows bundling with any software. They ship unmodified with their licence
-beside them and a note in `THIRD_PARTY_NOTICES` (Google Sans, T-262; ADR-036). Third-party
-GitHub Actions (outside the `actions/` organisation) are pinned by commit SHA with the version in
-a comment; Dependabot keeps the pins current.
+beside them and a note in `THIRD_PARTY_NOTICES` (Google Sans, T-262; ADR-036). A logo of another
+company is not under a licence: it ships only where its owner's terms for that use ask for it,
+with an ADR naming those terms and a note in `THIRD_PARTY_NOTICES` that it has no licence (Google's
+G on the Google sign-in button, under Google's Sign in with Google branding guidelines, ADR-119).
+Third-party GitHub Actions (outside the `actions/` organisation) are pinned by commit SHA with the
+version in a comment; Dependabot keeps the pins current.

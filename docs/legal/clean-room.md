@@ -48,8 +48,11 @@ with a product. The protocol keeps the work on the safe side and leaves a record
 
 - Does any new text read like documentation from somewhere else? Rewrite it.
 - Does any new asset (icon, image, colour set, font) come from outside the repo? It needs an
-  allowed licence and a note in `THIRD_PARTY_NOTICES` at the root of the repository (Google's G
-  and the Google Sans font of the Google sign-in button are the first, T-262).
+  allowed licence (ADR-029) and a note in `THIRD_PARTY_NOTICES` at the root of the repository.
+  The one exception is another company's logo shown on terms its owner sets for that use. It
+  needs an ADR that names those terms, and the notice says it has no licence. The Google Sans
+  font of the Google sign-in button is under an allowed licence. Google's G is the exception,
+  shown under Google's Sign in with Google branding guidelines (ADR-119, T-262).
 - Do new test fixtures come from generators or hand-written synthetic data?
 - Does user-visible wording avoid vendor marks except to describe compatibility?
 

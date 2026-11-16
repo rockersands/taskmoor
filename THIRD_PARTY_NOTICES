@@ -1,8 +1,9 @@
 Third-party notices
 
 Taskmoor is written from its own specifications (docs/legal/clean-room.md). The files below come
-from others. They ship with Taskmoor unchanged, under the terms given here, and are not covered by
-Taskmoor's own licence.
+from others and are not covered by Taskmoor's own licence. Each entry gives the terms Taskmoor
+ships the file under and says whether it is changed: the fonts ship unchanged, and Google's G
+ships with its view cropped to the G.
 
 
 1. Google Sans (font)
@@ -17,11 +18,9 @@ Copyright:  Copyright 2025 The Google Sans Project Authors
             (https://github.com/googlefonts/googlesans)
 Licence:    SIL Open Font License, Version 1.1 (OFL-1.1). The full text is
             apps/web/src/fonts/OFL.txt. The build ships it beside the fonts as
-            assets/OFL-<hash>.txt, and the single-file frontend kit carries it in its page. The licence declares no
-            Reserved Font Name.
-Name:       "Google Sans" is a trademark of Google LLC. The files are unmodified and keep that
-            name; a modified version may not use it without Google's permission (the family's
-            TRADEMARKS.md).
+            assets/OFL-<hash>.txt, and the single-file frontend kit carries it in its page.
+            The licence declares no Reserved Font Name.
+Name:       The files are unmodified and keep the family's name, Google Sans.
 Source:     https://github.com/google/fonts/tree/main/ofl/googlesans (OFL.txt, METADATA.pb)
             and Google Fonts, downloaded 2026-11-16.
 Used for:   the words of the "Sign in with Google" button only (T-262, ADR-119). Taskmoor serves
@@ -33,10 +32,16 @@ Used for:   the words of the "Sign in with Google" button only (T-262, ADR-119).
 File:       apps/web/src/assets/google/google-g.svg
 What:       Google's G from Google's Sign in with Google branding assets,
             https://developers.google.com/static/identity/images/signin-assets.zip (its files are
-            dated 2026-04-15; downloaded 2026-11-16): the G's elements of
-            "Theme=Light, Show text=No, Shape=Pill", unchanged, with the view cropped to the G.
+            dated 2026-04-15; downloaded 2026-11-16), taken from the file
+            "Theme=Light, Show text=No, Shape=Pill".
+Changed:    The G's elements are copied unchanged. The root element now crops the view to the G
+            (20 px square, viewBox 10 10 20 20), the round button's own fill and edge drawn
+            behind the G are left out, and a comment names the source.
 Owner:      The G logo is a trademark of Google LLC. Taskmoor's licence does not cover it.
+Terms:      No licence. Taskmoor shows the G on the terms Google sets for it, Google's Sign in
+            with Google branding guidelines, which ask apps that offer Google sign-in to show
+            Google's G on the button:
+            https://developers.google.com/identity/branding-guidelines
+            ADR-119 records this decision.
 Used for:   the "Sign in with Google" button only, which a site shows only for an identity
-            provider at Google's issuer, as Google's Sign in with Google branding guidelines
-            (https://developers.google.com/identity/branding-guidelines) ask of apps that offer
-            Google sign-in. Taskmoor serves it itself, inside its own script.
+            provider at Google's issuer. Taskmoor serves it itself, inside its own script.
