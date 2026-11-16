@@ -9,12 +9,14 @@ export {
   DIGEST_LENGTH,
   docShapeProblem,
   isAttachmentDigest,
+  isSafeColor,
   MAX_ATTACHMENT_NAME,
   MAX_COLUMNS,
   MAX_DOCUMENT_DEPTH,
   MAX_TITLE_LENGTH,
   shownColumnWidth,
   TICKET_KEY,
+  withSafeColors,
 } from './adf';
 export { COLLAB_FRAGMENT, docFromYDoc, EMPTY_DOC, writeDocToYDoc } from './collab';
 export { fromAdf, fromAdfJson, type PmJson, toAdf, toAdfFromJson } from './convert';

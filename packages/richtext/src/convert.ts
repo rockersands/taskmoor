@@ -6,6 +6,7 @@ import {
   isAttachmentDigest,
   isAttachmentName,
   isExpandTitle,
+  isSafeColor,
   MAX_COLUMNS,
   TICKET_KEY,
 } from './adf';
@@ -271,15 +272,19 @@ function mark(m: AdfMark): { type: string; attrs?: Attrs } {
         attrs: { href: a.href ?? '', target: null, rel: null, class: null, adfAttrs: clone(a) },
       };
     case 'textColor':
-      return { type: 'textColor', attrs: { color: a.color ?? null, adfAttrs: clone(a) } };
+      // Only a colour that is safe to show (T-318); another is kept aside for the export.
+      if (!isSafeColor(a.color)) return unknownMark(m);
+      return { type: 'textColor', attrs: { color: a.color, adfAttrs: clone(a) } };
     case 'subsup':
       return { type: 'subsup', attrs: { type: a.type ?? 'sub', adfAttrs: clone(a) } };
     default:
-      return {
-        type: 'unknownMark',
-        attrs: { type: m.type, attrs: m.attrs ? clone(m.attrs) : null },
-      };
+      return unknownMark(m);
   }
+}
+
+/** A mark the editor does not show, kept whole so an export writes it back as it came. */
+function unknownMark(m: AdfMark): { type: string; attrs: Attrs } {
+  return { type: 'unknownMark', attrs: { type: m.type, attrs: m.attrs ? clone(m.attrs) : null } };
 }
 
 // ---------------------------------------------------------------------------------------------

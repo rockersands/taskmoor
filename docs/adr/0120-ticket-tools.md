@@ -246,6 +246,24 @@ built, a choice per track, or a notice only when a checklist is completed. On 20
 they chose the choice per track, off by default. It is built: see
 [Checklist notices](#checklist-notices-ntf-015).
 
+## T-318: text colours checked at the door (answered on 2026-11-16)
+
+A colour on text comes only from an import or another format; no tool makes one (T-120 below). Its
+value went into the style it is shown with as stored, and the page's security policy allows style
+attributes (ADR-080), so a document written through the API or an import could carry other style
+rules to everyone who read it. Markdown and wiki markup already kept only safe values. The user
+accepted the recommendation on 2026-11-16:
+
+- **A safe colour is a hexadecimal value or a colour name** (`SAFE_COLOR`, now in `adf.ts`, which
+  the Markdown and wiki readers and writers share).
+- **The schema writes only a safe colour** into a style; another shows as plain text, in read mode
+  and in the editor.
+- **An import keeps another colour aside**: the Jira-compatible reader makes it an `unknownMark`, as
+  for any mark the editor does not show, so an export writes it back unchanged.
+- **A save takes another colour off its text rather than refusing the document** (`withSafeColors`,
+  run by `checkRichText`): the text and its other marks stay, and a document stored before this,
+  or one written by the API, still saves. `docShapeProblem` gains no colour rule for that reason.
+
 ## Options considered
 
 | Option | For | Against |
