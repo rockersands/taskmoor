@@ -75,6 +75,7 @@ export const ReadOnly: Story = {
 
 /** On a phone's touch screen: finger-sized filters, links and actions, nothing out sideways. */
 export const OnAPhone: Story = {
+  tags: ['touch'],
   args: { run: scheduleRunFixture(), onRunAgain: fn() },
   decorators: [atPhoneWidth],
   beforeEach: onARealTouchScreen,
@@ -116,6 +117,7 @@ export const EvenedOut: Story = {
 
 /** Evening out on a phone's touch screen: finger-sized targets, nothing out sideways. */
 export const EvenedOutOnAPhone: Story = {
+  tags: ['touch'],
   args: { run: evenOutRunFixture(), onRunAgain: fn() },
   decorators: [atPhoneWidth],
   beforeEach: onARealTouchScreen,

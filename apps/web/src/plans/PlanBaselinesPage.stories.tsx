@@ -102,6 +102,7 @@ export const Empty: Story = {
 
 /** On a phone's touch screen: a card per baseline, a list of tickets, nothing sideways. */
 export const OnAPhone: Story = {
+  tags: ['touch'],
   decorators: [atPhoneWidth],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {

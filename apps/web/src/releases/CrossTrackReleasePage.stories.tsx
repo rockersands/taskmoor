@@ -147,6 +147,7 @@ export const DeletingALongNameAtPhoneWidth: Story = {
 
 /** A finger reaches the choice to end when its work completes (ADR-033). */
 export const EditOnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -158,6 +159,7 @@ export const EditOnATouchScreen: Story = {
 
 /** A finger reaches each linked release and each ticket (ADR-033). */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

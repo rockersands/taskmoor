@@ -146,6 +146,7 @@ export const FiltersAtPhoneWidth: Story = {
  * ('WEB Web app') too, with no part of the group cut off at its lower edge.
  */
 export const EveryTrackOnAPhone: Story = {
+  tags: ['touch'],
   args: {
     client: {
       ...fakeSearchClient(),
@@ -177,6 +178,7 @@ export const EveryTrackOnAPhone: Story = {
 
 /** On a touch screen each stage's label is a finger's target, "New" too (PL-13). */
 export const StagesOnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

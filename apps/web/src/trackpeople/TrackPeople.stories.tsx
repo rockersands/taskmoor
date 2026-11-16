@@ -71,6 +71,7 @@ export const WithdrawingAtPhoneWidth: Story = {
  * 18 px elsewhere (T-226).
  */
 export const InlineLinkOnAPhone: Story = {
+  tags: ['touch'],
   args: { client: fakeTrackPeopleClient({ invitingGiven: false }) },
   decorators: [
     atPhoneWidth,
@@ -297,6 +298,7 @@ export const ChecklistNoticesRefused: Story = {
  * through its label (ADR-033).
  */
 export const ChecklistNoticesAtPhoneWidth: Story = {
+  tags: ['touch'],
   // A client of its own: the default one is shared, and another story may have turned it on.
   args: { client: fakeTrackPeopleClient() },
   decorators: [
@@ -522,6 +524,7 @@ export const AnswerBesideTheRow: Story = {
  * pressed, with nothing sideways, and the buttons still take a finger (ADR-033).
  */
 export const AnswerBesideTheRowAtPhoneWidth: Story = {
+  tags: ['touch'],
   args: { client: fakeTrackPeopleClient({ crowd: 12 }) },
   decorators: [
     atPhoneWidth,
@@ -570,6 +573,7 @@ export const InvitationAnswerInItsRow: Story = {
 
 /** A new link at a small phone's width, as on a touch screen: in its own row, fitting. */
 export const InvitationAnswerInItsRowAtPhoneWidth: Story = {
+  tags: ['touch'],
   args: { client: twoWaiting() },
   decorators: [atPhoneWidth],
   beforeEach: onARealTouchScreen,

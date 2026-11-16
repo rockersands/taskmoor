@@ -140,6 +140,7 @@ export const Running: Story = {
 
 /** On a phone's touch screen: a sheet, every choice a finger's size, nothing sideways. */
 export const OnAPhone: Story = {
+  tags: ['touch'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
@@ -179,6 +180,7 @@ export const EvenOut: Story = {
 
 /** Even out load on a phone's touch screen: the mode choice a finger's size, nothing sideways. */
 export const EvenOutOnAPhone: Story = {
+  tags: ['touch'],
   args: { client: client({ readiness: { overCells: 4 } }) },
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   beforeEach: onARealTouchScreen,

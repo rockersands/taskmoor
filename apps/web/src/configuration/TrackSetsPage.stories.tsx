@@ -76,6 +76,7 @@ export const SiteAdministrator: Story = {
 
 /** A finger reaches the links to the pages that make priority sets and policies (ADR-033). */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

@@ -121,6 +121,7 @@ export const NotFound: Story = {
 
 /** A finger reaches each ticket's key, which fills its row (ADR-033). */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findAllByRole('link', { name: /^[A-Z]+-\d+$/ });
@@ -186,6 +187,7 @@ const crowded = (() => {
  * phone-and-touch block of timeline.css, which only the browser's own touch emulation applies.
  */
 export const KeyPressAreaOnAPhone: Story = {
+  tags: ['touch'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   args: { client: fakeTimelineClient({ data: crowded }) },
   beforeEach: onARealTouchScreen,
@@ -296,6 +298,7 @@ export const ReachesTheEdge: Story = {
  * check cannot see a press area (`DRAGGED_WHOLE` in test/grips.ts), so this story does.
  */
 export const ThinBarOnATouchScreen: Story = {
+  tags: ['touch'],
   args: { client: fakeTimelineClient({ data: crowded }) },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
@@ -456,6 +459,7 @@ export const TodaysLineUnderEarlier: Story = {
 
 /** AGL-015, PL-6, ADR-033: the same on a phone's touch screen, where the marker is a finger tall. */
 export const TodaysLineUnderEarlierOnAPhone: Story = {
+  tags: ['touch'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   args: { client: fakeTimelineClient({ data: doneInOctober }) },
   beforeEach: onARealTouchScreen,
@@ -467,6 +471,7 @@ export const TodaysLineUnderEarlierOnAPhone: Story = {
 
 /** ADR-033: on a touch screen the Earlier and Later markers take a finger. */
 export const EdgeMarkersOnATouchScreen: Story = {
+  tags: ['touch'],
   decorators: [narrow],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {

@@ -139,6 +139,7 @@ export const RefusedThenEdited: Story = {
 
 /** A finger reaches each value's Remove and the lists to add from (ADR-033, T-299). */
 export const ValuesOnATouchScreen: Story = {
+  tags: ['touch'],
   args: { template: HOTFIX_TEMPLATE, client: fakeTemplateClient([HOTFIX_TEMPLATE]) },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
@@ -242,6 +243,7 @@ export const AddingOnAPhone: Story = {
 
 /** A finger reaches the search fields and each person, group or team found (ADR-033, T-350). */
 export const FindingOnATouchScreen: Story = {
+  tags: ['touch'],
   args: { template: PEOPLE_TEMPLATE, client: fakeTemplateClient([PEOPLE_TEMPLATE]) },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {

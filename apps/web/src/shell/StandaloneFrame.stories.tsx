@@ -68,6 +68,7 @@ export const HeaderRowHeights: Story = {
 
 /** On a touch screen the way out is a finger's height, and the row keeps that height too. */
 export const HeaderRowHeightsOnTouch: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await sameHeights(canvasElement);

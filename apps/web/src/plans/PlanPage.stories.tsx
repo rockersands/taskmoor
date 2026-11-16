@@ -181,6 +181,7 @@ const earlyItem = (): PlanTimelineItem => ({
  * plan-timeline--375--dark).
  */
 export const TimelineEdgeOverTodaysLine: Story = {
+  tags: ['touch'],
   args: { section: 'timeline', client: fakePlanClient({ items: [...planItems(), earlyItem()] }) },
   beforeEach: () => {
     window.location.hash = '#/plans/12/timeline';
@@ -227,6 +228,7 @@ export const Calendar: Story = {
  * sweep's plan-calendar--375).
  */
 export const CalendarChipsOnATouchScreen: Story = {
+  tags: ['touch'],
   args: { section: 'calendar' },
   beforeEach: () => {
     window.location.hash = '#/plans/12/calendar';
@@ -388,6 +390,7 @@ export const SettingsDeletingALongNameOnAPhone: Story = {
  * plan-settings--375: the boxes were 28 x 44).
  */
 export const SettingsBoxesOnATouchScreen: Story = {
+  tags: ['touch'],
   args: { section: 'settings' },
   beforeEach: () => {
     window.location.hash = '#/plans/12/settings';
@@ -561,6 +564,7 @@ export const TimelineInAScenario: Story = {
 
 /** The Calendar in a scenario on a phone's touch screen: a drafted entry begins with "Draft". */
 export const CalendarInAScenarioOnATouchScreen: Story = {
+  tags: ['touch'],
   args: { section: 'calendar', ...inFaster() },
   beforeEach: () => {
     window.location.hash = '#/plans/12/calendar?scenario=2';
