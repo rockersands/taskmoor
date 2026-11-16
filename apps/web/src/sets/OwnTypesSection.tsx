@@ -332,7 +332,7 @@ function OwnTypePanel({
         if (levelId !== type.level.id) change.levelId = levelId;
         // Sent only when what the type draws would change: a type with none keeps none.
         if (icon !== shapeOf(type.icon, wanted)) change.icon = icon;
-        if (Object.keys(change).length === 0) return;
+        // Saved and said even when nothing changed, as on Ticket types: a press always answers.
         client.updateType(type.id, change).then(
           (saved) => said(t('admin.ticketTypes.typeSaved', { name: saved.name })),
           (error) => failed(error, type.name),

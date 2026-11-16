@@ -706,6 +706,17 @@ describe('a local-mode track’s own ticket types, on its own configuration sets
     ]);
   });
 
+  it('[CORE-005] Save with nothing changed says the type was saved, as on Ticket types', async () => {
+    const user = userEvent.setup();
+    const client = renderOwn();
+    const own = await screen.findByRole('region', { name: 'Its own ticket types' });
+    await user.click(within(own).getByRole('button', { name: 'Manage ticket type Runbook' }));
+    const panel = within(own).getByRole('form', { name: 'Settings of Runbook' });
+    await user.click(within(panel).getByRole('button', { name: 'Save the type' }));
+    expect(await screen.findByText('Runbook was saved.')).toBeInTheDocument();
+    expect(client.calls.at(-1)).toEqual({ action: 'updateType', args: [9, {}] });
+  });
+
   it('[CORE-005] (2) refuses to delete a type its tickets have, saying how many', async () => {
     const user = userEvent.setup();
     renderOwn();
