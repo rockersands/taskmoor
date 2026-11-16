@@ -559,6 +559,21 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
         />
       </section>
 
+      {/* Every track's areas: who owns each part of its work (CORE-015, T-320). */}
+      <section aria-labelledby={`${id}-areas`} className="glass-card people-card">
+        <h2 id={`${id}-areas`} className="facts-title">
+          {t('areas.manageTitle')}
+        </h2>
+        <p className="page-note">{t('areas.manageIntro', { key: track.key })}</p>
+        <ul className="link-list">
+          <li>
+            <a href={routeHref(`#/tracks/${encodeURIComponent(track.key)}/areas`)}>
+              {t('areas.manageLink')}
+            </a>
+          </li>
+        </ul>
+      </section>
+
       <p role="status" className="visually-hidden">
         {said}
       </p>

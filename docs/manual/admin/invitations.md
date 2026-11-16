@@ -33,6 +33,8 @@ you run that is not archived, however many there are. A track's page shows:
   own changes, and changes close together on one ticket come as one notice that names no checklist
   and no item (see [Checklist changes](../use/notifications.md#checklist-changes)). Through the
   API it is `checklistNotices` on `PATCH /api/v1/tracks/:id`.
+- **Its areas**, for every track: a link to the track's [Areas](tracks.md#areas), who owns each
+  part of its work and who gets its new tickets.
 
 What an action did, or why it was refused, shows right beside the row you pressed it on, however
 long the list: under that person, group or invitation, or under the box. When the action takes the

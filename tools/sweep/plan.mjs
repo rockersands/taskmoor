@@ -136,6 +136,7 @@ export function allRoutes(ids, source) {
       route('track', `track-${s.id}`, `${track}${s.path}`),
     ),
     route('track', 'track-templates', `${track}/templates`),
+    route('track', 'track-areas', `${track}/areas`),
     route('track', 'track-kanban-summary', `#/tracks/${ids.kanbanTrack}`),
     route('track', 'track-kanban-board', `#/tracks/${ids.kanbanTrack}/board`),
     route('track', 'track-kanban-statistics', `#/tracks/${ids.kanbanTrack}/statistics`),

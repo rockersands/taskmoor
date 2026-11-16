@@ -149,6 +149,17 @@ describe('a track manager without site administration (IAM-030)', () => {
     expect(await screen.findByText('Kalo Reyes: Administrators')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Its own configuration' })).toBeNull();
   });
+
+  it('[CORE-015] [IAM-030] leads to the track’s areas, whatever its configuration mode (T-320)', async () => {
+    renderPeople();
+    const areas = await screen.findByRole('region', { name: 'Its areas' });
+    expect(areas).toHaveTextContent(
+      'Who owns each part of SHOP’s work, and who gets its new tickets.',
+    );
+    expect(
+      within(areas).getByRole('link', { name: 'Areas: the parts of its work and who owns each' }),
+    ).toHaveAttribute('href', '#/tracks/SHOP/areas');
+  });
 });
 
 describe('the invite dialog (IAM-027)', () => {

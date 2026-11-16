@@ -54,6 +54,19 @@ under its title.
   It offers **New track** (a dialog with the form Administration uses) to those the server lets make
   one: shared configuration for site and configuration administrators, local for
   `create_local_tracks`, which the session reports. A person with neither sees no button.
+
+  **As built (T-320, areas; CORE-015):** a track's areas, API-only until then, have a page of
+  the track at `#/tracks/KEY/areas` (`areas/AreasPage.tsx`), under its tab bar with no tab of its
+  own, as its Ticket templates are, and linked from its Summary and from its page under Tracks
+  you run. Anyone who sees the track reads it; its administrators, and site and configuration
+  administrators, add, change, archive, restore and delete areas there. New area sits in the
+  header (D11); Delete is a DangerAction (D13) and, for an area tickets are in (409 `in_use`),
+  then asks where they go: another area that is not archived, or none. It needs no server change:
+  whether the reader may change the areas comes from the releases list's `mayManage`, which the
+  same rule decides (`mayManage` in `routes/releases.ts`). The route passes `section={null}` for
+  now; once `wave26m/t359-track` merges, it should pass `section="summary"` with that branch's
+  `within`, as Ticket templates then do. Not an Administration page, so `admin/sections.ts` and
+  `forbiddenPages.test.tsx` do not list it: someone who cannot see the track gets Track not found.
 - **Settings** is personal: Account, Appearance and Tutorials.
 - **Administration** is a section of its own, separate from Settings, with its own navigation (the
   user's decision, 2026-11-03: a full panel in 1.0; it replaces the Settings hub first planned

@@ -19,6 +19,7 @@ import { SettingsPage } from './admin/SettingsPage';
 import { SystemPage } from './admin/SystemPage';
 import { ADMIN_HOME, adminGroupOf, groupsFor } from './admin/sections';
 import { TrashPage } from './admin/TrashPage';
+import { AreasPage } from './areas/AreasPage';
 import { BoardPage } from './boards/BoardPage';
 import { BoardSettingsPage } from './boards/BoardSettingsPage';
 import { BulkOperationPage } from './bulk/BulkOperationPage';
@@ -244,6 +245,8 @@ const TRACK_SUMMARY = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})(?:[/?]|$)/;
 const TRACK_FILES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/files(?:[/?]|$)/;
 /** A track's outcomes with their progress (AGL-024). */
 const TRACK_OUTCOMES = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/outcomes(?:[/?]|$)/;
+/** A track's areas (CORE-015, T-320). */
+const TRACK_AREAS = /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/areas(?:[/?]|$)/;
 /** A track's board, backlog and statistics, which read its one board. */
 const TRACK_BOARD_SECTION =
   /^#\/tracks\/([A-Za-z][A-Za-z0-9_]{0,29})\/(board|backlog|statistics)(?:\/([a-z-]{1,40}))?(?:[/?]|$)/;
@@ -929,6 +932,17 @@ function Pages() {
     content = (
       <TrackLayout trackKey={key} section="outcomes">
         <TrackOutcomesPage key={key} trackKey={key} />
+      </TrackLayout>
+    );
+  } else if (TRACK_AREAS.test(hash)) {
+    active = 'tracks';
+    guarded = true;
+    const key = TRACK_AREAS.exec(hash)?.[1] ?? '';
+    // Under the track's tab bar with no tab of its own, as its Ticket templates (T-320). Once
+    // TrackLayout has `within` (wave26m/t359-track), it lies within the Summary, which leads here.
+    content = (
+      <TrackLayout trackKey={key} section={null}>
+        <AreasPage key={key} trackKey={key} />
       </TrackLayout>
     );
   } else if (TRACK_BOARD_SECTION.test(hash)) {
