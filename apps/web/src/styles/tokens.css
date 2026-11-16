@@ -17,7 +17,8 @@
   --font-weight-medium: 550;
   --font-weight-strong: 600;
   --font-weight-title: 700;
-  /* Google's sign-in button (T-061): its label is Roboto Medium, as Google's guidelines set. */
+  /* Google's sign-in button (T-061, T-262): its label is Google Sans Medium, as Google's
+     guidelines set (the font ships with the app, sso.css). */
   --font-weight-google: 500;
 
   --space-half: 2px;

@@ -110,6 +110,51 @@ describe('the frontend kit (M1-111)', () => {
     expect(csp.split('; ').find((d) => d.startsWith('style-src-elem '))).toMatch(/'sha256-/);
   });
 
+  it('[OPS-013] keeps the fonts as files in the kit, and the single file carries them and their licence (T-262)', async () => {
+    const { kits } = await kitsFor();
+    const font = new Uint8Array([0x77, 0x4f, 0x46, 0x32, 0, 1, 2, 255]);
+    const css =
+      '@font-face{font-family:"Google Sans";src:url(./googlesans-500-latin-x1.woff2) format("woff2")}' +
+      `@font-face{font-family:"Google Sans";src:url('../assets/googlesans-500-latin-ext-x2.woff2')}` +
+      `.a{background:url("data:image/svg+xml,%3csvg fill='url(%23g)'/%3e")}.b{mask:url(#m)}`;
+    const web = {
+      ...WEB,
+      'assets/index-def.css': utf8(css),
+      'assets/googlesans-500-latin-x1.woff2': font,
+      'assets/googlesans-500-latin-ext-x2.woff2': font,
+      'assets/OFL.txt': utf8('Copyright 2025 The Authors\r\nSIL OPEN FONT LICENSE Version 1.1\r\n'),
+    };
+    const kit = await frontendKit(kits, web);
+    expect(kit['assets/googlesans-500-latin-x1.woff2']).toEqual(font);
+    expect(kit['assets/OFL.txt']).toEqual(web['assets/OFL.txt']);
+    expect(kitText(kit['index.html'])).not.toContain('OPEN FONT LICENSE');
+
+    const single = await frontendKit(kits, web, { singleFile: true });
+    expect(Object.keys(single)).toEqual(['index.html']);
+    const page = kitText(single['index.html']);
+    const data = `url("data:font/woff2;base64,${btoa(String.fromCharCode(...font))}")`;
+    expect(page.split(data)).toHaveLength(3);
+    expect(page).not.toContain('.woff2');
+    // Data URLs, Blob URLs and ids stay as they were.
+    expect(page).toContain(`.a{background:url("data:image/svg+xml,%3csvg fill='url(%23g)'/%3e")}`);
+    expect(page).toContain('.b{mask:url(#m)}');
+    // The fonts' licence once, in the head, as a comment the browser shows to no one.
+    expect(page.match(/SIL OPEN FONT LICENSE/g)).toHaveLength(1);
+    expect(page).toMatch(
+      /<!--\nCopyright 2025 The Authors\nSIL OPEN FONT LICENSE Version 1.1\n-->\n\s*<\/head>/,
+    );
+    // The policy lets the page use them: fonts from data URLs.
+    expect(/content="([^"]+)"/.exec(page)?.[1]).toContain("font-src 'self' data:");
+  });
+
+  it('[OPS-013] refuses a single file whose stylesheet names a file the build lacks', async () => {
+    const { kits } = await kitsFor();
+    const web = { ...WEB, 'assets/index-def.css': utf8('@font-face{src:url(./gone.woff2)}') };
+    await expect(frontendKit(kits, web, { singleFile: true })).rejects.toThrow(
+      'assets/index-def.css names ./gone.woff2, which the build lacks',
+    );
+  });
+
   it('[OPS-016] zips to the same bytes for the same build and kits', async () => {
     const { kits } = await kitsFor();
     const zip = async () => writeZip(await frontendKit(kits, WEB));

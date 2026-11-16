@@ -60,15 +60,85 @@ async function withIntegrity(html: string, web: WebFiles): Promise<string> {
 /** Script text safe inside a script element: nothing in it can close the element. */
 const inlineScript = (code: string) => code.replace(/<\/(script)/gi, '<\\/$1');
 
+/** The media types of the files a stylesheet of the build may name. */
+const CSS_FILE_TYPES: Record<string, string> = {
+  woff2: 'font/woff2',
+  woff: 'font/woff',
+  svg: 'image/svg+xml',
+  png: 'image/png',
+  webp: 'image/webp',
+  ico: 'image/x-icon',
+};
+
+/** Every `url()` of a stylesheet, quoted or not, a data URL with `url(` inside it whole. */
+const CSS_URL = /url\(\s*("[^"]*"|'[^']*'|[^"')\s]*)\s*\)/gi;
+/** What names a file of the build: not data, a Blob, a host, an absolute path or an `#id`. */
+const BUILD_FILE = /^(?![a-z][\w+.-]*:|#|\/)./i;
+
+/** `assets/a/../b.woff2` as `assets/b.woff2`. */
+function joinPath(dir: string, ref: string): string {
+  const parts: string[] = [];
+  for (const part of `${dir}${ref}`.split('/')) {
+    if (part === '.' || part === '') continue;
+    if (part === '..' && parts.length > 0 && parts.at(-1) !== '..') parts.pop();
+    else parts.push(part);
+  }
+  return parts.join('/');
+}
+
+function base64(bytes: Uint8Array): string {
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary);
+}
+
+/**
+ * A stylesheet for the single file: every file it names (the fonts, T-262) as a data URL, which
+ * the policy allows (`font-src data:`), since the one file has nothing beside it to name. The
+ * licence that sits beside a font in the build (`OFL.txt`) comes back too, for the page to carry.
+ */
+function selfContained(
+  css: string,
+  cssPath: string,
+  web: WebFiles,
+): { css: string; licences: Set<string> } {
+  const dir = cssPath.slice(0, cssPath.lastIndexOf('/') + 1);
+  const licences = new Set<string>();
+  const out = css.replace(CSS_URL, (whole: string, value: string) => {
+    const ref = value.replace(/^(["'])([\s\S]*)\1$/, '$2');
+    if (!BUILD_FILE.test(ref)) return whole;
+    const path = joinPath(dir, ref.split(/[?#]/)[0] ?? '');
+    const bytes = web[path];
+    if (!bytes) throw new Error(`${cssPath} names ${ref}, which the build lacks`);
+    const type = CSS_FILE_TYPES[path.slice(path.lastIndexOf('.') + 1).toLowerCase()];
+    if (!type) throw new Error(`${cssPath} names ${ref}, which the single-file kit cannot carry`);
+    const licence = `${path.slice(0, path.lastIndexOf('/') + 1)}OFL.txt`;
+    if (type.startsWith('font/') && web[licence]) licences.add(licence);
+    return `url("data:${type};base64,${base64(bytes)}")`;
+  });
+  return { css: out, licences };
+}
+
+/** A licence as an HTML comment: line breaks as they are, and nothing in it can close it. */
+const comment = (licence: string) =>
+  `<!--\n${licence.replace(/\r\n/g, '\n').replace(/--!?>/g, '-- >').trimEnd()}\n-->`;
+
 function inlined(html: string, web: WebFiles): string {
-  return html
+  const licences = new Set<string>();
+  const page = html
     .replace(SCRIPT_SRC, (_whole, before: string, ref: string, after: string) => {
       const attrs = `${before}${after}`.replace(/\s*\bcrossorigin\b(="[^"]*")?/g, '').trimEnd();
       return `<script${attrs}>${inlineScript(text(asset(web, ref)))}</script>`;
     })
     .replace(STYLESHEET, (_whole, _a: string, _b: string, ref: string) => {
-      return `<style>${text(asset(web, ref)).replace(/<\/(style)/gi, '<\\/$1')}</style>`;
+      const sheet = selfContained(text(asset(web, ref)), ref.replace(/^\.\//, ''), web);
+      for (const licence of sheet.licences) licences.add(licence);
+      return `<style>${sheet.css.replace(/<\/(style)/gi, '<\\/$1')}</style>`;
     });
+  // The licences of the fonts the page now holds: SIL OFL 1.1 asks for one with every copy.
+  if (licences.size === 0) return page;
+  const notes = [...licences].map((path) => comment(text(web[path])));
+  return page.replace('</head>', () => `${notes.join('\n')}\n  </head>`);
 }
 
 const INLINE_SCRIPT = /<script\b(?![^>]*\btype="application\/json")[^>]*>([\s\S]*?)<\/script>/g;

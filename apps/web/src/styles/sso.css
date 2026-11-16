@@ -73,11 +73,43 @@
   border-top: 1px solid var(--glass-edge);
 }
 
-/* Google's sign-in button (T-061), as Google's sign-in branding guidelines describe it: the
-   four-colour G at the left on its own fill, light or dark with the skin, a 1px edge, Roboto
-   Medium at 14px on a 20px line, 12px at the sides and 10px between the mark and the words, and
-   the pill shape. It keeps Google's look in both skins and takes no accent, glass or emphasis of
-   ours. 40px high for a mouse, as Google sets it; a finger's height on touch. */
+/* Google Sans Medium, the font of Google's sign-in button (T-262): Google's own files for weight
+   500, latin and latin-ext, unmodified, with their licence beside them (fonts/OFL.txt, SIL OFL
+   1.1; THIRD_PARTY_NOTICES). Served by Taskmoor itself, never fetched from Google. A browser
+   downloads a face only for text that uses it, and only the subset its characters fall in (the
+   ranges are Google Fonts' own), so pages without the button load neither. Other scripts take
+   the skin's font. */
+@font-face {
+  font-family: "Google Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../fonts/googlesans-500-latin-ext.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Google Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../fonts/googlesans-500-latin.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Google's sign-in button (T-061, T-262), as Google's sign-in branding guidelines describe it:
+   Google's G at the left on its own fill, light or dark with the skin, a 1px edge, Google Sans
+   Medium at 14px on a 20px line with no added letter spacing (the words of Google's own button
+   files measure the same), 12px at the sides and 10px between the mark and the words, and the
+   pill shape. It keeps Google's look in both skins and takes no accent, glass or emphasis of
+   ours. 40px high for a mouse, as Google's files draw it; a finger's height on touch, which the
+   guidelines allow (they let the button grow for a device while the G keeps its size and
+   padding). */
 .google-sign-in {
   display: inline-flex;
   align-items: center;
@@ -91,11 +123,11 @@
   border-radius: var(--radius-pill);
   background: var(--color-google-fill);
   color: var(--color-google-text);
-  font-family: Roboto, var(--font-sans);
+  font-family: "Google Sans", var(--font-sans);
   font-size: var(--font-size-200);
   font-weight: var(--font-weight-google);
   line-height: 20px;
-  letter-spacing: 0.25px;
+  letter-spacing: normal;
   cursor: pointer;
 }
 
