@@ -6,6 +6,8 @@ import { TrackSetsPage } from '../configuration/TrackSetsPage';
 import { FieldsAdminPage } from '../fields/FieldsAdminPage';
 import { fakeFieldsClient } from '../fields/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
+import { fakeLabelsClient } from '../labels/fixtures';
+import { LabelsPage } from '../labels/LabelsPage';
 import { fakeLayoutsClient } from '../layouts/fixtures';
 import { LayoutEditorPage } from '../layouts/LayoutEditorPage';
 import { NotificationPoliciesPage } from '../notifications/NotificationPoliciesPage';
@@ -137,6 +139,27 @@ describe('a page someone may not use says only so (T-144)', () => {
   it('[NFR-005] a configuration administrator manages visibility policies, as the server lets them (T-322)', async () => {
     const container = open(<VisibilityPage client={fakeVisibilityClient()} />, CONFIG_ADMIN);
     expect(await screen.findByRole('region', { name: 'Company levels' })).toBeVisible();
+    expect(container.querySelector('.page-purpose')).not.toBeNull();
+  });
+
+  it.each([
+    ['a member', MEMBER],
+    ['someone who only runs tracks', TRACK_ADMIN],
+  ])('[NFR-005] Labels, for %s (T-322)', async (_, session) => {
+    const client = fakeLabelsClient();
+    await refusedOnly(
+      open(<LabelsPage client={client} />, session),
+      'Labels',
+      /^Only site and configuration administrators merge and rename labels/,
+    );
+    // The session decides before anything is read: the list is the site's.
+    expect(client.calls).toEqual([]);
+    expect(screen.queryByLabelText('They become')).toBeNull();
+  });
+
+  it('[NFR-005] a configuration administrator still sees what Labels is for (T-322)', async () => {
+    const container = open(<LabelsPage client={fakeLabelsClient()} />, CONFIG_ADMIN);
+    expect(await screen.findByRole('checkbox', { name: 'frontend' })).toBeVisible();
     expect(container.querySelector('.page-purpose')).not.toBeNull();
   });
 

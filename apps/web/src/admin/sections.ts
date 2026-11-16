@@ -145,6 +145,12 @@ export const ADMIN_GROUPS: readonly AdminGroup[] = [
         hintId: 'settings.prioritiesHint',
       },
       {
+        id: 'labels',
+        href: '#/admin/labels',
+        labelId: 'settings.labels',
+        hintId: 'settings.labelsHint',
+      },
+      {
         id: 'track-sets',
         href: '#/admin/track-sets',
         labelId: 'settings.trackSets',

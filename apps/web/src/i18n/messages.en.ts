@@ -4200,6 +4200,54 @@ export const messagesEn = {
     '{count, plural, one {The workflow {workflows} sets {name}.} other {The workflows {workflows} set {name}.}} Choose the reason to set instead: each of them gets a new version that sets it.',
   'admin.priorities.reasonNoOther': 'There is no other close reason to choose. Add one first.',
   'admin.priorities.reasonDeletedInto': '{name} was deleted; {into} takes its place.',
+  // Labels: merging several into one, which also renames one (T-322; CORE-017; ADR-114).
+  'settings.labels': 'Labels',
+  'settings.labelsHint':
+    'Merge labels that mean the same thing, or rename one, on every ticket at once.',
+  'admin.labels.title': 'Labels',
+  'admin.labels.about':
+    'Labels are free words on tickets, suggested from every label in use as people type. When people write one idea in several ways, such as front-end, frontend and FE, merge them: every ticket that has one of them gets the label they become, once, and its history records the change. Merging one label into a new word renames it. The counts include tickets in the trash, which a merge changes too.',
+  'admin.labels.forbidden': 'Only site and configuration administrators merge and rename labels.',
+  'admin.labels.merging': 'Merge or rename',
+  'admin.labels.mergingNote':
+    'Tick labels in the list below, then type the label they become: one already in use, to merge them into it, or a new word, to rename them.',
+  'admin.labels.nothingTicked': 'No label is ticked yet.',
+  'admin.labels.chosen': 'Ticked: {labels}.',
+  'admin.labels.withCount':
+    '{name} ({count, plural, =0 {no tickets} one {# ticket} other {# tickets}})',
+  'admin.labels.into': 'They become',
+  'admin.labels.intoHint':
+    'One word, with no spaces. Case counts: FE and fe are two labels, and merging one into the other makes them one.',
+  'admin.labels.oneWord': 'A label is one word of up to 255 characters, with no spaces.',
+  'admin.labels.chooseOther':
+    'The ticked labels are already {into}: tick another label, or type another word.',
+  'admin.labels.tooMany': 'Tick at most {max} labels at a time.',
+  'admin.labels.merge': 'Merge',
+  'admin.labels.rename': 'Rename',
+  'admin.labels.mergeInto': 'Merge into {into}',
+  'admin.labels.renameTo': 'Rename {label} to {into}',
+  'admin.labels.confirmMerge':
+    '{count, plural, =0 {Merge {labels} into {into}? No ticket has them now, so only the suggestions change.} one {Merge {labels} into {into}? The ticket that has them gets {into} in their place, and its history records it.} other {Merge {labels} into {into}? The tickets that have them, # at most, get {into} in their place, once each, and their history records it.}} This cannot be undone.',
+  'admin.labels.confirmRename':
+    '{count, plural, =0 {Rename {label} to {into}? No ticket has it now, so only the suggestions change.} one {Rename {label} to {into}? Its ticket gets {into} in its place, and its history records it.} other {Rename {label} to {into}? Its # tickets get {into} in its place, and their history records it.}} If {into} is already a label, the two become one. This cannot be undone.',
+  'admin.labels.done':
+    '{count, plural, =0 {{labels} became {into}; no ticket changed.} one {{labels} became {into} on # ticket.} other {{labels} became {into} on # tickets.}}',
+  'admin.labels.clear': 'Clear the ticks',
+  'admin.labels.list': 'Labels on this site',
+  'admin.labels.search': 'Find labels that start with',
+  'admin.labels.count': '{count, plural, =0 {No tickets} one {# ticket} other {# tickets}}',
+  'admin.labels.loading': 'Reading the labels…',
+  'admin.labels.failed': 'The labels could not be read. Try again in a moment.',
+  'admin.labels.emptyTitle': 'No labels yet',
+  'admin.labels.empty':
+    'A label shows here once a ticket has it. People add labels on a ticket, and imports bring theirs.',
+  'admin.labels.noneMatchTitle': 'No label starts with {q}',
+  'admin.labels.noneMatch': 'Try fewer letters, or empty the search to see every label.',
+  'admin.labels.more': 'Show more labels',
+  'admin.labels.moreFailed': 'More labels could not be read. Try again in a moment.',
+  'admin.labels.problem.labels':
+    'Those labels cannot be merged: tick at most {max}, other than the one they become.',
+  'admin.labels.problem.other': 'The labels could not be merged. Try again in a moment.',
   'ticketView.editLabels': 'Edit labels',
   'ticketView.save': 'Save',
   'ticketView.cancel': 'Cancel',

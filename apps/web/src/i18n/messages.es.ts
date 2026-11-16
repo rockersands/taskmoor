@@ -4307,6 +4307,56 @@ export const messagesEs: Record<MessageId, string> = {
     '{count, plural, one {El flujo de trabajo {workflows} define {name}.} other {Los flujos de trabajo {workflows} definen {name}.}} Elige el motivo que definen en su lugar: cada uno recibe una versión nueva que lo define.',
   'admin.priorities.reasonNoOther': 'No hay otro motivo de cierre que elegir. Añade uno primero.',
   'admin.priorities.reasonDeletedInto': 'Se eliminó {name}; {into} ocupa su lugar.',
+  // Etiquetas: fusionar varias en una, que también renombra una (T-322; CORE-017; ADR-114).
+  'settings.labels': 'Etiquetas',
+  'settings.labelsHint':
+    'Fusiona las etiquetas que significan lo mismo, o renombra una, en todos los tickets a la vez.',
+  'admin.labels.title': 'Etiquetas',
+  'admin.labels.about':
+    'Las etiquetas son palabras libres en los tickets, sugeridas entre todas las que están en uso mientras se escribe. Cuando se escribe una misma idea de varias formas, como front-end, frontend y FE, fusiónalas: cada ticket que tiene una de ellas recibe la etiqueta en la que se convierten, una sola vez, y su historial registra el cambio. Fusionar una sola etiqueta en una palabra nueva la renombra. Los recuentos incluyen los tickets de la papelera, que una fusión también cambia.',
+  'admin.labels.forbidden':
+    'Solo los administradores del sitio y de configuración fusionan y renombran etiquetas.',
+  'admin.labels.merging': 'Fusionar o renombrar',
+  'admin.labels.mergingNote':
+    'Marca etiquetas en la lista de abajo y escribe la etiqueta en la que se convierten: una que ya está en uso, para fusionarlas en ella, o una palabra nueva, para renombrarlas.',
+  'admin.labels.nothingTicked': 'Aún no hay ninguna etiqueta marcada.',
+  'admin.labels.chosen': 'Marcadas: {labels}.',
+  'admin.labels.withCount':
+    '{name} ({count, plural, =0 {ningún ticket} one {# ticket} other {# tickets}})',
+  'admin.labels.into': 'Se convierten en',
+  'admin.labels.intoHint':
+    'Una palabra, sin espacios. Las mayúsculas cuentan: FE y fe son dos etiquetas, y fusionar una en la otra las hace una.',
+  'admin.labels.oneWord': 'Una etiqueta es una palabra de hasta 255 caracteres, sin espacios.',
+  'admin.labels.chooseOther':
+    'Las etiquetas marcadas ya son {into}: marca otra etiqueta o escribe otra palabra.',
+  'admin.labels.tooMany': 'Marca como mucho {max} etiquetas a la vez.',
+  'admin.labels.merge': 'Fusionar',
+  'admin.labels.rename': 'Renombrar',
+  'admin.labels.mergeInto': 'Fusionar en {into}',
+  'admin.labels.renameTo': 'Renombrar {label} como {into}',
+  'admin.labels.confirmMerge':
+    '{count, plural, =0 {¿Fusionar {labels} en {into}? Ningún ticket las tiene ahora, así que solo cambian las sugerencias.} one {¿Fusionar {labels} en {into}? El ticket que las tiene recibe {into} en su lugar, y su historial lo registra.} other {¿Fusionar {labels} en {into}? Los tickets que las tienen, # como mucho, reciben {into} en su lugar, una vez cada uno, y su historial lo registra.}} No se puede deshacer.',
+  'admin.labels.confirmRename':
+    '{count, plural, =0 {¿Renombrar {label} como {into}? Ningún ticket la tiene ahora, así que solo cambian las sugerencias.} one {¿Renombrar {label} como {into}? Su ticket recibe {into} en su lugar, y su historial lo registra.} other {¿Renombrar {label} como {into}? Sus # tickets reciben {into} en su lugar, y su historial lo registra.}} Si {into} ya es una etiqueta, las dos pasan a ser una. No se puede deshacer.',
+  'admin.labels.done':
+    '{count, plural, =0 {{into} sustituye a {labels}; ningún ticket cambió.} one {{into} sustituye a {labels} en # ticket.} other {{into} sustituye a {labels} en # tickets.}}',
+  'admin.labels.clear': 'Quitar las marcas',
+  'admin.labels.list': 'Etiquetas de este sitio',
+  'admin.labels.search': 'Buscar las etiquetas que empiezan por',
+  'admin.labels.count': '{count, plural, =0 {Ningún ticket} one {# ticket} other {# tickets}}',
+  'admin.labels.loading': 'Leyendo las etiquetas…',
+  'admin.labels.failed': 'No se pudieron leer las etiquetas. Inténtalo de nuevo en un momento.',
+  'admin.labels.emptyTitle': 'Aún no hay etiquetas',
+  'admin.labels.empty':
+    'Una etiqueta aparece aquí cuando un ticket la tiene. Las personas añaden etiquetas en un ticket, y las importaciones traen las suyas.',
+  'admin.labels.noneMatchTitle': 'Ninguna etiqueta empieza por {q}',
+  'admin.labels.noneMatch': 'Prueba con menos letras, o vacía la búsqueda para ver todas.',
+  'admin.labels.more': 'Mostrar más etiquetas',
+  'admin.labels.moreFailed': 'No se pudieron leer más etiquetas. Inténtalo de nuevo en un momento.',
+  'admin.labels.problem.labels':
+    'Esas etiquetas no se pueden fusionar: marca como mucho {max}, distintas de la que resulta.',
+  'admin.labels.problem.other':
+    'No se pudieron fusionar las etiquetas. Inténtalo de nuevo en un momento.',
   'ticketView.editLabels': 'Editar las etiquetas',
   'ticketView.save': 'Guardar',
   'ticketView.cancel': 'Cancelar',

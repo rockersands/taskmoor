@@ -22,7 +22,8 @@ import { replaceCloseReason, workflowsSettingCloseReason } from '../workflows/cl
  *   (CORE-014 (2)). Tracks without one use the workspace's default set. A ticket keeps a
  *   priority its track stops offering until someone changes it.
  * - Labels are free-form; the vocabulary suggests them as people type (CORE-017 (1)).
- *   Administrators merge labels into one, which also renames one (CORE-017 (2)).
+ *   Administrators merge labels into one, which also renames one (CORE-017 (2)), and read the
+ *   labels with how many tickets have each to choose what to merge.
  *
  * Every successful mutation emits exactly one domain event in its transaction (ADR-015).
  */
@@ -89,6 +90,14 @@ const mergeLabelsBody = z
   .object({
     labels: z.array(z.string().min(1).max(LABEL_MAX)).min(1).max(100),
     into: z.string().min(1).max(LABEL_MAX),
+  })
+  .strict();
+const labelUsageQuery = z
+  .object({
+    q: z.string().max(LABEL_MAX).optional(),
+    /** The last label of the page before: the next page starts after it. */
+    after: z.string().min(1).max(LABEL_MAX).optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
   })
   .strict();
 
@@ -878,6 +887,48 @@ export function registerPriorityRoutes(app: FastifyInstance, db: Kysely<Database
       .limit(q.limit)
       .execute();
     return { labels: rows.map((r) => r.name) };
+  });
+
+  // The labels with how many tickets have each, for administrators choosing what to merge
+  // (CORE-017 (2); T-322): in the suggestions' order, a page at a time. A ticket in the trash
+  // counts, as a merge changes it too; a label no ticket has any more counts 0.
+  app.get('/api/v1/labels/usage', async (request, reply) => {
+    if (!(await configAdmin(request, reply))) return reply;
+    const parsed = labelUsageQuery.safeParse(request.query);
+    if (!parsed.success) return invalid(reply);
+    const q = parsed.data;
+    const ws = request.workspaceId;
+    let query = db.selectFrom('label').select('name').where('workspace_id', '=', ws);
+    const typed = q.q?.trim() ?? '';
+    if (typed !== '') {
+      query = query.where(sql<boolean>`lower(name) LIKE ${`${likeEscape(typed.toLowerCase())}%`}`);
+    }
+    if (q.after !== undefined) {
+      query = query.where(
+        sql<boolean>`(lower(name) COLLATE "C", name COLLATE "C") > (lower(${q.after}::text) COLLATE "C", ${q.after}::text COLLATE "C")`,
+      );
+    }
+    const rows = await query
+      .orderBy(sql`lower(name) COLLATE "C"`)
+      .orderBy(sql`name COLLATE "C"`)
+      .limit(q.limit + 1)
+      .execute();
+    const names = rows.slice(0, q.limit).map((r) => r.name);
+    const counts = new Map<string, number>();
+    if (names.length > 0) {
+      const counted = await sql<{ name: string; n: number }>`
+        SELECT l AS name, count(DISTINCT t.id)::int AS n
+          FROM ticket t, unnest(t.labels) AS l
+         WHERE t.workspace_id = ${ws}
+           AND t.labels && ${names}::text[]
+           AND l = ANY(${names}::text[])
+         GROUP BY l`.execute(db);
+      for (const row of counted.rows) counts.set(row.name, row.n);
+    }
+    return {
+      labels: names.map((name) => ({ name, ticketCount: counts.get(name) ?? 0 })),
+      more: rows.length > q.limit,
+    };
   });
 
   // Every ticket with one of `labels` gets `into` in its place, once (CORE-017 (2)).
