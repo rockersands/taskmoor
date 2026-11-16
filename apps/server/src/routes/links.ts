@@ -1049,12 +1049,14 @@ export function registerLinkRoutes(
     if (!parsed.success) return invalid(reply);
     const body = parsed.data;
     await db.transaction().execute(async (trx) => {
-      const was = await preferencesOf(trx, user.id);
+      // The row is held while it is read, so two changes at once see each other; and only the
+      // settings asked for are written, so a change of one never puts back another as it read it.
+      const was = await preferencesOf(trx, user.id, true);
       const changes = diff<Record<string, unknown>>(was, body);
       if (Object.keys(changes).length === 0) return;
       const next = {
-        auto_follow: body.autoFollow ?? was.autoFollow,
-        csv_separator: body.csvSeparator === undefined ? was.csvSeparator : body.csvSeparator,
+        ...(body.autoFollow === undefined ? {} : { auto_follow: body.autoFollow }),
+        ...(body.csvSeparator === undefined ? {} : { csv_separator: body.csvSeparator }),
       };
       await trx
         .insertInto('user_preference')
@@ -1071,15 +1073,19 @@ export function registerLinkRoutes(
   });
 }
 
-/** A person's own settings as the preferences route shows them; defaults without a row. */
+/**
+ * A person's own settings as the preferences route shows them; defaults without a row. `hold`
+ * locks the row for the rest of the caller's transaction.
+ */
 async function preferencesOf(
   db: Kysely<Database> | Transaction<Database>,
   userId: number,
+  hold = false,
 ): Promise<{ autoFollow: boolean; csvSeparator: CsvSeparator | null }> {
-  const row = await db
+  const query = db
     .selectFrom('user_preference')
     .select(['auto_follow', 'csv_separator'])
-    .where('user_id', '=', userId)
-    .executeTakeFirst();
+    .where('user_id', '=', userId);
+  const row = await (hold ? query.forUpdate() : query).executeTakeFirst();
   return { autoFollow: row?.auto_follow ?? true, csvSeparator: row?.csv_separator ?? null };
 }
