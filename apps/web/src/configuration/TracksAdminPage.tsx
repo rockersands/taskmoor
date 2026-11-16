@@ -805,14 +805,12 @@ function TrackPanel({
             }}
           />
         )}
-        {!confirming && (
-          <DeleteTrack
-            track={track}
-            client={client}
-            onDeleted={onDeleted}
-            onProblem={onDeleteRefused}
-          />
-        )}
+        <DeleteTrack
+          track={track}
+          client={client}
+          onDeleted={onDeleted}
+          onProblem={onDeleteRefused}
+        />
       </div>
     </div>
   );
