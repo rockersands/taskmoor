@@ -574,7 +574,7 @@ describe('workflow editor (M1-030)', () => {
   it('[WF-008] says nothing of free moves when the draft it publishes has transitions (T-246)', async () => {
     const user = userEvent.setup();
     const note =
-      'This version has no transitions, so publishing gives each of its statuses a move from any status, as a new workflow gets.';
+      'This version has no transitions, so publishing gives its statuses a move from any status, as a new workflow gets. A closed-stage status gets one only when there is a close reason to close with; if no status can get one, the publish is refused and says why.';
     // A draft with transitions says nothing of the kind.
     renderEditor(withDraft());
     await user.click(await screen.findByRole('button', { name: 'Publish' }));
@@ -605,7 +605,7 @@ describe('workflow editor (M1-030)', () => {
     const panel = await screen.findByRole('region', { name: 'Publish version 3' });
     expect(
       within(panel).getByText(
-        'This version has no transitions, so publishing gives each of its statuses a move from any status, as a new workflow gets.',
+        'This version has no transitions, so publishing gives its statuses a move from any status, as a new workflow gets. A closed-stage status gets one only when there is a close reason to close with; if no status can get one, the publish is refused and says why.',
       ),
     ).toBeVisible();
     await user.click(within(panel).getByRole('button', { name: 'Publish now' }));

@@ -4391,6 +4391,10 @@ export const messagesEn = {
   'workflow.problem.unknown_close_reason': '{where}: the close reason it sets no longer exists.',
   'workflow.problem.invalid_pattern': '{where}: {pattern} is not a valid regular expression.',
   'workflow.problem.guards_too_deep': '{where}: the guards nest too deep.',
+  // A workflow with no transitions whose every status closes, with no close reason to close
+  // with, would be live with no move at all (T-260).
+  'workflow.problem.no_moves':
+    'No ticket could ever move in it: it has no transitions, every status is in the closed stage, and there is no close reason for a move to close with. Add a close reason named Completed, make the default workflow set a reason when it closes a ticket, add a status outside the closed stage, or draw the transitions yourself.',
   'workflow.problem.onCreate': 'Creating a ticket',
   'workflow.problem.refused': 'The server refused the definition.',
   'workflow.problem.mappingRequired': 'Choose where the tickets of each dropped status go.',
@@ -4407,7 +4411,7 @@ export const messagesEn = {
     '{count, plural, one {The draft has # warning; it can still be published.} other {The draft has # warnings; it can still be published.}}',
   'admin.workflow.publishPanel.dropped': 'Statuses this version drops',
   'admin.workflow.publishPanel.freeMoves':
-    'This version has no transitions, so publishing gives each of its statuses a move from any status, as a new workflow gets.',
+    'This version has no transitions, so publishing gives its statuses a move from any status, as a new workflow gets. A closed-stage status gets one only when there is a close reason to close with; if no status can get one, the publish is refused and says why.',
   'admin.workflow.publishPanel.moveTo':
     'Move the {count, plural, one {# ticket} other {# tickets}} in {status} to',
   'admin.workflow.publishPanel.empty': '{status}: no tickets to move.',

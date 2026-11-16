@@ -8,6 +8,7 @@ import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
 import { EVENT_TYPES } from '../events/catalogue';
 import { lockList } from '../tickets/fields';
+import { closingReasonId } from '../workflows/board-managed';
 import { repairWorkflowMoves } from '../workflows/free-moves';
 
 /**
@@ -1726,6 +1727,164 @@ describe('free moving at its edges (WF-008)', () => {
       expect(done.statusCode, done.body).toBe(200);
       const asked = await post(`/api/v1/workflows/${workflowId}/completed-reason`);
       expect(asked.json()).toEqual({ closeReasonId: completed });
+    });
+  });
+
+  /**
+   * A workflow whose every status is in the closed stage, on a site with no reason for free moves
+   * to close with (T-260): none is named Completed, and the default workflow sets none when it
+   * closes. Free moves can give it no move at all, so a publish and a file imported as a new
+   * workflow are refused. Last in the file: it leaves the site with no such reason.
+   */
+  describe('a workflow free moves cannot give any move (T-260)', () => {
+    let workflowId = 0;
+    let shipping = 0;
+    let dropped = 0;
+
+    beforeAll(async () => {
+      // The default workflow asks for the reason when it closes, and sets none.
+      const defaultWorkflow = await defaultId();
+      const before = (await view(defaultWorkflow)).published.definition;
+      const setsReason = (e: Effect) =>
+        e.type === 'update-system-field' && e.field === 'close-reason';
+      await saveDraft(defaultWorkflow, {
+        ...before,
+        transitions: before.transitions.map(
+          (t): Transition =>
+            t.effects?.some(setsReason)
+              ? {
+                  ...t,
+                  effects: t.effects.filter((e) => !setsReason(e)),
+                  layout: ['close-reason'],
+                }
+              : t,
+        ),
+      });
+      const published = await post(`/api/v1/workflows/${defaultWorkflow}/publish`, {});
+      expect(published.statusCode, published.body).toBe(200);
+      // No reason is named Completed, in any case.
+      const reasons = (await get('/api/v1/close-reasons')).json().closeReasons as {
+        id: number;
+        name: string;
+      }[];
+      for (const r of reasons.filter((r) => r.name.toLowerCase() === 'completed')) {
+        const renamed = await patch(`/api/v1/close-reasons/${r.id}`, { name: `Finished ${r.id}` });
+        expect(renamed.statusCode, renamed.body).toBe(200);
+      }
+      // So free moves have no reason to close with (the editor's ask would make Completed).
+      expect(await database.db.transaction().execute((trx) => closingReasonId(trx, 1))).toBeNull();
+
+      // A workflow of closed-stage statuses whose version 1 was left with no transitions.
+      shipping = await newStatus('Gone out', 'closed');
+      dropped = await newStatus('Called off for good', 'closed');
+      const made = await post('/api/v1/workflows', {
+        name: 'Only closing',
+        definition: {
+          initialStatusId: shipping,
+          statuses: [{ statusId: shipping }, { statusId: dropped }],
+          transitions: [{ id: 4, name: 'Drop', from: [shipping], to: dropped }],
+        },
+      });
+      expect(made.statusCode, made.body).toBe(201);
+      workflowId = made.json().workflow.id as number;
+      const stored = (await view(workflowId)).published.definition;
+      await database.db
+        .updateTable('workflow_version')
+        .set({ definition: JSON.stringify({ ...stored, transitions: [] }) as never })
+        .where('workflow_id', '=', workflowId)
+        .execute();
+    });
+
+    it('[WF-008] [WF-011] a workflow file of only closed-stage statuses with no reason to close with is refused as a new workflow and creates nothing, and is accepted as a next draft (T-260)', async () => {
+      const exported = await get(`/api/v1/admin/workflows/${workflowId}/export`);
+      expect(exported.statusCode, exported.body).toBe(200);
+      const document = exported.json();
+      expect(document.definition.transitions).toEqual([]);
+      // A status this site does not have yet, which the import would create.
+      const renamed = JSON.parse(
+        JSON.stringify(document).replaceAll('Called off for good', 'Never coming back'),
+      );
+      const workflows = async () =>
+        Number(
+          (
+            await database.db
+              .selectFrom('workflow')
+              .select((eb) => eb.fn.countAll().as('n'))
+              .executeTakeFirstOrThrow()
+          ).n,
+        );
+      const statusNamed = (name: string) =>
+        database.db.selectFrom('status').select('id').where('name', '=', name).executeTakeFirst();
+      const before = { workflows: await workflows(), events: await eventCount() };
+
+      const refused = await post('/api/v1/admin/workflows/import', {
+        document: renamed,
+        name: 'Imported only closing',
+      });
+      expect(refused.statusCode, refused.body).toBe(400);
+      expect(refused.json()).toEqual({ error: 'invalid_request', detail: { problem: 'no_moves' } });
+      // Nothing the import made stays: no workflow, no status, no event.
+      expect(await workflows()).toBe(before.workflows);
+      expect(await statusNamed('Never coming back')).toBeUndefined();
+      expect(await eventCount()).toBe(before.events);
+
+      // As the next draft it is only a draft: accepted as it is, and its publish is what is refused.
+      const asDraft = await post(`/api/v1/admin/workflows/${workflowId}/import`, { document });
+      expect(asDraft.statusCode, asDraft.body).toBe(200);
+      expect(draftOf(asDraft.json().workflow as View).transitions).toEqual([]);
+      const publish = await post(`/api/v1/workflows/${workflowId}/publish`, {});
+      expect(publish.statusCode, publish.body).toBe(400);
+      expect(publish.json().detail).toEqual({ problem: 'no_moves' });
+      // Put back as it was, for what follows.
+      const discarded = await as({
+        method: 'DELETE',
+        url: `/api/v1/workflows/${workflowId}/draft`,
+      });
+      expect(discarded.statusCode, discarded.body).toBeLessThan(300);
+    });
+
+    it('[WF-008] [WF-002] a publish that free moves cannot give any move is refused, the draft and events stay as they were, and a reason named Completed lets it through (T-260)', async () => {
+      // The empty version 1 restored as the draft.
+      const restored = await post(`/api/v1/workflows/${workflowId}/versions/1/restore`);
+      expect(restored.statusCode, restored.body).toBe(200);
+      const draftVersion = restored.json().workflow.draft.version as number;
+      const stored = async () =>
+        (await database.db
+          .selectFrom('workflow_version')
+          .select(['definition', 'published_at'])
+          .where('workflow_id', '=', workflowId)
+          .where('version', '=', draftVersion)
+          .executeTakeFirstOrThrow()) as unknown as {
+          definition: Definition;
+          published_at: Date | null;
+        };
+      const saved = await stored();
+      expect(saved.definition.transitions).toEqual([]);
+      const count = await eventCount();
+
+      const refused = await post(`/api/v1/workflows/${workflowId}/publish`, {});
+      expect(refused.statusCode, refused.body).toBe(400);
+      expect(refused.json()).toEqual({ error: 'invalid_request', detail: { problem: 'no_moves' } });
+      // Nothing changed: the draft as restored, version 1 still published, no event.
+      expect(await stored()).toEqual(saved);
+      const after = await view(workflowId);
+      expect(after.published.version).toBe(1);
+      expect(after.draft?.version).toBe(draftVersion);
+      expect(await eventCount()).toBe(count);
+
+      // A reason named Completed, in any case, gives each closing status its move.
+      const made = await post('/api/v1/close-reasons', { name: 'completed' });
+      expect(made.statusCode, made.body).toBe(201);
+      const completed = made.json().closeReason.id as number;
+      const published = await post(`/api/v1/workflows/${workflowId}/publish`, {});
+      expect(published.statusCode, published.body).toBe(200);
+      const live = (published.json().workflow as View).published;
+      expect(live.version).toBe(draftVersion);
+      expect(live.definition.transitions.map(({ id: _, ...t }) => t)).toEqual([
+        { name: 'Gone out', from: 'any', to: shipping, effects: setting(completed) },
+        { name: 'Called off for good', from: 'any', to: dropped, effects: setting(completed) },
+      ]);
+      expect(await eventCount()).toBe(count + 2);
     });
   });
 });

@@ -4506,6 +4506,8 @@ export const messagesEs: Record<MessageId, string> = {
     '{where}: el motivo de cierre que establece ya no existe.',
   'workflow.problem.invalid_pattern': '{where}: {pattern} no es una expresión regular válida.',
   'workflow.problem.guards_too_deep': '{where}: las condiciones se anidan demasiado.',
+  'workflow.problem.no_moves':
+    'Ningún ticket podría moverse nunca en él: no tiene transiciones, todos sus estados están en la etapa cerrada y no hay ningún motivo de cierre con el que cerrar. Añade un motivo de cierre llamado Completed, haz que el flujo de trabajo predeterminado defina un motivo al cerrar un ticket, añade un estado fuera de la etapa cerrada o dibuja tú las transiciones.',
   'workflow.problem.onCreate': 'Crear un ticket',
   'workflow.problem.refused': 'El servidor rechazó la definición.',
   'workflow.problem.mappingRequired': 'Elige adónde van los tickets de cada estado que se quita.',
@@ -4523,7 +4525,7 @@ export const messagesEs: Record<MessageId, string> = {
     '{count, plural, one {El borrador tiene # aviso; aun así se puede publicar.} other {El borrador tiene # avisos; aun así se puede publicar.}}',
   'admin.workflow.publishPanel.dropped': 'Estados que quita esta versión',
   'admin.workflow.publishPanel.freeMoves':
-    'Esta versión no tiene transiciones, así que al publicarla cada uno de sus estados recibe una transición desde cualquier estado, como un flujo de trabajo nuevo.',
+    'Esta versión no tiene transiciones, así que al publicarla sus estados reciben una transición desde cualquier estado, como un flujo de trabajo nuevo. Un estado de la etapa cerrada solo la recibe si hay un motivo de cierre con el que cerrar; si ningún estado puede recibirla, la publicación se rechaza y dice por qué.',
   'admin.workflow.publishPanel.moveTo':
     'Mover {count, plural, one {el # ticket} other {los # tickets}} de {status} a',
   'admin.workflow.publishPanel.empty': '{status}: no hay tickets que mover.',
