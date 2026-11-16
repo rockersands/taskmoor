@@ -909,14 +909,61 @@ touch drags), and how the image looks, which needs a person to look at it.
   double-click reads the file as UTF-8 and accented headers such as "Versión" come out whole.
   Streamed exports put it before the header in their first chunk (`withBom` leaves text that
   already has one as it is); the views' files get it from `csvFile`, and `csvBlob` makes sure of it
-  again when the page hands the file over, typed `text/csv; charset=utf-8`. The separator stays a
-  comma: a Spanish Excel that wants semicolons still needs its import from text, which the mark does
-  not change. JSON and JSON Lines get no mark. The CSV importer (`records`) and the people file
+  again when the page hands the file over, typed `text/csv; charset=utf-8`. Both styles of T-263
+  (below) get it. JSON and JSON Lines get no mark. The CSV importer (`records`) and the people file
   start reading after it, through `bomLength`, so an exported file imports as it is. Tests: each
   export's bytes start EF BB BF once (`search-export.test.ts`, `plans.test.ts`, `audit.test.ts`,
   `PlanShare.test.tsx`), and each reads back through the importer, the search export as a whole
   CSV import (`search-export.test.ts`) and the downloaded files in the e2e specs
   (`search-results`, `audit`, `plan-share-and-export`).
+- **Commas or semicolons, by the person (T-263; answered 2026-11-16, replacing "separators as
+  they are" of the answer of 2026-11-13 to question 7 below).** As built:
+  - *Two styles in the shared rule.* `csvField`, `csvLine` and `csvFile` take `comma` (the default:
+    commas, numbers as 1.5) or `semicolon` (semicolons, numbers written with a decimal comma, 2,5,
+    unquoted). Text with a comma or a semicolon is quoted in both, and so now is text with a tab or a
+    `|`, so a file's own separators are the only ones outside quotes. Not Excel's `sep=;` first
+    line: Excel is widely reported to ignore the byte-order mark when that line is there, and other
+    readers, ours included, would take it for a row.
+  - *The person's style.* `automaticCsvSeparator(tag)` gives `semicolon` exactly when
+    `Intl.NumberFormat(tag).formatToParts(1.5)` writes a decimal comma: Windows sets Excel's list
+    separator to `;` in those regions. The tag is the account's "Language and region", else the
+    browser's language, so es-ES, de-DE, fr-FR and pt-BR get semicolons and es-MX, en-US and en-GB
+    commas. **Known gap:** Swiss German (de-CH) writes a decimal point, so it gets commas, while
+    Excel there separates with `;`; neither style writes that pair. A later change could split the
+    setting into the separator and the decimal mark.
+  - *The setting.* Profile has **Spreadsheet files (CSV)** beside "Language and region": Automatic,
+    "Commas, numbers as 1.5" or "Semicolons, numbers as 1,5". It is `user_preference.csv_separator`
+    (migration 0113; null is Automatic), read and written with `autoFollow` through
+    `GET`/`PATCH /api/v1/account/preferences` (`user.preferences_updated`), so erasure deletes it with
+    the row and the data download lists it in `preferences.json`. The web app's `CsvStyleProvider`
+    (`account/csvStyle.tsx`) reads it once, the first time a page shows a CSV control, and the
+    profile hands a saved choice on at once. Every CSV control uses it: Search, the audit log, a
+    plan's List, the files the Timeline, Calendar, Summary, Capacity and Releases build on the page,
+    and a baseline's comparison. No download menu gets a second CSV entry.
+  - *The API.* `GET /search/export`, `/plans/:id/export` and `/audit/export` take
+    `separator=comma|semicolon`, comma by default, so scripts and tokens see no change. The web app
+    names the separator only for the semicolon style, so the addresses of comma files are as before
+    and the e2e specs, run in an English browser, still download commas.
+  - *The importer reads what spreadsheets write.* Without `delimiter` in a mapping (no default any
+    more; runs stored before keep the comma written into them), `detectDelimiter` counts `,` `;` tab
+    and `|` outside quotes in the header record and takes the most frequent, a tie going to the
+    comma; it reads the bytes only, so every job part of a run agrees. The people file of a Cloud
+    import does the same. A file whose bytes after any UTF-8 mark are not UTF-8 (`isUtf8`) is
+    decoded once, in `CsvSource`'s constructor before any scan, as UTF-16 when it starts with that
+    mark, else as Windows-1252 through a 32-entry table over Latin-1 (Node 22's own `TextDecoder`
+    reads 0x80 to 0x9F of `windows-1252` as Latin-1 controls, so it is not used), and the report
+    gets a `read_as_windows_1252` source note with the first lines holding accented letters; the
+    wizard explains it in English and Spanish. A number field of a semicolon file reads "2,5" and
+    "1.234,5"; a bare "1.234", a thousands dot or a decimal point, is left out with `value_invalid`.
+    So a semicolon export imports back to the same values with no separator named (QRY-015 (2),
+    `search-export.test.ts`). The `csv` fuzz target now reaches the detection, the Windows-1252 and
+    UTF-16 readings and the decimal commas, with written tables that must read back: its M1 stage
+    has to run again.
+  - Tests: `csv.test.ts` in webconfig (both styles, the rule by tag, detection), the importer's
+    `csv.test.ts` and `cloud/people.test.ts`, `links.test.ts` (the setting), `privacy.test.ts`
+    (download and erasure), the three exports' tests, `account/csvStyle.test.tsx`,
+    `ProfileSection.test.tsx`, `planExport.test.tsx`, and the search and audit pages' links. Each
+    cites IAM-008 or NFR-006 with the export's or the importer's requirement.
 - **The picture's colours are listed in the design guard's ALLOWED list,** with the reason: a file
   must not change with the skin.
 - **Tests by name:** the page's flows are in `plans/PlanShare.test.tsx`, and the file functions' in
@@ -940,7 +987,8 @@ touch drags), and how the image looks, which needs a person to look at it.
    Windows reads accented headers such as "Versión" when the file is opened by a double-click. A
    Spanish Excel may still want a semicolon between cells, which a mark does not change. Not tried in
    Excel. **Answered 2026-11-13: a mark on every CSV export, not only a plan's; separators as they
-   are. Built in T-252** (above).
+   are. Built in T-252** (above). **The separators were asked again in T-263 and answered on
+   2026-11-16: commas or semicolons by the person's region, with a choice on Profile** (above).
 
 ### Stage 5 (T-089d): the program board and dependency options
 

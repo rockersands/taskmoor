@@ -1,8 +1,8 @@
 ---
 title: "Your account"
 audience: users
-sources: apps/web/src/account/AccountPage.tsx, apps/server/src/oauth/tokens.ts, apps/web/src/account/ProfileSection.tsx, apps/web/src/account/AppearanceSection.tsx, apps/web/src/account/PasswordSection.tsx, apps/web/src/account/TwoFactorSection.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/account/options.ts, apps/web/src/twofactor/TotpSetupForm.tsx, apps/web/src/twofactor/RecoveryCodes.tsx, apps/web/src/session/UserMenu.tsx, apps/web/src/session/SecondFactorStep.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/format.ts, apps/web/src/skins/skins.ts, apps/web/src/i18n/locale.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/App.tsx, apps/server/src/routes/search.ts, apps/server/src/email/deliver.ts, docs/adr/0024-i18n-and-accessibility.md, docs/adr/0035-api-tokens-and-service-accounts.md, docs/adr/0036-skins-and-soft-visual-language.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, docs/adr/0109-security-notices-and-alerts.md, apps/web/src/account/PersonalDataSection.tsx, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, docs/adr/0111-personal-data-and-database-tls.md, apps/web/src/shell/ThemeToggle.tsx, apps/web/src/tutorial/TutorialsPage.tsx, apps/web/src/tutorial/sections.ts, docs/adr/0114-glass-interface-and-clear-sections.md, docs/adr/0115-guided-tutorial.md, apps/web/src/styles/motion.css, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md, apps/web/src/tutorial/TutorialProvider.tsx, apps/web/src/styles/forms.css, apps/web/src/styles/surfaces.css, apps/web/src/session/SignInPage.tsx, apps/web/src/session/SignInForm.tsx, apps/web/src/shell/StandaloneFrame.tsx, apps/web/src/shell/NotFoundPage.tsx, docs/plan/decisions.csv, apps/web/src/styles/account.css, apps/web/src/session/GoogleSignInButton.tsx, apps/web/src/session/PasswordField.tsx, apps/web/src/session/PasswordLinkPage.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/notifications/UnsubscribePage.tsx, apps/web/src/oauth/ConsentPage.tsx, apps/web/src/styles/standalone.css, apps/web/src/i18n/days.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/columns.ts, apps/web/src/reports/ScopeReports.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/server/src/fields/values.ts, apps/web/src/tickets/view/client.ts
-accessed: 2026-11-14
+sources: apps/web/src/account/AccountPage.tsx, apps/server/src/oauth/tokens.ts, apps/web/src/account/ProfileSection.tsx, apps/web/src/account/AppearanceSection.tsx, apps/web/src/account/PasswordSection.tsx, apps/web/src/account/TwoFactorSection.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/account/options.ts, apps/web/src/twofactor/TotpSetupForm.tsx, apps/web/src/twofactor/RecoveryCodes.tsx, apps/web/src/session/UserMenu.tsx, apps/web/src/session/SecondFactorStep.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/format.ts, apps/web/src/skins/skins.ts, apps/web/src/i18n/locale.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/App.tsx, apps/server/src/routes/search.ts, apps/server/src/email/deliver.ts, docs/adr/0024-i18n-and-accessibility.md, docs/adr/0035-api-tokens-and-service-accounts.md, docs/adr/0036-skins-and-soft-visual-language.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, docs/adr/0109-security-notices-and-alerts.md, apps/web/src/account/PersonalDataSection.tsx, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, docs/adr/0111-personal-data-and-database-tls.md, apps/web/src/shell/ThemeToggle.tsx, apps/web/src/tutorial/TutorialsPage.tsx, apps/web/src/tutorial/sections.ts, docs/adr/0114-glass-interface-and-clear-sections.md, docs/adr/0115-guided-tutorial.md, apps/web/src/styles/motion.css, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md, apps/web/src/tutorial/TutorialProvider.tsx, apps/web/src/styles/forms.css, apps/web/src/styles/surfaces.css, apps/web/src/session/SignInPage.tsx, apps/web/src/session/SignInForm.tsx, apps/web/src/shell/StandaloneFrame.tsx, apps/web/src/shell/NotFoundPage.tsx, docs/plan/decisions.csv, apps/web/src/styles/account.css, apps/web/src/session/GoogleSignInButton.tsx, apps/web/src/session/PasswordField.tsx, apps/web/src/session/PasswordLinkPage.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/notifications/UnsubscribePage.tsx, apps/web/src/oauth/ConsentPage.tsx, apps/web/src/styles/standalone.css, apps/web/src/i18n/days.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/columns.ts, apps/web/src/reports/ScopeReports.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/server/src/fields/values.ts, apps/web/src/tickets/view/client.ts, packages/webconfig/src/csv.ts, apps/web/src/account/csvStyle.tsx, apps/server/src/routes/links.ts, docs/adr/0122-multi-track.md
+accessed: 2026-11-16
 attestation: own-words
 ---
 # Your account
@@ -64,11 +64,24 @@ marks no section then.
 | **Email** | Shown only; it cannot be changed here |
 | **Time zone** | **Automatic** follows the device you are using, or pick a zone |
 | **Language and region** | **Automatic** follows your browser's language setting, or pick one |
+| **Spreadsheet files (CSV)** | How the CSV files you download separate their cells: **Automatic**, **Commas, numbers as 1.5** or **Semicolons, numbers as 1,5** |
 
 Press **Save profile**. Searches read dates on the time zone saved here, and digests and quiet
 hours follow it too; with **Automatic**, the server uses UTC for them. **Language and region**
 also chooses the language of the web app, on every device you sign in on (see
 [Language](#language)).
+
+**Spreadsheet files (CSV)** is for the files you download: search results, a plan's views and
+baselines, and the audit log. A spreadsheet opens a CSV file by a double-click in columns only when
+its cells are separated the way it expects. With **Automatic**, Taskmoor writes semicolons and
+numbers as 1,5 when your **Language and region** (or your browser's language, when that is
+Automatic too) writes a decimal comma, as in Spain, most of Europe and Brazil, and commas with
+numbers as 1.5 otherwise, as in Mexico, the United Kingdom and the United States. If your
+spreadsheet opens a download with everything in one column, pick the other choice. Neither choice
+fits Swiss German settings exactly: they write numbers as 1.5, so Automatic gives commas, but Excel
+there expects semicolons. **Semicolons, numbers as 1,5** opens such files in columns, though a
+number with a fraction may then read as text. The choice is saved with your account and is part of
+[your data](#your-data).
 
 ## Appearance
 

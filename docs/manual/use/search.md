@@ -2,8 +2,8 @@
 title: "Search and the query language"
 audience: users
 jira-names: the Jira-compatible dialect's names
-sources: apps/server/src/boards/one-per-track.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/savedClient.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/search/BasicFilters.tsx, apps/web/src/search/basic.ts, apps/web/src/search/suggest.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/columns.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/columns.ts, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/client.ts, apps/web/src/i18n/messages.en.ts, packages/query/src/fields.ts, packages/query/src/functions.ts, packages/query/src/dialect.ts, packages/query/src/dates.ts, packages/query/src/resolve.ts, apps/server/src/search/bind.ts, apps/server/src/search/compile.ts, apps/server/src/routes/search.ts, apps/server/src/routes/search-export.ts, apps/server/src/routes/saved-searches.ts, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, docs/specs/06-query-language-grammar.md, docs/adr/0010-query-compiler.md, docs/adr/0069-full-text-search.md, packages/query/src/text.ts, apps/server/src/search/text.ts, apps/server/src/search/count.ts, docs/adr/0052-search-results.md, docs/adr/0053-saved-searches.md, apps/server/src/routes/teams.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, docs/adr/0096-dc-filters-and-query-translation.md, apps/server/src/import/load-filters.ts, apps/server/src/search/cross-track.ts, packages/webconfig/src/csv.ts
-accessed: 2026-11-14
+sources: apps/server/src/boards/one-per-track.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/savedClient.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/search/BasicFilters.tsx, apps/web/src/search/basic.ts, apps/web/src/search/suggest.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/columns.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/columns.ts, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/client.ts, apps/web/src/i18n/messages.en.ts, packages/query/src/fields.ts, packages/query/src/functions.ts, packages/query/src/dialect.ts, packages/query/src/dates.ts, packages/query/src/resolve.ts, apps/server/src/search/bind.ts, apps/server/src/search/compile.ts, apps/server/src/routes/search.ts, apps/server/src/routes/search-export.ts, apps/server/src/routes/saved-searches.ts, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, docs/specs/06-query-language-grammar.md, docs/adr/0010-query-compiler.md, docs/adr/0069-full-text-search.md, packages/query/src/text.ts, apps/server/src/search/text.ts, apps/server/src/search/count.ts, docs/adr/0052-search-results.md, docs/adr/0053-saved-searches.md, apps/server/src/routes/teams.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, docs/adr/0096-dc-filters-and-query-translation.md, apps/server/src/import/load-filters.ts, apps/server/src/search/cross-track.ts, packages/webconfig/src/csv.ts, apps/web/src/account/csvStyle.tsx
+accessed: 2026-11-16
 attestation: own-words
 ---
 # Search and the query language
@@ -366,4 +366,8 @@ or "More than 10,000 tickets" when an estimate would not be close enough.
   finds, not only the ones shown, in the columns shown and the query's order. In CSV, lists are
   joined with "; " and a cell that a spreadsheet would run as a formula starts with an
   apostrophe. The CSV file is UTF-8 with a byte-order mark first, so Excel on Windows shows
-  accented text properly when you open it with a double-click; cells stay separated by commas.
+  accented text properly when you open it with a double-click. Its cells are separated the way
+  your spreadsheet expects: by semicolons, with numbers as 1,5, where your language and region
+  write a decimal comma (Spain, most of Europe, Brazil), and by commas, with numbers as 1.5,
+  elsewhere. To choose for yourself, set **Spreadsheet files (CSV)** on your
+  [profile](account.md#profile).
