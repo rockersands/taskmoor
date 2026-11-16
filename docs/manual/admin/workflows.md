@@ -372,7 +372,8 @@ their new workflow lacks. Those tickets need a new status:
   nothing is chosen for you, and the step says so if one is left open. **Save and move the
   tickets** (or **Switch and move the tickets**) makes the change; **Cancel** leaves everything as
   it was. If tickets changed since the step was read, it reads them again and asks you to check
-  and confirm again.
+  and confirm again. Changing the map's form while its step is open closes the step, which was
+  for the map as it was: **Save the map** again reads what the map now would do.
 - Through the API, the change takes `statusMapping`, from old status id to new status id, and,
   where one ticket type needs other targets, `typeStatusMapping` keyed by ticket type id (the
   web app sends this one). Without it the change answers `409 status_mapping_required` with the

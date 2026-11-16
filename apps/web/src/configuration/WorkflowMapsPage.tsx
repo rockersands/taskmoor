@@ -307,6 +307,13 @@ function MapPanel({
   const typeName = (typeId: number) => types.find((ty) => ty.id === typeId)?.name ?? String(typeId);
   const unmapped = types.filter((ty) => !entries.some((e) => e.ticketTypeId === ty.id));
 
+  /**
+   * The map's form changed while its mapping step was open: the step was for the change as it
+   * was previewed, so it closes, and Save the map previews the map as it is now.
+   */
+  const edited = () => {
+    if (mapping) setMapping(null);
+  };
   /** Closes the mapping step, its focus back on Save the map, and says why when it failed. */
   const stop = (error?: unknown) => {
     if (mapping) saveButton.current?.focus();
@@ -376,7 +383,10 @@ function MapPanel({
           <select
             id={`${formId}-default`}
             value={fallback}
-            onChange={(event) => setFallback(event.target.value)}
+            onChange={(event) => {
+              setFallback(event.target.value);
+              edited();
+            }}
           >
             {workflows.map((w) => (
               <option key={w.id} value={w.id}>
@@ -394,15 +404,16 @@ function MapPanel({
               <select
                 id={`${formId}-type-${entry.ticketTypeId}`}
                 value={entry.workflowId}
-                onChange={(event) =>
+                onChange={(event) => {
                   setEntries((list) =>
                     list.map((e) =>
                       e.ticketTypeId === entry.ticketTypeId
                         ? { ...e, workflowId: Number(event.target.value) }
                         : e,
                     ),
-                  )
-                }
+                  );
+                  edited();
+                }}
               >
                 {workflows.map((w) => (
                   <option key={w.id} value={w.id}>
@@ -414,7 +425,10 @@ function MapPanel({
                 type="button"
                 className="button-secondary people-action"
                 aria-label={t('admin.maps.removeEntry', { type: typeName(entry.ticketTypeId) })}
-                onClick={() => setEntries((list) => list.filter((e) => e !== entry))}
+                onClick={() => {
+                  setEntries((list) => list.filter((e) => e !== entry));
+                  edited();
+                }}
               >
                 {t('admin.maps.remove')}
               </button>
@@ -449,6 +463,7 @@ function MapPanel({
                     { ticketTypeId: Number(newType), workflowId: Number(fallback) },
                   ]);
                   setNewType('');
+                  edited();
                 }}
               >
                 {t('admin.maps.addShort')}

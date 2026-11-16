@@ -283,6 +283,41 @@ describe('track and workflow map administration (M1-053)', () => {
     });
   });
 
+  it('[WF-001] a change to the map while its mapping step is open closes the step, and Save previews it anew (T-320)', async () => {
+    const user = userEvent.setup();
+    const client = renderPage('maps', { refuseMapping: true });
+    await user.click(await screen.findByRole('button', { name: 'Manage Default workflow map' }));
+    const map = await screen.findByRole('form', { name: 'Workflows in Default workflow map' });
+    await user.selectOptions(
+      within(map).getByRole('combobox', { name: 'Workflow for every other type' }),
+      '2',
+    );
+    await user.click(within(map).getByRole('button', { name: 'Save the map' }));
+    await screen.findByRole('form', { name: 'Save Default workflow map' });
+    // Task gets its own line: the step was for the map without it.
+    await user.selectOptions(
+      within(map).getByRole('combobox', { name: 'Give a type its own workflow' }),
+      'Task',
+    );
+    await user.click(within(map).getByRole('button', { name: 'Add' }));
+    expect(screen.queryByRole('form', { name: 'Save Default workflow map' })).toBeNull();
+    await user.click(within(map).getByRole('button', { name: 'Save the map' }));
+    const step = await screen.findByRole('form', { name: 'Save Default workflow map' });
+    for (const box of within(step).getAllByRole('combobox'))
+      await user.selectOptions(box, 'Fixing');
+    await user.click(within(step).getByRole('button', { name: 'Save and move the tickets' }));
+    await screen.findByText(/^Default workflow map was saved\./);
+    const change = { defaultWorkflowId: 2, entries: [{ ticketTypeId: 6, workflowId: 2 }] };
+    expect(client.calls).toEqual([
+      { action: 'workflowMapImpact', args: [20, { defaultWorkflowId: 2, entries: [] }] },
+      { action: 'workflowMapImpact', args: [20, change] },
+      {
+        action: 'updateWorkflowMap',
+        args: [20, { ...change, typeStatusMapping: { '5': { '3': 11, '4': 11 } } }],
+      },
+    ]);
+  });
+
   it('[WF-001] saves a map no track uses without a preview (T-320)', async () => {
     const user = userEvent.setup();
     const client = renderPage('maps', { refuseMapping: true });
