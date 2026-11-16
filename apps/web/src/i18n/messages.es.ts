@@ -7028,6 +7028,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.aiUsage.scope.eachPerson': 'Cada persona',
   'admin.aiUsage.tokens': '{count, plural, one {# token} other {# tokens}}',
   'admin.aiUsage.limits': 'Límites de gasto',
+  'admin.aiUsage.limitsTable': 'Tabla de límites de gasto',
   'admin.aiUsage.limitsHint':
     'Al llegar a un límite, las llamadas a la IA se detienen hasta que empieza su siguiente periodo; se avisa a los administradores al 80 % y al 100 %.',
   'admin.aiUsage.limitsFailed': 'No se pudieron cargar los límites de gasto.',
@@ -7038,6 +7039,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.aiUsage.period.week': 'Semana',
   'admin.aiUsage.period.month': 'Mes',
   'admin.aiUsage.calls': 'Últimas llamadas a la IA',
+  'admin.aiUsage.callsTable': 'Tabla de las últimas llamadas a la IA',
   'admin.aiUsage.callsHint':
     'El registro de IA: una entrada por llamada, con quién, función, tokens y coste.',
   'admin.aiUsage.outcome.ok': 'Respondida',

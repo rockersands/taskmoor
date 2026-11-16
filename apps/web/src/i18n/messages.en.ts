@@ -6881,6 +6881,7 @@ export const messagesEn = {
   'admin.aiUsage.scope.eachPerson': 'Each person',
   'admin.aiUsage.tokens': '{count, plural, one {# token} other {# tokens}}',
   'admin.aiUsage.limits': 'Spend limits',
+  'admin.aiUsage.limitsTable': 'Table of spend limits',
   'admin.aiUsage.limitsHint':
     'At a limit, AI calls stop until its period starts again; administrators are alerted at 80% and 100%.',
   'admin.aiUsage.limitsFailed': 'The spend limits could not be loaded.',
@@ -6891,6 +6892,7 @@ export const messagesEn = {
   'admin.aiUsage.period.week': 'Week',
   'admin.aiUsage.period.month': 'Month',
   'admin.aiUsage.calls': 'Latest AI calls',
+  'admin.aiUsage.callsTable': 'Table of the latest AI calls',
   'admin.aiUsage.callsHint':
     'The AI audit log: one entry per call, with who, feature, tokens and cost.',
   'admin.aiUsage.outcome.ok': 'Answered',

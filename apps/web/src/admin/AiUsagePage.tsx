@@ -395,7 +395,8 @@ function Limits({ limits }: { limits: Load<AiLimit[]> }) {
         <EmptyState compact title={t('admin.aiUsage.noLimits')} />
       )}
       {limits.status === 'loaded' && limits.value.length > 0 && (
-        <TableScroller label={t('admin.aiUsage.limits')}>
+        // Its own name: the card around it is a region named 'Spend limits' already.
+        <TableScroller label={t('admin.aiUsage.limitsTable')}>
           <table className="data-table api-usage-table">
             <caption className="visually-hidden">{t('admin.aiUsage.limits')}</caption>
             <thead>
@@ -451,7 +452,7 @@ function Calls({ calls }: { calls: AiCall[] }) {
       {calls.length === 0 ? (
         <EmptyState compact title={t('admin.aiUsage.none')} />
       ) : (
-        <TableScroller label={t('admin.aiUsage.calls')}>
+        <TableScroller label={t('admin.aiUsage.callsTable')}>
           <table className="data-table api-usage-table">
             <caption className="visually-hidden">{t('admin.aiUsage.calls')}</caption>
             <thead>
