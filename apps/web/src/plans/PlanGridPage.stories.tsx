@@ -147,6 +147,7 @@ export const HundredThousandRows: Story = {
 
 /** On a phone's touch screen: cards a finger can open, and nothing sideways. */
 export const OnAPhone: Story = {
+  tags: ['touch'],
   args: (() => {
     const client = estimates();
     return { client, search: client.search };
@@ -173,6 +174,7 @@ export const OnAPhone: Story = {
 
 /** A desktop on a touch screen: each row's expand button is a finger's size. */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   args: (() => {
     const client = estimates();
     return { client, search: client.search };
@@ -220,6 +222,7 @@ export const MoveUnder: Story = {
 
 /** A desktop on a touch screen: each row's grip is a finger's size. */
 export const GripsOnATouchScreen: Story = {
+  tags: ['touch'],
   args: (() => {
     const client = estimates();
     return { client, search: client.search };

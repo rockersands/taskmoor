@@ -73,6 +73,7 @@ export const Grips: Story = {
  * (T-231). The rule was once hidden behind a width query with every test green.
  */
 export const GripsOnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
@@ -82,6 +83,7 @@ export const GripsOnATouchScreen: Story = {
 
 /** The same on a phone. */
 export const GripsOnATouchPhone: Story = {
+  tags: ['touch'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {

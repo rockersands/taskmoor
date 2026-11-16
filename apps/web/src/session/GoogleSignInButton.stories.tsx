@@ -121,6 +121,7 @@ export const BothSkins: Story = {
 
 /** On a touch screen it is a finger's height: 44 px, the G still 20 px (T-262). */
 export const OnTouch: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await expect(tooSmallForAFinger(canvasElement, ['.google-sign-in'])).toEqual([]);

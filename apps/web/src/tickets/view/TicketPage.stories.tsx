@@ -119,6 +119,7 @@ function inTwoPages(): TicketClient {
  * on a touch screen (T-309).
  */
 export const AllInPages: Story = {
+  tags: ['touch'],
   args: { client: inTwoPages() },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
@@ -290,6 +291,7 @@ export const AtPhoneWidth: Story = {
 
 /** On a touch screen a child's key and a short Activity tab are a finger wide (PL-26). */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -306,6 +308,7 @@ export const OnATouchScreen: Story = {
  * others, and the row stays inside the phone's width.
  */
 export const ActivityTabsOnOneRow: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   decorators: [atPhoneWidth],
   play: async ({ canvasElement }) => {

@@ -128,6 +128,7 @@ export const DeletingAtPhoneWidth: Story = {
 
 /** A finger reaches every action of a row and the choice of where tickets go (ADR-033). */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   decorators: [atPhoneWidth],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {

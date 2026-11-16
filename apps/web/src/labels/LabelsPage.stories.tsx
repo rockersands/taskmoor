@@ -129,6 +129,7 @@ export const AtPhoneWidth: Story = {
 
 /** On a touch screen every box, button and field is a finger's size. */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   args: { client: fakeLabelsClient({ many: true }) },
   decorators: [atPhoneWidth],
   beforeEach: onARealTouchScreen,

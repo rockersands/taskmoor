@@ -103,6 +103,7 @@ export const NotFound: Story = {
 
 /** A finger reaches each ticket's key and the buttons of Columns and Format rules (ADR-033). */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByRole('link', { name: 'SHOP-41' });

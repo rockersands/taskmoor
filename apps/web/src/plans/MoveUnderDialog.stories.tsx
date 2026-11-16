@@ -119,6 +119,7 @@ export const SubticketKeepsItsParent: Story = {
 
 /** On a touch screen each choice and button is a finger's size. */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const dialog = await dialogOf(canvasElement);

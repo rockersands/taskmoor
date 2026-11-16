@@ -1,4 +1,5 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
@@ -902,7 +903,8 @@ export function unlistedInlineGrips(found: InlineGrip[], listed: readonly string
 /**
  * What is wrong with `checkedBy` (`file#Story`, the file under `root`) as the story that checks a
  * dragged-whole element's finger's size (T-290): no such file, no such story exported from it, or a
- * story that does not run on a real touch screen. Undefined when it is that story.
+ * story that does not run on a real touch screen: one that does not ask for it, or one without the
+ * `touch` tag that runs it on one (T-328). Undefined when it is that story.
  */
 export function touchStoryProblem(root: string, checkedBy: string): string | undefined {
   const [file, story] = checkedBy.split('#');
@@ -916,6 +918,9 @@ export function touchStoryProblem(root: string, checkedBy: string): string | und
   const body = next < 0 ? source.slice(start) : source.slice(start, start + 1 + next);
   if (!/beforeEach:\s*onARealTouchScreen\b/.test(body)) {
     return `${checkedBy} does not run on a real touch screen`;
+  }
+  if (!/\btags:\s*\[[^\]]*'touch'/.test(body)) {
+    return `${checkedBy} has no tags: ['touch'], so it runs with a mouse`;
   }
   return undefined;
 }
@@ -3198,6 +3203,19 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
       'is not a story file',
     );
     expect(touchStoryProblem(SRC, 'the side panel')).toContain('is not file#Story');
+    // A story that asks for a touch screen but lacks the tag that runs it on one (T-328).
+    const untagged = mkdtempSync(join(tmpdir(), 'touch-story-'));
+    try {
+      writeFileSync(
+        join(untagged, 'Grip.stories.tsx'),
+        'export const OnATouchScreen: Story = {\n  beforeEach: onARealTouchScreen,\n};\n',
+      );
+      expect(touchStoryProblem(untagged, 'Grip.stories.tsx#OnATouchScreen')).toContain(
+        "has no tags: ['touch']",
+      );
+    } finally {
+      rmSync(untagged, { recursive: true, force: true });
+    }
   });
 
   it('[NFR-005] holds a list to what is there, in both directions', () => {

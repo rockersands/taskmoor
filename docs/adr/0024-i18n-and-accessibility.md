@@ -38,6 +38,8 @@ machines on every change, which is how this project verifies work.
   only in modal dialogs with Escape to close and focus restored afterwards (the shell's drawer
   is the pattern).
 - Touch targets of at least 44px on coarse pointers; desktop stays the primary layout (ADR-033).
+  A story that measures them carries `tags: ['touch']` and runs in the `stories-touch` projects,
+  whose browser is a touch screen (ADR-030, T-328).
 
 ## The WCAG 2.1 AA pass (M1-115)
 

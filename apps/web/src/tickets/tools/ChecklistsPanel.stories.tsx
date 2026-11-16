@@ -126,6 +126,7 @@ export const DraggingAnItem: Story = {
  * size (T-290).
  */
 export const GripsOnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
@@ -135,6 +136,7 @@ export const GripsOnATouchScreen: Story = {
 
 /** The same on a phone, with nothing sideways. */
 export const GripsOnATouchPhone: Story = {
+  tags: ['touch'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {

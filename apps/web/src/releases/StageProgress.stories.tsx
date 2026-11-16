@@ -48,6 +48,7 @@ export const AtLeast: Story = {
 
 /** A finger reaches each number (ADR-033). */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await expect(tooSmallForAFinger(canvasElement, ['.release-legend a'])).toEqual([]);

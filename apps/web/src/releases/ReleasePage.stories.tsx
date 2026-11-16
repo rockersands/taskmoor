@@ -115,6 +115,7 @@ export const NotFound: Story = {
 
 /** A finger reaches each ticket of the release (ADR-033). */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByRole('table');
@@ -126,6 +127,7 @@ export const OnATouchScreen: Story = {
 
 /** A finger reaches the release across tracks in its facts (ADR-033). */
 export const LinkedOnATouchScreen: Story = {
+  tags: ['touch'],
   args: { releaseId: 3, client: fakeReleaseClient({ linked: true }) },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {

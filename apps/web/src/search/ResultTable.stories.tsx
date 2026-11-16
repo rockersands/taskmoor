@@ -98,6 +98,7 @@ export const Sorted: Story = {
  * assignee and priority, inside a phone's width with nothing sticking out, the key a finger wide.
  */
 export const StackedOnAPhone: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   render: (args) => (
     <div data-testid="phone-width" style={{ width: 360 }}>

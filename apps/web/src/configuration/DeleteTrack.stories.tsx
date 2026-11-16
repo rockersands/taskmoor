@@ -102,6 +102,7 @@ export const OnTheTracksPage: Story = {
 
 /** A finger reaches the button and both answers of the question (ADR-033). */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);

@@ -61,28 +61,27 @@ export async function gripsTooSmall(
   return tooSmallForAFinger(root, selectors);
 }
 
-/** What the story tests' setup lends a story: the browser's own touch emulation, on or off. */
-type TouchScreenSwitch = (on: boolean) => Promise<void>;
+/** What a story that needs a touch screen says when its browser has a mouse. */
+export const NOT_ON_A_TOUCH_SCREEN =
+  "This story needs a real touch screen, but its browser has a mouse: give it tags: ['touch'] " +
+  'so it runs in the stories-touch projects (T-328).';
 
 /**
- * A story's `beforeEach` that puts the page on a real touch screen. In the story tests the
- * browser's touch emulation is switched on, so `(pointer: coarse)` matches and every touch rule
- * stays where its sheet has it: a later rule outside a media block can then override a touch
- * rule, as on a phone. `asOnATouchScreen` cannot show that, since it appends the touch rules after
- * every sheet (T-255). Storybook's own page has no switch and falls back to `asOnATouchScreen`.
+ * A story's `beforeEach` for a page on a real touch screen. A story that uses it carries
+ * `tags: ['touch']`, which runs it in the touch projects, whose browsers are touch screens from
+ * the start (T-328): `(pointer: coarse)` matches and every touch rule stays where its sheet has
+ * it, so a later rule outside a media block can override a touch rule, as on a phone.
+ * `asOnATouchScreen` cannot show that, since it appends the touch rules after every sheet
+ * (T-255). In a story test without the tag it fails, rather than measure under a mouse;
+ * Storybook's own page, which is no story test, falls back to `asOnATouchScreen`.
  */
 export async function onARealTouchScreen(): Promise<() => Promise<void>> {
-  const turn = (globalThis as { taskmoorTouchScreen?: TouchScreenSwitch }).taskmoorTouchScreen;
-  if (!turn) {
+  if (!(globalThis as { taskmoorStoryTest?: boolean }).taskmoorStoryTest) {
     const takeAway = asOnATouchScreen();
     return async () => takeAway();
   }
-  await turn(true);
-  if (!matchMedia('(pointer: coarse)').matches) {
-    await turn(false);
-    throw new Error('The touch emulation did not make the pointer coarse.');
-  }
-  return () => turn(false);
+  if (!matchMedia('(pointer: coarse)').matches) throw new Error(NOT_ON_A_TOUCH_SCREEN);
+  return async () => {};
 }
 
 /**

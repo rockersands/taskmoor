@@ -83,6 +83,7 @@ export const Edit: Story = {
 
 /** On a phone's touch screen: a sheet whose every control is a finger's size. */
 export const OnAPhone: Story = {
+  tags: ['touch'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
