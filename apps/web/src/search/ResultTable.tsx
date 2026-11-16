@@ -53,6 +53,11 @@ export interface ResultTableProps {
   sort?: TableSort | null;
   /** No cell edits in place: a plan's List read in a scenario (ADR-122 stage 6). */
   readOnly?: boolean;
+  /**
+   * The scrolling table's name, 'Result table' by default. A page with a table per group names
+   * each after its group: regions of one page need names of their own (axe landmark-unique).
+   */
+  label?: string;
 }
 
 /**
@@ -173,6 +178,7 @@ export function ResultGrid({
   format,
   sort,
   readOnly = false,
+  label,
 }: ResultTableProps) {
   const t = useT();
   const region = useRef<HTMLElement>(null);
@@ -200,7 +206,7 @@ export function ResultGrid({
       ref={region}
       className="glass-card glass-scroller search-table-scroll"
       data-more={more}
-      aria-label={t('search.table')}
+      aria-label={label ?? t('search.table')}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
       tabIndex={0}
     >

@@ -110,6 +110,7 @@ export function GroupSection({
           client={search}
           sort={sortOfQuery(query)}
           readOnly={readOnly}
+          {...(title === null ? {} : { label: t('list.groupTable', { name: title }) })}
           {...(format ? { format } : {})}
           onSaved={(saved) =>
             setTickets((current) => current.map((x) => (x.id === saved.id ? saved : x)))

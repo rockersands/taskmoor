@@ -6222,6 +6222,7 @@ export const messagesEn = {
   'list.group.noValue': 'None',
   'list.group.other': 'Other values',
   'list.groupTitle': '{name} ({count, plural, one {# ticket} other {# tickets}})',
+  'list.groupTable': 'Result table of {name}',
   'list.otherHint': 'Tickets with the rarest values; search for them to see them all.',
   'list.groupsFailed': 'The groups could not be counted. Check the filter.',
   'list.sortBy': 'Sort by',

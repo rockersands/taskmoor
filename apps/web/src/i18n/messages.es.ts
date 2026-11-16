@@ -6360,6 +6360,7 @@ export const messagesEs: Record<MessageId, string> = {
   'list.group.noValue': 'Ninguno',
   'list.group.other': 'Otros valores',
   'list.groupTitle': '{name} ({count, plural, one {# ticket} other {# tickets}})',
+  'list.groupTable': 'Tabla de resultados de {name}',
   'list.otherHint': 'Tickets con los valores menos frecuentes; búscalos para verlos todos.',
   'list.groupsFailed': 'No se pudieron contar los grupos. Revisa el filtro.',
   'list.sortBy': 'Ordenar por',
