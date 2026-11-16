@@ -13,7 +13,7 @@ import { ALLOWED, OFFENDERS, type Ratchet } from './design-offenders';
  * or a place with a named reason; menus, pop-overs, the command palette and dialogs on the one
  * opaque overlay fill with no blur (D3); links in the accent; a finger's height on touch wherever a
  * mouse's is set, and for every target given a fixed height under a finger's (T-294); every grip,
- * in a stylesheet or styled in a script, known to the touch checks (T-290, T-294); radii, font sizes and font weights only from the tokens; one level-one heading, from PageHeader;
+ * in a stylesheet or styled in a script, known to the touch checks (T-290, T-294); radii, font sizes and font weights only from the tokens (an `@font-face` names its file's weight); one level-one heading, from PageHeader;
  * a PageHeader, with a purpose line, on every route page, on its failures too, and in an element of
  * class `page`; no unstyled button or table; no fieldset whose class has no rule; no bare "none
  * yet" sentence where an EmptyState goes, under whatever class; no glass card inside a glass card;
@@ -174,7 +174,7 @@ export function cssProblems(source: string): Record<Kind, string[]> {
     fontSizes: [],
     fontWeights: [],
   };
-  for (const { selector, property, value } of cssDeclarations(source)) {
+  for (const { selector, property, value, atRules } of cssDeclarations(source)) {
     const text = `${selector} { ${property}: ${value.replace(/\s+/g, ' ')} }`;
     if (!isMask(property) && RAW_COLOUR.test(withoutUrls(value))) problems.rawColours.push(text);
     if (FILLS.test(property) && OPAQUE_SURFACE.test(value)) {
@@ -187,7 +187,12 @@ export function cssProblems(source: string): Record<Kind, string[]> {
     }
     if (property === 'font-size' && fontSizeProblem(value)) problems.fontSizes.push(text);
     if (property === 'font' && fontShorthandProblem(value)) problems.fontSizes.push(text);
-    if (property === 'font-weight' && fontWeightProblem(value)) problems.fontWeights.push(text);
+    // In @font-face, font-weight says which weight a font file is (T-262), and var() is not
+    // allowed there: it is the file's fact, not a choice of weight.
+    const face = atRules.includes('@font-face');
+    if (property === 'font-weight' && !face && fontWeightProblem(value)) {
+      problems.fontWeights.push(text);
+    }
   }
   return problems;
 }
@@ -2411,6 +2416,8 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
     expect(on('a { font: inherit; }').fontSizes).toEqual([]);
     expect(on('a { font-weight: 650; }').fontWeights).toHaveLength(1);
     expect(on('a { font-weight: var(--font-weight-strong); }').fontWeights).toEqual([]);
+    expect(on('@font-face { font-family: "A"; font-weight: 500; }').fontWeights).toEqual([]);
+    expect(on('@media print { a { font-weight: 500; } }').fontWeights).toHaveLength(1);
     expect(on('a { border-radius: calc(var(--radius-4) * 1.5); }').radii).toEqual([]);
   });
 

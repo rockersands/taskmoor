@@ -1,0 +1,17 @@
+[
+  {
+    "bytes": 4488,
+    "name": "OFL.txt",
+    "sha256": "2b75ef20f13d83a7514aee452c4782c20cdc9ff2dee17600f44d37a06d4fb958"
+  },
+  {
+    "bytes": 13780,
+    "name": "googlesans-500-latin-ext.woff2",
+    "sha256": "06002e05f779e57d9e7df97e4e41c65fdea3465189b9555a100fa51d16e5993b"
+  },
+  {
+    "bytes": 23264,
+    "name": "googlesans-500-latin.woff2",
+    "sha256": "d3b4783117b6edbed5844c88de043af44045bb6c9975e1c53d0da82f27fe9640"
+  }
+]

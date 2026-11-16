@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, within } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { GoogleSignInButton } from './GoogleSignInButton';
 
 /**
- * Google's sign-in button (T-061, IAM-031): the four-colour G at the left and "Sign in with
- * Google", light or dark with the skin, as Google's sign-in branding guidelines describe them.
+ * Google's sign-in button (T-061, T-262, IAM-031): Google's G at the left and "Sign in with
+ * Google" in Google Sans Medium, light or dark with the skin, as Google's sign-in branding
+ * guidelines and its own button files describe them.
  */
 const meta = {
   title: 'Session/GoogleSignInButton',
@@ -33,14 +34,58 @@ const LOOKS = {
 export const Button: Story = {
   play: async ({ canvasElement }) => {
     const button = within(canvasElement).getByRole('button', { name: 'Sign in with Google' });
-    const mark = button.querySelector('svg') as SVGElement;
-    const { height } = button.getBoundingClientRect();
-    // At least the 40px Google sets, and the mark at 20px at the left of the words.
-    await expect(height).toBeGreaterThanOrEqual(40);
-    await expect(mark.getBoundingClientRect().width).toBe(20);
-    await expect(mark.getBoundingClientRect().left).toBeLessThan(
-      (button.querySelector('span') as HTMLElement).getBoundingClientRect().left,
+    const mark = button.querySelector('img') as HTMLImageElement;
+    const label = button.querySelector('span') as HTMLElement;
+    // The label in Google Sans Medium, the face the app ships, loaded (T-262).
+    await document.fonts.ready;
+    await expect(document.fonts.check('500 14px "Google Sans"', label.textContent ?? '')).toBe(
+      true,
     );
+    await expect(getComputedStyle(label).fontFamily).toMatch(/^"Google Sans", /);
+    await expect(getComputedStyle(button).fontWeight).toBe('500');
+    await expect(
+      Array.from(document.fonts).some(
+        (f) => f.family.replace(/"/g, '') === 'Google Sans' && f.status === 'loaded',
+      ),
+    ).toBe(true);
+    // The G drawn: Google's file, loaded, 20 px square at the left of the words.
+    await waitFor(() => expect(mark.complete && mark.naturalWidth > 0).toBe(true));
+    await expect(mark.getBoundingClientRect().width).toBe(20);
+    await expect(mark.getBoundingClientRect().height).toBe(20);
+    await expect(mark.getBoundingClientRect().left).toBeLessThan(
+      label.getBoundingClientRect().left,
+    );
+    // 40 px high with a mouse, as Google's files draw it.
+    await expect(button.getBoundingClientRect().height).toBe(40);
+  },
+};
+
+/**
+ * As narrow as its contents, Google's spacing: the G 12 px from the outer edge (the 1 px edge
+ * inside those 12 px, as Google's files draw it), 10 px between the G and the words, 12 px after
+ * them (T-262).
+ */
+export const AtItsNarrowest: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 'max-content' }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const button = within(canvasElement).getByRole('button', { name: 'Sign in with Google' });
+    const mark = button.querySelector('img') as HTMLImageElement;
+    const label = button.querySelector('span') as HTMLElement;
+    await document.fonts.ready;
+    await waitFor(() => expect(mark.complete && mark.naturalWidth > 0).toBe(true));
+    const outer = button.getBoundingClientRect();
+    const g = mark.getBoundingClientRect();
+    const words = label.getBoundingClientRect();
+    await expect(getComputedStyle(button).borderLeftWidth).toBe('1px');
+    await expect(g.left - outer.left).toBeCloseTo(12, 2);
+    await expect(words.left - g.right).toBeCloseTo(10, 2);
+    await expect(outer.right - words.right).toBeCloseTo(12, 2);
   },
 };
 
@@ -74,11 +119,15 @@ export const BothSkins: Story = {
   },
 };
 
-/** On a touch screen it is a finger's height. */
+/** On a touch screen it is a finger's height: 44 px, the G still 20 px (T-262). */
 export const OnTouch: Story = {
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await expect(tooSmallForAFinger(canvasElement, ['.google-sign-in'])).toEqual([]);
+    const button = canvasElement.querySelector('.google-sign-in') as HTMLElement;
+    await expect(button.getBoundingClientRect().height).toBe(44);
+    const mark = button.querySelector('img') as HTMLImageElement;
+    await expect(mark.getBoundingClientRect().height).toBe(20);
   },
 };
 

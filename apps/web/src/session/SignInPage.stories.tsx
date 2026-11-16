@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { StandaloneFrame } from '../shell/StandaloneFrame';
 import { fakeSignInSso, PARTNERS, STAFF, UMBRELLA } from '../sso/fixtures';
 import { SessionProvider } from './SessionProvider';
@@ -107,10 +107,12 @@ export const GoogleForAGmailAddress: Story = {
     await userEvent.tab();
     await expect(await canvas.findByText('This address signs in with Google.')).toBeVisible();
     await expect(canvas.getByLabelText('Password')).toBeVisible();
-    // Google's own button, with its G (T-061).
+    // Google's own button, with its G (T-061, T-262): Google's file as an image, drawn.
     const google = canvas.getByRole('button', { name: 'Sign in with Google' });
     await expect(google).toHaveClass('google-sign-in');
-    await expect(google.querySelector('svg')).not.toBeNull();
+    const mark = google.querySelector('img.google-sign-in-mark') as HTMLImageElement;
+    await expect(mark).not.toBeNull();
+    await waitFor(() => expect(mark.complete && mark.naturalWidth > 0).toBe(true));
   },
 };
 
