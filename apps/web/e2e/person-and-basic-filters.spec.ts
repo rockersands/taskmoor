@@ -228,7 +228,7 @@ test('[QRY-014] [QRY-006] basic date and field filters run on the server and sur
 
   // The form and the query agree, and the query in the address opens the same form.
   await page.getByRole('button', { name: 'Advanced' }).click();
-  const query = page.getByRole('combobox', { name: 'Query' });
+  const query = page.getByRole('textbox', { name: 'Query' });
   await expect(query).toHaveValue(
     `type = ${ticket.ticketType.name} AND labels = ${label} AND requester = currentUser() AND creator = currentUser() AND created >= 2000-01-01 AND created < ${nextDay(today)} AND due = ${today} AND text ~ "${word}" ORDER BY updated DESC`,
   );

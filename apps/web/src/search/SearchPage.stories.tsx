@@ -72,7 +72,7 @@ export const Advanced: Story = {
   args: { initialQuery: 'status = Active' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const query = await canvas.findByRole('combobox', { name: 'Query' });
+    const query = await canvas.findByRole('textbox', { name: 'Query' });
     await userEvent.clear(query);
     await userEvent.type(query, 'track = ');
     await expect(await canvas.findByRole('option', { name: 'SHOP' })).toBeVisible();

@@ -44,13 +44,13 @@ describe('the search page (M1-041)', () => {
       'track = SHOP AND stage = active AND assignee = currentUser() AND text ~ "refund" ORDER BY updated DESC',
     ]);
     await user.click(screen.getByRole('button', { name: 'Advanced' }));
-    expect(screen.getByRole('combobox', { name: 'Query' })).toHaveValue(client.queries[0]);
+    expect(screen.getByRole('textbox', { name: 'Query' })).toHaveValue(client.queries[0]);
   });
 
   it('[QRY-001] reads a query back into the basic mode, or says it goes beyond it', async () => {
     const user = userEvent.setup();
     renderPage('status = Active');
-    const query = await screen.findByRole('combobox', { name: 'Query' });
+    const query = await screen.findByRole('textbox', { name: 'Query' });
     await user.click(screen.getByRole('button', { name: 'Basic' }));
     expect(screen.getByRole('alert')).toHaveTextContent(
       'This query says more than the basic mode can show.',
@@ -86,7 +86,7 @@ describe('the search page (M1-041)', () => {
     ]);
     // The same query in the advanced mode, and back with the same days.
     await user.click(screen.getByRole('button', { name: 'Advanced' }));
-    expect(screen.getByRole('combobox', { name: 'Query' })).toHaveValue(client.queries[0]);
+    expect(screen.getByRole('textbox', { name: 'Query' })).toHaveValue(client.queries[0]);
     await user.click(screen.getByRole('button', { name: 'Basic' }));
     const again = within(screen.getByRole('group', { name: 'Date created' }));
     expect(again.getByRole('combobox', { name: 'When' })).toHaveValue('between');
@@ -245,7 +245,7 @@ describe('the search page (M1-041)', () => {
   it('[QRY-001] suggests at the caret and takes a suggestion with the keyboard', async () => {
     const user = userEvent.setup();
     renderPage('status = Active');
-    const query = await screen.findByRole('combobox', { name: 'Query' });
+    const query = await screen.findByRole('textbox', { name: 'Query' });
     await user.clear(query);
     await user.type(query, 'tra');
     const listbox = screen.getByRole('listbox', { name: 'Suggestions' });
@@ -270,7 +270,7 @@ describe('the search page (M1-041)', () => {
   it('[QRY-001] shows where a query is wrong, as the backend says', async () => {
     const user = userEvent.setup();
     renderPage('status = Active');
-    const query = await screen.findByRole('combobox', { name: 'Query' });
+    const query = await screen.findByRole('textbox', { name: 'Query' });
     await user.clear(query);
     await user.type(query, 'nope = 1');
     expect(await screen.findByRole('alert')).toHaveTextContent(
