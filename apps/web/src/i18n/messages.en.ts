@@ -1358,7 +1358,7 @@ export const messagesEn = {
   'emailSettings.windowInvalid': 'Give a number of minutes from 0 to 60.',
   'emailSettings.digestHour': 'Digest hour',
   'emailSettings.digestHourHint':
-    'Daily digests go out at this hour in each person’s own time zone, and weekly digests on Mondays at the same hour.',
+    'Daily digests go out at this hour in the time zone saved on each person’s account (UTC for anyone on Automatic, as no device is there when they are sent), and weekly digests on Mondays at the same hour.',
   'emailSettings.hour': '{hour}:00',
   'emailSettings.save': 'Save email settings',
   'emailSettings.saved': 'The email settings were saved.',

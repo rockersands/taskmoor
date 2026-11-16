@@ -1396,7 +1396,7 @@ export const messagesEs: Record<MessageId, string> = {
   'emailSettings.windowInvalid': 'Indica un número de minutos de 0 a 60.',
   'emailSettings.digestHour': 'Hora del resumen',
   'emailSettings.digestHourHint':
-    'Los resúmenes diarios salen a esta hora en la zona horaria de cada persona, y los semanales los lunes a la misma hora.',
+    'Los resúmenes diarios salen a esta hora en la zona horaria guardada en la cuenta de cada persona (UTC para quien la tenga en Automática, porque no hay ningún dispositivo cuando se envían), y los semanales los lunes a la misma hora.',
   'emailSettings.hour': '{hour}:00',
   'emailSettings.save': 'Guardar los ajustes de correo',
   'emailSettings.saved': 'Se guardaron los ajustes de correo.',
