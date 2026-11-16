@@ -76,7 +76,8 @@ test('[CORE-015] [IAM-030] a track’s administrator keeps its areas, and its me
 }, testInfo) => {
   test.setTimeout(120_000);
   const stamp = uniqueStamp(testInfo);
-  const key = uniqueKey('AR', testInfo);
+  // Listed after ATT, so the create form, which starts on the first track, still starts there.
+  const key = uniqueKey('AZ', testInfo);
   const api = page.request;
 
   // A site administrator makes the track, someone who runs it and a member of it.
