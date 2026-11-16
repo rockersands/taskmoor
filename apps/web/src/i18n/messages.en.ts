@@ -7548,6 +7548,19 @@ export const messagesEn = {
   'ownSets.archived': '{key} is archived: its configuration changes once it is restored.',
   'ownSets.useHint':
     'From then on the track follows this set. Only site and configuration administrators can give it a shared set again.',
+  // A local-mode track's own ticket types and fields, on its own pages (T-322).
+  'ownTypes.title': 'Its own ticket types',
+  'ownTypes.intro':
+    'Ticket types only {key} has. Its type set below offers one once it is ticked there.',
+  'ownTypes.listOf': 'Ticket types of {key}',
+  'ownTypes.none': '{key} has no ticket type of its own yet.',
+  'ownTypes.noneBody': 'Add one for work only this track does. The shared types stay as they are.',
+  'ownTypes.summary':
+    '{level} level · {offered, select, yes {in its type set} other {not in its type set yet}}',
+  'ownTypes.added': '{name} was added. Tick it in the type set to offer it.',
+  'ownTypes.levelHint':
+    'Another level is refused while tickets of this type would lose the parent they need, and the page says how many.',
+  'ownTypes.problem.inTypeSet': '{name} is in {sets}: untick it there and save the set first.',
   'layouts.loading': 'Reading the layouts…',
   'layouts.failed': 'The layout sets could not be read. Try again in a moment.',
   'layouts.setFailed': 'This layout set could not be read. Try again in a moment.',

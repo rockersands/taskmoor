@@ -41,8 +41,11 @@ const SHAPE_WORDS: Readonly<Record<string, MessageId>> = {
 /** The lowest rank an added level takes: right above Outcome (rank 1). */
 const FIRST_ADDED_RANK = 2;
 
-/** The shape a type draws: its icon if it is one of ours, then its name's, then the hexagon. */
-function shapeOf(icon: string | null, name: string): string {
+/**
+ * The shape a type draws: its icon if it is one of ours, then its name's, then the hexagon. A
+ * local-mode track's own types use it too (`sets/OwnTypesSection.tsx`, T-322).
+ */
+export function shapeOf(icon: string | null, name: string): string {
   const wanted = icon ?? name.trim().toLowerCase();
   return (SHAPES as readonly string[]).includes(wanted) ? wanted : PLAIN;
 }
@@ -603,7 +606,13 @@ function RemoveLevel({
 }
 
 /** The eight icons a type may have, as radio buttons with each shape beside its name. */
-function IconPicker({ value, onChange }: { value: string; onChange: (shape: string) => void }) {
+export function IconPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (shape: string) => void;
+}) {
   const t = useT();
   const id = useId();
   return (
@@ -632,7 +641,7 @@ function IconPicker({ value, onChange }: { value: string; onChange: (shape: stri
 }
 
 /** The levels a type may sit at, top first. */
-function LevelSelect({
+export function LevelSelect({
   id,
   levels,
   value,

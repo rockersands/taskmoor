@@ -7718,6 +7718,21 @@ export const messagesEs: Record<MessageId, string> = {
   'ownSets.archived': '{key} está archivado: su configuración se puede cambiar cuando se restaure.',
   'ownSets.useHint':
     'Desde entonces el track sigue este conjunto. Solo los administradores del sitio y de la configuración pueden volver a darle uno compartido.',
+  // Los tipos de ticket y los campos propios de un track con configuración propia (T-322).
+  'ownTypes.title': 'Sus tipos de ticket propios',
+  'ownTypes.intro':
+    'Tipos de ticket que solo tiene {key}. Su conjunto de tipos, más abajo, ofrece uno cuando lo marcas allí.',
+  'ownTypes.listOf': 'Tipos de ticket de {key}',
+  'ownTypes.none': '{key} aún no tiene tipos de ticket propios.',
+  'ownTypes.noneBody':
+    'Añade uno para el trabajo que solo hace este track. Los tipos compartidos no cambian.',
+  'ownTypes.summary':
+    'Nivel {level} · {offered, select, yes {en su conjunto de tipos} other {aún no está en su conjunto de tipos}}',
+  'ownTypes.added': 'Se añadió {name}. Márcalo en el conjunto de tipos para ofrecerlo.',
+  'ownTypes.levelHint':
+    'Otro nivel se rechaza si los tickets de este tipo se quedaran sin el padre que necesitan, y la página dice cuántos.',
+  'ownTypes.problem.inTypeSet':
+    '{name} está en {sets}: desmárcalo allí y guarda antes el conjunto.',
   'layouts.loading': 'Leyendo los diseños…',
   'layouts.failed':
     'No se pudieron leer los conjuntos de diseños. Inténtalo de nuevo en un momento.',
