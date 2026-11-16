@@ -122,7 +122,8 @@ test('[CORE-015] [IAM-030] a track’s administrator keeps its areas, and its me
   const form = page.getByRole('form', { name: 'New area' });
   await form.getByRole('textbox', { name: 'Name' }).fill('API');
   await form.getByRole('textbox', { name: 'Description' }).fill('The public interface');
-  await form.getByRole('searchbox', { name: 'Owner' }).fill(runner.name);
+  // Exactly: the name matches part of "Owner team", the search beside it, otherwise.
+  await form.getByRole('searchbox', { name: 'Owner', exact: true }).fill(runner.name);
   await form.getByRole('button', { name: runner.name }).click();
   await form
     .getByRole('combobox', { name: 'New tickets with no assignee go to' })
