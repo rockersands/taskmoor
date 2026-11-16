@@ -71,10 +71,11 @@ export function GroupsPage({ client = peopleClient }: GroupsPageProps) {
     },
     [t],
   );
+  /** Says what was done and reads the list again; resolves once it is read. */
   const said = (text: string) => {
     setMessage(text);
     setProblem(null);
-    void load();
+    return load();
   };
 
   return (
@@ -108,7 +109,7 @@ export function GroupsPage({ client = peopleClient }: GroupsPageProps) {
               client={client}
               onAdded={(name, id) => {
                 creating.close();
-                said(t('admin.groups.added', { name }));
+                void said(t('admin.groups.added', { name }));
                 setOpen(id);
               }}
               onCancel={creating.close}
@@ -163,7 +164,7 @@ export function GroupsPage({ client = peopleClient }: GroupsPageProps) {
                         onDeleted={(name) => {
                           // The group's row goes: the page's heading takes the focus.
                           setOpen(null);
-                          said(t('admin.groups.deleted', { name }));
+                          void said(t('admin.groups.deleted', { name }));
                           title.current?.focus();
                         }}
                         onProblem={(error) => setProblem(refusal(error))}
@@ -255,7 +256,8 @@ function GroupPanel({
   id: number;
   client: PeopleClient;
   groups: GroupSummary[];
-  onChanged: (message: string) => void;
+  /** Says what was done; resolves once the list is read again. */
+  onChanged: (message: string) => Promise<void>;
   onDeleted: (name: string) => void;
   onProblem: (error: unknown) => void;
 }) {
@@ -301,13 +303,16 @@ function GroupPanel({
     };
   }, [client, search]);
 
+  /** True once the work is done and the group and the list are read again. */
   const run = async (work: () => Promise<void>, message: string) => {
     try {
       await work();
       await load();
-      onChanged(message);
+      await onChanged(message);
+      return true;
     } catch (error) {
       onProblem(error);
+      return false;
     }
   };
 
@@ -322,12 +327,10 @@ function GroupPanel({
   return (
     <div className="people-panel">
       <GroupDetails
-        // Read again after a save: the form starts from what was saved.
-        key={JSON.stringify([detail.group.name, detail.group.description])}
         group={detail.group}
         directory={detail.directory?.name ?? null}
         onSave={(change) =>
-          void run(
+          run(
             () => client.renameGroup(id, change),
             t('admin.groups.saved', { name: change.name ?? name }),
           )
@@ -560,12 +563,27 @@ function GroupDetails({
 }: {
   group: { name: string; description: string };
   directory: string | null;
-  onSave: (change: { name?: string; description: string }) => void;
+  /** True once saved and the lists are read again. */
+  onSave: (change: { name?: string; description: string }) => Promise<boolean>;
 }) {
   const t = useT();
   const id = useId();
+  const save = useRef<HTMLButtonElement>(null);
   const [name, setName] = useState(group.name);
   const [description, setDescription] = useState(group.description);
+  /** Saved: Save takes the keyboard back once the page has drawn what was read again. */
+  const [saved, setSaved] = useState(false);
+  // The form stays, so the keyboard stays in it; it starts again from what was saved.
+  useEffect(() => {
+    setName(group.name);
+    setDescription(group.description);
+  }, [group.name, group.description]);
+  // A new name can move the group's row in the list, which takes the keyboard from the form.
+  useEffect(() => {
+    if (!saved) return;
+    save.current?.focus();
+    setSaved(false);
+  }, [saved]);
   return (
     <form
       className="people-inline"
@@ -574,10 +592,10 @@ function GroupDetails({
         event.preventDefault();
         const wanted = name.trim();
         if (directory === null && !wanted) return;
-        onSave({
+        void onSave({
           ...(directory === null ? { name: wanted } : {}),
           description: description.trim(),
-        });
+        }).then((done) => done && setSaved(true));
       }}
     >
       {directory === null ? (
@@ -608,7 +626,7 @@ function GroupDetails({
         />
       </div>
       <div className="form-actions">
-        <button type="submit" className="button-secondary">
+        <button ref={save} type="submit" className="button-secondary">
           {t('admin.groups.save')}
         </button>
       </div>

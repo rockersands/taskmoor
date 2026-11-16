@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { ADMIN } from '../admin/fixtures';
@@ -47,6 +47,10 @@ describe('groups: renaming and service accounts (T-320)', () => {
     expect(await screen.findByText('Help desk was saved.')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'Manage Help desk' })).toBeVisible();
     expect(screen.getByText('Members of Help desk')).toBeVisible();
+    // The same form stays, with what was saved, and Save keeps the keyboard.
+    const saved = screen.getByRole('form', { name: 'Name and description of Help desk' });
+    expect(within(saved).getByRole('textbox', { name: 'Group name' })).toHaveValue('Help desk');
+    await waitFor(() => expect(within(saved).getByRole('button', { name: 'Save' })).toHaveFocus());
     expect(client.calls.at(-1)).toEqual({
       action: 'renameGroup',
       args: [12, { name: 'Help desk', description: 'First line' }],
