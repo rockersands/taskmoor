@@ -13,7 +13,9 @@ const proxy = { '/api': { target: apiProxy, changeOrigin: false, ws: true } };
 
 /**
  * The fonts' licence ships beside them in the build (T-262): SIL OFL 1.1 asks that every copy of
- * the font carries its copyright and licence, and every install carries a copy of the build.
+ * the font carries its copyright and licence, and every install carries a copy of the build. Its
+ * name carries a hash of its contents like every other file in assets/, which the backend caches
+ * for a year (ADR-066): a later release with another licence text gets another URL.
  */
 const fontLicence: Plugin = {
   name: 'taskmoor-font-licence',
@@ -21,7 +23,7 @@ const fontLicence: Plugin = {
   generateBundle() {
     this.emitFile({
       type: 'asset',
-      fileName: 'assets/OFL.txt',
+      name: 'OFL.txt',
       source: readFileSync(new URL('./src/fonts/OFL.txt', import.meta.url)),
     });
   },

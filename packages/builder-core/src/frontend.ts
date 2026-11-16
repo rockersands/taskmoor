@@ -92,10 +92,14 @@ function base64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
+/** A font licence in the build: `OFL.txt`, or `OFL-<hash>.txt` as the frontend build names it. */
+const FONT_LICENCE = /^OFL(-[\w-]+)?\.txt$/;
+
 /**
  * A stylesheet for the single file: every file it names (the fonts, T-262) as a data URL, which
  * the policy allows (`font-src data:`), since the one file has nothing beside it to name. The
- * licence that sits beside a font in the build (`OFL.txt`) comes back too, for the page to carry.
+ * licence that sits beside a font in the build (`OFL-<hash>.txt`) comes back too, for the page to
+ * carry.
  */
 function selfContained(
   css: string,
@@ -112,8 +116,13 @@ function selfContained(
     if (!bytes) throw new Error(`${cssPath} names ${ref}, which the build lacks`);
     const type = CSS_FILE_TYPES[path.slice(path.lastIndexOf('.') + 1).toLowerCase()];
     if (!type) throw new Error(`${cssPath} names ${ref}, which the single-file kit cannot carry`);
-    const licence = `${path.slice(0, path.lastIndexOf('/') + 1)}OFL.txt`;
-    if (type.startsWith('font/') && web[licence]) licences.add(licence);
+    if (type.startsWith('font/')) {
+      const folder = path.slice(0, path.lastIndexOf('/') + 1);
+      for (const file of Object.keys(web)) {
+        const name = file.slice(folder.length);
+        if (file.startsWith(folder) && FONT_LICENCE.test(name)) licences.add(file);
+      }
+    }
     return `url("data:${type};base64,${base64(bytes)}")`;
   });
   return { css: out, licences };

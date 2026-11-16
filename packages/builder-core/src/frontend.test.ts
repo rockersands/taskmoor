@@ -122,11 +122,13 @@ describe('the frontend kit (M1-111)', () => {
       'assets/index-def.css': utf8(css),
       'assets/googlesans-500-latin-x1.woff2': font,
       'assets/googlesans-500-latin-ext-x2.woff2': font,
-      'assets/OFL.txt': utf8('Copyright 2025 The Authors\r\nSIL OPEN FONT LICENSE Version 1.1\r\n'),
+      'assets/OFL-a1B2_c3-.txt': utf8(
+        'Copyright 2025 The Authors\r\nSIL OPEN FONT LICENSE Version 1.1\r\n',
+      ),
     };
     const kit = await frontendKit(kits, web);
     expect(kit['assets/googlesans-500-latin-x1.woff2']).toEqual(font);
-    expect(kit['assets/OFL.txt']).toEqual(web['assets/OFL.txt']);
+    expect(kit['assets/OFL-a1B2_c3-.txt']).toEqual(web['assets/OFL-a1B2_c3-.txt']);
     expect(kitText(kit['index.html'])).not.toContain('OPEN FONT LICENSE');
 
     const single = await frontendKit(kits, web, { singleFile: true });

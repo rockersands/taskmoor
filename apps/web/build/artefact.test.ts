@@ -40,8 +40,8 @@ const BUILD_SECRETS = {
   VITE_TASKMOOR_MASTER_KEY: randomBytes(32).toString('base64url'),
 };
 
-/** A built font's name without the hash Vite adds: `assets/a-1bC_2dE-.woff2` as `assets/a.woff2`. */
-const unhashed = (path: string) => path.replace(/-[\w-]{8}\.woff2$/, '.woff2');
+/** A built file's name without the hash Vite adds: `assets/a-1bC_2dE-.woff2` as `assets/a.woff2`. */
+const unhashed = (path: string) => path.replace(/-[\w-]{8}(\.\w+)$/, '$1');
 
 /** Every file under a folder, relative, with forward slashes. */
 const filesOf = (dir: string) =>
@@ -145,6 +145,10 @@ describe('the frontend build', () => {
       expect(file.bytes).toBe(bytes.length);
       expect(file.sha256).toBe(createHash('sha256').update(bytes).digest('hex'));
     }
+    // Every file in assets/ carries a hash of its contents, since the backend caches them for a
+    // year (ADR-066): the fonts' licence too (T-262).
+    const assets = manifest.files.map((f) => f.path).filter((f) => f.startsWith('assets/'));
+    expect(assets.filter((f) => unhashed(f) === f)).toEqual([]);
     // Besides code and data, only Google Sans and its licence (T-262).
     const others = filesOf(outDir).filter((f) => !/\.(html|js|css|json)$/.test(f));
     expect(others.map(unhashed).sort()).toEqual([
@@ -163,7 +167,9 @@ describe('the frontend build', () => {
         readFileSync(join(WEB, 'src/fonts', unhashed(font).slice('assets/'.length))),
       );
     }
-    expect(readFileSync(join(outDir, 'assets/OFL.txt'))).toEqual(
+    const licence = shipped.filter((f) => unhashed(f) === 'assets/OFL.txt');
+    expect(licence).toHaveLength(1);
+    expect(readFileSync(join(outDir, licence[0] ?? ''))).toEqual(
       readFileSync(join(WEB, 'src/fonts/OFL.txt')),
     );
     const read = (pattern: RegExp) =>

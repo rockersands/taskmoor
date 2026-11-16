@@ -16,8 +16,8 @@ What:       Google Sans Medium (weight 500), font version 14.000: the latin and 
 Copyright:  Copyright 2025 The Google Sans Project Authors
             (https://github.com/googlefonts/googlesans)
 Licence:    SIL Open Font License, Version 1.1 (OFL-1.1). The full text is
-            apps/web/src/fonts/OFL.txt. The build ships it beside the fonts as assets/OFL.txt,
-            and the single-file frontend kit carries it in its page. The licence declares no
+            apps/web/src/fonts/OFL.txt. The build ships it beside the fonts as
+            assets/OFL-<hash>.txt, and the single-file frontend kit carries it in its page. The licence declares no
             Reserved Font Name.
 Name:       "Google Sans" is a trademark of Google LLC. The files are unmodified and keep that
             name; a modified version may not use it without Google's permission (the family's
