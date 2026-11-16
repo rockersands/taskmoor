@@ -2,8 +2,8 @@
 title: "Search and the query language"
 audience: users
 jira-names: the Jira-compatible dialect's names
-sources: apps/server/src/boards/one-per-track.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/savedClient.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/search/BasicFilters.tsx, apps/web/src/search/basic.ts, apps/web/src/search/suggest.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/columns.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/columns.ts, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/client.ts, apps/web/src/i18n/messages.en.ts, packages/query/src/fields.ts, packages/query/src/functions.ts, packages/query/src/dialect.ts, packages/query/src/dates.ts, packages/query/src/resolve.ts, apps/server/src/search/bind.ts, apps/server/src/search/compile.ts, apps/server/src/routes/search.ts, apps/server/src/routes/search-export.ts, apps/server/src/routes/saved-searches.ts, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, docs/specs/06-query-language-grammar.md, docs/adr/0010-query-compiler.md, docs/adr/0069-full-text-search.md, packages/query/src/text.ts, apps/server/src/search/text.ts, apps/server/src/search/count.ts, docs/adr/0052-search-results.md, docs/adr/0053-saved-searches.md, apps/server/src/routes/teams.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, docs/adr/0096-dc-filters-and-query-translation.md, apps/server/src/import/load-filters.ts, apps/server/src/search/cross-track.ts, packages/webconfig/src/csv.ts
-accessed: 2026-11-14
+sources: apps/server/src/boards/one-per-track.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/savedClient.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/search/BasicFilters.tsx, apps/web/src/search/basic.ts, apps/web/src/search/suggest.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/columns.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/columns.ts, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/client.ts, apps/web/src/i18n/messages.en.ts, packages/query/src/fields.ts, packages/query/src/functions.ts, packages/query/src/dialect.ts, packages/query/src/dates.ts, packages/query/src/resolve.ts, apps/server/src/search/bind.ts, apps/server/src/search/compile.ts, apps/server/src/routes/search.ts, apps/server/src/routes/search-export.ts, apps/server/src/routes/saved-searches.ts, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, docs/specs/06-query-language-grammar.md, docs/adr/0010-query-compiler.md, docs/adr/0069-full-text-search.md, packages/query/src/text.ts, apps/server/src/search/text.ts, apps/server/src/search/count.ts, docs/adr/0052-search-results.md, docs/adr/0053-saved-searches.md, apps/server/src/routes/teams.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, docs/adr/0096-dc-filters-and-query-translation.md, apps/server/src/import/load-filters.ts, apps/server/src/search/cross-track.ts, packages/webconfig/src/csv.ts, apps/server/src/reports/zone.ts, apps/web/src/account/csvStyle.tsx
+accessed: 2026-11-16
 attestation: own-words
 ---
 # Search and the query language
@@ -32,9 +32,9 @@ filter** on a filter's row takes it away.
 
 Dates: **Date created**, **Date updated**, **Due date**, **Start date** and **Date closed**. Under
 **When**, choose **On**, **Before**, **After** or **Between**, then pick the day. **Between**
-includes both days. Days are your own days, in the time zone saved in [your account](account.md):
-**On** covers that whole day where you are. A date filter without its days does not count yet,
-and the form says so.
+includes both days. Days are your own days, on [your clock](account.md#your-time-zone): the
+time zone saved in your account, else your device's. **On** covers that whole day where you
+are. A date filter without its days does not count yet, and the form says so.
 
 Fields:
 
@@ -162,8 +162,9 @@ order is the track's release order.
   such as `-7d` or `+2w`.
 - A word that is a keyword (`and`, `or`, `in`, `order` and so on) must be quoted as a value.
 
-Dates are read in the time zone saved in [your account](account.md), or in UTC when it is set
-to **Automatic**.
+Dates are read on [your clock](account.md#your-time-zone): the time zone saved in your account,
+or with **Automatic** the zone of the device you are searching from. A script that calls the API
+without saying its zone, on an account set to **Automatic**, reads dates in UTC.
 
 ### Fields
 
@@ -341,7 +342,8 @@ saved search keeps the query as it was and a note above the results says why. Ch
 and **Save** to fix it; the note goes away.
 
 Each email lists up to 50 tickets with a count and a link to the search. The query runs as you,
-in your time zone, so it never shows a ticket you may not see. Emails need outgoing mail set up
+in the subscription's time zone (yours when you made it, unless you chose another), so it never
+shows a ticket you may not see. Emails need outgoing mail set up
 by your administrator.
 
 ## Search results
@@ -366,4 +368,8 @@ or "More than 10,000 tickets" when an estimate would not be close enough.
   finds, not only the ones shown, in the columns shown and the query's order. In CSV, lists are
   joined with "; " and a cell that a spreadsheet would run as a formula starts with an
   apostrophe. The CSV file is UTF-8 with a byte-order mark first, so Excel on Windows shows
-  accented text properly when you open it with a double-click; cells stay separated by commas.
+  accented text properly when you open it with a double-click. Its cells are separated the way
+  your spreadsheet expects: by semicolons, with numbers as 1,5, where your language and region
+  write a decimal comma (Spain, most of Europe, Brazil), and by commas, with numbers as 1.5,
+  elsewhere. To choose for yourself, set **Spreadsheet files (CSV)** on your
+  [profile](account.md#profile).

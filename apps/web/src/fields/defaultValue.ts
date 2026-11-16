@@ -1,3 +1,4 @@
+import { instantOfLocalText } from '../i18n/zone';
 import { splitLabels, textDocument } from '../tickets/form';
 import { localDateTime } from '../tickets/templates/start';
 import type { Field, Named } from './client';
@@ -115,7 +116,8 @@ export function defaultInput(field: Field, draft: DefaultDraft): unknown {
     case 'paragraph':
       return textDocument(draft.text);
     case 'datetime':
-      return text === '' ? null : new Date(text).toISOString();
+      // Typed on the person's own clock (T-280), sent as the instant it names.
+      return text === '' ? null : (instantOfLocalText(text) ?? new Date(text)).toISOString();
     case 'labels': {
       const labels = splitLabels(text);
       return labels.length === 0 ? null : labels;
@@ -145,7 +147,10 @@ export function defaultInput(field: Field, draft: DefaultDraft): unknown {
   }
 }
 
-/** The option ids a default names, to mark them in the option list. */
+/**
+ * The option ids a default names, a two-level default's child too: to mark them in the option
+ * list, and to ask before deleting one, which leaves the context with no default (T-267).
+ */
 export function defaultOptionIds(value: unknown): number[] {
   if (value === null || value === undefined) return [];
   const out: number[] = [];

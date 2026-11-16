@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
+import { useCsvSeparator } from '../account/csvStyle';
 import { useT } from '../i18n/I18nProvider';
 import { dayText } from '../releases/crossTrackText';
 import { EmptyState } from '../shell/EmptyState';
@@ -53,6 +54,8 @@ export function PlanTimelinePage({
   onDrafted,
 }: PlanSectionProps & { group: PlanGroup | null }) {
   const t = useT();
+  // Commas or semicolons, as the person's spreadsheet opens them (T-263).
+  const csvSeparator = useCsvSeparator();
   const intl = useIntl();
   const [data, setData] = useState<PlanTimeline | null>(null);
   const [failed, setFailed] = useState(false);
@@ -198,7 +201,7 @@ export function PlanTimelinePage({
             const fresh = await client.timeline(id, filters, true, scenario?.id);
             const critical = await freshSlack();
             const name = dated('timeline', 'csv');
-            saveBlob(name, csvBlob(timelineCsv(t, fresh, undefined, critical)));
+            saveBlob(name, csvBlob(timelineCsv(t, fresh, undefined, critical, csvSeparator)));
             return name;
           },
         },

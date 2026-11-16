@@ -1,3 +1,4 @@
+import { isUtf8 } from 'node:buffer';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -12,9 +13,19 @@ import {
   textInput,
 } from '@taskmoor/testkit/fuzz';
 import type { Rng } from '@taskmoor/testkit/gen';
+import { CSV_DELIMITERS, detectDelimiter } from '@taskmoor/webconfig';
 import yauzl from 'yauzl';
 import yazl from 'yazl';
-import { cellText, dayOf, instantOf, readRecord, records, secondsOf } from '../import/csv';
+import {
+  cellText,
+  dayOf,
+  decodeCsv,
+  fromDecimalComma,
+  instantOf,
+  readRecord,
+  records,
+  secondsOf,
+} from '../import/csv';
 import { cleanBuffer } from '../import/dc-backup/clean';
 import { ACTIVE_OBJECTS_FILE, ENTITIES_FILE } from '../import/dc-backup/format';
 import { defaultOptions, generateDcBackup } from '../import/dc-backup/generate';
@@ -57,16 +68,43 @@ const CSV_TOKENS = [
   '﻿',
 ];
 
-/** A cell written as RFC 4180 says, quoted when it needs to be. */
-const quoteCell = (cell: string, delimiter: string) =>
-  /["\r\n]/.test(cell) || cell.includes(delimiter) || cell.startsWith('"')
+/**
+ * A cell written as RFC 4180 says, quoted when it needs to be. A file whose separator the reader
+ * finds (`delimiter` null) quotes every separator character, as the exports do (T-263).
+ */
+const quoteCell = (cell: string, delimiter: string, detect: boolean) =>
+  /["\r\n]/.test(cell) ||
+  cell.includes(delimiter) ||
+  cell.startsWith('"') ||
+  (detect && /[,;\t|]/.test(cell))
     ? `"${cell.replaceAll('"', '""')}"`
     : cell;
 
+/** Windows-1252 at 0x80 to 0x9F (the WHATWG index; undefined bytes keep their C1 control). */
+const CP1252_80_9F = '€\u0081‚ƒ„…†‡ˆ‰Š‹Œ\u008DŽ\u008F\u0090‘’“”•–—˜™š›œ\u009DžŸ';
+
+/** Text in Windows-1252, or null when a character has no byte there. */
+function windows1252(text: string): Buffer | null {
+  const out: number[] = [];
+  for (const c of text) {
+    const code = c.charCodeAt(0);
+    const high = CP1252_80_9F.indexOf(c);
+    if (high >= 0) out.push(0x80 + high);
+    else if (code < 0x80 || (code >= 0xa0 && code <= 0xff)) out.push(code);
+    else return null;
+  }
+  return Buffer.from(out);
+}
+
 interface CsvInput {
-  delimiter: string;
+  /** The mapping's separator; null leaves it to the reader (`detectDelimiter`). */
+  delimiter: string | null;
+  /** The separator the table was written with, when `delimiter` is null. */
+  written?: string;
   /** Rows written properly, when the input is a generated table; undefined for raw bytes. */
   rows?: string[][];
+  /** How the table's text became bytes, when not UTF-8. */
+  encoding?: 'windows-1252' | 'utf-16le';
   bytes: Buffer;
 }
 
@@ -78,20 +116,45 @@ function csvTable(rng: Rng): string[][] {
 }
 
 export function checkCsv(input: CsvInput): FuzzVerdict {
-  const d = input.delimiter.charCodeAt(0);
   const read: string[][] = [];
   let last = -1;
+  let bytes: Buffer;
+  let delimiter: string;
   try {
-    for (const record of records(input.bytes, input.delimiter)) {
-      if (record.start <= last || record.end > input.bytes.length || record.end < record.start) {
+    // The bytes as UTF-8, once, as the source reads a file (T-263): always UTF-8 after, the same
+    // for the same file, and unchanged by a second reading.
+    const decoded = decodeCsv(input.bytes);
+    bytes = decoded.bytes;
+    if (!isUtf8(bytes))
+      return { problem: `${decoded.encoding} reading left bytes that are not UTF-8` };
+    if (!decodeCsv(Buffer.from(bytes)).bytes.equals(bytes)) {
+      return { problem: 'reading the read bytes again changed them' };
+    }
+    const again = decodeCsv(Buffer.from(input.bytes));
+    if (again.encoding !== decoded.encoding || !again.bytes.equals(bytes)) {
+      return { problem: 'the same file read twice differs' };
+    }
+    if (input.encoding && decoded.encoding !== input.encoding) {
+      return { problem: `${input.encoding} text read as ${decoded.encoding}` };
+    }
+    delimiter = input.delimiter ?? detectDelimiter(bytes);
+    if (!(CSV_DELIMITERS as readonly string[]).includes(delimiter)) {
+      return { problem: `separator ${JSON.stringify(delimiter)}` };
+    }
+    if (detectDelimiter(Buffer.from(bytes)) !== detectDelimiter(bytes)) {
+      return { problem: 'the separator found differs for the same bytes' };
+    }
+    const d = delimiter.charCodeAt(0);
+    for (const record of records(bytes, delimiter)) {
+      if (record.start <= last || record.end > bytes.length || record.end < record.start) {
         return { problem: `record offsets ${record.start}-${record.end} out of order or bounds` };
       }
       last = record.start;
       read.push(record.fields);
     }
     // Every offset is a place to resume from (the import resumes by offset).
-    for (let at = 0; at < Math.min(input.bytes.length, 64); at++) {
-      const one = readRecord(input.bytes, at, d);
+    for (let at = 0; at < Math.min(bytes.length, 64); at++) {
+      const one = readRecord(bytes, at, d);
       if (one && one.next <= at) return { problem: `readRecord at ${at} does not move forward` };
     }
     for (const row of read) {
@@ -104,20 +167,37 @@ export function checkCsv(input: CsvInput): FuzzVerdict {
         if (seconds !== null && !(Number.isSafeInteger(seconds) && seconds >= 0)) {
           return { problem: `seconds ${seconds}` };
         }
+        // A decimal comma becomes a decimal point and nothing else (T-263).
+        const number = fromDecimalComma(cell);
+        if (
+          number !== null &&
+          number !== cell.trim() &&
+          !/^[+-]?\d*(\.\d+)?([eE][+-]?\d{1,4})?$/.test(number)
+        ) {
+          return { problem: `decimal comma ${JSON.stringify(cell)} read as ${number}` };
+        }
       }
     }
   } catch (error) {
     return { problem: `the reader threw ${describe(error)}` };
   }
   if (input.rows) {
-    // A table written properly reads back cell for cell (blank rows are left out).
+    // A table written properly reads back cell for cell (blank rows are left out), and a file
+    // whose separator was left to the reader has it found from a header of two columns or more.
+    if (
+      input.delimiter === null &&
+      (input.rows[0]?.length ?? 0) > 1 &&
+      delimiter !== input.written
+    ) {
+      return { problem: `separator ${input.written} found as ${delimiter}` };
+    }
     const want = input.rows.filter((r) => !(r.length === 1 && r[0] === ''));
     const got = read.map((r) => r.map((c) => c.replace(/^﻿/, '')));
     const wantClean = want.map((r) => r.map((c) => c.replace(/^﻿/, '')));
     if (JSON.stringify(got) !== JSON.stringify(wantClean)) {
       return { problem: 'a properly written table reads back differently' };
     }
-    return 'table';
+    return input.encoding ? `table-${input.encoding}` : input.delimiter ? 'table' : 'table-found';
   }
   return 'bytes';
 }
@@ -125,31 +205,60 @@ export function checkCsv(input: CsvInput): FuzzVerdict {
 const csvTarget: FuzzTarget<CsvInput> = {
   name: 'csv',
   description:
-    'the CSV import reader: never throws, offsets move forward, written tables read back',
+    'the CSV import reader: never throws, offsets move forward, written tables read back, ' +
+    'whatever the encoding, with the separator given or found',
   seeds: () => [],
   generate: (rng) => {
-    const delimiter = rng.pick([',', ';', '\t', '|']);
+    const written = rng.pick([',', ';', '\t', '|']);
+    // Half the files leave the separator to the reader, as a mapping without one does.
+    const detect = rng.chance(0.5);
+    const delimiter = detect ? null : written;
     if (rng.chance(0.5)) {
-      const rows = csvTable(rng);
+      const pick = rng.int(0, 3);
+      // A file as Excel's plain "CSV" saves it holds only what Windows-1252 has: other characters
+      // become a letter it has, so the file is not UTF-8 by its accents alone.
+      const rows =
+        pick === 0
+          ? csvTable(rng).map((r) =>
+              r.map((c) => [...c].map((ch) => (windows1252(ch) ? ch : 'ñ')).join('')),
+            )
+          : csvTable(rng);
       const text = rows
-        .map((r) => r.map((c) => quoteCell(c, delimiter)).join(delimiter))
+        .map((r) => r.map((c) => quoteCell(c, written, detect)).join(written))
         .join(rng.pick(['\n', '\r\n']));
+      const base = { delimiter, written, rows };
       // Cells with lone surrogates do not survive UTF-8; such tables are raw input instead.
-      const bytes = Buffer.from(text, 'utf8');
-      return bytes.toString('utf8') === text && !text.startsWith('﻿')
-        ? { delimiter, rows, bytes }
-        : { delimiter, bytes };
+      const utf8 = Buffer.from(text, 'utf8');
+      if (utf8.toString('utf8') !== text || text.startsWith('﻿')) {
+        return { delimiter, written, bytes: utf8 };
+      }
+      // In Windows-1252 unless its bytes happen to be UTF-8 too.
+      const legacy = pick === 0 ? windows1252(text) : null;
+      if (legacy && !isUtf8(legacy)) return { ...base, encoding: 'windows-1252', bytes: legacy };
+      if (pick === 1) {
+        const utf16 = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(text, 'utf16le')]);
+        return { ...base, encoding: 'utf-16le', bytes: utf16 };
+      }
+      return { ...base, bytes: utf8 };
     }
     let text = csvTable(rng)
-      .map((r) => r.join(delimiter))
+      .map((r) => r.join(written))
       .join('\n');
     for (let i = rng.int(1, 5); i > 0; i--) text = mutateText(rng, text, CSV_TOKENS, []);
-    const bytes = Buffer.from(text, 'utf8');
+    const bytes = rng.chance(0.3)
+      ? (windows1252(text) ?? Buffer.from(text, 'latin1'))
+      : Buffer.from(text, 'utf8');
     if (rng.chance(0.2)) bytes[rng.int(0, Math.max(0, bytes.length - 1))] = rng.int(0, 255);
-    return { delimiter, bytes };
+    return { delimiter, written, bytes };
   },
   check: checkCsv,
-  show: (i) => JSON.stringify({ delimiter: i.delimiter, text: i.bytes.toString('latin1') }),
+  show: (i) =>
+    JSON.stringify({
+      delimiter: i.delimiter,
+      written: i.written,
+      encoding: i.encoding,
+      text: i.bytes.toString('latin1'),
+    }),
 };
 
 // --- dc-xml: the backup's XML reading (cleaner, saxes; import/dc-backup) ----------------------

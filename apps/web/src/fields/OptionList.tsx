@@ -23,8 +23,10 @@ type Moved = { id: number; up: boolean } | null;
  * The options of one context (CORE-009 (3); T-320): add, rename, stop offering or offer again,
  * delete one no ticket holds, and move up or down (`PUT .../options/order` with every option at
  * that level). Under each option of a two-level list, its child options, with the same actions
- * and their own New child option. Delete asks first and says what goes (D13); once the row is
- * gone, the list's heading takes the keyboard.
+ * and their own New child option. Delete asks first only when it takes more than the option (D13,
+ * T-267): its child options, or the context's default. A plain option goes at once, since typing
+ * its name brings it back; one a ticket holds is refused either way. Once the row is gone, the
+ * list's heading takes the keyboard.
  */
 export function OptionList({
   field,
@@ -114,6 +116,10 @@ export function OptionList({
               first={index === 0}
               last={index === options.length - 1}
               isDefault={defaultIds.includes(option.id)}
+              takesDefault={[option, ...(option.children ?? [])].some((o) =>
+                defaultIds.includes(o.id),
+              )}
+              context={context.name}
               moved={moved}
               onSeen={() => setMoved(null)}
               {...bind(top, option)}
@@ -121,6 +127,7 @@ export function OptionList({
               {cascade && (
                 <ChildOptions
                   parent={option}
+                  context={context.name}
                   defaultIds={defaultIds}
                   moved={moved}
                   onSeen={() => setMoved(null)}
@@ -171,6 +178,7 @@ const bind = (actions: Bound, option: ChildOption) => ({
 /** The child options of one option of a two-level list, and a form to add one. */
 function ChildOptions({
   parent,
+  context,
   defaultIds,
   moved,
   onSeen,
@@ -178,6 +186,8 @@ function ChildOptions({
   onAdd,
 }: {
   parent: ChildOption & { children?: ChildOption[] };
+  /** The context's name, for a delete's question. */
+  context: string;
   defaultIds: readonly number[];
   moved: Moved;
   onSeen: () => void;
@@ -202,6 +212,8 @@ function ChildOptions({
               first={index === 0}
               last={index === children.length - 1}
               isDefault={defaultIds.includes(child.id)}
+              takesDefault={defaultIds.includes(child.id)}
+              context={context}
               moved={moved}
               onSeen={onSeen}
               {...bind(bound, child)}
@@ -268,6 +280,8 @@ function OptionRow({
   first,
   last,
   isDefault,
+  takesDefault,
+  context,
   moved,
   onSeen,
   onRename,
@@ -279,7 +293,12 @@ function OptionRow({
   option: ChildOption & { children?: ChildOption[] };
   first: boolean;
   last: boolean;
+  /** Marked as the default: the context's default names it. */
   isDefault: boolean;
+  /** Deleting it leaves the context with no default: the default names it or a child of it. */
+  takesDefault: boolean;
+  /** The context's name, for the question. */
+  context: string;
   moved: Moved;
   /** The move was drawn and the keyboard put back: no later change moves it again. */
   onSeen: () => void;
@@ -291,6 +310,7 @@ function OptionRow({
   children?: ReactNode;
 }) {
   const t = useT();
+  const childCount = option.children?.length ?? 0;
   const inputId = useId();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(option.value);
@@ -394,21 +414,31 @@ function OptionRow({
         >
           {t(option.disabled ? 'admin.fields.optionEnable' : 'admin.fields.optionDisable')}
         </button>
-        {/* Asks first, saying what goes with it (D13); a refusal keeps the question open. */}
-        <DangerAction
-          label={t('admin.fields.optionDelete')}
-          name={t('admin.fields.optionDeleteOf', { value: option.value })}
-          outcome={
-            (option.children?.length ?? 0) > 0
-              ? t('admin.fields.optionConfirmDeleteChildren', {
-                  value: option.value,
-                  count: option.children?.length ?? 0,
-                })
-              : t('admin.fields.optionConfirmDelete', { value: option.value })
-          }
-          confirmLabel={t('admin.fields.optionDeleteOf', { value: option.value })}
-          onConfirm={onDelete}
-        />
+        {/* Asks first only when its child options or the default go with it (D13, T-267); a
+            refusal keeps the question open. A plain option goes at once. */}
+        {childCount > 0 || takesDefault ? (
+          <DangerAction
+            label={t('admin.fields.optionDelete')}
+            name={t('admin.fields.optionDeleteOf', { value: option.value })}
+            outcome={t('admin.fields.optionDeleteOutcome', {
+              value: option.value,
+              children: childCount,
+              isDefault: takesDefault ? 'yes' : 'no',
+              context,
+            })}
+            confirmLabel={t('admin.fields.optionDeleteOf', { value: option.value })}
+            onConfirm={onDelete}
+          />
+        ) : (
+          <button
+            type="button"
+            className="button-secondary people-action"
+            aria-label={t('admin.fields.optionDeleteOf', { value: option.value })}
+            onClick={() => void onDelete().catch(() => {})}
+          >
+            {t('admin.fields.optionDelete')}
+          </button>
+        )}
       </span>
       {children}
     </li>

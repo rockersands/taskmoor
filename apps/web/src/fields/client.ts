@@ -100,7 +100,11 @@ export interface FieldContext {
   trackIds: number[] | null;
   ticketTypeIds: number[] | null;
   config?: ContextConfig;
-  /** The context's default as REST shows a value: options and people with their names. */
+  /**
+   * The value a new ticket starts with, as REST shows a value: options and people with their
+   * names (`{ id, value }`), several of them, or a two-level list's pair with its `child`; null
+   * for none. `defaultOptionIds` (defaultValue.ts) reads the options it names.
+   */
   defaultValue?: unknown;
   options?: FieldOption[];
 }

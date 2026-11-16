@@ -213,7 +213,12 @@ already had:
   stays API-only in 1.0:** the web app always shows a list, so a control would change nothing; the
   page leaves a stored one as it is, and the manual says it is kept for the API and imports.
 - **After review:** an option's **Delete** is a `DangerAction` too (D13): it asks first and names
-  the child options and the default that go with it. A default naming an option no longer offered
+  the child options and the default that go with it. **Merged with T-267 (wave 21):** it asks only
+  for an option with child options or one the context's default names (a child option included);
+  a plain option goes at once with `button-secondary`, and one a ticket holds is refused either
+  way. The question is worded for this page, which shows child options and sets defaults: what
+  leaves the list, that new tickets start empty until a default is saved again, and that an option
+  a ticket holds stays. A default naming an option no longer offered
   is shown without it and saved without it, with a line naming it; a context naming a track in the
   trash is saved without it, with a line saying so (the server refuses both). The keyboard never
   falls to the page: **New context** stays as the form's button (`useNewForm`), a closed form gives
@@ -436,6 +441,40 @@ become **translucent glass**:
   (`aria-disabled`, so the one pressed keeps focus), Escape does nothing and a second press sends
   nothing; a refusal leaves the question open. Afterwards focus goes back to the first button,
   which stays focusable while it is unavailable until focus moves on.
+  **Which removals ask (answered on 2026-11-16, T-267; the user accepted the recommendation).**
+  DangerAction asks first in two cases. First, when the removal loses what its page cannot put
+  back as it was: a list's items and their states, a saved draft, second-level options, a default
+  the page cannot set, or a link the page cannot make again. Second, when it takes something from
+  people beyond the row you see: an invitation someone holds, a release's place in a release
+  across tracks other teams plan by, a permission given to a role, a group or everyone, or a whole
+  track made read-only. It does not ask when the same page puts the thing back at once with
+  nothing lost. A step that needs input or proof keeps its own form: where tickets go (a board
+  column, a visibility level's replacement) or a password (security keys, the authenticator
+  app). A restore asks only when it replaces work. The danger look then means "this asks first"
+  (or, for the password steps, "this removes"), so a removal that does not ask keeps
+  `button-secondary`. As built:
+  - Ask: a field option with second-level options or that is its context's default (an option a
+    ticket holds is refused by the server either way; on wave 22's Fields page, T-320, which shows
+    child options and sets defaults, the rule stands and only the question's words change); a
+    whole checklist with items, naming how
+    many and how many were done; a ticket link to another track (the key's prefix against the
+    ticket's track key: the picker only finds this track's tickets); a release taken out of a
+    release across tracks, in its table, on its phone card and on the release's own page; Withdraw
+    on an invitation, in words that never tell whether the address has an account; Remove on a
+    policy grant (naming the tracks that use the policy) and on a global grant; Archive track;
+    Discard draft on a workflow; Restore as draft over a draft or unsaved changes.
+  - At once, `button-secondary`: a checklist item (history keeps its words), an empty checklist,
+    a link inside the track, an unused option without second-level options, Restore track, a
+    restore with nothing to replace, and one person's role or membership.
+  - Own step, unchanged: a board column with tickets and a visibility level's replacement (where
+    the tickets go); Summary's Back to the default and a directory's Sync and remove were already
+    DangerAction. Removing a security key and switching off the app keep the password step, whose
+    first button is `button-danger-quiet`; `ConfirmPasswordForm` takes an `outcome` line, said
+    first and describing the form, which makes its submit `button-danger`, with focus on the
+    password.
+  - The own confirmations this replaced are gone: the track's Yes and No (`.people-confirm`), and
+    the workflow editor's discard panel and the version list's own question (`.token-confirm`),
+    whose focus went to the destructive button.
 - **Check boxes and radios** are one control, drawn by `forms.css` with no specificity: a clear well
   with the 3:1 field edge when off, the accent with a tick or a dot when on, 20 px; the system's own
   under forced colours. The browser's box was flat grey in the dark skin.

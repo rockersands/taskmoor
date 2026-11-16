@@ -3184,7 +3184,8 @@
       "notify_own_changes boolean not null default false",
       "email_delivery text not null default 'instant'::text",
       "quiet_start smallint",
-      "quiet_end smallint"
+      "quiet_end smallint",
+      "csv_separator text"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX user_preference_pkey ON public.user_preference USING btree (user_id)"

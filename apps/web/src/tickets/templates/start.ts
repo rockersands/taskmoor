@@ -1,5 +1,6 @@
 import type { PmJson } from '@taskmoor/richtext';
 import type { MessageId } from '../../i18n/messages.en';
+import { localDateTimeText } from '../../i18n/zone';
 import { lockOfField } from '../../locks/useLockText';
 import {
   type CustomField,
@@ -80,14 +81,8 @@ function editableCustom(field: CustomField | undefined): boolean {
   return field !== undefined && EDITABLE_CUSTOM.has(field.type);
 }
 
-const pad = (n: number) => String(n).padStart(2, '0');
-
-/** An instant as a local date and time, as `datetime-local` takes it. */
-export function localDateTime(value: string): string {
-  const at = new Date(value);
-  if (Number.isNaN(at.getTime())) return '';
-  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}T${pad(at.getHours())}:${pad(at.getMinutes())}`;
-}
+/** An instant as `datetime-local` takes it, on the person's own clock (T-280). */
+export const localDateTime = (value: string): string => localDateTimeText(new Date(value));
 
 /** A custom field's stored value as the form holds it. */
 function fillCustom(field: CustomField, key: string, value: unknown, fill: FormFill): void {

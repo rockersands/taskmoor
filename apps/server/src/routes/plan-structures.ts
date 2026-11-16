@@ -38,9 +38,9 @@ import {
   type TreeTicket,
 } from '../plans/structureTree';
 import { names as axisNames, axisValues, parseAxis } from '../reports/general';
+import { viewerDay } from '../reports/zone';
 import { SearchError } from '../search/bind';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
-import { todayIn } from '../templates/model';
 import { canonicalJson } from '../tickets/model';
 import { viewScenario } from './plan-scenarios';
 import { planVisible } from './plans';
@@ -547,7 +547,8 @@ export function registerPlanStructureRoutes(
       const query = await stepQuery(tickets.scope, spec);
       const problems = [...resolved.problems, ...('problem' in query ? [query.problem] : [])];
       const env = await formulaEnv(db, { ...formulaPlan(catalog), workingWeek: true }, ws);
-      const today = dayOfIso(todayIn(request.user?.timeZone ?? null)) ?? env.today;
+      // Formulas read today as the person's own day (T-280), as the plan's other views do.
+      const today = dayOfIso(viewerDay(request)) ?? env.today;
       const head = {
         plan: { id: o.plan.id, name: o.plan.name },
         structure: saved

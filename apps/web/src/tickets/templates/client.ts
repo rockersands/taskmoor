@@ -38,6 +38,10 @@ export interface SavedTemplate {
   summary: string;
   description: PmJson | null;
   defaults: TemplateDefaults;
+  /**
+   * Who `defaults.assigneeId` assigns, when the reader may see them named: an active person, to
+   * holders of "See people and groups" (T-283); null otherwise, the id staying in the defaults.
+   */
   assignee: { id: number; name: string } | null;
   subtickets: TemplateSubticket[];
   version: number;
@@ -129,7 +133,11 @@ export interface TemplateStart {
 /** The endpoints the create form's picker uses. Stories and tests pass their own. */
 export interface PickerClient {
   list: (track: string, ticketTypeId: number) => Promise<SavedTemplate[]>;
-  start: (id: number, track: string) => Promise<TemplateStart>;
+  /**
+   * What a template starts a ticket of a type in a track with: a person field limited to some
+   * people names those its own list offers for that type (T-284).
+   */
+  start: (id: number, track: string, ticketTypeId: number) => Promise<TemplateStart>;
   apply: (id: number, body: Record<string, unknown>) => Promise<AppliedTemplate>;
 }
 
@@ -140,10 +148,15 @@ export interface TemplateClient {
   options: (track: string | null) => Promise<TemplateOptions>;
   fieldOptions: (fieldId: number, trackId: number | null) => Promise<FieldValueOption[]>;
   /**
-   * People who can be found in a track, for its templates' assignee and person fields: the
-   * create form's search (T-350).
+   * People who can be found in a track, for its templates' person fields: the create form's
+   * search (T-350).
    */
   people: (track: string, query: string) => Promise<Named[]>;
+  /**
+   * People who may be given tickets in a track, for its templates' assignee: the create form's
+   * assignee search (T-269), so a template offers only those a ticket can be given to.
+   */
+  assignable: (track: string, query: string) => Promise<Named[]>;
   /**
    * Anyone active in the site, for a person field of a template for every track (T-350), which
    * has no track to search in; those who change such templates may use it (ADR-114).
@@ -182,9 +195,9 @@ export const pickerClient: PickerClient = {
         `${templatesPath}?track=${encodeURIComponent(track)}&ticketTypeId=${ticketTypeId}`,
       )
     ).templates,
-  start: async (id, track) => {
+  start: async (id, track, ticketTypeId) => {
     const res = await api<{ start: Record<string, unknown>; names?: Record<string, Named[]> }>(
-      `${templatesPath}/${id}?track=${encodeURIComponent(track)}`,
+      `${templatesPath}/${id}?track=${encodeURIComponent(track)}&ticketTypeId=${ticketTypeId}`,
     );
     return { start: res.start, names: res.names ?? {} };
   },
@@ -263,6 +276,7 @@ export const templateClient: TemplateClient = {
     return [...seen.values()];
   },
   people: (track, query) => findPeople(track, query),
+  assignable: (track, query) => findPeople(track, query, true),
   sitePeople: findSitePeople,
   fieldPeople: findFieldPeople,
   groups: findGroups,

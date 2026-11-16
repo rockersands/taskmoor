@@ -46,16 +46,18 @@ export const Fields: Story = {
   },
 };
 
-/** An option on tickets is not deleted: the page says how many hold it, the question still open. */
+/**
+ * An option on tickets is not deleted: the page says how many hold it. A plain option asks
+ * nothing first (D13, T-267), so the refusal comes at the first press.
+ */
 export const OptionInUse: Story = {
   args: { client: fakeFieldsClient() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Severity' }));
     await userEvent.click(await canvas.findByRole('button', { name: 'Delete Medium' }));
-    const question = canvas.getByRole('group', { name: /^Delete Medium\?/ });
-    await userEvent.click(within(question).getByRole('button', { name: 'Delete Medium' }));
     await expect(await canvas.findByRole('alert')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Delete Medium' })).toBeVisible();
   },
 };
 
@@ -84,6 +86,25 @@ export const NewFormula: Story = {
     await expect(
       await within(form).findByText('It gives a number. It reads {Cost}.'),
     ).toBeVisible();
+  },
+};
+
+/**
+ * Deleting an option that takes its child options and the default with it asks first, saying so
+ * (D13, T-267); at a phone's width nothing sticks out.
+ */
+export const DeletingAnOptionAsksAtPhoneWidth: Story = {
+  args: { client: fakeFieldsClient() },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Office' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Delete Madrid' }));
+    const question = canvas.getByRole('group', {
+      name: /^Delete Madrid and its 2 child options\? They leave this list for good\. New tickets/,
+    });
+    await expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await fitsPhoneWidth(canvas);
   },
 };
 

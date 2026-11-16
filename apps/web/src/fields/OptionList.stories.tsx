@@ -61,7 +61,10 @@ export const TwoLevels: Story = {
   },
 };
 
-/** Delete asks first and says what goes: here an option and its two child options (D13). */
+/**
+ * An option with child options asks before Delete and says what goes (D13, T-267); a plain one
+ * goes at once.
+ */
 export const DeleteAsksFirst: Story = {
   args: { start: fieldOf(5) },
   play: async ({ canvasElement }) => {

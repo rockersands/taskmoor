@@ -1,8 +1,8 @@
 ---
 title: "Plans"
 audience: users
-sources: apps/web/src/plans/client.ts, apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/styles/plans.css, apps/web/src/styles/releases.css, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/useCandidates.ts, apps/server/src/search/bind.ts, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md, packages/webconfig/src/csv.ts, apps/web/src/plans/download.ts, apps/server/src/privacy/erase.ts, apps/server/src/audit/query.ts, apps/web/src/plans/ProgramBoardsPage.tsx, apps/web/src/plans/ProgramBoardPage.tsx, apps/web/src/plans/programBoardClient.ts, apps/server/src/routes/program-boards.ts, apps/server/src/plans/dependencies.ts, apps/web/src/shell/DangerAction.tsx, apps/web/src/shell/moreSides.ts, apps/web/src/plans/ScenarioBar.tsx, apps/web/src/plans/ScenarioDialogs.tsx, apps/web/src/plans/PlanChangesPage.tsx, apps/web/src/plans/PlanScenariosPage.tsx, apps/web/src/plans/ScenarioCompare.tsx, apps/web/src/plans/changeWords.ts, apps/web/src/plans/drafting.ts, apps/web/src/plans/scenarioClient.ts, apps/server/src/routes/plan-scenarios.ts, apps/server/src/plans/drafts.ts, apps/server/src/privacy/export.ts, apps/server/src/reports/zone.ts, apps/web/src/plans/AutoScheduleDialog.tsx, apps/web/src/plans/ScheduleResult.tsx, apps/web/src/plans/scheduleWords.ts, apps/server/src/routes/plan-schedule.ts, apps/server/src/plans/scheduler.ts, apps/server/src/plans/scheduleInputs.ts, apps/server/src/plans/capacity.ts, apps/server/src/plans/sprints.ts, apps/web/src/plans/PlanBaselinesPage.tsx, apps/web/src/plans/BaselineCompare.tsx, apps/web/src/plans/baselineClient.ts, apps/web/src/plans/baselineExport.ts, apps/server/src/routes/plan-baselines.ts, apps/web/src/timeline/CriticalPathList.tsx, apps/web/src/timeline/critical.ts, apps/server/src/plans/criticalPath.ts, apps/server/src/plans/evenOut.ts, apps/web/src/plans/PlanGridPage.tsx, apps/web/src/plans/StructureDialog.tsx, apps/web/src/plans/MoveUnderDialog.tsx, apps/web/src/plans/grid/client.ts, apps/web/src/plans/grid/compute.ts, apps/web/src/plans/grid/tree.ts, apps/web/src/plans/grid/rowWindow.ts, apps/web/src/plans/grid/words.ts, apps/web/src/styles/grid.css, apps/server/src/routes/plan-structures.ts, apps/server/src/plans/structures.ts, apps/server/src/plans/structureTree.ts, apps/server/src/routes/ticket-types.ts
-accessed: 2026-11-14
+sources: apps/web/src/plans/client.ts, apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/styles/plans.css, apps/web/src/styles/releases.css, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/useCandidates.ts, apps/server/src/search/bind.ts, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md, packages/webconfig/src/csv.ts, apps/web/src/plans/download.ts, apps/server/src/privacy/erase.ts, apps/server/src/audit/query.ts, apps/server/src/audit/subscriber.ts, apps/web/src/plans/ProgramBoardsPage.tsx, apps/web/src/plans/ProgramBoardPage.tsx, apps/web/src/plans/programBoardClient.ts, apps/server/src/routes/program-boards.ts, apps/server/src/plans/dependencies.ts, apps/web/src/shell/DangerAction.tsx, apps/web/src/shell/moreSides.ts, apps/web/src/plans/ScenarioBar.tsx, apps/web/src/plans/ScenarioDialogs.tsx, apps/web/src/plans/PlanChangesPage.tsx, apps/web/src/plans/PlanScenariosPage.tsx, apps/web/src/plans/ScenarioCompare.tsx, apps/web/src/plans/changeWords.ts, apps/web/src/plans/drafting.ts, apps/web/src/plans/scenarioClient.ts, apps/server/src/routes/plan-scenarios.ts, apps/server/src/plans/drafts.ts, apps/server/src/privacy/export.ts, apps/server/src/reports/zone.ts, apps/web/src/plans/AutoScheduleDialog.tsx, apps/web/src/plans/ScheduleResult.tsx, apps/web/src/plans/scheduleWords.ts, apps/server/src/routes/plan-schedule.ts, apps/server/src/plans/scheduler.ts, apps/server/src/plans/scheduleInputs.ts, apps/server/src/plans/capacity.ts, apps/server/src/plans/sprints.ts, apps/web/src/plans/PlanBaselinesPage.tsx, apps/web/src/plans/BaselineCompare.tsx, apps/web/src/plans/baselineClient.ts, apps/web/src/plans/baselineExport.ts, apps/server/src/routes/plan-baselines.ts, apps/web/src/timeline/CriticalPathList.tsx, apps/web/src/timeline/critical.ts, apps/server/src/plans/criticalPath.ts, apps/server/src/plans/evenOut.ts, apps/web/src/plans/PlanGridPage.tsx, apps/web/src/plans/StructureDialog.tsx, apps/web/src/plans/MoveUnderDialog.tsx, apps/web/src/plans/grid/client.ts, apps/web/src/plans/grid/compute.ts, apps/web/src/plans/grid/tree.ts, apps/web/src/plans/grid/rowWindow.ts, apps/web/src/plans/grid/words.ts, apps/web/src/styles/grid.css, apps/server/src/routes/plan-structures.ts, apps/server/src/plans/structures.ts, apps/server/src/plans/structureTree.ts, apps/server/src/routes/ticket-types.ts, apps/web/src/account/csvStyle.tsx
+accessed: 2026-11-16
 attestation: own-words
 ---
 # Plans
@@ -224,8 +224,11 @@ a field empty for none. A note goes with a capacity: a note typed where no capac
 not saved, and the dialog says so at that capacity. Emptying a capacity removes it with its note.
 **Save capacity** saves only what changed. Each change is kept in the plan's history with its
 note, so a note should say what planning needs ("Leave"), not why. When a person is erased, their
-capacity goes, and the notes about them are emptied in that history too; the amounts stay. If someone changes the plan's
-unit or periods while you type, nothing is saved and the dialog asks you to reload the page.
+capacity goes, and the notes about them are emptied in that history too; the amounts stay. The
+audit log records who changed whose capacity and the amounts, not the notes' words; only records
+written by an earlier version of Taskmoor still hold them, shown empty for an erased person. If
+someone changes the plan's unit or periods while you type, nothing is saved and the dialog asks
+you to reload the page.
 
 ## Filtering and grouping
 
@@ -768,7 +771,7 @@ column beside the total, which is why the column's header says **Total of rows b
 A **formula column** computes a value for each ticket row, as a formula field would, except that
 `children` means the row's child rows in the Grid, whichever step put them there:
 `sum(children.{Points})` adds their own values and `count(children)` counts them. `today` is your
-day, in your time zone, and working days follow the time tracking setting. Group rows and the last
+day, on [your clock](account.md#your-time-zone), and working days follow the time tracking setting. Group rows and the last
 row show nothing in a formula column. `sum(children.{Points})` equals the Sum total of Points only
 where no child row has rows of its own: the formula reads each child's own value, the total each
 child's total.
@@ -993,7 +996,7 @@ everyone: **No releases**, **Upcoming**, **Ready to ship** (it has tickets and n
 **Overdue** (its date has passed and not all have shipped) or **Shipped** (all have). An archived
 release, or a release of an archived track, stops counting towards it, and a track in the trash
 drops out for everyone until it is restored. Its date, and each linked release's, has passed once
-it has gone by on your device's clock: it turns overdue at your own midnight, on its page, in the
+it has gone by on [your clock](account.md#your-time-zone): it turns overdue at your own midnight, on its page, in the
 list and on a plan's **Releases** tab, as a track's own releases do.
 
 **Nothing ships by itself.** **Ready to ship** is an announcement: each track's administrators still
@@ -1010,7 +1013,11 @@ of a track's or a release's name in the filter and the rest can be found too.
 
 Linking moves no date. A release on another day reads as **Out of step** until someone moves it.
 Its track's administrators, its owner and administrators can **Remove** it, which changes no date
-either. Nobody removes a release they may not see. A release merged into another or deleted leaves
+either. **Remove**, in the danger colour, asks first, in the table, on the card or on the release's
+own page (**Remove from** and the name): it names the release and its track, and says that its
+tickets stop counting here, that its date no longer moves with this one, and that only that
+track's administrators can link it again, while it is neither shipped nor archived. **Cancel**, which
+has the focus, or Escape keeps it. Nobody removes a release they may not see. A release merged into another or deleted leaves
 by itself.
 
 ### Changing or deleting it
@@ -1119,9 +1126,11 @@ cannot draw it, the page says that too and no file comes. Headers are in your la
 is drawn in light colours whatever your skin.
 
 Every CSV file is UTF-8 and starts with a byte-order mark, so Excel on Windows shows accented
-headers such as "Versión" properly when you open the file with a double-click. Cells are separated
-by commas: if your spreadsheet expects semicolons, as it may with Spanish settings, open the file
-through its import from text and choose the comma.
+headers such as "Versión" properly when you open the file with a double-click. Its cells are
+separated as your spreadsheet expects: by semicolons, with numbers as 1,5, where your language and
+region write a decimal comma, as with Spanish settings, and by commas, with numbers as 1.5,
+elsewhere. **Spreadsheet files (CSV)** on your [profile](account.md#profile) chooses one for every
+file instead.
 
 Downloading the Timeline, the Calendar or the List counts as a bulk export for your administrators'
 security alerts. Keep in mind that a saved file leaves Taskmoor's permissions: whoever

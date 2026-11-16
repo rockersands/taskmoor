@@ -7,7 +7,10 @@ import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
+import { JobRunner } from '../events/queue';
+import { FieldCatalogs } from '../fields/catalog';
 import { type CsvRow, CsvSource, csvSource } from '../import/csv';
+import { registerImportJobs } from '../import/jobs';
 import { EXPORT_PAGE } from './search-export';
 
 /** Generated per run: no credential is kept in the repository. */
@@ -360,5 +363,86 @@ describe('search export (M1-042)', () => {
     expect(query.json()).toMatchObject({ error: 'invalid_query' });
     expect((await exported('alice', { q: '', format: 'xml' })).statusCode).toBe(400);
     expect((await exported(null, { q: '' })).statusCode).toBe(401);
+    expect((await exported('alice', { q: '', separator: 'tab' })).statusCode).toBe(400);
+  });
+
+  it('[QRY-015] [IMP-012] [NFR-006] writes semicolons and decimal commas when asked, and the importer reads them back to the same values (T-263)', async () => {
+    // A track of its own, so the other tests' files stay as they were.
+    const made = await as('admin', {
+      method: 'POST',
+      url: '/api/v1/tracks',
+      payload: { key: 'DEC', name: 'Decimals', mode: 'shared' },
+    });
+    expect(made.statusCode, made.body).toBe(201);
+    const values = [2.5, 1234.5, -0.25];
+    const summaries = ['Uno; dos, tres', 'Mil', 'Menos'];
+    for (const [i, summary] of summaries.entries()) {
+      const res = await as('admin', {
+        method: 'POST',
+        url: '/api/v1/tickets',
+        payload: { track: 'DEC', summary, fields: { [fields.Pts as number]: values[i] } },
+      });
+      expect(res.statusCode, res.body).toBe(201);
+    }
+    const query = {
+      q: 'track = DEC ORDER BY key ASC',
+      columns: `key,summary,cf[${fields.Pts}]`,
+    };
+    const res = await exported('admin', { ...query, separator: 'semicolon' });
+    expect(res.statusCode, res.body).toBe(200);
+    expect(res.headers['content-type']).toBe('text/csv; charset=utf-8');
+    // The mark first, once, then semicolons, text with either mark quoted, numbers as 2,5.
+    expect([...res.rawPayload.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+    expect(res.rawPayload.indexOf(Buffer.from([0xef, 0xbb, 0xbf]), 3)).toBe(-1);
+    expect(res.body).toBe(
+      `${CSV_BOM}key;summary;Pts\r\nDEC-1;"Uno; dos, tres";2,5\r\nDEC-2;Mil;1234,5\r\nDEC-3;Menos;-0,25\r\n`,
+    );
+    // The comma style, the default, is as before.
+    expect((await exported('admin', query)).body).toBe(
+      `${CSV_BOM}key,summary,Pts\r\nDEC-1,"Uno; dos, tres",2.5\r\nDEC-2,Mil,1234.5\r\nDEC-3,Menos,-0.25\r\n`,
+    );
+
+    // QRY-015 (2): the file imports back as it is, the separator found, to the same values.
+    const runner = new JobRunner(database.db, 'search-export-test');
+    registerImportJobs(runner, database.db, new FieldCatalogs(database.db));
+    const started = await as('admin', {
+      method: 'POST',
+      url: '/api/v1/admin/imports',
+      payload: {
+        source: {
+          format: 'csv',
+          system: 'semicolon-export',
+          data: res.rawPayload.toString('utf8'),
+          mapping: {
+            columns: [
+              { column: 'key', to: 'key' },
+              { column: 'summary', to: 'summary' },
+              { column: 'Pts', to: 'field', field: fields.Pts },
+            ],
+          },
+        },
+      },
+    });
+    expect(started.statusCode, started.body).toBe(202);
+    const run = started.json().importRun.id as number;
+    for (let i = 0; i < 200; i++) if ((await runner.runOnce()) === 0) break;
+    const report = await as('admin', { method: 'GET', url: `/api/v1/admin/imports/${run}/report` });
+    expect(report.json().report.run.status).toBe('done');
+    const tickets = report
+      .json()
+      .report.entities.find((e: { kind: string }) => e.kind === 'ticket');
+    expect(tickets).toMatchObject({ source: 3, outcomes: { created: 0, failed: 0 } });
+    expect(report.json().report.warnings).toEqual([]);
+    const after = await database.db
+      .selectFrom('ticket as k')
+      .innerJoin('track as t', 't.id', 'k.track_id')
+      .select(['k.summary', 'k.fields'])
+      .where('t.key', '=', 'DEC')
+      .orderBy('k.number')
+      .execute();
+    expect(after.map((k) => k.summary)).toEqual(summaries);
+    expect(after.map((k) => (k.fields as Record<string, unknown>)[String(fields.Pts)])).toEqual(
+      values,
+    );
   });
 });

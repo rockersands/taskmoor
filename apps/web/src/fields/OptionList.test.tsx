@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Field } from './client';
+import { defaultOptionIds } from './defaultValue';
 import { type FakeFieldsClient, fakeFieldsClient } from './fixtures';
 import { OptionList } from './OptionList';
 
@@ -21,6 +22,7 @@ function Harness({ start, client }: { start: Field; client: FakeFieldsClient }) 
         onField={setField}
         onChanged={setSaid}
         onProblem={() => setSaid('refused')}
+        defaultIds={defaultOptionIds(context.defaultValue)}
       />
       <p role="status">{said}</p>
     </main>
@@ -97,17 +99,17 @@ describe('options and their order (T-320)', () => {
     expect(await screen.findByText('The option is called Barcelona now.')).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Stop offering Barcelona' }));
     expect(await screen.findByText('Barcelona is no longer offered.')).toBeVisible();
+    // A plain child option goes at once (D13, T-267).
     await user.click(screen.getByRole('button', { name: 'Delete Lisbon' }));
-    const question = screen.getByRole('group', { name: /^Delete Lisbon\? It leaves this list/ });
-    await user.click(within(question).getByRole('button', { name: 'Delete Lisbon' }));
     expect(await screen.findByText('Lisbon was deleted.')).toBeVisible();
     expect(values(europe)).toEqual(['Barcelona']);
   });
 
-  it('[CORE-009] asks before deleting an option, naming its child options, and keeps the keyboard', async () => {
+  it('[CORE-009] asks before deleting an option with child options, deletes a plain one at once, and keeps the keyboard', async () => {
     const user = userEvent.setup();
     const client = await renderField(5);
-    // The first press only asks, with the danger look; Cancel sends nothing (D13).
+    // An option with child options: the first press only asks, with the danger look; Cancel
+    // sends nothing (D13, T-267).
     const first = screen.getByRole('button', { name: 'Delete Europe' });
     expect(first).toHaveClass('button-danger-quiet');
     await user.click(first);
@@ -118,15 +120,40 @@ describe('options and their order (T-320)', () => {
     expect(screen.getByRole('button', { name: 'Delete Europe' })).toHaveFocus();
     expect(client.calls).toEqual([]);
 
-    await user.click(screen.getByRole('button', { name: 'Delete Madrid' }));
-    await user.click(
-      within(screen.getByRole('group', { name: /^Delete Madrid\?/ })).getByRole('button', {
-        name: 'Delete Madrid',
-      }),
-    );
+    // A plain child option asks nothing.
+    const madrid = screen.getByRole('button', { name: 'Delete Madrid' });
+    expect(madrid).toHaveClass('button-secondary');
+    await user.click(madrid);
+    expect(screen.queryByRole('group', { name: /^Delete Madrid/ })).toBeNull();
     expect(await screen.findByText('Madrid was deleted.')).toBeVisible();
     expect(client.calls).toEqual([{ action: 'deleteOption', args: [5, 50, 511] }]);
     // Its row is gone, so the list's heading takes the keyboard, not the page.
     expect(screen.getByRole('heading', { name: 'Options in Everywhere' })).toHaveFocus();
+  });
+
+  it('[CORE-009] asks before deleting the option or child option a default names', async () => {
+    const user = userEvent.setup();
+    const client = await renderField(4);
+    // Office's default is Madrid, Floor 1: both are marked, and deleting either asks.
+    await user.click(screen.getByRole('button', { name: 'Delete Floor 1' }));
+    const question = screen.getByRole('group', {
+      name:
+        'Delete Floor 1? It leaves this list for good. New tickets in Everywhere start with ' +
+        'Floor 1: once it goes they start empty until a default is saved again. An option a ' +
+        'ticket holds is not deleted: stop offering it instead. This cannot be undone.',
+    });
+    await user.click(within(question).getByRole('button', { name: 'Delete Floor 1' }));
+    expect(await screen.findByText('Floor 1 was deleted.')).toBeVisible();
+    expect(client.calls).toEqual([{ action: 'deleteOption', args: [4, 40, 4011] }]);
+    // The default went with it, so Madrid, with one child option left, asks only for that.
+    expect(screen.queryByText('Default')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Delete Madrid' }));
+    expect(
+      screen.getByRole('group', {
+        name:
+          'Delete Madrid and its child option? They leave this list for good. Options a ticket ' +
+          'holds are not deleted: stop offering them instead. This cannot be undone.',
+      }),
+    ).toBeVisible();
   });
 });

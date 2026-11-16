@@ -378,9 +378,39 @@ export const NOT_AUDITED: Partial<Record<EventType, string>> = {
 };
 
 /**
+ * What an audit record keeps of an event's payload: all of it, except the words of a capacity
+ * note (T-259; ADR-111, ADR-122). A `plan.capacity_set` record says who set whose capacity, in
+ * which plan and period, and the amounts before and after, but not the notes, which may say why
+ * someone was away: the audit log is never rewritten, so words stored there would outlive the
+ * person's erasure (T-089j) for as long as retention keeps the record, and reach a syslog server
+ * as soon as it is written. The plan's own events keep the notes, and an erasure empties them.
+ */
+export function auditDetails(type: string, payload: unknown): Record<string, unknown> {
+  const details = (payload ?? {}) as Record<string, unknown>;
+  if (type !== 'plan.capacity_set' || !Array.isArray(details.changes)) return details;
+  const amountOnly = (side: unknown) => {
+    if (!side || typeof side !== 'object') return side;
+    const { note: _note, ...rest } = side as Record<string, unknown>;
+    return rest;
+  };
+  return {
+    ...details,
+    changes: details.changes.map((change: unknown) =>
+      change && typeof change === 'object'
+        ? {
+            ...change,
+            from: amountOnly((change as { from?: unknown }).from),
+            to: amountOnly((change as { to?: unknown }).to),
+          }
+        : change,
+    ),
+  };
+}
+
+/**
  * The first subscriber of the domain event bus (ADR-015): each audited event becomes one audit
- * record with the event's time, actor, subject, payload and client address. Delivery is at
- * least once; the chain holds each event once (`sourceEventId`).
+ * record with the event's time, actor, subject, payload (as `auditDetails` keeps it) and client
+ * address. Delivery is at least once; the chain holds each event once (`sourceEventId`).
  */
 export function auditSubscriber(db: Kysely<Database>): Subscriber {
   return {
@@ -394,7 +424,7 @@ export function auditSubscriber(db: Kysely<Database>): Subscriber {
           actorId: event.actorId,
           subjectType: event.subjectType,
           subjectId: event.subjectId,
-          details: (event.payload ?? {}) as Record<string, unknown>,
+          details: auditDetails(event.type, event.payload),
           ip: event.ip,
           occurredAt: event.occurredAt,
           sourceEventId: event.id,

@@ -31,6 +31,18 @@ type Story = StoryObj<typeof meta>;
 
 export const Empty: Story = {};
 
+/** A removal says what it takes away first, and its submit has the danger look (D13, T-267). */
+export const Removing: Story = {
+  args: { outcome: 'You can no longer sign in with Blue key.' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const form = canvas.getByRole('form', { name: 'Remove Blue key' });
+    await expect(form).toHaveAccessibleDescription('You can no longer sign in with Blue key.');
+    await expect(canvas.getByRole('button', { name: 'Remove' })).toHaveClass('button-danger');
+    await expect(canvas.getByLabelText('Current password')).toHaveFocus();
+  },
+};
+
 export const WrongPassword: Story = {
   args: {
     onConfirm: async () => {

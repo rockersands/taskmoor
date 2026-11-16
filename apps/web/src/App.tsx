@@ -1,6 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { AccountPage, accountSectionOf } from './account/AccountPage';
 import { accountClient } from './account/client';
+import { CsvStyleProvider } from './account/csvStyle';
 import { AdminGroupPage } from './admin/AdminGroupPage';
 import { AdminLayout } from './admin/AdminLayout';
 import { AdminOverviewPage } from './admin/AdminOverviewPage';
@@ -42,6 +43,7 @@ import {
   rememberLocale,
   resolveLocale,
 } from './i18n/locale';
+import { knownTimeZone } from './i18n/zone';
 import { InboxPage } from './inbox/InboxPage';
 import { LayoutEditorPage } from './layouts/LayoutEditorPage';
 import { ListPage } from './list/ListPage';
@@ -1183,6 +1185,20 @@ function FollowAccountLocale({
   return null;
 }
 
+/**
+ * Times are written on the person's own clock (T-280): the zone saved on their account becomes
+ * the formatting provider's default, and a profile save applies at once. Automatic (no zone
+ * saved) leaves the device's.
+ */
+function FollowAccountTimeZone({ onTimeZone }: { onTimeZone: (zone: string | null) => void }) {
+  const { session } = useSession();
+  const saved = session.status === 'signed-in' ? session.user.timeZone : null;
+  useEffect(() => {
+    onTimeZone(knownTimeZone(saved) ? saved : null);
+  }, [saved, onTimeZone]);
+  return null;
+}
+
 export interface AppProps {
   /** Overrides the locale detection; tests use it for the pseudo-locale. */
   locale?: Locale;
@@ -1195,15 +1211,28 @@ export interface AppProps {
 
 export function App({ locale, session, onI18nError, metaClient }: AppProps) {
   const [chosen, setChosen] = useState<Locale>(() => locale ?? resolveLocale());
+  const [timeZone, setTimeZone] = useState<string | null>(() =>
+    session?.status === 'signed-in' && knownTimeZone(session.user.timeZone)
+      ? session.user.timeZone
+      : null,
+  );
   return (
-    <I18nProvider locale={chosen} {...(onI18nError ? { onError: onI18nError } : {})}>
+    <I18nProvider
+      locale={chosen}
+      timeZone={timeZone}
+      {...(onI18nError ? { onError: onI18nError } : {})}
+    >
       <SessionProvider {...(session ? { session } : {})}>
         {locale === undefined && <FollowAccountLocale current={chosen} onLocale={setChosen} />}
+        <FollowAccountTimeZone onTimeZone={setTimeZone} />
         <SyncProvider>
           <PaletteCommandsProvider>
             <VersionGate {...(metaClient ? { client: metaClient } : {})}>
               <TutorialProvider>
-                <Pages />
+                {/* How the person's CSV files are written, read once a page offers one (T-263). */}
+                <CsvStyleProvider>
+                  <Pages />
+                </CsvStyleProvider>
               </TutorialProvider>
             </VersionGate>
           </PaletteCommandsProvider>

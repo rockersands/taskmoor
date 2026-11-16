@@ -5,14 +5,21 @@ import { z } from 'zod';
 import { requireSiteAdmin, requireUser } from '../auth';
 import { diff, emit } from '../events/bus';
 import { findTeam } from '../teams';
+import { decodeSortCursor, encodeSortCursor, sortCursorParam } from './sort-cursor';
 
 type Db = Kysely<Database> | Transaction<Database>;
 
+/**
+ * A page of teams by name, ignoring case, then id (T-286): 100 unless `limit` asks for another
+ * number up to 500 (a picker asks for 8, T-282). `after` (or `cursor`, as saved searches name it)
+ * is the `next` of the page before; every answer carries `next`, null after the last page.
+ */
 const listQuery = z
   .object({
     query: z.string().trim().max(200).optional(),
-    /** At most this many, for a picker (T-282); every team without it, for the admin pages. */
-    limit: z.coerce.number().int().min(1).max(200).optional(),
+    limit: z.coerce.number().int().min(1).max(500).default(100),
+    after: sortCursorParam.optional(),
+    cursor: sortCursorParam.meta({ description: 'The same as `after`.' }).optional(),
   })
   .strict();
 const leadId = z.number().int().positive().max(2_147_483_647).nullable();
@@ -85,9 +92,10 @@ const view = (r: TeamRow): TeamView => ({
 
 /**
  * Teams (M1-123; CORE-027; ADR-076): site-wide, with members, a lead and a description.
- * Everyone signed in reads them, for pickers and the Team field (`?query=` part of a name,
- * `?limit=` at most that many, by name); site administrators make, change and delete them and
- * choose their members. A team grants nothing: groups do that.
+ * Everyone signed in reads them, for pickers and the Team field (`?query=` part of a name), a
+ * page at a time by name (`?limit=`, `?after=` the `next` of the page before, T-286); site
+ * administrators make, change and delete them and choose their members. A team grants nothing:
+ * groups do that.
  * Boards, areas and Team fields name a team by id, so a rename shows everywhere at once.
  */
 export function registerTeamRoutes(app: FastifyInstance, db: Kysely<Database>): void {
@@ -106,10 +114,25 @@ export function registerTeamRoutes(app: FastifyInstance, db: Kysely<Database>): 
       const like = `%${parsed.data.query.toLowerCase().replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
       query = query.where(sql`lower(t.name)`, 'like', like);
     }
-    query = query.orderBy(sql`lower(t.name)`).orderBy('t.id');
-    if (parsed.data.limit !== undefined) query = query.limit(parsed.data.limit);
-    const rows = await query.execute();
-    return { teams: rows.map(view) };
+    const { limit } = parsed.data;
+    const after = parsed.data.after ?? parsed.data.cursor;
+    const start = after === undefined ? null : decodeSortCursor(after);
+    if (start) {
+      query = query.where(
+        sql<boolean>`(lower(t.name), t.id) > (${start[0]}::text, ${start[1]}::int)`,
+      );
+    }
+    const rows = await query
+      .select(sql<string>`lower(t.name)`.as('sort_name'))
+      .orderBy(sql`lower(t.name)`)
+      .orderBy('t.id')
+      .limit(limit + 1)
+      .execute();
+    const more = rows.length > limit;
+    if (more) rows.length = limit;
+    const last = rows[rows.length - 1];
+    const next = more && last ? encodeSortCursor(last.sort_name, last.id) : null;
+    return { teams: rows.map(view), next };
   });
 
   app.get('/api/v1/teams/:id', async (request, reply) => {

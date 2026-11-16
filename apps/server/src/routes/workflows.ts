@@ -9,7 +9,7 @@ import { enforceLimit } from '../guardrails/model';
 import { lockList, writeOrder } from '../tickets/fields';
 import { closingReasonId, completedReasonId } from '../workflows/board-managed';
 import { closeReasonProblem } from '../workflows/close-reasons';
-import { withFreeMoves, withMovesIfNone } from '../workflows/free-moves';
+import { noMovesPossible, withFreeMoves, withMovesIfNone } from '../workflows/free-moves';
 import { followingStage, freeTransitions } from '../workflows/free-moving';
 import {
   defaultMapId,
@@ -21,6 +21,7 @@ import {
 } from '../workflows/maps';
 import { runningMigration } from '../workflows/migration';
 import {
+  type DefinitionProblem,
   definitionProblem,
   definitionSchema,
   removedStatuses,
@@ -162,6 +163,8 @@ function uniqueViolation(error: unknown): string | null {
 const invalid = (reply: FastifyReply, detail?: unknown) =>
   reply.code(400).send({ error: 'invalid_request', ...(detail ? { detail } : {}) });
 const notFound = (reply: FastifyReply) => reply.code(404).send({ error: 'not_found' });
+/** Why a workflow that could get no move at all is not made live (T-260). */
+const NO_MOVES: DefinitionProblem = { problem: 'no_moves' };
 
 function statusRows(db: Db, workspaceId: number) {
   return db
@@ -1017,6 +1020,14 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
       // A reason deleted after the draft was saved would refuse every move into its status.
       const closing = await closeReasonProblem(trx, ws, impact.draft);
       if (closing) return { closing };
+      // A draft with no transitions at all (restored or imported so) gets the free moves a new
+      // workflow gets (T-246; WF-008). Worked out here, written only below, once every check has
+      // passed: a refused publish commits, and must leave the draft as its author saved it. The
+      // moves close with a reason that exists, so the closing check above holds for them too, and
+      // they add no status. One that wanted them and can get none, every status closing with no
+      // reason to close with, is refused: no ticket could ever move in it (T-260).
+      const moving = await withMovesIfNone(trx, ws, held.id, impact.draft);
+      if (noMovesPossible(impact.draft, moving)) return { noMoves: true as const };
       // A status migration still moving tickets into this workflow keeps it as it is (M1-028).
       const running = await runningMigration(
         trx,
@@ -1036,12 +1047,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
         }
       }
       const version = held.draft_version as number;
-      // A draft with no transitions at all (restored or imported so) is published with the free
-      // moves a new workflow gets, never as a workflow where no ticket can move (T-246; WF-008).
-      // Only once every check above has passed: a refused publish commits, and must leave the
-      // draft as its author saved it. The moves close with a reason that exists, so the closing
-      // check above holds for them too, and they add no status.
-      const moving = await withMovesIfNone(trx, ws, held.id, impact.draft);
+      // The free moves worked out above, now that nothing refuses the publish (T-246).
       if (moving !== impact.draft) {
         await trx
           .updateTable('workflow_version')
@@ -1078,6 +1084,7 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
     if ('missing' in result) return notFound(reply);
     if ('conflict' in result) return reply.code(409).send({ error: result.conflict });
     if ('closing' in result) return invalid(reply, result.closing);
+    if ('noMoves' in result) return invalid(reply, NO_MOVES);
     if ('migrationRunning' in result) {
       return reply
         .code(409)
@@ -1322,8 +1329,13 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
             })
             .returning('id')
             .executeTakeFirstOrThrow();
-          // A file with no transitions gives the free moves a new workflow gets (T-246).
+          // A file with no transitions gives the free moves a new workflow gets (T-246). One that
+          // can get none, every status closing with no reason to close with, would be live with
+          // no move at all: refused, and nothing the import made stays (T-260).
           const definition = await withMovesIfNone(trx, ws, row.id, result.definition);
+          if (noMovesPossible(result.definition, definition)) {
+            throw new ImportRefused(NO_MOVES);
+          }
           await writeVersion(trx, ws, row.id, 1, definition, user.id, true);
           await emit(trx, by(request), {
             type: 'workflow.imported',

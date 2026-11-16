@@ -620,7 +620,7 @@ export function registerPlanRoutes(
     if (!p.success) return notFound(reply);
     const q = exportQuery.safeParse(request.query ?? {});
     if (!q.success) return invalidFields(reply, shapeErrors(q.error));
-    const { format, columns, sort, ...filters } = q.data;
+    const { format, columns, sort, separator, ...filters } = q.data;
     const row = await visible(request, p.data.id);
     if (!row) return notFound(reply);
     let query: string | null;
@@ -639,6 +639,7 @@ export function registerPlanRoutes(
       q: query === null ? null : `${query} ORDER BY ${EXPORT_SORTS[sort]}`,
       format,
       columns,
+      separator,
       file: planFile(row.name),
       timeoutMs,
     });

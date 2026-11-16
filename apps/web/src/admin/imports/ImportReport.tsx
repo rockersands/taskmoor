@@ -4,7 +4,7 @@ import { useT } from '../../i18n/I18nProvider';
 import { EmptyState } from '../../shell/EmptyState';
 import { TableScroller } from '../TableScroller';
 import type { FidelityReport, KindProgress, RecordOutcome } from './client';
-import { kindLabel, outcomeLabel, warningExplanation } from './labels';
+import { kindLabel, outcomeLabel, warningExample, warningExplanation } from './labels';
 
 const OUTCOMES = ['created', 'updated', 'unchanged', 'linked', 'failed', 'skipped'] as const;
 
@@ -129,7 +129,9 @@ export function ImportReport({
                   ? t('admin.imports.report.codeDetail', { code: w.code, detail: w.detail })
                   : t('admin.imports.report.code', { code: w.code })}
                 {w.examples.length > 0 &&
-                  ` ${t('admin.imports.report.examples', { examples: w.examples.join(', ') })}`}
+                  ` ${t('admin.imports.report.examples', {
+                    examples: w.examples.map((e) => warningExample(t, w.code, e)).join(', '),
+                  })}`}
               </p>
             </li>
           ))}

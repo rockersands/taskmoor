@@ -34,6 +34,18 @@ the search it links to.
   has the track and release name, the day it shipped (the release date, else the day it was
   shipped) or the planned day, the description, and a section per type; Markdown characters in
   names and summaries are escaped. At most 5,000 tickets; more and the notes say they are cut.
+  Answered on 2026-11-16 (T-283): the Markdown is written in the reader's language, the one the
+  page is shown in (`?locale=`, which the web app sends on the notes it reads and on the Download
+  link), else the language saved on the account, else English; never the browser's
+  `Accept-Language`, as the app never picks a draft catalogue from it. English and Spanish are
+  written (NFR-006), any other language reads as English. The language sets the dating sentence
+  ("Released on" / "Planned for"), the day in words (`Intl`, long, on UTC), and the seeded ticket
+  types' headings (Feature reads Funcionalidad), so what is copied matches what the page shows
+  and T-351's "the Markdown keeps the stored names" no longer holds. Names people gave (a type
+  renamed or added, summaries, the description) and the file's name stay as written; the JSON
+  `sections` keep the stored names for the page to translate. The text lives in
+  `apps/server/src/releases/notes-text.ts`; a web test checks its Spanish type names against the
+  catalogue. A script that needs fixed output passes `?locale=en`.
 - **Who reads**: anyone who may browse the release's track (and site and configuration
   administrators); others get 404. The list of a track's releases now says whether the caller
   may manage them (`mayManage`).

@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
+import { setAccountTimeZone } from '../i18n/zone';
 import { useTimeZone } from '../test/timeZone';
 import { localDay, type Timeline } from './client';
 import { fakeTimelineClient, manyItems } from './fixtures';
@@ -341,6 +342,21 @@ describe('today on the person’s own clock (AGL-015)', () => {
     expect(Number.parseFloat(line.style.left) - Number.parseFloat(bar.style.left)).toBe(
       2 * 28 + 14,
     );
+  });
+
+  it('[AGL-015] draws it through the day of the zone saved on the account, not the device’s (T-280)', () => {
+    // The account says Tokyo, where 02:00 in UTC is already 11:00 on Thursday 5 November.
+    setAccountTimeZone('Asia/Tokyo');
+    try {
+      render(view(fakeTimelineClient().data(), evening));
+      const bar = screen.getByRole('button', { name: 'LCH-2: Nov 2, 2026 to Nov 10, 2026' });
+      const line = document.querySelector('.timeline-today') as HTMLElement;
+      expect(Number.parseFloat(line.style.left) - Number.parseFloat(bar.style.left)).toBe(
+        3 * 28 + 14,
+      );
+    } finally {
+      setAccountTimeZone(null);
+    }
   });
 });
 

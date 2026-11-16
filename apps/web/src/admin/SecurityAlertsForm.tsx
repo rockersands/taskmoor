@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useId, useState } from 'react';
 import { ApiError, api } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { personTimeZone } from '../i18n/zone';
 import { EmptyState } from '../shell/EmptyState';
 
 /** The alert rules the server knows (ADR-109), in the order the form shows them. */
@@ -161,10 +162,14 @@ export function SecurityAlertsForm({
       </p>
     );
   }
+  // On the reader's own clock (T-280), as the rest of the app writes times.
+  const zone = personTimeZone();
   const when = (iso: string) =>
-    new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(
-      new Date(iso),
-    );
+    new Intl.DateTimeFormat(locale, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      ...(zone ? { timeZone: zone } : {}),
+    }).format(new Date(iso));
   const ruleName = (rule: string) =>
     t(
       ((ALERT_RULES as readonly string[]).includes(rule)

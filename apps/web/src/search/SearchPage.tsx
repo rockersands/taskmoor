@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useCsvSeparator } from '../account/csvStyle';
 import type { AiFeatures } from '../ai/AiFeature';
 import type { AiNoticeClient } from '../ai/AiNotice';
 import { AskQuery } from '../ai/AskQuery';
@@ -623,6 +624,8 @@ function ResultList({
   const t = useT();
   const headingId = useId();
   const nameOf = useColumnName(fields);
+  // Commas or semicolons, as the person's spreadsheet opens them (T-263).
+  const separator = useCsvSeparator();
   if (results.status === 'idle') return null;
   const sort = results.status === 'loaded' ? sortOfQuery(results.query) : null;
   return (
@@ -668,7 +671,7 @@ function ResultList({
               <nav className="search-export" aria-label={t('search.export')}>
                 <a
                   className="button-secondary search-export-link"
-                  href={exportUrl(results.query, 'csv', columns)}
+                  href={exportUrl(results.query, 'csv', columns, separator)}
                   download
                 >
                   {t('search.export.csv')}

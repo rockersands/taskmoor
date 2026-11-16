@@ -246,6 +246,22 @@ test('[IAM-027] a manager invites a new person, who lands in that track with tha
   await emailOnly.getByRole('button', { name: 'Cancel' }).click();
   await page.unroute(`**/api/v1/tracks/${made.track.id}/invitations`);
 
+  // Withdrawing kills the emailed link: it asks first (D13, T-267), in words that never tell
+  // whether the address has an account, with the focus on Cancel.
+  await page.reload();
+  await page.getByRole('button', { name: `Withdraw the invitation to ${later}` }).click();
+  const withdrawing = page.getByRole('group', {
+    name: `The link sent to ${later} stops working. If this invitation already gave them the role Viewers, they lose it.`,
+  });
+  await expect(withdrawing.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  expect(await noSidewaysScroll(page)).toBe(true);
+  await withdrawing.getByRole('button', { name: `Withdraw the invitation to ${later}` }).click();
+  await expect(
+    page.getByRole('status').filter({ hasText: `The invitation to ${later} was withdrawn.` }),
+  ).toHaveCount(1);
+  await expect(page.getByText('No invitations are waiting.')).toBeVisible();
+
   // In Spanish, whose words run longer, the dialog still fits the screen (ADR-033; T-249), on a
   // phone at the narrowest width supported.
   if (testInfo.project.name === 'mobile') await page.setViewportSize({ width: 360, height: 740 });

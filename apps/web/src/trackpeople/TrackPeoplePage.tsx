@@ -7,6 +7,7 @@ import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import { ownLayoutsHref, ownSetsHref } from '../sets/trackScope';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import { ChecklistNoticesBox } from './ChecklistNoticesBox';
@@ -151,18 +152,20 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
   };
   const refused = (row: Row, error: unknown) =>
     setAnswer({ ...row, text: refusal(error), refused: true });
+  /** Whether it went through: a refusal is said beside the row. */
   const run = async (row: Row, work: () => Promise<unknown>, text: string) => {
     setAnswer(null);
     try {
       await work();
     } catch (error) {
       refused(row, error);
-      return;
+      return false;
     }
     // Said once the page shows the change, so the answer lands where it stays: in the row, or
     // in its place when the change took the row away.
     await load();
     went(row, text);
+    return true;
   };
   /**
    * What the last action did, beside the row it was pressed on, where the person is looking on
@@ -507,20 +510,26 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
                               {t('trackPeople.newLink')}
                             </button>
                           )}
-                          <button
-                            type="button"
-                            className="button-secondary people-action"
-                            aria-label={t('trackPeople.revokeFor', { who: invitation.email })}
-                            onClick={() =>
-                              void run(
+                          {/* The emailed link dies, and a role it gave goes with it: asked
+                              first (D13, T-267), in words that never tell whether the address
+                              has an account. */}
+                          <DangerAction
+                            label={t('trackPeople.revoke')}
+                            name={t('trackPeople.revokeFor', { who: invitation.email })}
+                            outcome={t('trackPeople.revokeOutcome', {
+                              who: invitation.email,
+                              role: invitation.role.name,
+                            })}
+                            confirmLabel={t('trackPeople.revokeFor', { who: invitation.email })}
+                            onConfirm={async () => {
+                              const ok = await run(
                                 row,
                                 () => client.revoke(track.id, invitation.id),
                                 t('trackPeople.revoked', { who: invitation.email }),
-                              )
-                            }
-                          >
-                            {t('trackPeople.revoke')}
-                          </button>
+                              );
+                              if (!ok) throw new Error('refused');
+                            }}
+                          />
                         </div>
                       )}
                       {answerBeside('invitations', row.key)}
