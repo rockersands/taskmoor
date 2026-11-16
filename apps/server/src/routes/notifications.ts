@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
+import { fieldIdOf } from '../authz/visibility';
 import { diff, emit } from '../events/bus';
 import {
   CHANNELS,
@@ -297,10 +298,12 @@ export function registerNotificationRoutes(app: FastifyInstance, db: Kysely<Data
       if (!row) return label;
     }
     if (rule.fieldKey !== undefined) {
+      const fieldId = fieldIdOf(rule.fieldKey);
+      if (fieldId === null) return 'fieldKey';
       const field = await db
         .selectFrom('field')
         .select(['type', 'track_id'])
-        .where('id', '=', Number(/\d+/.exec(rule.fieldKey)?.[0]))
+        .where('id', '=', fieldId)
         .where('workspace_id', '=', ws)
         .executeTakeFirst();
       const wanted = rule.recipient === 'user_field' ? 'user' : 'group';

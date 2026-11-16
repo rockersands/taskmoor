@@ -429,6 +429,17 @@ describe('notification rules (M1-056)', () => {
       },
     });
     expect(bad.statusCode).toBe(400);
+    // An id above the integer range names no field either: refused, not a server error.
+    const huge = await as('admin', {
+      method: 'POST',
+      url: '/api/v1/notification-policies',
+      payload: {
+        name: 'Huge',
+        rules: [{ event: 'ticket_updated', recipient: 'user_field', fieldKey: 'cf[2147483648]' }],
+      },
+    });
+    expect(huge.statusCode, huge.body).toBe(400);
+    expect(huge.json()).toMatchObject({ error: 'invalid_request' });
   });
 
   it('[NTF-001] a policy names what each rule points at, for the web page (T-155)', async () => {

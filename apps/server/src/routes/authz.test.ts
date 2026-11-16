@@ -371,7 +371,8 @@ describe('roles, access policies, global grants and track roles (M1-002)', () =>
     };
     const reviewer = await field('Reviewer', 'user');
     const approvers = await field('Approving group', 'group');
-    for (const fieldKey of ['customfield_10', 'cf[999999]', approvers]) {
+    // An id above the integer range names no field; it is refused, not a server error.
+    for (const fieldKey of ['customfield_10', 'cf[999999]', 'cf[2147483648]', approvers]) {
       const refused = await add({ permission: 'browse_track', grantee: 'user_field', fieldKey });
       expect(refused.statusCode, fieldKey).toBe(400);
       expect(refused.json()).toEqual({ error: 'invalid_request', detail: 'fieldKey' });
