@@ -256,7 +256,8 @@ names they are stored with. Anyone else who opens the page is told only that the
   Standard and Subticket, are never moved or removed.
 - **Up** and **Down** move an added level among the added ones.
 - **Remove level**, on an added level, asks first and says what it would do: which types fall to
-  the standard level and how many tickets change level. While removing it would break a parent
+  the standard level (the page's own types by name, and how many types of tracks with their own
+  configuration go with them) and how many tickets change level. While removing it would break a parent
   link, it is not offered, and the level says how many links would break.
 - **New ticket type** adds a type with a **Ticket type name**, a **Description**, its **Level**
   and an **Icon**: one of the seven shapes (Outcome, Feature, Bug, Chore, To-do, Idea and

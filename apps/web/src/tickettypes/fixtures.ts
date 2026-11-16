@@ -28,9 +28,12 @@ const NEW_LEVEL: Level = { id: 0, kind: 'custom', rank: 0, name: '', description
  * three built-in levels with Initiative added above Outcome and Portfolio above that. Three
  * Initiative tickets parent Outcome tickets, so removing Initiative, or moving Portfolio below
  * it, would break those links and is refused. Bug is in a type set; Spike is in none but four
- * tickets have it.
+ * tickets have it. With `localType`, OPS, a local-mode track, has its own type Night shift at
+ * Portfolio, which the shared list leaves out and removing Portfolio moves all the same.
  */
-export function fakeTicketTypesClient(): FakeTicketTypesClient {
+export function fakeTicketTypesClient(
+  options: { localType?: boolean } = {},
+): FakeTicketTypesClient {
   let levels: Level[] = [
     { id: 5, kind: 'custom', rank: 3, name: 'Portfolio', description: '' },
     {
@@ -50,6 +53,8 @@ export function fakeTicketTypesClient(): FakeTicketTypesClient {
     description: string;
     icon: string | null;
     levelId: number;
+    /** A local-mode track's own type, which the shared list leaves out. */
+    trackId?: number;
   }[] = [
     { id: 20, name: 'Initiative', description: '', icon: null, levelId: 4 },
     {
@@ -70,6 +75,9 @@ export function fakeTicketTypesClient(): FakeTicketTypesClient {
     { id: 13, name: 'Chore', description: '', icon: null, levelId: 2 },
     { id: 14, name: 'Spike', description: 'A short study', icon: 'idea', levelId: 2 },
     { id: 15, name: 'Subticket', description: '', icon: null, levelId: 1 },
+    ...(options.localType
+      ? [{ id: 30, name: 'Night shift', description: '', icon: null, levelId: 5, trackId: 4 }]
+      : []),
   ];
   const tickets = new Map<number, number>([
     [20, 3],
@@ -208,7 +216,10 @@ export function fakeTicketTypesClient(): FakeTicketTypesClient {
     calls,
     levels: async () => structuredClone(sorted()),
     ticketTypes: async () =>
-      types.map(view).sort((a, b) => b.level.rank - a.level.rank || a.name.localeCompare(b.name)),
+      types
+        .filter((type) => type.trackId === undefined)
+        .map(view)
+        .sort((a, b) => b.level.rank - a.level.rank || a.name.localeCompare(b.name)),
     impact: async (change) => {
       const { after: _after, ...impact } = impactOf(change);
       return impact;

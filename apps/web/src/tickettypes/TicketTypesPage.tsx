@@ -88,6 +88,8 @@ export function TicketTypesPage({ client = ticketTypesClient }: TicketTypesPageP
   /** Counts the reads, so previews made against an older ladder are made again. */
   const [version, setVersion] = useState(0);
   const [open, setOpen] = useState<number | null>(null);
+  /** A type just put at another level: its Manage button, in its new card, takes the keyboard. */
+  const [movedType, setMovedType] = useState<number | null>(null);
   const [message, setMessage] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const newType = useNewForm();
@@ -242,6 +244,8 @@ export function TicketTypesPage({ client = ticketTypesClient }: TicketTypesPageP
                 types={state.types}
                 open={open}
                 onOpen={setOpen}
+                movedType={movedType}
+                onTypeMoved={setMovedType}
                 version={version}
                 client={client}
                 said={said}
@@ -277,6 +281,8 @@ function LevelCard({
   types,
   open,
   onOpen,
+  movedType,
+  onTypeMoved,
   version,
   client,
   said,
@@ -289,6 +295,9 @@ function LevelCard({
   types: TicketType[];
   open: number | null;
   onOpen: (id: number | null) => void;
+  movedType: number | null;
+  /** A type was put at another level (with the type), or its new row has the keyboard (null). */
+  onTypeMoved: (id: number | null) => void;
   version: number;
   client: TicketTypesClient;
   onTypeDeleted: (name: string) => void;
@@ -298,6 +307,8 @@ function LevelCard({
   const headingId = useId();
   const formId = useId();
   const card = useRef<HTMLElement>(null);
+  const renameButton = useRef<HTMLButtonElement>(null);
+  const movedButton = useRef<HTMLButtonElement>(null);
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(level.name);
   const [description, setDescription] = useState(level.description);
@@ -316,6 +327,15 @@ function LevelCard({
     (wanted && !wanted.disabled ? wanted : other)?.focus();
     setMoved(null);
   }, [moved]);
+
+  // A type put at this level from another: its row here is new, so its Manage button takes the
+  // keyboard, which its old row's Save button had.
+  const arrived = movedType !== null && atLevel.some((type) => type.id === movedType);
+  useEffect(() => {
+    if (!arrived) return;
+    movedButton.current?.focus();
+    onTypeMoved(null);
+  }, [arrived, onTypeMoved]);
 
   const move = (direction: 'up' | 'down') =>
     client.updateLevel(level.id, { rank: level.rank + (direction === 'up' ? 1 : -1) }).then(
@@ -363,6 +383,7 @@ function LevelCard({
             </>
           )}
           <button
+            ref={renameButton}
             type="button"
             className="button-secondary people-action"
             aria-expanded={renaming}
@@ -408,6 +429,8 @@ function LevelCard({
             if (!wanted) return;
             client.updateLevel(level.id, { name: wanted, description }).then(
               (saved) => {
+                // The form goes with the button that had the keyboard: Rename takes it back.
+                renameButton.current?.focus();
                 setRenaming(false);
                 void said(t('admin.ticketTypes.levelSaved', { name: saved.name }));
               },
@@ -463,6 +486,7 @@ function LevelCard({
               </div>
               <div className="people-actions">
                 <button
+                  ref={type.id === movedType ? movedButton : undefined}
                   type="button"
                   className="button-secondary people-action"
                   aria-expanded={open === type.id}
@@ -480,6 +504,7 @@ function LevelCard({
                   client={client}
                   said={said}
                   failed={failed}
+                  onMoved={() => onTypeMoved(type.id)}
                   onDeleted={() => onTypeDeleted(type.name)}
                 />
               )}
@@ -544,6 +569,10 @@ function RemoveLevel({
   const intl = useIntl();
   const known = impact !== null && impact !== 'failed' ? impact : null;
   const standard = levels.find((l) => l.kind === 'standard')?.name ?? '';
+  // The page lists shared types only; a local-mode track's own types at the level fall too.
+  const own = (known?.typesToStandard ?? []).filter(
+    (id) => !types.some((type) => type.id === id),
+  ).length;
   return (
     <DangerAction
       label={t('admin.ticketTypes.removeLevel')}
@@ -552,6 +581,7 @@ function RemoveLevel({
         name: level.name,
         types: types.length,
         names: intl.formatList(types.map((type) => type.name)),
+        own,
         standard,
         known: known ? 'yes' : 'no',
         tickets: known?.ticketsChangingLevel ?? 0,
@@ -807,11 +837,14 @@ function TypePanel({
   client,
   said,
   failed,
+  onMoved,
   onDeleted,
 }: Feedback & {
   type: TicketType;
   levels: Level[];
   client: TicketTypesClient;
+  /** Saved at another level, and the lists read again: the type's row is in another card now. */
+  onMoved: () => void;
   onDeleted: () => void;
 }) {
   const t = useT();
@@ -850,7 +883,10 @@ function TypePanel({
         // Sent only when what the type draws would change: a type with none keeps none.
         if (icon !== shapeOf(type.icon, wanted)) change.icon = icon;
         client.updateType(type.id, change).then(
-          (saved) => void said(t('admin.ticketTypes.typeSaved', { name: saved.name })),
+          (saved) =>
+            void said(t('admin.ticketTypes.typeSaved', { name: saved.name })).then(() => {
+              if (change.levelId !== undefined) onMoved();
+            }),
           (error) => failed(error, 'type', type.name),
         );
       }}

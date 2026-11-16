@@ -117,6 +117,9 @@ describe('ticket types and levels (T-320)', () => {
     await user.click(within(rename).getByRole('button', { name: 'Save the level' }));
     expect(await screen.findByText('The level Everyday was saved.')).toBeInTheDocument();
     expect(await screen.findByRole('heading', { level: 2, name: 'Everyday' })).toBeVisible();
+    // The form is gone with its Save button: Rename has the keyboard again.
+    expect(screen.queryByRole('form', { name: /^Rename level/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Rename level Everyday' })).toHaveFocus();
 
     // A level added on top moves down below Portfolio and back.
     await user.click(screen.getByRole('button', { name: 'New level' }));
@@ -196,6 +199,39 @@ describe('ticket types and levels (T-320)', () => {
     ).toBeVisible();
   });
 
+  it('[CORE-007] removing a level says a local-mode track’s own types at it fall too', async () => {
+    const user = userEvent.setup();
+    renderPage({ client: fakeTicketTypesClient({ localType: true }) });
+    // No shared type sits at Portfolio, but OPS's own type does.
+    const remove = await within(
+      await screen.findByRole('region', { name: 'Portfolio' }),
+    ).findByRole('button', { name: 'Remove level Portfolio' });
+    await expect.poll(() => remove.hasAttribute('disabled')).toBe(false);
+    await user.click(remove);
+    expect(
+      screen.getByRole('group', {
+        name: 'Remove Portfolio? 1 ticket type of a track with its own configuration falls to the Standard level. No ticket changes level. This cannot be undone.',
+      }),
+    ).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    // With a shared type there too, both are said.
+    await user.click(screen.getByRole('button', { name: 'New ticket type' }));
+    const add = screen.getByRole('form', { name: 'Add a ticket type' });
+    await user.type(within(add).getByLabelText('Ticket type name'), 'Theme');
+    await user.selectOptions(within(add).getByLabelText('Level'), 'Portfolio');
+    await user.click(within(add).getByRole('button', { name: 'Add a ticket type' }));
+    await within(card('Portfolio')).findByRole('button', { name: 'Manage ticket type Theme' });
+    const again = within(card('Portfolio')).getByRole('button', { name: 'Remove level Portfolio' });
+    await expect.poll(() => again.hasAttribute('disabled')).toBe(false);
+    await user.click(again);
+    expect(
+      screen.getByRole('group', {
+        name: 'Remove Portfolio? Its type, Theme, falls to the Standard level, as does 1 ticket type of a track with its own configuration. No ticket changes level. This cannot be undone.',
+      }),
+    ).toBeVisible();
+  });
+
   it('[CORE-005] adds a ticket type with a level and an icon, changes it and deletes it', async () => {
     const user = userEvent.setup();
     const client = renderPage();
@@ -221,8 +257,13 @@ describe('ticket types and levels (T-320)', () => {
     await user.type(name, 'Study');
     await user.click(within(panel).getByRole('button', { name: 'Save the type' }));
     expect(await screen.findByText('Study was saved.')).toBeInTheDocument();
-    // It now sits at Outcome, still open there.
+    // It now sits at Outcome, still open there, and its Manage button there has the keyboard.
     const moved = await within(card('Outcome')).findByRole('form', { name: 'Settings of Study' });
+    await waitFor(() =>
+      expect(
+        within(card('Outcome')).getByRole('button', { name: 'Manage ticket type Study' }),
+      ).toHaveFocus(),
+    );
     await user.click(within(moved).getByRole('button', { name: 'Delete ticket type Study' }));
     const question = within(moved).getByRole('group', {
       name: 'Delete Study? Nothing can use it afterwards, and this cannot be undone.',
