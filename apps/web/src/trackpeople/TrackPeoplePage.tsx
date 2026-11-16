@@ -1,8 +1,10 @@
 import { type ReactElement, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useAdminTrail } from '../admin/AdminLayout';
 import { ApiError } from '../api/client';
+import { ownMapHref } from '../configuration/WorkflowMapsPage';
 import { useT } from '../i18n/I18nProvider';
 import { ownPoliciesHref } from '../notifications/NotificationPoliciesPage';
+import { ownVisibilityHref } from '../permissions/VisibilityPage';
 import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
@@ -280,6 +282,12 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
               <a href={routeHref(ownPoliciesHref(track.id))}>
                 {t('trackPeople.notificationsLink')}
               </a>
+            </li>
+            <li>
+              <a href={routeHref(ownMapHref(track.id))}>{t('trackPeople.workflowMapLink')}</a>
+            </li>
+            <li>
+              <a href={routeHref(ownVisibilityHref(track.id))}>{t('trackPeople.visibilityLink')}</a>
             </li>
           </ul>
         </section>

@@ -1,9 +1,23 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { useNotSetupAdmin } from '../admin/access';
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import {
+  ScopeNote,
+  type ScopeTrack,
+  TrackScopeLine,
+  useSetScope,
+  useTrackPageTrail,
+} from '../sets/trackScope';
 import { DangerAction } from '../shell/DangerAction';
 import { PageHeader } from '../shell/PageHeader';
 import {
@@ -12,6 +26,7 @@ import {
   type MapChange,
   type MappingImpact,
   type MappingNeeded,
+  type MapWorkflow,
   type Named,
   type StatusMigration,
   type TypeStatusMapping,
@@ -25,9 +40,32 @@ import {
   StatusMappingPanel,
 } from './StatusMappingPanel';
 
+/** A local-mode track's own workflow map, beside its Manage page (T-322; T-163a's pattern). */
+export const ownMapHref = (trackId: number) => `#/manage/tracks/${trackId}/workflow-map`;
+
 export interface WorkflowMapsPageProps {
   /** Stories and tests pass their own backend; the page calls the API otherwise. */
   client?: ConfigurationClient;
+  /** A local-mode track's own page: the one map it owns (T-322). */
+  trackId?: number | null;
+}
+
+type Translate = ReturnType<typeof useT>;
+
+/** What the page says when the server refuses a change of a map. */
+function mapRefusal(t: Translate, error: unknown): string {
+  if (!(error instanceof ApiError)) return t('admin.maps.problem.other');
+  const body = error.body as { error?: string; statuses?: MappingNeeded[] } | null;
+  if (body?.error === 'status_mapping_required') {
+    const tickets = (body.statuses ?? []).reduce((n, m) => n + m.ticketCount, 0);
+    return t('admin.maps.problem.mapping', { tickets });
+  }
+  if (body?.error === 'status_migration_running') return t('admin.maps.problem.migrating');
+  if (body?.error === 'name_taken') return t('admin.maps.problem.nameTaken');
+  if (body?.error === 'workflow_map_in_use') return t('admin.maps.problem.inUse');
+  if (body?.error === 'track_archived') return t('admin.maps.problem.archived');
+  if (error.status === 403 || error.status === 404) return t('admin.maps.problem.forbidden');
+  return t('admin.maps.problem.other');
 }
 
 /**
@@ -35,21 +73,87 @@ export interface WorkflowMapsPageProps {
  * and the one every other type uses. Shared maps serve any number of shared-mode tracks; the
  * default map serves tracks without one. A change that would leave tickets in statuses their
  * new workflow lacks asks first where they go (T-320).
+ *
+ * A local-mode track owns one map, made with it; on the track's own page (`trackId`; T-322)
+ * whoever runs the track changes it, naming the shared workflows and the track's own, for the
+ * types the track offers. Someone who runs tracks but is no administrator is offered those pages
+ * instead (`sets/trackScope.tsx`).
  */
-export function WorkflowMapsPage({ client = configurationClient }: WorkflowMapsPageProps) {
+export function WorkflowMapsPage({
+  client = configurationClient,
+  trackId = null,
+}: WorkflowMapsPageProps) {
   const t = useT();
-  const expired = useSessionExpiry();
   const titleId = useId();
   const title = useRef<HTMLHeadingElement>(null);
+  const scope = useSetScope(trackId, client);
+  const track = scope.status === 'track' ? scope.track : null;
+  const pageTitle = t(trackId === null ? 'admin.maps.title' : 'admin.maps.trackTitle');
+  useTrackPageTrail(scope, pageTitle);
+  /** The purpose shows only to someone who may be here; only the maps themselves can tell. */
+  const header = (allowed: boolean, actions?: ReactNode) => (
+    <PageHeader
+      titleId={titleId}
+      titleRef={title}
+      title={pageTitle}
+      {...(track ? { eyebrow: t('ownSets.trackName', { key: track.key, name: track.name }) } : {})}
+      {...(allowed
+        ? {
+            purpose: t('settings.workflowMapsHint'),
+            about: t(track ? 'admin.maps.trackAbout' : 'admin.maps.intro'),
+            ...(actions ? { actions } : {}),
+          }
+        : {})}
+    />
+  );
+  return (
+    <section aria-labelledby={titleId} className="page admin-page people-page">
+      {scope.status === 'all' ? (
+        <SharedMaps client={client} header={header} title={title} />
+      ) : track ? (
+        <OwnMap key={track.id} client={client} track={track} header={header} />
+      ) : (
+        <>
+          {header(false)}
+          <ScopeNote
+            scope={scope}
+            hrefOf={ownMapHref}
+            words={{
+              chooseIntro: t('admin.maps.choose.intro'),
+              chooseNone: t('admin.maps.choose.none'),
+              chooseOpen: (run) => t('admin.maps.choose.open', { key: run.key, name: run.name }),
+              shared: (shared) => t('admin.maps.scope.shared', { key: shared.key }),
+              none: t('admin.maps.forbidden'),
+              failed: t('admin.maps.failed'),
+            }}
+          />
+        </>
+      )}
+    </section>
+  );
+}
+
+/** The shared maps, for site and configuration administrators. */
+function SharedMaps({
+  client,
+  header,
+  title,
+}: {
+  client: ConfigurationClient;
+  header: (allowed: boolean, actions?: ReactNode) => ReactNode;
+  /** The page's heading, which takes the focus when a map's row goes. */
+  title: RefObject<HTMLHeadingElement | null>;
+}) {
+  const t = useT();
+  const expired = useSessionExpiry();
   const nameId = useId();
   const workflowId = useId();
-  const notAdmin = useNotSetupAdmin();
   const [state, setState] = useState<
     | { status: 'loading' }
     | { status: 'loaded'; maps: WorkflowMapSummary[] }
     | { status: 'failed' }
     | { status: 'forbidden' }
-  >(notAdmin ? { status: 'forbidden' } : { status: 'loading' });
+  >({ status: 'loading' });
   const [workflows, setWorkflows] = useState<Named[]>([]);
   const [types, setTypes] = useState<Named[]>([]);
   const [open, setOpen] = useState<number | null>(null);
@@ -69,7 +173,6 @@ export function WorkflowMapsPage({ client = configurationClient }: WorkflowMapsP
     }
   }, [client, expired]);
   useEffect(() => {
-    if (notAdmin) return;
     void load();
     void Promise.allSettled([client.workflows(), client.ticketTypes()]).then(([w, ty]) => {
       if (w.status === 'fulfilled') {
@@ -78,182 +181,283 @@ export function WorkflowMapsPage({ client = configurationClient }: WorkflowMapsP
       }
       if (ty.status === 'fulfilled') setTypes(ty.value);
     });
-  }, [load, notAdmin, client]);
+  }, [load, client]);
 
-  const refusal = useCallback(
-    (error: unknown) => {
-      if (!(error instanceof ApiError)) return t('admin.maps.problem.other');
-      const body = error.body as { error?: string; statuses?: MappingNeeded[] } | null;
-      if (body?.error === 'status_mapping_required') {
-        const tickets = (body.statuses ?? []).reduce((n, m) => n + m.ticketCount, 0);
-        return t('admin.maps.problem.mapping', { tickets });
-      }
-      if (body?.error === 'status_migration_running') return t('admin.maps.problem.migrating');
-      if (body?.error === 'name_taken') return t('admin.maps.problem.nameTaken');
-      if (body?.error === 'workflow_map_in_use') return t('admin.maps.problem.inUse');
-      return t('admin.maps.problem.other');
-    },
-    [t],
-  );
+  const refusal = useCallback((error: unknown) => mapRefusal(t, error), [t]);
   const said = (text: string) => {
     setMessage(text);
     setProblem(null);
     void load();
   };
 
-  return (
-    <section aria-labelledby={titleId} className="page admin-page people-page">
-      <PageHeader
-        titleId={titleId}
-        titleRef={title}
-        title={t('admin.maps.title')}
-        {...(state.status === 'forbidden'
-          ? {}
-          : {
-              purpose: t('settings.workflowMapsHint'),
-              about: t('admin.maps.intro'),
-              actions: (
-                <NewButton
-                  label={t('admin.maps.new')}
-                  open={creating.open}
-                  onToggle={creating.toggle}
-                  ref={creating.button}
-                  data-tutorial="workflow-map-new"
-                />
-              ),
-            })}
-      />
-      {state.status === 'forbidden' ? (
+  if (state.status === 'forbidden') {
+    return (
+      <>
+        {header(false)}
         <p className="page-note">{t('admin.maps.forbidden')}</p>
-      ) : (
-        <>
-          {creating.open && (
-            <form
-              className="glass-card people-card people-form"
-              aria-label={t('admin.maps.add')}
-              onSubmit={(event) => {
-                event.preventDefault();
-                const wanted = name.trim();
-                if (!wanted || !defaultWorkflow) return;
-                client
-                  .createWorkflowMap({ name: wanted, defaultWorkflowId: Number(defaultWorkflow) })
-                  .then(
-                    (made) => {
-                      setName('');
-                      creating.close();
-                      said(t('admin.maps.added', { name: made.name }));
-                      setOpen(made.id);
-                    },
-                    (error) => setProblem(refusal(error)),
-                  );
-              }}
-            >
-              <div className="form-field">
-                <label htmlFor={nameId} className="form-label">
-                  {t('admin.maps.name')}
-                </label>
-                <input
-                  id={nameId}
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                />
-              </div>
-              <div className="form-field">
-                <label htmlFor={workflowId} className="form-label">
-                  {t('admin.maps.defaultWorkflow')}
-                </label>
-                <select
-                  id={workflowId}
-                  value={defaultWorkflow}
-                  onChange={(event) => setDefaultWorkflow(event.target.value)}
-                >
-                  {workflows.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-actions">
-                {/* Until the workflows are in, there is no default to give the map (M1-132). */}
-                <button type="submit" className="button-primary" disabled={!defaultWorkflow}>
-                  {t('admin.maps.add')}
-                </button>
-                <button type="button" className="button-secondary" onClick={creating.close}>
-                  {t('admin.maps.cancelNew')}
-                </button>
-              </div>
-            </form>
-          )}
-          <p role="status" className="form-status">
-            {message}
-          </p>
-          {problem && (
-            <p role="alert" className="form-error">
-              {problem}
-            </p>
-          )}
-          {state.status === 'loading' && <p className="page-note">{t('admin.maps.loading')}</p>}
-          {state.status === 'failed' && (
-            <p role="alert" className="form-error">
-              {t('admin.maps.failed')}
-            </p>
-          )}
-          {state.status === 'loaded' && (
-            <ul className="people-list">
-              {state.maps.map((m) => (
-                <li key={m.id} className="people-item people-group">
-                  <div className="people-main">
-                    <p className="people-name">
-                      {m.name}
-                      {m.isDefault && (
-                        <span className="people-badge">{t('admin.maps.default')}</span>
-                      )}
-                    </p>
-                    <p className="people-meta">
-                      {t('admin.maps.summary', {
-                        workflow: m.defaultWorkflow.name,
-                        entries: m.entryCount,
-                        tracks: m.trackCount,
-                      })}
-                    </p>
-                  </div>
-                  <div className="people-actions">
-                    <button
-                      type="button"
-                      className="button-secondary people-action"
-                      aria-expanded={open === m.id}
-                      aria-label={t('admin.maps.manageOf', { name: m.name })}
-                      onClick={() => setOpen(open === m.id ? null : m.id)}
-                    >
-                      {t('admin.maps.manage')}
-                    </button>
-                  </div>
-                  {open === m.id && (
-                    <MapPanel
-                      id={m.id}
-                      client={client}
-                      workflows={workflows}
-                      types={types}
-                      onChanged={said}
-                      onDeleted={(deleted) => {
-                        // The map's row goes: the page's heading takes the focus.
-                        setOpen(null);
-                        said(t('admin.maps.deleted', { name: deleted }));
-                        title.current?.focus();
-                      }}
-                      onProblem={(error) => setProblem(refusal(error))}
-                    />
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
+      </>
+    );
+  }
+  return (
+    <>
+      {header(
+        true,
+        <NewButton
+          label={t('admin.maps.new')}
+          open={creating.open}
+          onToggle={creating.toggle}
+          ref={creating.button}
+          data-tutorial="workflow-map-new"
+        />,
       )}
-    </section>
+      {creating.open && (
+        <form
+          className="glass-card people-card people-form"
+          aria-label={t('admin.maps.add')}
+          onSubmit={(event) => {
+            event.preventDefault();
+            const wanted = name.trim();
+            if (!wanted || !defaultWorkflow) return;
+            client
+              .createWorkflowMap({ name: wanted, defaultWorkflowId: Number(defaultWorkflow) })
+              .then(
+                (made) => {
+                  setName('');
+                  creating.close();
+                  said(t('admin.maps.added', { name: made.name }));
+                  setOpen(made.id);
+                },
+                (error) => setProblem(refusal(error)),
+              );
+          }}
+        >
+          <div className="form-field">
+            <label htmlFor={nameId} className="form-label">
+              {t('admin.maps.name')}
+            </label>
+            <input
+              id={nameId}
+              type="text"
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </div>
+          <div className="form-field">
+            <label htmlFor={workflowId} className="form-label">
+              {t('admin.maps.defaultWorkflow')}
+            </label>
+            <select
+              id={workflowId}
+              value={defaultWorkflow}
+              onChange={(event) => setDefaultWorkflow(event.target.value)}
+            >
+              {workflows.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="form-actions">
+            {/* Until the workflows are in, there is no default to give the map (M1-132). */}
+            <button type="submit" className="button-primary" disabled={!defaultWorkflow}>
+              {t('admin.maps.add')}
+            </button>
+            <button type="button" className="button-secondary" onClick={creating.close}>
+              {t('admin.maps.cancelNew')}
+            </button>
+          </div>
+        </form>
+      )}
+      <p role="status" className="form-status">
+        {message}
+      </p>
+      {problem && (
+        <p role="alert" className="form-error">
+          {problem}
+        </p>
+      )}
+      {state.status === 'loading' && <p className="page-note">{t('admin.maps.loading')}</p>}
+      {state.status === 'failed' && (
+        <p role="alert" className="form-error">
+          {t('admin.maps.failed')}
+        </p>
+      )}
+      {state.status === 'loaded' && (
+        <ul className="people-list">
+          {state.maps.map((m) => (
+            <li key={m.id} className="people-item people-group">
+              <div className="people-main">
+                <p className="people-name">
+                  {m.name}
+                  {m.isDefault && <span className="people-badge">{t('admin.maps.default')}</span>}
+                </p>
+                <p className="people-meta">
+                  {t('admin.maps.summary', {
+                    workflow: m.defaultWorkflow.name,
+                    entries: m.entryCount,
+                    tracks: m.trackCount,
+                  })}
+                </p>
+              </div>
+              <div className="people-actions">
+                <button
+                  type="button"
+                  className="button-secondary people-action"
+                  aria-expanded={open === m.id}
+                  aria-label={t('admin.maps.manageOf', { name: m.name })}
+                  onClick={() => setOpen(open === m.id ? null : m.id)}
+                >
+                  {t('admin.maps.manage')}
+                </button>
+              </div>
+              {open === m.id && (
+                <MapPanel
+                  id={m.id}
+                  client={client}
+                  workflows={workflows}
+                  types={types}
+                  onChanged={said}
+                  onDeleted={(deleted) => {
+                    // The map's row goes: the page's heading takes the focus.
+                    setOpen(null);
+                    said(t('admin.maps.deleted', { name: deleted }));
+                    title.current?.focus();
+                  }}
+                  onProblem={(error) => setProblem(refusal(error))}
+                />
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+/** What a track's own map names, read once with the page. */
+interface OwnLists {
+  mapId: number;
+  mapName: string;
+  workflows: MapWorkflow[];
+  types: Named[];
+}
+
+/**
+ * A local-mode track's own map (T-322): the form of the shared page's Manage, open at once, with
+ * the shared workflows and the track's own, for the types the track offers and those the map
+ * already names. It is made with the track and goes with it, so it is neither added nor deleted.
+ */
+function OwnMap({
+  client,
+  track,
+  header,
+}: {
+  client: ConfigurationClient;
+  track: ScopeTrack;
+  header: (allowed: boolean) => ReactNode;
+}) {
+  const t = useT();
+  const expired = useSessionExpiry();
+  const headingId = useId();
+  const [state, setState] = useState<
+    | { status: 'loading' }
+    | { status: 'loaded'; lists: OwnLists }
+    | { status: 'failed' }
+    | { status: 'forbidden' }
+  >({ status: 'loading' });
+  const [message, setMessage] = useState('');
+  const [problem, setProblem] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    Promise.all([client.trackWorkflowMap(track.id), client.trackWorkflows(track.id)]).then(
+      ([read, workflows]) => {
+        if (!live) return;
+        const types = new Map<number, Named>();
+        for (const { ticketType } of read.ticketTypes) types.set(ticketType.id, ticketType);
+        // A type the map names that the track no longer offers can still be taken out.
+        for (const { ticketType } of read.workflowMap.entries) types.set(ticketType.id, ticketType);
+        setState({
+          status: 'loaded',
+          lists: {
+            mapId: read.workflowMap.id,
+            mapName: read.workflowMap.name,
+            workflows,
+            types: [...types.values()],
+          },
+        });
+      },
+      (error: unknown) => {
+        if (!live || expired(error)) return;
+        const refused = error instanceof ApiError && (error.status === 403 || error.status === 404);
+        setState({ status: refused ? 'forbidden' : 'failed' });
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [client, track, expired]);
+
+  if (state.status === 'forbidden') {
+    return (
+      <>
+        {header(false)}
+        <p className="page-note">{t('ownSets.notYours')}</p>
+      </>
+    );
+  }
+  return (
+    <>
+      {header(true)}
+      <TrackScopeLine track={track} intro={t('admin.maps.trackIntro')} />
+      <p role="status" className="form-status">
+        {message}
+      </p>
+      {problem && (
+        <p role="alert" className="form-error">
+          {problem}
+        </p>
+      )}
+      {state.status === 'loading' && <p className="page-note">{t('admin.maps.loading')}</p>}
+      {state.status === 'failed' && (
+        <p role="alert" className="form-error">
+          {t('admin.maps.trackFailed')}
+        </p>
+      )}
+      {state.status === 'loaded' && (
+        <section aria-labelledby={headingId} className="glass-card admin-panel">
+          <h2 id={headingId} className="section-title">
+            {state.lists.mapName}
+          </h2>
+          <p className="page-note">{t('admin.maps.trackNote', { key: track.key })}</p>
+          <MapPanel
+            id={state.lists.mapId}
+            client={client}
+            // The track's own workflows say so, beside the shared ones of the same name.
+            workflows={state.lists.workflows.map((w) => ({
+              id: w.id,
+              name:
+                w.trackId === track.id
+                  ? t('admin.maps.ownWorkflow', { name: w.name, key: track.key })
+                  : w.name,
+            }))}
+            types={state.lists.types}
+            own
+            onChanged={(text) => {
+              setMessage(text);
+              setProblem(null);
+            }}
+            onProblem={(error) => {
+              if (expired(error)) return;
+              setMessage('');
+              setProblem(mapRefusal(t, error));
+            }}
+          />
+        </section>
+      )}
+    </>
   );
 }
 
@@ -262,6 +466,7 @@ function MapPanel({
   client,
   workflows,
   types,
+  own = false,
   onChanged,
   onDeleted,
   onProblem,
@@ -270,8 +475,11 @@ function MapPanel({
   client: ConfigurationClient;
   workflows: Named[];
   types: Named[];
+  /** A track's own map, on its own page: it serves that track alone and is never deleted. */
+  own?: boolean;
   onChanged: (message: string) => void;
-  onDeleted: (name: string) => void;
+  /** The map is gone; a track's own map has no Delete. */
+  onDeleted?: (name: string) => void;
   onProblem: (error: unknown) => void;
 }) {
   const t = useT();
@@ -471,7 +679,7 @@ function MapPanel({
             </span>
           </div>
         )}
-        {map.tracks.length > 0 && (
+        {!own && map.tracks.length > 0 && (
           <p className="page-note">
             {t('admin.maps.usedBy', { tracks: map.tracks.map((tr) => tr.key).join(', ') })}
           </p>
@@ -481,7 +689,7 @@ function MapPanel({
             {t('admin.maps.save')}
           </button>
           {/* Asks first, saying what will happen (D13); a refusal keeps the question open. */}
-          {!map.isDefault && (
+          {!map.isDefault && map.trackId == null && (
             <DangerAction
               label={t('admin.maps.delete')}
               name={t('admin.maps.deleteOf', { name: map.name })}
@@ -494,7 +702,7 @@ function MapPanel({
                   onProblem(error);
                   throw error;
                 }
-                onDeleted(map.name);
+                onDeleted?.(map.name);
               }}
             />
           )}

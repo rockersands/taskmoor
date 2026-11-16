@@ -32,9 +32,64 @@ describe('the fields a field grantee names (T-320)', () => {
       { key: 'cf[33]', name: 'Shop contact', type: 'user', trackId: 3 },
     ];
     expect(await permissionsClient.fields()).toEqual(expected);
-    expect(await visibilityClient.fields()).toEqual(expected);
+    expect(await visibilityClient.fields(null)).toEqual(expected);
     expect(fieldName(expected as never, 'cf[32]')).toBe('Approving team');
     // A field that is gone keeps its key, the only name left.
     expect(fieldName(expected as never, 'cf[99]')).toBe('cf[99]');
+  });
+});
+
+describe('a local-mode track’s own visibility policies (T-322)', () => {
+  const OPS = {
+    id: 4,
+    key: 'OPS',
+    name: 'Operations',
+    mode: 'local' as const,
+    archived: false,
+    typeSetId: 30,
+    fieldRuleSetId: null,
+    layoutSetId: null,
+  };
+
+  it('[IAM-011] [IAM-030] reads, makes and uses the track’s own policies, with the lists its runners may read', async () => {
+    const calls = stubBackend({
+      'GET /visibility-policies?trackId=4': () => jsonResponse(200, { visibilityPolicies: [] }),
+      'POST /visibility-policies': () => jsonResponse(201, { visibilityPolicy: { id: 9 } }),
+      'PATCH /tracks/4': () => jsonResponse(200, { track: { id: 4 } }),
+      'GET /tracks/4/roles': () =>
+        jsonResponse(200, {
+          roles: [{ id: 7, name: 'Administrators', runsTrack: true, givable: true }],
+        }),
+      'GET /people/mentionable?track=OPS&limit=8&q=ola': () =>
+        jsonResponse(200, { people: [{ id: 9, name: 'Ola Night' }] }),
+      'GET /fields?trackId=4': () =>
+        jsonResponse(200, {
+          fields: [
+            { id: 31, name: 'Reviewer', type: 'user', trackId: null },
+            { id: 44, name: 'On call', type: 'user', trackId: 4 },
+            { id: 45, name: 'Shift', type: 'select', trackId: 4 },
+          ],
+        }),
+      'GET /groups': () => jsonResponse(403, { error: 'forbidden' }),
+    });
+    expect(await visibilityClient.policies(4)).toEqual([]);
+    await visibilityClient.createPolicy({ name: 'Night desk', trackId: 4 });
+    await visibilityClient.chooseFor(4, 9);
+    expect(calls.slice(1, 3)).toEqual([
+      {
+        method: 'POST',
+        path: '/visibility-policies',
+        body: { name: 'Night desk', trackId: 4 },
+      },
+      { method: 'PATCH', path: '/tracks/4', body: { visibilityPolicyId: 9 } },
+    ]);
+    expect(await visibilityClient.roles(OPS)).toEqual([{ id: 7, name: 'Administrators' }]);
+    expect(await visibilityClient.findPeople('ola', OPS)).toEqual([{ id: 9, name: 'Ola Night' }]);
+    expect(await visibilityClient.fields(OPS)).toEqual([
+      { key: 'cf[31]', name: 'Reviewer', type: 'user', trackId: null },
+      { key: 'cf[44]', name: 'On call', type: 'user', trackId: 4 },
+    ]);
+    // Groups are listed for administrators only: someone who runs the track gets none.
+    expect(await visibilityClient.groups()).toEqual([]);
   });
 });

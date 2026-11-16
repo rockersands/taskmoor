@@ -3503,7 +3503,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.maps.title': 'Mapas de flujos',
   'admin.maps.intro':
     'Un mapa de flujos dice qué flujo de trabajo sigue cada tipo de ticket en los tracks que lo usan. Los tipos que no nombra siguen su flujo de trabajo predeterminado.',
-  'admin.maps.forbidden': 'Solo los administradores gestionan los mapas de flujos.',
+  'admin.maps.forbidden':
+    'Solo los administradores del sitio y de la configuración, y quienes llevan un track con configuración propia, gestionan los mapas de flujos.',
   'admin.maps.loading': 'Leyendo los mapas de flujos…',
   'admin.maps.failed': 'No se pudieron leer los mapas de flujos. Inténtalo de nuevo en un momento.',
   'admin.maps.new': 'Nuevo mapa de flujos de trabajo',
@@ -7104,7 +7105,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Un nivel oculta tickets concretos a todos menos a sus miembros. Un track usa una política, que contiene sus niveles.',
   'admin.visibility.about':
     'Para ver un ticket de un nivel hay que ver el track y ser miembro del nivel. También vale para los administradores del sitio. Un ticket sin nivel lo ve todo el que ve su track.',
-  'admin.visibility.forbidden': 'Solo los administradores del sitio usan esta página.',
+  'admin.visibility.forbidden':
+    'Solo los administradores del sitio y de la configuración, y quienes llevan un track con configuración propia, gestionan las políticas de visibilidad.',
   'admin.visibility.loading': 'Leyendo las políticas…',
   'admin.visibility.failed': 'No se pudieron leer las políticas. Inténtalo de nuevo en un momento.',
   'admin.visibility.emptyTitle': 'Aún no hay políticas de visibilidad',
@@ -7170,6 +7172,57 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.visibility.problem.limit':
     'Esto supera un límite. La página de Salvaguardas tiene el límite de niveles.',
   'admin.visibility.problem.other': 'No se pudo hacer. Inténtalo de nuevo en un momento.',
+  // La configuración propia de un track en modo local: su mapa de flujos y sus políticas de
+  // visibilidad, y los administradores de la configuración en Políticas de visibilidad (T-322).
+  'admin.visibility.problem.forbidden':
+    'No puedes cambiar esta política. Solo la cambian quienes llevan su track y los administradores del sitio y de la configuración.',
+  'admin.visibility.trackAbout':
+    'Este track tiene su propia configuración, así que puede tener sus propias políticas de visibilidad: niveles solo para sus tickets. Los demás tracks no se ven afectados.',
+  'admin.visibility.trackIntro':
+    'Las políticas de visibilidad propias de este track. Las compartidas son cosa de los administradores del sitio y de la configuración.',
+  'admin.visibility.trackUsesOwn': '{key} usa {name}.',
+  'admin.visibility.trackUsesShared':
+    '{key} usa ahora una política compartida. Usa una propia para elegir quién ve cuáles de sus tickets.',
+  'admin.visibility.trackUsesNoPolicy':
+    '{key} no usa ahora ninguna política de visibilidad, así que quien lo ve ve todos sus tickets. Usa una propia para dar niveles a sus tickets.',
+  'admin.visibility.ownEmpty':
+    'Añade una con Nueva política de visibilidad, dale niveles y úsala para {key}.',
+  'admin.visibility.useFor': 'Usar esta política para {key}',
+  'admin.visibility.useHint':
+    'Los tickets de un nivel que esta política no tiene toman su nivel predeterminado, o ninguno, así que algunos pueden quedar a la vista de más personas. Solo los administradores del sitio y de la configuración pueden volver a darle al track una política compartida, o ninguna.',
+  'admin.visibility.usedFor': '{key} usa ahora {name}.',
+  'admin.visibility.choose.intro':
+    'Llevas estos tracks con configuración propia. Elige uno para gestionar sus propias políticas de visibilidad.',
+  'admin.visibility.choose.none':
+    'Ninguno de los tracks que llevas tiene configuración propia. Usan políticas de visibilidad compartidas, que cambian los administradores del sitio y de la configuración.',
+  'admin.visibility.choose.open': 'Políticas de visibilidad de {key} · {name}',
+  'admin.visibility.scope.shared':
+    '{key} usa configuración compartida, así que usa una política de visibilidad compartida, o ninguna, que eligen los administradores del sitio y de la configuración.',
+  'admin.maps.trackTitle': 'Mapa de flujos',
+  'admin.maps.trackAbout':
+    'Este track tiene su propia configuración, así que tiene su propio mapa de flujos: qué flujo de trabajo sigue cada uno de sus tipos de ticket, también sus flujos propios. Los demás tracks no se ven afectados.',
+  'admin.maps.trackIntro':
+    'El mapa de flujos propio de este track, creado con él. Los mapas compartidos son cosa de los administradores del sitio y de la configuración.',
+  'admin.maps.trackNote':
+    'Qué flujo de trabajo sigue cada tipo de ticket que ofrece {key}. Un tipo que el mapa no nombra sigue el flujo de trabajo para todos los demás tipos.',
+  'admin.maps.trackFailed':
+    'No se pudo leer el mapa de flujos del track. Inténtalo de nuevo en un momento.',
+  'admin.maps.ownWorkflow': '{name} (propio de {key})',
+  'admin.maps.choose.intro':
+    'Llevas estos tracks con configuración propia. Elige uno para cambiar su propio mapa de flujos.',
+  'admin.maps.choose.none':
+    'Ninguno de los tracks que llevas tiene configuración propia. Usan mapas de flujos compartidos, que cambian los administradores del sitio y de la configuración.',
+  'admin.maps.choose.open': 'Mapa de flujos de {key} · {name}',
+  'admin.maps.scope.shared':
+    '{key} usa configuración compartida, así que sigue un mapa de flujos compartido, que eligen y cambian los administradores del sitio y de la configuración.',
+  'admin.maps.problem.archived':
+    'El track está archivado, así que su mapa solo se puede cambiar cuando se restaure.',
+  'admin.maps.problem.forbidden':
+    'No puedes cambiar este mapa. Solo lo cambian quienes llevan su track y los administradores del sitio y de la configuración.',
+  'trackPeople.workflowMapLink':
+    'Mapa de flujos: qué flujo de trabajo sigue cada uno de sus tipos de ticket',
+  'trackPeople.visibilityLink':
+    'Políticas de visibilidad: cuáles de sus tickets solo ven algunas personas',
   'admin.explain.title': 'Explicador de permisos',
   'admin.explain.about':
     'Elige una persona y luego un track o un ticket y un permiso. La respuesta dice sí o no y nombra lo que lo decidió: un rol en el track, un grupo, un permiso global o un nivel de visibilidad. Solo lee; aquí no cambia nada.',

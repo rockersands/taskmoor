@@ -12,6 +12,7 @@ import { NotificationPoliciesPage } from '../notifications/NotificationPoliciesP
 import { fakePoliciesClient } from '../notifications/policiesFixtures';
 import { PermissionExplainerPage } from '../permissions/PermissionExplainerPage';
 import { VisibilityPage } from '../permissions/VisibilityPage';
+import { fakeVisibilityClient } from '../permissions/visibilityFixtures';
 import { fakePrioritiesClient } from '../priorities/fixtures';
 import { PrioritiesPage } from '../priorities/PrioritiesPage';
 import { SessionProvider } from '../session/SessionProvider';
@@ -60,7 +61,11 @@ describe('a page someone may not use says only so (T-144)', () => {
     ['Webhooks', <WebhooksPage key="w" />, /^Only site administrators/],
     ['AI limits and prices', <AiLimitsPage key="a" />, /^Only site administrators manage AI/],
     ['MCP server', <McpPage key="m" client={mcp()} />, /^Only site administrators change the MCP/],
-    ['Visibility policies', <VisibilityPage key="v" />, /^Only site administrators use this page/],
+    [
+      'Visibility policies',
+      <VisibilityPage key="v" client={fakeVisibilityClient()} />,
+      /^Only site and configuration administrators, and the people who run a track/,
+    ],
     [
       'Permission explainer',
       <PermissionExplainerPage key="e" />,
@@ -119,6 +124,12 @@ describe('a page someone may not use says only so (T-144)', () => {
   it('[NFR-005] a configuration administrator still manages fields (T-320)', async () => {
     open(<FieldsAdminPage client={fakeFieldsClient()} />, CONFIG_ADMIN);
     expect(await screen.findByRole('button', { name: 'Manage field Severity' })).toBeVisible();
+  });
+
+  it('[NFR-005] a configuration administrator manages visibility policies, as the server lets them (T-322)', async () => {
+    const container = open(<VisibilityPage client={fakeVisibilityClient()} />, CONFIG_ADMIN);
+    expect(await screen.findByRole('region', { name: 'Company levels' })).toBeVisible();
+    expect(container.querySelector('.page-purpose')).not.toBeNull();
   });
 
   it('[NFR-005] a configuration administrator still sees what Priorities is for', async () => {
