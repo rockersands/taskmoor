@@ -1287,7 +1287,8 @@ export const messagesEs: Record<MessageId, string> = {
   'account.name': 'Nombre',
   'account.timeZone': 'Zona horaria',
   'account.timeZoneAutomatic': 'Automática',
-  'account.timeZoneHint': 'Automática sigue la zona horaria del dispositivo que estás usando.',
+  'account.timeZoneHint':
+    'Automática sigue el dispositivo que estás usando. Una zona elegida aquí fija tus días y horas en todos tus dispositivos.',
   'account.locale': 'Idioma y región',
   'account.localeAutomatic': 'Automático',
   'account.localeHint': 'Automático sigue la configuración de idioma de tu navegador.',

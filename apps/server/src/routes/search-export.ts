@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { requireUser } from '../auth';
 import type { FieldCatalogs } from '../fields/catalog';
 import { plainText } from '../fields/types';
+import { viewerDay } from '../reports/zone';
 import type { Cursor } from '../search/compile';
 import { DEFAULT_QUERY_TIMEOUT_MS, prepareSearch, readOnly } from '../search/run';
 import { countBulkExport } from '../security/alerts';
@@ -277,7 +278,8 @@ export async function sendTicketExport(
     if (buffer) yield buffer;
   }
 
-  const day = new Date().toISOString().slice(0, 10);
+  // The file is named after the day it is on the person's own clock (T-280).
+  const day = viewerDay(request);
   return reply
     .header('content-type', format === 'csv' ? CSV_CONTENT_TYPE : 'application/json; charset=utf-8')
     .header('content-disposition', `attachment; filename="${file}-${day}.${format}"`)

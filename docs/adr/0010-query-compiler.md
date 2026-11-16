@@ -300,7 +300,8 @@ index on side rows until M1-040), and capped counts. Run `pnpm gen --items 10000
   service tracks: M2) resolve too, as fields of those modules do (M1-036), and the binder
   names the module. The M0 spike compiler refuses call values.
 - **Dates on the person's clock (QRY-006):** absolute dates and the date functions are read in
-  the person's time zone (`app_user.time_zone`; UTC when unset or unknown to the platform), by
+  the person's time zone (`app_user.time_zone`, else, since T-280, the device's zone the web app
+  sends for a request, else UTC; see "One clock per person" below), by
   calendar arithmetic over `Intl` (`packages/query/src/dates.ts`). A date field compares with
   the person's calendar date. Weeks start on Sunday and end on Saturday (spec 01b 1.4; M1-036
   started them on Monday); the resolver takes another first day (`weekStart`), but the site
@@ -590,3 +591,42 @@ contract, reviewed on every change.
 - The Team field (custom type `team`) is read from `v_option` like group fields: names (any
   case) or ids, lists, emptiness and the history operators; it orders by the team's name
   (`teamName`).
+
+## One clock per person (T-280; answered on 2026-11-16)
+
+The user's decision: each person has one time zone, the one saved on their account, or with
+Automatic the zone of the device they are using. Every "today", every day boundary and every time
+of day for that person uses it, in the web app and on the server. Before this there were three
+clocks: the web app's days on the device's clock, the server's reports on the device's header
+before the account, and the query language on the account's zone else UTC, so a person in New
+York at 21:00 on Automatic saw today on the timeline while the plan Summary counted tickets due
+today as overdue and `startOfDay()` already meant tomorrow.
+
+As built:
+
+- **The server's order** (`apps/server/src/reports/zone.ts`, `viewerTimeZone`): a zone the
+  request names (`?timeZone=`), then the account's zone, then the device's zone the app sends in
+  the `taskmoor-time-zone` header, then UTC. The account comes before the header so the rule
+  holds for a client that sends only its device's zone; an API caller with neither gets UTC, as
+  before. `viewerDay` is today on that clock.
+- **The query language** (`searchPerson`, `/search/check`) reads its dates on `viewerTimeZone`,
+  so search, boards, plans (the Summary's overdue count), dashboard filters, bulk changes, exports,
+  the AI query helper and the track summary agree with the person's screens. No cache holds
+  query results per person, so a zone that depends on the request is safe.
+- **Days the server picks for a person** use `viewerDay`: the first day of a plan's periods for
+  a run or the capacity view with no `from`, a new program board's first day, a plan grid's
+  formula `today`, a template's `{date}` and its days in N days, and the dates in the names of a
+  ticket export and a workspace export. A new saved-search subscription with no zone takes
+  `viewerTimeZone` and keeps it.
+- **The web app** (`apps/web/src/i18n/zone.ts`): the session sets the account's zone as soon as
+  it knows the person; `localDay` (every "today" of the app), the date the slash menu offers, the
+  snooze's nine o'clock, date-and-time inputs (`tickets/form.ts`, `tickets/templates/start.ts`)
+  and pasted screenshots' names read it, and `I18nProvider` passes it to `IntlProvider` as the
+  default `timeZone`, so every time shown is on it. Requests carry it in the header, and the
+  release-notes download, which cannot send a header, carries it in `?timeZone=`. Calendar days
+  were already formatted on UTC (T-240), so they do not move.
+- **Not changed:** work with no device behind it (digests, quiet hours, subscription emails) for
+  an Automatic account stays on UTC; remembering the device's zone for it needs a column and is
+  follow-up T-319. The audit log's download name and a personal-data export's name stay on UTC:
+  the audit page counts its days in UTC, and the export is named after the day it was made, for
+  whoever downloads it. AI usage periods are counted in UTC by the server, and the page says so.

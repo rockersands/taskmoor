@@ -1250,7 +1250,8 @@ export const messagesEn = {
   'account.name': 'Name',
   'account.timeZone': 'Time zone',
   'account.timeZoneAutomatic': 'Automatic',
-  'account.timeZoneHint': 'Automatic follows the time zone of the device you are using.',
+  'account.timeZoneHint':
+    'Automatic follows the device you are using. A zone picked here sets your days and times on every device.',
   'account.locale': 'Language and region',
   'account.localeAutomatic': 'Automatic',
   'account.localeHint': 'Automatic follows the language setting of your browser.',

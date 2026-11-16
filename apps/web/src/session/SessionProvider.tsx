@@ -1,5 +1,6 @@
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
 import { ApiError, api } from '../api/client';
+import { setAccountTimeZone } from '../i18n/zone';
 import { applyAppearance, toAppearance } from '../skins/skins';
 import { oauthClient } from './oauth';
 
@@ -103,6 +104,16 @@ export function SessionProvider({
     if (fixed || !oauthClient) return;
     return oauthClient.onSignedOut(() => setSession({ status: 'anonymous' }));
   }, [fixed]);
+
+  // The person's clock is their account's zone, else the device's (T-280). It is set while this
+  // draws, before the pages below read their "today", so their first drawing is already on it,
+  // and put back to the device's when this provider goes.
+  const timeZone = session.status === 'signed-in' ? session.user.timeZone : null;
+  setAccountTimeZone(timeZone);
+  useEffect(() => {
+    setAccountTimeZone(timeZone);
+    return () => setAccountTimeZone(null);
+  }, [timeZone]);
 
   // The account's appearance wins wherever the person signs in (M1-122, ADR-036); signed out,
   // the browser keeps what it last showed.

@@ -364,7 +364,7 @@ there while a template is being changed. It asks for:
 | **Name** | Required; unique among the templates of that track, or among those for every track, ignoring case |
 | **What it is for** | Shown beside the template when someone chooses it |
 | **Ticket types it fits** | The types that offer it; none means every type |
-| **Summary** | A pattern: `{date}` becomes today in the person's time zone, `{track}` the track's key, `{user}` the person's name |
+| **Summary** | A pattern: `{date}` becomes today on the person's clock (the time zone saved in their account, else their device's), `{track}` the track's key, `{user}` the person's name |
 | **Description** | An outline in rich text |
 | **Priority**, **Labels** | Default values |
 | **Start date** and **Due date**, **in days from today** | Counted from the day the ticket is made; negative numbers count back |

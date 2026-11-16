@@ -769,7 +769,7 @@ column beside the total, which is why the column's header says **Total of rows b
 A **formula column** computes a value for each ticket row, as a formula field would, except that
 `children` means the row's child rows in the Grid, whichever step put them there:
 `sum(children.{Points})` adds their own values and `count(children)` counts them. `today` is your
-day, in your time zone, and working days follow the time tracking setting. Group rows and the last
+day, on [your clock](account.md#your-time-zone), and working days follow the time tracking setting. Group rows and the last
 row show nothing in a formula column. `sum(children.{Points})` equals the Sum total of Points only
 where no child row has rows of its own: the formula reads each child's own value, the total each
 child's total.
@@ -994,7 +994,7 @@ everyone: **No releases**, **Upcoming**, **Ready to ship** (it has tickets and n
 **Overdue** (its date has passed and not all have shipped) or **Shipped** (all have). An archived
 release, or a release of an archived track, stops counting towards it, and a track in the trash
 drops out for everyone until it is restored. Its date, and each linked release's, has passed once
-it has gone by on your device's clock: it turns overdue at your own midnight, on its page, in the
+it has gone by on [your clock](account.md#your-time-zone): it turns overdue at your own midnight, on its page, in the
 list and on a plan's **Releases** tab, as a track's own releases do.
 
 **Nothing ships by itself.** **Ready to ship** is an announcement: each track's administrators still
