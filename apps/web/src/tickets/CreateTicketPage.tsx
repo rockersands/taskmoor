@@ -8,6 +8,7 @@ import { ApiError, api } from '../api/client';
 import { everyTrack } from '../api/tracks';
 import { useT } from '../i18n/I18nProvider';
 import { lockOfField, useLockText } from '../locks/useLockText';
+import { type EditorTools, EditorToolsProvider } from '../richtext/EditorTools';
 import { type MentionSource, mentionSource } from '../richtext/mentions';
 import { RichTextEditor } from '../richtext/RichTextEditor';
 import { routeHref } from '../routing/router';
@@ -553,6 +554,18 @@ export function CreateTicketPage({
     () => (track === '' ? undefined : client.mentions?.(track)),
     [client, track],
   );
+  // What the rich text fields' blocks reach: another ticket, through search (NTF-013, T-120).
+  // A ticket's files need the ticket, which does not exist yet.
+  const editorTools = useMemo<EditorTools>(() => {
+    const search = client.tickets;
+    if (!search) return {};
+    return {
+      tickets: (typed) => {
+        const query = pickerQuery(typed);
+        return query ? search(query) : Promise.resolve([]);
+      },
+    };
+  }, [client]);
   const clearForm = () => {
     setValues({});
     setPicks({});
@@ -669,17 +682,19 @@ export function CreateTicketPage({
     const type = custom?.type ?? field.key;
     if (RICH_TYPES.has(type)) {
       return (
-        <RichTextEditor
-          key={`${formKey}:${field.key}`}
-          labelledBy={`${id}-label`}
-          describedBy={described || undefined}
-          required={field.required}
-          invalid={Boolean(errors[field.key])}
-          editable={!locked}
-          initial={seed[field.key] ?? null}
-          onChange={(doc) => setDocs((d) => ({ ...d, [field.key]: doc }))}
-          mentions={mentions}
-        />
+        <EditorToolsProvider value={editorTools}>
+          <RichTextEditor
+            key={`${formKey}:${field.key}`}
+            labelledBy={`${id}-label`}
+            describedBy={described || undefined}
+            required={field.required}
+            invalid={Boolean(errors[field.key])}
+            editable={!locked}
+            initial={seed[field.key] ?? null}
+            onChange={(doc) => setDocs((d) => ({ ...d, [field.key]: doc }))}
+            mentions={mentions}
+          />
+        </EditorToolsProvider>
       );
     }
     if (type === 'startDate' || type === 'dueDate' || type === 'date') {

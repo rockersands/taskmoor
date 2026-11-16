@@ -1,12 +1,12 @@
 import { DIGEST_LENGTH, isAttachmentDigest, type PmJson } from '@taskmoor/richtext';
 import type { Editor } from '@tiptap/core';
-import { type KeyboardEvent, useEffect, useId, useRef, useState } from 'react';
+import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { formatSize } from '../attachments/format';
 import { useT } from '../i18n/I18nProvider';
 import { personDay } from '../i18n/zone';
 import { TicketPicker } from '../tickets/tools/TicketPicker';
-import { type EditorAttachment, useEditorTools } from './EditorTools';
+import { type EditorAttachment, type EditorUploader, useEditorTools } from './EditorTools';
 import {
   type BlockPromptKind,
   CODE_LANGUAGES,
@@ -370,6 +370,7 @@ function FilterList<T>({
   onPick,
   onCancel,
   empty,
+  more,
 }: {
   label: string;
   items: readonly T[];
@@ -378,6 +379,8 @@ function FilterList<T>({
   onPick: (item: T) => void;
   onCancel: () => void;
   empty: string;
+  /** Other controls, after the field and above the list. */
+  more?: ReactNode;
 }) {
   const id = useId();
   const listId = useId();
@@ -424,6 +427,7 @@ function FilterList<T>({
         }}
         onKeyDown={onKey}
       />
+      {more}
       <Cancel onCancel={onCancel} />
       <div id={listId} role="listbox" aria-label={label} className="rt-prompt-list">
         {shown.map((item, i) => (
@@ -471,22 +475,102 @@ const digestOf = (file: EditorAttachment): string | null => {
 };
 
 /**
+ * A file chosen here goes to the ticket's attachments through the Attachments panel's own upload
+ * (T-120): its size limit, quotas and locks, and its list, where the file then shows. While it is
+ * sent a line says so; what went wrong is said here, and the prompt stays open.
+ */
+function UploadFile({
+  uploader,
+  onUploaded,
+}: {
+  uploader: EditorUploader;
+  onUploaded: (file: EditorAttachment) => void;
+}) {
+  const t = useT();
+  const hintId = useId();
+  const [sending, setSending] = useState<string | null>(null);
+  const [problems, setProblems] = useState<string[]>([]);
+  const live = useRef(true);
+  useEffect(
+    () => () => {
+      live.current = false;
+    },
+    [],
+  );
+  const send = async (file: File) => {
+    setSending(file.name);
+    setProblems([]);
+    let outcome: Awaited<ReturnType<EditorUploader['upload']>>;
+    try {
+      outcome = await uploader.upload(file);
+    } catch {
+      outcome = { file: null, problems: [t('attachments.uploadFailed', { name: file.name })] };
+    }
+    if (!live.current) return;
+    setSending(null);
+    if (outcome.file) onUploaded(outcome.file);
+    else setProblems(outcome.problems);
+  };
+  return (
+    <>
+      <label className="button-secondary rt-prompt-choose">
+        {t('richtext.prompt.upload')}
+        <input
+          type="file"
+          className="visually-hidden"
+          aria-describedby={uploader.limit ? hintId : undefined}
+          disabled={sending !== null}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = '';
+            if (file) void send(file);
+          }}
+        />
+      </label>
+      {uploader.limit && (
+        <p id={hintId} className="form-hint rt-prompt-note">
+          {t('richtext.prompt.uploadHint', { limit: uploader.limit })}
+        </p>
+      )}
+      <p role="status" className="form-status rt-prompt-note">
+        {sending === null ? '' : t('richtext.prompt.uploading', { name: sending })}
+      </p>
+      {problems.length > 0 && (
+        <div role="alert" className="form-error rt-prompt-note">
+          {problems.map((problem) => (
+            <p key={problem}>{problem}</p>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
  * One of the ticket's files (NTF-014). A reference holds the file's name and the first digits of
  * its SHA-256, so two files of one name are two choices (TT-4): each says its size, when it came
- * and who added it, and the reference shows the one picked.
+ * and who added it, and the reference shows the one picked. Where the person may add files, one
+ * can be uploaded here and goes in at once (T-120).
  */
 function AttachmentPrompt({ onInsert, onCancel }: PartProps) {
   const t = useT();
   const intl = useIntl();
   const tools = useEditorTools();
   const [files, setFiles] = useState<EditorAttachment[] | null>(null);
+  // Whether a file can be added is read when the list is, as the prompt opens.
+  const [uploader, setUploader] = useState<EditorUploader | null>(null);
   useEffect(() => {
     let live = true;
-    tools.attachments?.(true).then(
+    const ready = () => {
+      if (live) setUploader(tools.uploader?.() ?? null);
+    };
+    (tools.attachments?.(true) ?? Promise.resolve([])).then(
       (list) => {
+        ready();
         if (live) setFiles(list);
       },
       () => {
+        ready();
         if (live) setFiles([]);
       },
     );
@@ -495,6 +579,11 @@ function AttachmentPrompt({ onInsert, onCancel }: PartProps) {
     };
   }, [tools]);
   if (files === null) return <p role="status">{t('richtext.prompt.loading')}</p>;
+  const reference = (file: EditorAttachment) =>
+    onInsert({
+      type: 'attachmentRef',
+      attrs: { name: file.name, image: file.image, digest: digestOf(file) },
+    });
   const sameName = (file: EditorAttachment) => files.filter((f) => f.name === file.name);
   /** A name alone, or with what tells it from another file of that name. */
   const name = (file: EditorAttachment) => {
@@ -523,13 +612,9 @@ function AttachmentPrompt({ onInsert, onCancel }: PartProps) {
       name={name}
       keyOf={(file) => file.href}
       empty={t('richtext.prompt.noFiles')}
-      onPick={(file) =>
-        onInsert({
-          type: 'attachmentRef',
-          attrs: { name: file.name, image: file.image, digest: digestOf(file) },
-        })
-      }
+      onPick={reference}
       onCancel={onCancel}
+      more={uploader && <UploadFile uploader={uploader} onUploaded={reference} />}
     />
   );
 }

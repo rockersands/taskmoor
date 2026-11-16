@@ -17,7 +17,7 @@ import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { AttachmentPreview, previewable } from './AttachmentPreview';
 import { type Attachment, type AttachmentClient, attachmentClient } from './client';
-import { useFileDropArea } from './FileDrop';
+import { type AttachResult, useFileDropArea } from './FileDrop';
 import { formatSize } from './format';
 import { MediaImage } from './media';
 
@@ -64,7 +64,8 @@ function FileGlyph() {
  * them into it; each is checked against the size limit before it is sent. Built to sit in the
  * ticket view (M1-051); a list of cards, so phones never scroll sideways. In the ticket view a
  * drop anywhere on the ticket arrives here (T-162, `FileDrop.tsx`): the panel tells the ticket
- * what a drop does, and comes into view to show the files arriving.
+ * what a drop does, and comes into view to show the files arriving. A file uploaded from the
+ * ticket's text editor comes through the same way (T-120), so it is checked and listed here too.
  */
 export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps) {
   const t = useT();
@@ -101,8 +102,14 @@ export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps)
   const size = (bytes: number) => formatSize(t, intl, bytes);
   const loaded = state.status === 'loaded' ? state : null;
 
-  const upload = async (files: File[]) => {
-    if (!loaded || files.length === 0) return;
+  /**
+   * Checks the files against the limit and sends each; what was added, and what went wrong. A
+   * `quiet` upload (from the ticket's editor, T-120) only lists what arrived: its sender says how
+   * it went.
+   */
+  const upload = async (files: File[], quiet = false): Promise<AttachResult> => {
+    if (!loaded) return { added: [], problems: [t('attachments.loading')] };
+    if (files.length === 0) return { added: [], problems: [] };
     const problems: string[] = [];
     const accepted = files.filter((file) => {
       if (file.size <= loaded.maxFileSize) return true;
@@ -111,15 +118,17 @@ export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps)
       );
       return false;
     });
-    setErrors(problems);
-    setMessage('');
-    if (accepted.length === 0) return;
-    setUploading(accepted.length);
-    const done: string[] = [];
+    if (!quiet) {
+      setErrors(problems);
+      setMessage('');
+    }
+    if (accepted.length === 0) return { added: [], problems };
+    if (!quiet) setUploading(accepted.length);
+    const done: Attachment[] = [];
     for (const file of accepted) {
       try {
         const added = await client.upload(file);
-        done.push(added.name);
+        done.push(added);
         setState((s) =>
           s.status === 'loaded' ? { ...s, attachments: [...s.attachments, added] } : s,
         );
@@ -149,12 +158,15 @@ export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps)
                 ? t('attachments.forbidden')
                 : t('attachments.uploadFailed', { name: file.name }),
         );
-        setErrors([...problems]);
+        if (!quiet) setErrors([...problems]);
       } finally {
-        setUploading((n) => Math.max(0, n - 1));
+        if (!quiet) setUploading((n) => Math.max(0, n - 1));
       }
     }
-    setMessage(done.map((name) => t('attachments.uploaded', { name })).join(' '));
+    if (!quiet) {
+      setMessage(done.map((a) => t('attachments.uploaded', { name: a.name })).join(' '));
+    }
+    return { added: done, problems };
   };
 
   // What a drop anywhere on the ticket does: these files, sent as chosen ones, in view.
@@ -179,9 +191,10 @@ export function AttachmentPanel({ ticket, client: given }: AttachmentPanelProps)
       ready: refusal === null,
       refusal,
       limit,
-      attach: (files) => {
-        panel.current?.scrollIntoView?.({ block: 'nearest' });
-        void latest.current(files);
+      attach: (files, options) => {
+        const quiet = options?.quiet ?? false;
+        if (!quiet) panel.current?.scrollIntoView?.({ block: 'nearest' });
+        return latest.current(files, quiet);
       },
     });
   }, [area, refusal, limit]);

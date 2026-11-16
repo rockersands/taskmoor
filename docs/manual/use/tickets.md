@@ -293,9 +293,17 @@ Escape closes it and leaves what you typed. It offers:
 | Text | Paragraph, headings 1 to 6, quote |
 | Lists | Bulleted, numbered, checklist |
 | Panels | Information, note, warning, success, error |
-| Layout | Collapsible section, two or three columns, table, divider |
+| Layout | Collapsible section, two or three columns, table, divider; inside a table, its edits |
 | In a line | Link, mention, another ticket, emoji, date, status label |
-| Other | Code block with a language, a file of this ticket |
+| Other | Code block with a language, a file of this ticket, picked or uploaded |
+
+On the create form and in a ticket template, the menu finds another ticket too, but offers no
+file: a file belongs to a ticket, and there is none yet.
+
+With the caret in a table, the menu offers that table's edits in place of a new table: **Add a row
+below**, **Add a column to the right**, **Delete this row**, **Delete this column** and **Delete the
+table**, the same as the buttons the toolbar shows there. A table's last row or column goes only
+with the table, so the menu leaves it out and the toolbar's button for it is off.
 
 A block that needs something asks for it above the text, such as a code block's language or a
 status label's words and colour. A code block's language is one word, such as `sql`; a list of
@@ -317,9 +325,12 @@ Columns are equal unless you give them widths: with the caret in a column, `/wid
 **Column widths**, such as a quarter and three quarters, for all of them at once. Columns stack on
 a phone. A file is found by its name among the ticket's attachments and opens for whoever may see
 it. When two files share a name, the list says each one's size, when it came and who added it, and
-the text keeps the one you picked. A ticket shows only its key, so a document never gives away the
-summary of a ticket someone may not see. Every block can be written in Markdown and in
-[wiki markup](../admin/rest-api.md#rich-text), with a few losses listed there.
+the text keeps the one you picked. Where you may add files to the ticket, the list also has **Upload
+a file**: the file is added to the ticket's **Attachments**, with their size limit and other checks,
+and goes into the text as soon as it arrives. While it is sent the list says so; if it cannot be
+added, the reason shows there and nothing goes in. A ticket shows only its key, so a document
+never gives away the summary of a ticket someone may not see. Every block can be written in
+Markdown and in [wiki markup](../admin/rest-api.md#rich-text), with a few losses listed there.
 
 ### Comments and mentions
 

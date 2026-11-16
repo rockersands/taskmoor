@@ -3930,6 +3930,9 @@ export const messagesEn = {
   'richtext.table.addRow': 'Add a row below',
   'richtext.table.addColumn': 'Add a column to the right',
   'richtext.table.delete': 'Delete the table',
+  // Removing a row or a column (T-120).
+  'richtext.table.deleteRow': 'Delete this row',
+  'richtext.table.deleteColumn': 'Delete this column',
   'richtext.mention': 'Mention someone',
   'richtext.taskItem': 'Checklist item: {text}',
   'richtext.taskItemEmpty': 'Empty checklist item',
@@ -6829,6 +6832,10 @@ export const messagesEn = {
   'richtext.prompt.file': '{name} ({details})',
   'richtext.prompt.fileBy': 'by {author}',
   'richtext.prompt.fileNumber': 'file {number}',
+  // A file uploaded from the file prompt (T-120).
+  'richtext.prompt.upload': 'Upload a file',
+  'richtext.prompt.uploadHint': 'Up to {limit}. It is also listed under Attachments.',
+  'richtext.prompt.uploading': 'Uploading {name}…',
   'richtext.columns.widths': 'Widths of the {count} columns',
   'richtext.columns.equal': 'Equal',
   'richtext.columns.apply': 'Apply',

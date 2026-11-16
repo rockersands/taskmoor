@@ -809,3 +809,58 @@ describe('the create form (M1-012)', () => {
     expect(untranslated(texts).filter((t) => !data.has(t))).toEqual([]);
   });
 });
+
+describe('the blocks of a new ticket’s text (NTF-013, T-120)', () => {
+  it('[NTF-013] links another ticket from the description, found by search, as its key only', async () => {
+    const user = userEvent.setup();
+    const form = withFields(CHORE_FORM, [
+      { key: 'description', required: false, description: null },
+    ]);
+    const calls = openCreate({
+      'GET /tracks/SHOP/ticket-types': () =>
+        jsonResponse(200, { typeSetId: 1, defaultTypeId: 4, ticketTypes: TYPES }),
+      'GET /tracks/SHOP/layout?ticketTypeId=4&operation=create': () => jsonResponse(200, form),
+      'POST /search': () =>
+        jsonResponse(200, {
+          tickets: [
+            { id: 40, key: 'SHOP-4', summary: 'Retry a failed payment', status: { name: 'Open' } },
+          ],
+        }),
+      'POST /tickets': () => jsonResponse(201, { ticket: { id: 9, key: 'SHOP-9' } }),
+    });
+    await user.type(await screen.findByLabelText('Summary (required)'), 'Follow up');
+    const description = screen.getByRole('textbox', { name: 'Description' });
+    await user.click(description);
+    await user.keyboard('See /another');
+    await screen.findByRole('listbox', { name: 'Blocks to add' });
+    await user.keyboard('{Enter}');
+    await screen.findByRole('combobox', { name: 'Another ticket' });
+    await user.keyboard('retry');
+    await user.click(await screen.findByRole('option', { name: /SHOP-4/ }));
+    // Files need a ticket, which this one is not yet.
+    await user.click(description);
+    await user.keyboard('/image');
+    expect(await screen.findByText('No block matches.')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+    expect(await screen.findByText('SHOP-9 was created.')).toBeVisible();
+    const searched = calls.filter((c) => c.method === 'POST' && c.path === '/search');
+    expect(JSON.stringify(searched.at(-1)?.body)).toContain('retry');
+    const sent = calls.filter((c) => c.method === 'POST' && c.path === '/tickets').pop();
+    expect(sent?.body).toMatchObject({
+      description: {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [
+              { type: 'text', text: 'See ' },
+              { type: 'ticketRef', attrs: { key: 'SHOP-4' } },
+              { type: 'text', text: ' /image' },
+            ],
+          },
+        ],
+      },
+    });
+    expect(JSON.stringify(sent?.body)).not.toContain('Retry a failed payment');
+  });
+});

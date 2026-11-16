@@ -362,6 +362,66 @@ describe('rich text formats and mentions (M1-017)', () => {
     ).toBe(400);
   });
 
+  it('[NTF-014] [NTF-007] holds only safe text colours: an import keeps another aside, a save takes it off (T-318)', async () => {
+    const unsafe = 'red; position: fixed; inset: 0';
+    const coloured = (text: string, color: string, marks: { type: string }[] = []) => ({
+      type: 'text',
+      text,
+      marks: [...marks, { type: 'textColor', attrs: { color } }],
+    });
+    const adf = adfDoc([
+      { type: 'paragraph', content: [coloured('green', '#36b37e'), coloured('odd', unsafe)] },
+    ]);
+    const created = await as('alice', {
+      method: 'POST',
+      url: '/api/v1/tickets?format=adf',
+      payload: { track: 'RT', summary: 'Coloured import', description: adf },
+    });
+    expect(created.statusCode, created.body).toBe(201);
+    const key = created.json().ticket.key as string;
+    const stored = await as('alice', { method: 'GET', url: `/api/v1/tickets/${key}` });
+    const [green, odd] = stored.json().ticket.description.content[0].content;
+    expect(green.marks).toMatchObject([{ type: 'textColor', attrs: { color: '#36b37e' } }]);
+    // Not a colour the document shows: kept whole, only to be written back.
+    expect(odd.marks).toEqual([
+      { type: 'unknownMark', attrs: { type: 'textColor', attrs: { color: unsafe } } },
+    ]);
+    const back = await as('alice', { method: 'GET', url: `/api/v1/tickets/${key}?format=adf` });
+    expect(canonicalAdf(back.json().ticket.description)).toEqual(canonicalAdf(adf));
+
+    // The editor's own form, as a document stored before colours were checked holds it: saved,
+    // not refused, with the colour taken off and the text and its other marks kept.
+    const saved = await as('alice', {
+      method: 'PATCH',
+      url: `/api/v1/tickets/${key}`,
+      payload: {
+        description: {
+          type: 'doc',
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                coloured('kept', '#36b37e'),
+                { type: 'text', text: ' and ' },
+                coloured('plain', unsafe, [{ type: 'bold' }]),
+              ],
+            },
+          ],
+        },
+      },
+    });
+    expect(saved.statusCode, saved.body).toBe(200);
+    expect(saved.json().ticket.description.content[0].content).toEqual([
+      {
+        type: 'text',
+        text: 'kept',
+        marks: [{ type: 'textColor', attrs: { color: '#36b37e', adfAttrs: null } }],
+      },
+      { type: 'text', text: ' and ' },
+      { type: 'text', text: 'plain', marks: [{ type: 'bold' }] },
+    ]);
+  });
+
   it('[NTF-005] offers people to mention, saying who can see the ticket', async () => {
     const created = await as('alice', {
       method: 'POST',
