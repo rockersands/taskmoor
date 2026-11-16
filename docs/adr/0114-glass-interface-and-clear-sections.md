@@ -150,8 +150,11 @@ under its title.
 - **Levels:** New level (a name, a description and where it goes: above Outcome or above an added
   level, the top by default), Rename on every level, Up and Down on the added ones (the keyboard
   stays on the moved level's button), and Remove level, which asks first with what
-  `GET /api/v1/hierarchy-levels/impact` says: the types that fall to the standard level and the
-  tickets that change level (CORE-007 (1)). While the preview says it would break a parent link,
+  `GET /api/v1/hierarchy-levels/impact` says: the types that fall to the standard level (the
+  shared ones by name, a local-mode track's own ones counted from the preview, since the page
+  lists shared types only) and the tickets that change level (CORE-007 (1)). Saving a rename gives
+  the keyboard back to Rename; a type saved at another level gives it to its Manage button in its
+  new card. While the preview says it would break a parent link,
   Remove is not offered and the card says how many links. Any refused change (`breaks_tickets`)
   is said in words with both counts, links and tickets left without a parent.
 - **Types:** New ticket type and Manage take a name, a description, a level (a new level is
@@ -167,7 +170,10 @@ under its title.
   set, the kinds of track it is the default for; a kind it already has stays ticked, since another
   set takes it over. Saving sends only what changed. When the server answers `type_in_use`, the
   set asks for each dropped type a kept type of its level (`ticketTypeMapping`), the first choice
-  taking the keyboard, or says that none is kept; saving again maps the tickets.
+  taking the keyboard, or says that none is kept; saving again maps the tickets. A refusal names
+  only the dropped types left without a target, so the question keeps every type any refusal
+  since the last save named, with its choice, and counts their tickets from every refusal's count
+  (or saves without a number when the counts do not tell).
 - **Nothing new on the server.** The page uses the existing routes of `routes/ticket-types.ts`.
 - **Tests:** `TicketTypesPage.test.tsx` and the type set cases of `ConfigurationSetsPage.test.tsx`
   with fake backends, the refusal-only page in `forbiddenPages.test.tsx`, stories with axe in
@@ -232,7 +238,9 @@ route is new.
   opens under the control, its heading focused: a choice per ticket type and status, from the new
   workflow's statuses, none chosen for the person, then the change with `typeStatusMapping`.
   **Cancel** puts the focus back on the control. A `409 status_mapping_required` after the preview
-  (tickets changed meanwhile) reads it again and asks again, keeping the choices. Tickets that move
+  (tickets changed meanwhile) reads it again and asks again, keeping the choices. On Workflow
+  maps an edit to the map's form while the step is open closes it, since it was for the map as
+  previewed; Save the map previews the map as it now is. Tickets that move
   in the background show `MigrationProgress`, a bar read again every two seconds. The step is a
   `people-form` with a `fieldset.form-field`, so it takes the Administration styles and no new CSS.
 - **Groups (IAM-008).** An open group starts with its name and description and **Save**; a
