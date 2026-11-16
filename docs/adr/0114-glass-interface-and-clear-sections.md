@@ -83,6 +83,36 @@ under its title.
   light and dark toggle and a **Help** menu: Tutorials, Keyboard shortcuts and the Manual.
 - **Names** follow `docs/specs/00-terminology.md`. No Atlassian term appears in the interface.
 
+**As built (T-320, UI-T21 wave 1, 2026-11-16): status mapping, groups, service accounts and field
+grantees.** Four controls the manual marked as API-only are on their existing pages; no page or
+route is new.
+
+- **Status mapping (WF-001, WF-002).** Choosing another workflow map on **Tracks** and **Save the
+  map** on **Workflow maps** read the preview first (`GET /tracks/:id/workflow-map/impact`, `POST
+  /workflow-maps/:id/impact`, whose answer now also lists `targetWorkflows` with their statuses). With
+  no ticket to move the change is made at once; otherwise one shared step, `StatusMappingPanel`,
+  opens under the control, its heading focused: a choice per ticket type and status, from the new
+  workflow's statuses, none chosen for the person, then the change with `typeStatusMapping`.
+  **Cancel** puts the focus back on the control. A `409 status_mapping_required` after the preview
+  (tickets changed meanwhile) reads it again and asks again, keeping the choices. Tickets that move
+  in the background show `MigrationProgress`, a bar read again every two seconds. The step is a
+  `people-form` with a `fieldset.form-field`, so it takes the Administration styles and no new CSS.
+- **Groups (IAM-008).** An open group starts with its name and description and **Save**; a
+  directory's group shows no name field and names the directory instead. A taken name is refused
+  in words.
+- **Service accounts in groups (IAM-007).** The people list leaves service accounts out, so an
+  open group has **Add a service account**, a choice of the active ones (`GET /service-accounts`,
+  site administrators, as Groups is); not for a directory's group. The group's read gives each
+  member's `kind`, and a service account is marked with a badge. **Service accounts** gains
+  **Change**, which renames an account and says what it is for, under its row.
+- **People in field and Groups in field (IAM-010, IAM-011).** Both kinds join the grantee choices on
+  **Permissions** (access policies, not global permissions) and **Visibility policies**, with a
+  **User field** or **Group field** choice by name, read from `GET /fields`: shared fields for a
+  shared policy, and a local-mode track's own for its own. Grants and members show the field's name,
+  or its key when the field is gone. The server now checks an access grant's field as it checks a
+  level member's: it must exist, be of the kind, and be shared or the policy's track's
+  (`400 fieldKey` otherwise).
+
 ### 2. Layout and density
 
 - Desktop first, and it still works on phones (ADR-033):
