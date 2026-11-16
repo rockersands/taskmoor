@@ -159,7 +159,8 @@ test('[CORE-005] [CORE-009] [IAM-030] someone who runs a track keeps its own tic
 
   // Renamed; then its delete is refused while the set holds it.
   await row.getByRole('button', { name: 'Manage ticket type Alarm' }).click();
-  const settings = row.getByRole('form', { name: 'Settings of Alarm' });
+  // Named after the type, so the name changes with it.
+  const settings = row.getByRole('form', { name: /^Settings of / });
   await settings.getByLabel('Ticket type name').fill('Page');
   await settings.getByRole('button', { name: 'Save the type' }).click();
   await expect(page.getByText('Page was saved.')).toBeVisible();
