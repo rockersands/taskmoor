@@ -48,7 +48,10 @@ async function signIn(page: Page) {
 const fitsWidth = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
 
-/** The names of a card's rows, in order. */
+/**
+ * The names of a card's rows, in order, once. The status line shows before the lists are read
+ * again, so a check of the rows after a change polls them (`expect.poll`).
+ */
 const rowNames = (page: Page, card: string) =>
   page
     .getByRole('region', { name: card })
@@ -73,13 +76,15 @@ test('[CORE-014] the administrator keeps priorities, a priority set and close re
   await add.getByLabel('Name').fill(name);
   await add.getByRole('button', { name: 'Add a priority' }).click();
   await expect(priorities.getByText(`${name} was added.`)).toBeVisible();
+  await expect
+    .poll(async () => (await rowNames(page, 'Priorities, most urgent first')).at(-1))
+    .toBe(name);
   const before = await rowNames(page, 'Priorities, most urgent first');
-  expect(before.at(-1)).toBe(name);
   await priorities.getByRole('button', { name: `Move priority ${name} up` }).click();
   await expect(priorities.getByText(`${name} moved up.`)).toBeVisible();
-  const after = await rowNames(page, 'Priorities, most urgent first');
-  expect(after.at(-2)).toBe(name);
-  expect(after.at(-1)).toBe(before.at(-2));
+  await expect
+    .poll(async () => (await rowNames(page, 'Priorities, most urgent first')).slice(-2))
+    .toEqual([name, before.at(-2)]);
 
   // Renamed, with a description.
   const renamed = `Escalation ${stamp}`;
@@ -154,14 +159,14 @@ test('[CORE-014] the administrator keeps priorities, a priority set and close re
   await expect(reasons.getByText(`${reason} was added.`)).toBeVisible();
   await reasons.getByRole('button', { name: `Move close reason ${reason} up` }).click();
   await expect(reasons.getByText(`${reason} moved up.`)).toBeVisible();
-  expect((await rowNames(page, 'Close reasons')).at(-2)).toBe(reason);
+  await expect.poll(async () => (await rowNames(page, 'Close reasons')).at(-2)).toBe(reason);
   await reasons.getByRole('button', { name: `Delete close reason ${reason}` }).click();
   await reasons
     .getByRole('group', { name: new RegExp(`^Delete ${reason}\\?`) })
     .getByRole('button', { name: `Delete close reason ${reason}` })
     .click();
   await expect(reasons.getByText(`${reason} was deleted.`)).toBeVisible();
-  expect(await rowNames(page, 'Close reasons')).not.toContain(reason);
+  await expect.poll(() => rowNames(page, 'Close reasons')).not.toContain(reason);
   expect(await fitsWidth(page)).toBe(true);
 });
 
