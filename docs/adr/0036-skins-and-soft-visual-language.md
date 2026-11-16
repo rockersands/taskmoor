@@ -45,8 +45,10 @@ neutral palette whose dark variant followed only the operating system.
 - **Contrast first:** pastel fills carry dark text. Measured with the WCAG formula: text on
   every surface is at least 12:1, muted text at least 5.6:1, accent, status and secondary
   texts on their soft fills at least 5.1:1, field borders and focus rings at least 3:1, in both
-  skins. Every story runs its axe checks in both skins (two Vitest browser projects), so a skin
-  cannot ship with a contrast failure.
+  skins. Every story runs its axe checks in both skins, so a skin cannot ship with a contrast
+  failure: each skin has two Vitest browser projects, one with a mouse (`stories`,
+  `stories-dark`) and one on a touch screen for the stories tagged `touch` (`stories-touch`,
+  `stories-dark-touch`; ADR-030, T-328). Covering both skins takes all four.
 - **Motion** is short (120 to 200 ms) and stops under `prefers-reduced-motion`.
 - **Fonts** stay system fonts or self-hosted (no font CDN: installs may be air-gapped).
 
