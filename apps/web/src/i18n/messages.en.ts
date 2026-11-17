@@ -3118,6 +3118,89 @@ export const messagesEn = {
   'admin.users.problem.erased': 'This person was erased already.',
   'admin.users.problem.lastTrackAdmin':
     'Erasing them would take back a role their shared track groups gave the only other person running a track. Give someone else a role that runs it first.',
+  'admin.users.edit': 'Edit',
+  'admin.users.editOf': 'Edit {name}',
+  'admin.users.role.configuration_admin': 'Configuration administrator',
+  'admin.users.role.automation_admin': 'Automation administrator',
+  'admin.users.role.ai_admin': 'AI administrator',
+  'admin.users.role.extension_admin': 'Extensions administrator',
+  'admin.users.runsTracks': '{count, plural, one {Runs # track} other {Runs # tracks}}',
+  'admin.users.member': 'Member',
+  'admin.users.roleSeparator': ', ',
+  'admin.users.filter.role': 'Role',
+  'admin.users.filter.any': 'Any role',
+  'admin.users.filter.site_admin': 'Site administrators',
+  'admin.users.filter.configuration_admin': 'Configuration administrators',
+  'admin.users.filter.automation_admin': 'Automation administrators',
+  'admin.users.filter.ai_admin': 'AI administrators',
+  'admin.users.filter.extension_admin': 'Extensions administrators',
+  'admin.users.filter.runs_tracks': 'People who run tracks',
+  'admin.users.filter.member': 'Members, with no role',
+  'admin.person.loading': 'Reading the person…',
+  'admin.person.failed': 'The person could not be read. Try again in a moment.',
+  'admin.person.purpose':
+    'Everything about one person: their roles, profile, sign-in, data and account.',
+  'admin.person.about':
+    'Roles are given on Global permissions, to the person or to a group they are in, and a track’s administrators on that track’s People page; each role below links to where it changes. Changes here are recorded in the audit log.',
+  'admin.person.roles': 'Roles',
+  'admin.person.member': 'Member: they hold no administrator role and run no track.',
+  'admin.person.source.account': 'Marked on their account',
+  'admin.person.source.user': 'Given to them on Global permissions',
+  'admin.person.source.group': 'Through the group {group}',
+  'admin.person.source.everyone': 'Given to everyone signed in, on Global permissions',
+  'admin.person.track': '{key} · {name}',
+  'admin.person.moreTracks': '{count, plural, one {and # more track} other {and # more tracks}}',
+  'admin.person.inGroups': 'In the groups {groups}.',
+  'admin.person.groupless': 'In no group.',
+  'admin.person.whereRoles': 'Where roles change:',
+  'admin.person.toPermissions': 'Global permissions',
+  'admin.person.toGroups': 'Groups',
+  'admin.person.profile': 'Profile',
+  'admin.person.directoryKeeps':
+    '{directory} keeps this person: their name and email change there, not here.',
+  'admin.person.directoryWrites':
+    '{directory} keeps this person: a new name or email is written there too.',
+  'admin.person.timeZoneHint': 'Dates and times they see. Automatic follows their device.',
+  'admin.person.localeHint':
+    'How dates and numbers are written for them. Automatic follows their browser.',
+  'admin.person.save': 'Save profile',
+  'admin.person.signIn': 'Sign-in',
+  'admin.person.passwordLinkHint':
+    'A one-time link to set a new password, for you to send them. Their current password keeps working until they use it.',
+  'admin.person.passwordDirectory':
+    'Their password is checked by {directory}, so no link is made here.',
+  'admin.person.breakGlass': 'Break-glass account',
+  'admin.person.breakGlassHint':
+    'A break-glass account may still sign in with a password while single sign-on is enforced, for when the identity provider is down. Keep such accounts few.',
+  'admin.person.isBreakGlass': 'This is a break-glass account.',
+  'admin.person.notBreakGlass': 'This is not a break-glass account.',
+  'admin.person.markBreakGlass': 'Mark as a break-glass account',
+  'admin.person.unmarkBreakGlass': 'Remove the break-glass mark',
+  'admin.person.breakGlassOn': '{name} is a break-glass account now.',
+  'admin.person.breakGlassOff': '{name} is no longer a break-glass account.',
+  'admin.person.breakGlassDirectory':
+    'An account a directory keeps cannot be a break-glass account.',
+  'admin.person.breakGlassDirectoryMarked':
+    'A directory keeps this account now, so it should not stay a break-glass account: remove the mark.',
+  'admin.person.twoFactor': 'Second factor',
+  'admin.person.withoutTwoFactor': 'They have no second factor.',
+  'admin.person.hasTwoFactor': 'They have set up a second factor.',
+  'admin.person.ownTwoFactor': 'Yours is changed on your account page.',
+  'admin.person.resetTwoFactor': 'Reset second factor',
+  'admin.person.resetTwoFactorOf': 'Reset second factor of {name}',
+  'admin.person.resetTwoFactorConfirm':
+    '{name}’s authenticator app, security keys and recovery codes stop working at once. Where the site requires a second factor, they set one up again at their next sign-in.',
+  'admin.person.twoFactorReset': '{name}’s second factor was reset.',
+  'admin.person.account': 'Account',
+  'admin.person.activeNote':
+    'Deactivating signs them out everywhere and keeps their tickets and history. Erasing replaces their name and email everywhere and cannot be undone.',
+  'admin.person.deactivatedNote':
+    'Deactivated: they cannot sign in. Reactivating gives them back their roles. Erasing replaces their name and email everywhere and cannot be undone.',
+  'admin.person.self':
+    'This is you: another site administrator deactivates or erases your account, or changes your site administrator mark.',
+  'admin.person.erasedNote':
+    'This person was erased: the account is a placeholder that keeps their history, with no actions left.',
+  'admin.person.problem.deactivated': 'They are deactivated: reactivate them first.',
   'admin.groups.title': 'Groups',
   'admin.groups.intro':
     'Groups gather people to give them permissions or to restrict what they see. A group inside another counts as part of it.',
@@ -6598,6 +6681,7 @@ export const messagesEn = {
   'notFound.dashboard': 'Dashboard not found',
   'notFound.bulk': 'Bulk change not found',
   'notFound.workflow': 'Workflow not found',
+  'notFound.person': 'Person not found',
   'page.itemCount': '{count, plural, =0 {No items} one {# item} other {# items}}',
   'builder.title': 'Taskmoor Builder',
   'builder.intro':

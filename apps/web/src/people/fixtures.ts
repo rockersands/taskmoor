@@ -1,9 +1,13 @@
 import { fakePersonalDataClient } from '../account/fixtures';
 import { ApiError } from '../api/client';
 import {
+  ADMIN_ROLES,
+  type AdminRole,
   type GroupDetail,
   type GroupSummary,
   type PeopleClient,
+  type PersonDetail,
+  type RoleSource,
   type ServiceAccountChoice,
   USERS_PAGE,
   type User,
@@ -20,18 +24,50 @@ const person = (id: number, name: string, email: string, extra: Partial<User> = 
   createdAt: '2026-09-01T09:00:00Z',
   deactivatedAt: null,
   lastSignInAt: '2026-10-28T08:00:00Z',
+  breakGlass: false,
+  timeZone: null,
+  locale: null,
+  roles: extra.isSiteAdmin ? ['site_admin'] : [],
+  tracksRun: 0,
   ...extra,
 });
 
 export const PEOPLE: User[] = [
   person(1, 'Ada Lovelace', 'ada@example.com', { isSiteAdmin: true }),
   person(2, 'Bo Rivera', 'bo@example.com'),
-  person(3, 'Grace Hopper', 'grace@example.com'),
+  person(3, 'Grace Hopper', 'grace@example.com', {
+    roles: ['configuration_admin'],
+    tracksRun: 2,
+    timeZone: 'America/New_York',
+  }),
   person(4, 'Ken Oduya', 'ken@example.com', {
     active: false,
     deactivatedAt: '2026-10-01T10:00:00Z',
+    roles: ['ai_admin'],
   }),
 ];
+
+/**
+ * Where the sample people's roles come from (T-331), other than a site administrator's own flag:
+ * Grace is a configuration administrator through Approvers, and Ken an AI administrator himself.
+ */
+const GRANTED: Record<number, { role: AdminRole; sources: RoleSource[] }[]> = {
+  3: [
+    {
+      role: 'configuration_admin',
+      sources: [{ kind: 'group', group: { id: 11, name: 'Approvers' } }],
+    },
+  ],
+  4: [{ role: 'ai_admin', sources: [{ kind: 'user' }] }],
+};
+
+/** The tracks the sample people run (T-331): Grace runs two. */
+const RUNS: Record<number, PersonDetail['tracks']> = {
+  3: [
+    { id: 7, key: 'OPS', name: 'Operations' },
+    { id: 8, key: 'SHOP', name: 'Shop' },
+  ],
+};
 
 /** Active service accounts, which the people list leaves out (IAM-007; T-320). */
 export const SERVICE_ACCOUNTS: ServiceAccountChoice[] = [
@@ -62,6 +98,14 @@ export function fakePeopleClient(
     people?: User[];
     /** A third group, Engineering, kept by a directory with Release bot in it (M1-082; T-320). */
     directoryGroup?: boolean;
+    /** Roles beyond a site administrator's own flag, by person (T-331); the samples' otherwise. */
+    granted?: Record<number, { role: AdminRole; sources: RoleSource[] }[]>;
+    /** The tracks each person runs (T-331). */
+    runs?: Record<number, PersonDetail['tracks']>;
+    /** Who has a second factor: Grace, unless given. */
+    secondFactor?: number[];
+    /** A person a read-only directory keeps (M1-082): their name, email and mark are its. */
+    directoryPerson?: number;
   } = {},
 ): FakePeopleClient {
   const pageSize = options.pageSize ?? USERS_PAGE;
@@ -100,6 +144,26 @@ export function fakePeopleClient(
     if (!user) throw new ApiError(404, { error: 'not_found' });
     return user;
   };
+  const granted = structuredClone(options.granted ?? GRANTED);
+  const runs = structuredClone(options.runs ?? RUNS);
+  const secondFactor = new Set(options.secondFactor ?? [3]);
+  /** A person's roles: a site administrator's own flag, then what grants give them. */
+  const rolesOf = (u: User): PersonDetail['roles'] => {
+    const given = (granted[u.id] ?? []).filter((r) => r.role !== 'site_admin');
+    const site = granted[u.id]?.find((r) => r.role === 'site_admin')?.sources ?? [];
+    const own: PersonDetail['roles'] =
+      u.isSiteAdmin || site.length > 0
+        ? [
+            {
+              role: 'site_admin',
+              sources: [...(u.isSiteAdmin ? [{ kind: 'account' as const }] : []), ...site],
+            },
+          ]
+        : [];
+    return [...own, ...given].sort(
+      (a, b) => ADMIN_ROLES.indexOf(a.role) - ADMIN_ROLES.indexOf(b.role),
+    );
+  };
   const group = (id: number) => {
     const g = groups.find((x) => x.id === id);
     if (!g) throw new ApiError(404, { error: 'not_found' });
@@ -114,19 +178,51 @@ export function fakePeopleClient(
   });
   return {
     calls,
-    users: async (query, status, offset = 0) => {
+    users: async (query, status, offset = 0, role = 'any') => {
       const q = query.toLowerCase();
+      const holds = (u: User) => {
+        const roles = rolesOf(u).map((r) => r.role);
+        const runs = (u.tracksRun ?? 0) > 0;
+        if (role === 'any') return true;
+        if (role === 'runs_tracks') return runs;
+        if (role === 'member') return roles.length === 0 && !runs;
+        return roles.includes(role);
+      };
       const list = users
+        .map((u) => ({ ...u, roles: rolesOf(u).map((r) => r.role) }))
         .filter(
           (u) =>
             (status === 'all' || (status === 'active' ? u.active : !u.active)) &&
-            (!q || u.name.toLowerCase().includes(q) || u.email.includes(q)),
+            (!q || u.name.toLowerCase().includes(q) || u.email.includes(q)) &&
+            holds(u),
         )
         .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()) || a.id - b.id);
       return {
         users: structuredClone(list.slice(offset, offset + pageSize)),
         total: list.length,
       };
+    },
+    person: async (id) => {
+      const user = find(id);
+      const groupsOf = groups
+        .filter((g) => g.members.includes(id))
+        .map((g) => ({ id: g.id, name: g.name }));
+      return structuredClone({
+        user: { ...user, roles: rolesOf(user).map((r) => r.role) },
+        roles: rolesOf(user),
+        tracks: runs[id] ?? [],
+        hasSecondFactor: secondFactor.has(id),
+        groups: groupsOf,
+        directory:
+          options.directoryPerson === id
+            ? { id: 2, name: 'Corporate directory', mode: 'read_only' }
+            : null,
+      });
+    },
+    resetTwoFactor: async (id) => {
+      log('resetTwoFactor', id);
+      find(id);
+      secondFactor.delete(id);
     },
     createUser: async (body) => {
       log('createUser', body);
@@ -148,12 +244,25 @@ export function fakePeopleClient(
       log('updateUser', id, change);
       const user = find(id);
       if (
+        options.directoryPerson === id &&
+        (change.name !== undefined || change.email !== undefined || change.breakGlass)
+      ) {
+        throw new ApiError(409, { error: 'directory_managed' });
+      }
+      if (
+        change.email !== undefined &&
+        users.some((u) => u.id !== id && u.email === change.email?.toLowerCase())
+      ) {
+        throw new ApiError(409, { error: 'email_taken' });
+      }
+      if (
         change.isSiteAdmin === false &&
         users.filter((u) => u.isSiteAdmin && u.active).length <= 1
       ) {
         throw new ApiError(409, { error: 'last_admin' });
       }
-      Object.assign(user, change);
+      Object.assign(user, change, change.email ? { email: change.email.toLowerCase() } : {});
+      user.roles = rolesOf(user).map((r) => r.role);
       return structuredClone(user);
     },
     deactivate: async (id) => {

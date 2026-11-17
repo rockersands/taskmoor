@@ -3205,6 +3205,90 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.users.problem.erased': 'Esta persona ya se borró.',
   'admin.users.problem.lastTrackAdmin':
     'Borrarla quitaría un rol que sus grupos de tracks compartidos le dieron a la única otra persona que dirige un track. Primero da a alguien más un rol que lo dirija.',
+  'admin.users.edit': 'Editar',
+  'admin.users.editOf': 'Editar {name}',
+  'admin.users.role.configuration_admin': 'Administrador de configuración',
+  'admin.users.role.automation_admin': 'Administrador de automatización',
+  'admin.users.role.ai_admin': 'Administrador de IA',
+  'admin.users.role.extension_admin': 'Administrador de extensiones',
+  'admin.users.runsTracks': '{count, plural, one {Dirige # track} other {Dirige # tracks}}',
+  'admin.users.member': 'Miembro',
+  'admin.users.roleSeparator': ', ',
+  'admin.users.filter.role': 'Rol',
+  'admin.users.filter.any': 'Cualquier rol',
+  'admin.users.filter.site_admin': 'Administradores del sitio',
+  'admin.users.filter.configuration_admin': 'Administradores de configuración',
+  'admin.users.filter.automation_admin': 'Administradores de automatización',
+  'admin.users.filter.ai_admin': 'Administradores de IA',
+  'admin.users.filter.extension_admin': 'Administradores de extensiones',
+  'admin.users.filter.runs_tracks': 'Personas que dirigen tracks',
+  'admin.users.filter.member': 'Miembros, sin rol',
+  'admin.person.loading': 'Leyendo la persona…',
+  'admin.person.failed': 'No se pudo leer la persona. Inténtalo de nuevo en un momento.',
+  'admin.person.purpose':
+    'Todo sobre una persona: sus roles, perfil, inicio de sesión, datos y cuenta.',
+  'admin.person.about':
+    'Los roles se dan en Permisos globales, a la persona o a un grupo en el que está, y los administradores de un track en la página Personas de ese track; cada rol de abajo enlaza adonde cambia. Los cambios de aquí quedan en el registro de auditoría.',
+  'admin.person.roles': 'Roles',
+  'admin.person.member': 'Miembro: no tiene ningún rol de administrador ni dirige ningún track.',
+  'admin.person.source.account': 'Marcado en su cuenta',
+  'admin.person.source.user': 'Dado a la persona en Permisos globales',
+  'admin.person.source.group': 'Por el grupo {group}',
+  'admin.person.source.everyone':
+    'Dado a todas las personas con sesión iniciada, en Permisos globales',
+  'admin.person.track': '{key} · {name}',
+  'admin.person.moreTracks': '{count, plural, one {y # track más} other {y # tracks más}}',
+  'admin.person.inGroups': 'En los grupos {groups}.',
+  'admin.person.groupless': 'En ningún grupo.',
+  'admin.person.whereRoles': 'Dónde cambian los roles:',
+  'admin.person.toPermissions': 'Permisos globales',
+  'admin.person.toGroups': 'Grupos',
+  'admin.person.profile': 'Perfil',
+  'admin.person.directoryKeeps':
+    '{directory} mantiene a esta persona: su nombre y su correo cambian allí, no aquí.',
+  'admin.person.directoryWrites':
+    '{directory} mantiene a esta persona: un nombre o un correo nuevos se escriben también allí.',
+  'admin.person.timeZoneHint': 'Las fechas y horas que ve. Automática sigue a su dispositivo.',
+  'admin.person.localeHint':
+    'Cómo se escriben para ella fechas y números. Automático sigue a su navegador.',
+  'admin.person.save': 'Guardar perfil',
+  'admin.person.signIn': 'Inicio de sesión',
+  'admin.person.passwordLinkHint':
+    'Un enlace de un solo uso para elegir una contraseña nueva, que tú le envías. Su contraseña actual sigue funcionando hasta que lo use.',
+  'admin.person.passwordDirectory':
+    '{directory} comprueba su contraseña, así que aquí no se crea ningún enlace.',
+  'admin.person.breakGlass': 'Cuenta de emergencia',
+  'admin.person.breakGlassHint':
+    'Una cuenta de emergencia puede seguir iniciando sesión con contraseña mientras el inicio de sesión único es obligatorio, para cuando el proveedor de identidad no responde. Que sean pocas.',
+  'admin.person.isBreakGlass': 'Es una cuenta de emergencia.',
+  'admin.person.notBreakGlass': 'No es una cuenta de emergencia.',
+  'admin.person.markBreakGlass': 'Marcar como cuenta de emergencia',
+  'admin.person.unmarkBreakGlass': 'Quitar la marca de emergencia',
+  'admin.person.breakGlassOn': '{name} es ahora una cuenta de emergencia.',
+  'admin.person.breakGlassOff': '{name} ya no es una cuenta de emergencia.',
+  'admin.person.breakGlassDirectory':
+    'Una cuenta que mantiene un directorio no puede ser de emergencia.',
+  'admin.person.breakGlassDirectoryMarked':
+    'Ahora mantiene esta cuenta un directorio, así que no debería seguir siendo de emergencia: quita la marca.',
+  'admin.person.twoFactor': 'Segundo factor',
+  'admin.person.withoutTwoFactor': 'No tiene segundo factor.',
+  'admin.person.hasTwoFactor': 'Tiene un segundo factor configurado.',
+  'admin.person.ownTwoFactor': 'El tuyo se cambia en la página de tu cuenta.',
+  'admin.person.resetTwoFactor': 'Restablecer segundo factor',
+  'admin.person.resetTwoFactorOf': 'Restablecer el segundo factor de {name}',
+  'admin.person.resetTwoFactorConfirm':
+    'La aplicación de autenticación, las llaves de seguridad y los códigos de recuperación de {name} dejan de funcionar al momento. Donde el sitio exige segundo factor, vuelve a configurarlo en su próximo inicio de sesión.',
+  'admin.person.twoFactorReset': 'Se restableció el segundo factor de {name}.',
+  'admin.person.account': 'Cuenta',
+  'admin.person.activeNote':
+    'Desactivar cierra su sesión en todas partes y conserva sus tickets y su historial. Borrar reemplaza su nombre y su correo en todas partes y no se puede deshacer.',
+  'admin.person.deactivatedNote':
+    'Desactivada: no puede iniciar sesión. Reactivarla le devuelve sus roles. Borrar reemplaza su nombre y su correo en todas partes y no se puede deshacer.',
+  'admin.person.self':
+    'Eres tú: otro administrador del sitio desactiva o borra tu cuenta, o cambia tu marca de administrador del sitio.',
+  'admin.person.erasedNote':
+    'Esta persona fue borrada: la cuenta es un marcador que conserva su historial, sin acciones.',
+  'admin.person.problem.deactivated': 'Está desactivada: reactívala primero.',
   'admin.groups.title': 'Grupos',
   'admin.groups.intro':
     'Los grupos reúnen a personas para darles permisos o restringir lo que ven. Un grupo dentro de otro cuenta como parte de él.',
@@ -6741,6 +6825,7 @@ export const messagesEs: Record<MessageId, string> = {
   'notFound.dashboard': 'Panel no encontrado',
   'notFound.bulk': 'Cambio en bloque no encontrado',
   'notFound.workflow': 'Flujo de trabajo no encontrado',
+  'notFound.person': 'Persona no encontrada',
   'page.itemCount': '{count, plural, =0 {Ningún elemento} one {# elemento} other {# elementos}}',
   'builder.title': 'Taskmoor Builder',
   'builder.intro':

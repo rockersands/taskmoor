@@ -54,6 +54,7 @@ import { NotificationPoliciesPage } from './notifications/NotificationPoliciesPa
 import { UnsubscribePage } from './notifications/UnsubscribePage';
 import { ConsentPage } from './oauth/ConsentPage';
 import { GroupsPage } from './people/GroupsPage';
+import { PersonPage } from './people/PersonPage';
 import { TeamsPage } from './people/TeamsPage';
 import { UsersPage } from './people/UsersPage';
 import { PermissionExplainerPage } from './permissions/PermissionExplainerPage';
@@ -802,7 +803,9 @@ function Pages() {
     const trackId = Number(OWN_FIELDS.exec(hash)?.[1]);
     content = <FieldsAdminPage key={`${trackId}-fields`} trackId={trackId} />;
   } else if (isRoute(hash, ADMIN_USERS)) {
-    content = <UsersPage />;
+    // A person's page, opened by Edit on their row (T-331).
+    const personId = /^#\/admin\/users\/(\d{1,10})(?:[/?]|$)/.exec(hash)?.[1];
+    content = personId ? <PersonPage key={personId} userId={Number(personId)} /> : <UsersPage />;
   } else if (isRoute(hash, ADMIN_GROUPS)) {
     content = <GroupsPage />;
   } else if (isRoute(hash, ADMIN_TEAMS)) {
