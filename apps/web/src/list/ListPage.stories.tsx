@@ -102,8 +102,8 @@ export const NotFound: Story = {
 };
 
 /**
- * Ordered by a heading (T-330): Key orders by ticket number, the menu says so; a second click
- * reverses it, which the menu names as an entry of its own.
+ * Ordered by a heading (T-330): Key orders by ticket number, the menu says so; Enter on the same
+ * heading, which kept the focus, reverses it, which the menu names as an entry of its own.
  */
 export const SortedByAHeading: Story = {
   play: async ({ canvasElement }) => {
@@ -117,7 +117,11 @@ export const SortedByAHeading: Story = {
     const menu = canvas.getByRole('combobox', { name: 'Sort by' });
     await expect(menu).toHaveDisplayValue('Key');
     await canvas.findByRole('link', { name: 'SHOP-41' });
-    await userEvent.click(canvas.getByRole('button', { name: 'Key' }));
+    // The table stayed while its rows were read again: the heading keeps the focus, and the new
+    // order is said.
+    await expect(canvas.getByRole('button', { name: 'Key' })).toHaveFocus();
+    await expect(canvas.getByRole('status')).toHaveTextContent('Sorted by Key');
+    await userEvent.keyboard('{Enter}');
     await expect(await canvas.findByRole('columnheader', { name: 'Key' })).toHaveAttribute(
       'aria-sort',
       'descending',

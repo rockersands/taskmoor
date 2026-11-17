@@ -80,7 +80,10 @@ again for the other way. It applies to a track's List and a plan's List (PLN-012
   (created, updated, closed) newest first, start and due soonest first, priority and votes highest
   first, the key by ticket number within a track (`ORDER BY key` is the track's key, then the
   number as an integer, so ABC-9 comes before ABC-10), and names, types, statuses and releases
-  from the start of their order (types by name, A to Z). Ties go by id, as every search.
+  from the start of their order (types by their stored name, A to Z: the seeded types are stored
+  in English, so in another language the order groups them but is not alphabetical in the names
+  shown; ordering by the translated name would need the locale on the server). Ties go by id, as
+  every search.
 - **The menu shows the truth with one control.** Its entries stay orders (Newest created first,
   Recently updated, Due date, Priority, Type, Key). When a heading chose an order it has no entry
   for, another column or one reversed, an extra first entry names it in the words search uses,
@@ -90,7 +93,14 @@ again for the other way. It applies to a track's List and a plan's List (PLN-012
 - **The address holds it** as the query language names it: `sort=key`, with `order=asc` or
   `order=desc` only when it goes against the column's own way, and nothing for the default. The
   addresses made before (`sort=priority`, `sort=due` on a plan's List) open as they did. A
-  track's List now keeps its order in its address too (`#/tracks/KEY/list?sort=key`).
+  track's List now keeps its order in its address too (`#/tracks/KEY/list?sort=key`). An address
+  that orders by a custom field the person cannot see, or one since deleted, opens in the default
+  order (`usableSort`), not as a refused query that every group would show as a bad filter.
+- **A new order keeps the table.** A section's key leaves out the order, so a new order reads the
+  rows again in the table on screen (marked `aria-busy`, answers to an older order dropped) rather
+  than remounting it: the heading's button that was pressed keeps the keyboard's focus. The menu
+  says each new order in a polite live region ("Sorted by Key, descending"), since a change of
+  `aria-sort` is not announced.
 - **The plan's file follows it** (PLN-014): `GET /plans/:id/export` takes `sort` as any field the
   List can order by (or `cf[N]`) and `order=asc|desc`; without `order` a field goes its own way, so
   an old link's file is unchanged. Anything else is refused with 400.

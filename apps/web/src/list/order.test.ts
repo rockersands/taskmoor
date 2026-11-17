@@ -9,6 +9,7 @@ import {
   routeWithSort,
   sortOfRoute,
   sortParams,
+  usableSort,
 } from './order';
 
 describe('a list’s order (T-330)', () => {
@@ -86,6 +87,20 @@ describe('a list’s order (T-330)', () => {
       expect(readSort(sort, order), `${sort} ${order}`).toBeNull();
     }
     expect(sortOfRoute('#/tracks/SHOP/list?sort=labels')).toEqual(DEFAULT_SORT);
+  });
+
+  it('[AGL-016] [PLN-012] an address ordered by a custom field the person cannot see opens in the default order', () => {
+    const fields = [{ id: 40 }, { id: 41 }];
+    const byField = { column: 'cf[40]', direction: 'ascending' } as const;
+    expect(usableSort(byField, fields)).toEqual(byField);
+    // Not among the fields this person sees, or since deleted: the default, not a refused query.
+    expect(usableSort({ column: 'cf[99]', direction: 'descending' }, fields)).toEqual(DEFAULT_SORT);
+    expect(usableSort(byField, [])).toEqual(DEFAULT_SORT);
+    // While the fields load, a custom field's order waits; any other goes at once.
+    expect(usableSort(byField, null)).toBeNull();
+    const key = { column: 'key', direction: 'ascending' } as const;
+    expect(usableSort(key, null)).toEqual(key);
+    expect(usableSort(key, [])).toEqual(key);
   });
 
   it('[PLN-014] the plan’s file always asks for the field and the way', () => {

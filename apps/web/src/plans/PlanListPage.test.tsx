@@ -78,8 +78,10 @@ describe('a plan’s list after the page review (T-220)', () => {
       return [url.searchParams.get('sort'), url.searchParams.get('order')];
     };
     expect(await file()).toEqual(['key', 'asc']);
-    // Again, by keyboard: the other way, which the menu names as no entry of its own.
-    (await screen.findByRole('button', { name: 'Key' })).focus();
+    // Again, by keyboard: the other way, which the menu names as no entry of its own. The table
+    // stayed while its rows were read again, so the heading's button can take the focus back.
+    const keyButton = screen.getByRole('button', { name: 'Key' });
+    keyButton.focus();
     await user.keyboard('{Enter}');
     await waitFor(() => expect(window.location.hash).toBe('#/plans/12/list?sort=key&order=desc'));
     await waitFor(() => expect(search.queries.at(-1)).toMatch(/ ORDER BY key DESC$/));
@@ -88,6 +90,8 @@ describe('a plan’s list after the page review (T-220)', () => {
       'descending',
     );
     expect(screen.getByRole('combobox', { name: 'Sort by' })).toHaveDisplayValue('Key, descending');
+    expect(screen.getByRole('button', { name: 'Key' })).toBe(keyButton);
+    expect(keyButton).toHaveFocus();
     expect(await file()).toEqual(['key', 'desc']);
     // The menu's Type: by type name, A to Z.
     await user.selectOptions(screen.getByRole('combobox', { name: 'Sort by' }), 'Type');
@@ -101,6 +105,16 @@ describe('a plan’s list after the page review (T-220)', () => {
     );
     await waitFor(() => expect(window.location.hash).toBe('#/plans/12/list'));
     expect(await file()).toEqual(['created', 'desc']);
+  });
+
+  it('[PLN-012] [PLN-014] opens an address ordered by a field the person cannot see in the default order (T-330)', async () => {
+    const search = renderPlanList('#/plans/12/list?sort=cf[99]');
+    await screen.findAllByRole('link', { name: /^[A-Z]+-\d+$/ });
+    expect(search.queries.every((q) => q.endsWith(' ORDER BY created DESC'))).toBe(true);
+    expect(screen.queryByText('The filter is not a query this list can run.')).toBeNull();
+    expect(screen.getByRole('combobox', { name: 'Sort by' })).toHaveDisplayValue(
+      'Newest created first',
+    );
   });
 
   it('[PLN-014] opens an address made before T-330 in the order it named', async () => {

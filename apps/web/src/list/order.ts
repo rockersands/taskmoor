@@ -1,5 +1,5 @@
 import type { MessageId } from '../i18n/messages.en';
-import { columnOfOrder, orderOfColumn, type TableSort } from '../search/columns';
+import { columnOfOrder, customFieldId, orderOfColumn, type TableSort } from '../search/columns';
 
 /**
  * A list's order (T-330; AGL-016, PLN-012): a column and a direction, one model for the "Sort by"
@@ -63,6 +63,22 @@ export function readSort(
   if (order === 'desc') return { column, direction: 'descending' };
   if (order) return null;
   return sortBy(column);
+}
+
+/**
+ * The order a list can run, given the custom fields the person sees (`null` while they load): an
+ * address may name a field this person cannot see, or one since deleted, which the server would
+ * refuse as an unknown field and every group would show as a bad filter. Such an order falls back
+ * to the default; a custom field's order waits (null) until the fields are known.
+ */
+export function usableSort(
+  sort: ListSort,
+  fields: readonly { id: number }[] | null,
+): ListSort | null {
+  const id = customFieldId(sort.column);
+  if (id === null) return sort;
+  if (fields === null) return null;
+  return fields.some((f) => f.id === id) ? sort : DEFAULT_SORT;
 }
 
 /** What the address holds for an order: nothing for the default, `order` only when reversed. */

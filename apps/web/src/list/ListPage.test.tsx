@@ -49,8 +49,11 @@ describe('a track’s list (M1-049)', () => {
     );
     expect(window.location.hash).toBe('#/tracks/SHOP/list?sort=key');
     expect(menu()).toHaveDisplayValue('Key');
-    // Again, by keyboard: the other way, which the menu names as no entry of its own.
-    (await screen.findByRole('button', { name: 'Key' })).focus();
+    // The table stays while its rows are read again: the heading keeps the focus, and the new
+    // order is said.
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Sorted by Key'));
+    expect(screen.getByRole('button', { name: 'Key' })).toHaveFocus();
+    // Again, by keyboard where the focus is: the other way, which the menu names as no entry.
     await user.keyboard('{Enter}');
     await waitFor(() => expect(search.queries.at(-1)).toBe('track = SHOP ORDER BY key DESC'));
     expect(await screen.findByRole('columnheader', { name: 'Key' })).toHaveAttribute(
@@ -59,6 +62,10 @@ describe('a track’s list (M1-049)', () => {
     );
     expect(window.location.hash).toBe('#/tracks/SHOP/list?sort=key&order=desc');
     expect(menu()).toHaveDisplayValue('Key, descending');
+    expect(screen.getByRole('button', { name: 'Key' })).toHaveFocus();
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Sorted by Key, descending'),
+    );
     // A column the menu has no entry for: the menu still says the order.
     await user.click(await screen.findByRole('button', { name: 'Updated' }));
     await waitFor(() => expect(search.queries.at(-1)).toBe('track = SHOP ORDER BY updated DESC'));
@@ -82,6 +89,26 @@ describe('a track’s list (M1-049)', () => {
     await user.selectOptions(menu(), 'Newest created first');
     await waitFor(() => expect(search.queries.at(-1)).toBe('track = SHOP ORDER BY created DESC'));
     expect(window.location.hash).toBe('#/tracks/SHOP/list');
+  });
+
+  it('[AGL-016] opens an address ordered by a field the person cannot see in the default order (T-330)', async () => {
+    window.history.replaceState(null, '', '#/tracks/SHOP/list?sort=cf[99]');
+    const { search } = renderList();
+    await screen.findByRole('link', { name: 'SHOP-41' });
+    // Not a refused query that every group would show as a bad filter: newest created first.
+    expect(search.queries).toEqual(['track = SHOP ORDER BY created DESC']);
+    expect(screen.queryByText('The filter is not a query this list can run.')).toBeNull();
+    expect(screen.getByRole('combobox', { name: 'Sort by' })).toHaveDisplayValue(
+      'Newest created first',
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('');
+  });
+
+  it('[AGL-016] opens an address ordered by a field the person sees in that order (T-330)', async () => {
+    window.history.replaceState(null, '', '#/tracks/SHOP/list?sort=cf[40]');
+    const { search } = renderList();
+    await screen.findByRole('link', { name: 'SHOP-41' });
+    expect(search.queries).toEqual(['track = SHOP ORDER BY cf[40] ASC']);
   });
 
   it('[AGL-016] opens in the order its address holds (T-330)', async () => {

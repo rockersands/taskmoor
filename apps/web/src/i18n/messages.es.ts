@@ -6374,6 +6374,7 @@ export const messagesEs: Record<MessageId, string> = {
   'list.sort.current': '{column}, {direction, select, ascending {ascendente} other {descendente}}',
   'list.sort.current.date':
     '{column}, {direction, select, ascending {primero la fecha más temprana} other {primero la fecha más tardía}}',
+  'list.sort.announce': 'Ordenado por {order}',
   'list.filter': 'Filtro',
   'list.filterPlaceholder': 'assignee = currentUser()',
   'list.filterApply': 'Aplicar el filtro',

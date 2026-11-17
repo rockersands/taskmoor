@@ -16,8 +16,8 @@ import {
   nextSort,
   orderBy,
   readSort,
-  sortKey,
   sortParams,
+  usableSort,
 } from '../list/order';
 import { SortMenu } from '../list/SortMenu';
 import { ColumnPicker } from '../search/ColumnPicker';
@@ -31,6 +31,7 @@ import type { PlanSectionProps } from './PlanSummaryPage';
 
 /** How many rows the List shows of a plan, or of one of its groups (PLN-012). */
 const ROWS = 10_000;
+const NO_FIELDS: SearchField[] = [];
 
 /**
  * A plan's List (PLN-012): the search with the plan's query, as the person may see it, in their
@@ -57,11 +58,14 @@ export function PlanListPage({
   // Commas or semicolons, as the person's spreadsheet opens them (T-263).
   const csvSeparator = useCsvSeparator();
   const store = `plan-${id}`;
-  const [fields, setFields] = useState<SearchField[]>([]);
+  // The custom fields this person sees: null while they load.
+  const [loadedFields, setFields] = useState<SearchField[] | null>(null);
+  const fields = loadedFields ?? NO_FIELDS;
   const nameOf = useColumnName(fields);
   // One order for the menu and the headings (T-330), held in the address when there is one.
   const [sortHere, setSortHere] = useState<ListSort>(DEFAULT_SORT);
-  const sort = readSort(position?.sort, position?.order) ?? sortHere;
+  // An address may order by a field this person cannot see: the default instead.
+  const sort = usableSort(readSort(position?.sort, position?.order) ?? sortHere, loadedFields);
   const setSort = (next: ListSort) => {
     setSortHere(next);
     onPosition?.({ sort: undefined, order: undefined, ...sortParams(next) });
@@ -77,7 +81,7 @@ export function PlanListPage({
     let live = true;
     search.fields().then(
       (f) => live && setFields(f),
-      () => {},
+      () => live && setFields([]),
     );
     return () => {
       live = false;
@@ -104,6 +108,7 @@ export function PlanListPage({
   const onTickets = useCallback((_key: string, _tickets: SearchTicket[]) => {}, []);
 
   if (!base) return null;
+  if (!sort) return <p className="report-loading">{t('reports.loading')}</p>;
 
   const query = (clause: string | null) =>
     `${clause ? `(${base}) AND ${clause}` : base} ORDER BY ${orderBy(sort)}`;
@@ -116,7 +121,9 @@ export function PlanListPage({
     other = false,
   ) => (
     <GroupSection
-      key={`${key}-${sortKey(sort)}-${base}`}
+      // Not the order: a new order reads the rows again in the same table, so the heading clicked
+      // keeps the focus.
+      key={`${key}-${base}`}
       sectionKey={key}
       title={title}
       count={count}

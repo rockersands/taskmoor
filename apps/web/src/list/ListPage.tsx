@@ -32,7 +32,7 @@ import {
   saveRules,
 } from './client';
 import { GroupSection } from './GroupSection';
-import { type ListSort, nextSort, orderBy, routeWithSort, sortKey, sortOfRoute } from './order';
+import { type ListSort, nextSort, orderBy, routeWithSort, sortOfRoute, usableSort } from './order';
 import { SortMenu } from './SortMenu';
 
 export interface ListPageProps {
@@ -51,6 +51,7 @@ const GROUP_LABELS: Record<GroupField | 'none', MessageId> = {
   labels: 'list.group.labels',
 };
 /** The track's List's own address, which holds its order: `#/tracks/SHOP/list?sort=key`. */
+const NO_FIELDS: SearchField[] = [];
 const isListRoute = (route: string, trackKey: string) =>
   new RegExp(`^#/tracks/${trackKey}/list/?(?:[?]|$)`).test(route);
 
@@ -87,10 +88,14 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
   const id = useId();
   const [track, setTrack] = useState<{ id: number; key: string; name: string } | null>(null);
   const [failed, setFailed] = useState(false);
-  const [fields, setFields] = useState<SearchField[]>([]);
+  // The custom fields this person sees: null while they load.
+  const [loadedFields, setFields] = useState<SearchField[] | null>(null);
+  const fields = loadedFields ?? NO_FIELDS;
   const [group, setGroup] = useState<GroupField | 'none'>('none');
   // The address holds the order (T-330); replacing it tells no one, so the page keeps it as well.
-  const [sort, setSortHere] = useState<ListSort>(() => sortOfRoute(currentRoute()));
+  const [held, setSortHere] = useState<ListSort>(() => sortOfRoute(currentRoute()));
+  // An address may order by a field this person cannot see: the default instead (T-330).
+  const sort = usableSort(held, loadedFields);
   const [filterText, setFilterText] = useState('');
   const [filter, setFilter] = useState('');
   const [columns, setColumns] = useState<string[]>(
@@ -127,7 +132,7 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
     );
     search.fields().then(
       (f) => live && setFields(f),
-      () => {},
+      () => live && setFields([]),
     );
     return () => {
       live = false;
@@ -222,7 +227,7 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
       </section>
     );
   }
-  if (!track || !base) return <p className="report-loading">{t('reports.loading')}</p>;
+  if (!track || !base || !sort) return <p className="report-loading">{t('reports.loading')}</p>;
 
   const query = (clause: string | null) =>
     `${base}${clause ? ` AND ${clause}` : ''} ORDER BY ${orderBy(sort)}`;
@@ -234,7 +239,9 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
     other = false,
   ) => (
     <GroupSection
-      key={`${key}-${version}-${sortKey(sort)}-${base}`}
+      // Not the order: a new order reads the rows again in the same table, so the heading clicked
+      // keeps the focus (T-330).
+      key={`${key}-${version}-${base}`}
       sectionKey={key}
       title={title}
       count={count}

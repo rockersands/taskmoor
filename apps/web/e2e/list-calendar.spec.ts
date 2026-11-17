@@ -250,7 +250,7 @@ test('[AGL-016] a heading orders the list by key, by ticket number, and the addr
   await page.goto(`${BASE}/#/tracks/${key}/list`);
   const list = page.getByRole('region', { name: 'List', exact: true });
   const keysShown = () =>
-    list.getByRole('link', { name: new RegExp(`^${key}-d+$`) }).allTextContents();
+    list.getByRole('link', { name: new RegExp(`^${key}-[0-9]+$`) }).allTextContents();
   // Newest created first until asked otherwise.
   await expect.poll(keysShown).toEqual([...byNumber].reverse());
 
