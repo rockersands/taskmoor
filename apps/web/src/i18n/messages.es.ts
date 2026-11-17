@@ -3239,7 +3239,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.person.track': '{key} · {name}',
   'admin.person.moreTracks': '{count, plural, one {y # track más} other {y # tracks más}}',
   'admin.person.inGroups': 'En los grupos {groups}.',
-  'admin.person.noGroups': 'En ningún grupo.',
+  'admin.person.groupless': 'En ningún grupo.',
   'admin.person.whereRoles': 'Dónde cambian los roles:',
   'admin.person.toPermissions': 'Permisos globales',
   'admin.person.toGroups': 'Grupos',
@@ -3269,7 +3269,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.person.breakGlassDirectory':
     'Una cuenta que mantiene un directorio no puede ser de emergencia.',
   'admin.person.twoFactor': 'Segundo factor',
-  'admin.person.noTwoFactor': 'No tiene segundo factor.',
+  'admin.person.withoutTwoFactor': 'No tiene segundo factor.',
   'admin.person.hasTwoFactor': 'Tiene un segundo factor configurado.',
   'admin.person.ownTwoFactor': 'El tuyo se cambia en la página de tu cuenta.',
   'admin.person.resetTwoFactor': 'Restablecer segundo factor',

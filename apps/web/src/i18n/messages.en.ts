@@ -3151,7 +3151,7 @@ export const messagesEn = {
   'admin.person.track': '{key} · {name}',
   'admin.person.moreTracks': '{count, plural, one {and # more track} other {and # more tracks}}',
   'admin.person.inGroups': 'In the groups {groups}.',
-  'admin.person.noGroups': 'In no group.',
+  'admin.person.groupless': 'In no group.',
   'admin.person.whereRoles': 'Where roles change:',
   'admin.person.toPermissions': 'Global permissions',
   'admin.person.toGroups': 'Groups',
@@ -3181,7 +3181,7 @@ export const messagesEn = {
   'admin.person.breakGlassDirectory':
     'An account a directory keeps cannot be a break-glass account.',
   'admin.person.twoFactor': 'Second factor',
-  'admin.person.noTwoFactor': 'They have no second factor.',
+  'admin.person.withoutTwoFactor': 'They have no second factor.',
   'admin.person.hasTwoFactor': 'They have set up a second factor.',
   'admin.person.ownTwoFactor': 'Yours is changed on your account page.',
   'admin.person.resetTwoFactor': 'Reset second factor',

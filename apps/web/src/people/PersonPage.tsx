@@ -109,7 +109,11 @@ export function PersonPage({ userId, client = peopleClient }: PersonPageProps) {
   if (!detail) {
     return (
       <section aria-labelledby={titleId} className="page admin-page people-page">
-        <PageHeader titleId={titleId} title={t('admin.users.title')} />
+        <PageHeader
+          titleId={titleId}
+          title={t('admin.users.title')}
+          {...(state.status === 'forbidden' ? {} : { purpose: t('admin.person.purpose') })}
+        />
         {state.status === 'forbidden' && <p className="page-note">{t('admin.users.forbidden')}</p>}
         {state.status === 'loading' && (
           <p role="status" className="page-note">
@@ -275,7 +279,7 @@ export function PersonPage({ userId, client = peopleClient }: PersonPageProps) {
             <div className="person-action">
               <h3 className="person-subtitle">{t('admin.person.twoFactor')}</h3>
               {!detail.hasSecondFactor ? (
-                <p className="page-note">{t('admin.person.noTwoFactor')}</p>
+                <p className="page-note">{t('admin.person.withoutTwoFactor')}</p>
               ) : self ? (
                 <p className="page-note">{t('admin.person.ownTwoFactor')}</p>
               ) : (
@@ -476,7 +480,7 @@ function RolesSection({
                 { type: 'conjunction' },
               ),
             })
-          : t('admin.person.noGroups')}
+          : t('admin.person.groupless')}
       </p>
       <p className="page-note person-where">
         {t('admin.person.whereRoles')}{' '}

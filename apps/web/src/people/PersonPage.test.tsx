@@ -336,7 +336,13 @@ describe('a person’s page under People (T-331; IAM-008)', () => {
       'Shop',
     ]);
     const texts = visibleTexts(main).filter(
-      (t) => !data.has(t) && !/@example\.com/.test(t) && !/\d{4}/.test(t) && t !== '·',
+      (t) =>
+        !data.has(t) &&
+        !/@example\.com/.test(t) &&
+        !/\d{4}/.test(t) &&
+        // A download's size, written by the browser's number format.
+        !/^[\d.,]+\s?[KMG]?B$/.test(t) &&
+        t !== '·',
     );
     expect(untranslated(texts)).toEqual([]);
   });
