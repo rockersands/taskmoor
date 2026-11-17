@@ -1,4 +1,5 @@
 import type { MessageId } from '../i18n/messages.en';
+import { readSort, sortParams } from '../list/order';
 import type { PlanFilters } from './client';
 
 /** A plan's sections, in the order of their tab bar (ADR-122). */
@@ -35,8 +36,6 @@ export const GROUP_LABELS: Record<PlanGroup | 'none', MessageId> = {
 
 export const PLAN_ZOOMS = ['weeks', 'months', 'quarters'] as const;
 export type PlanZoom = (typeof PLAN_ZOOMS)[number];
-export const PLAN_SORTS = ['created', 'updated', 'due', 'priority'] as const;
-export type PlanSort = (typeof PLAN_SORTS)[number];
 
 /**
  * Where a view stands (PLN-014): the Timeline's zoom, the Calendar's month (`2026-11`), the first
@@ -47,7 +46,12 @@ export interface PlanPosition {
   zoom?: PlanZoom | undefined;
   month?: string | undefined;
   from?: string | undefined;
-  sort?: PlanSort | undefined;
+  /**
+   * The List's order (T-330): the field as the query language names it, and `asc` or `desc` only
+   * when it goes the other way from the column's own (`list/order.ts`).
+   */
+  sort?: string | undefined;
+  order?: 'asc' | 'desc' | undefined;
   /** The Timeline marks the critical path (PLN-011). */
   critical?: '1' | undefined;
 }
@@ -100,8 +104,8 @@ function readPosition(params: URLSearchParams): PlanPosition {
   if (month && /^\d{4}-(0[1-9]|1[0-2])$/.test(month)) position.month = month;
   const from = params.get('from');
   if (from && isDay(from)) position.from = from;
-  const sort = oneOf(PLAN_SORTS, params.get('sort'));
-  if (sort) position.sort = sort;
+  const sort = readSort(params.get('sort'), params.get('order'));
+  if (sort) Object.assign(position, sortParams(sort));
   if (params.get('critical') === '1') position.critical = '1';
   return position;
 }
@@ -160,7 +164,7 @@ export function planHref(id: number, section: PlanSection = 'summary', view?: Pl
     if (value) params.set(key, value);
   }
   if (view.group) params.set('group', view.group);
-  for (const key of ['zoom', 'month', 'from', 'sort', 'critical'] as const) {
+  for (const key of ['zoom', 'month', 'from', 'sort', 'order', 'critical'] as const) {
     const value = view.position?.[key];
     if (value) params.set(key, value);
   }

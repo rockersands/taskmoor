@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { type Translate, useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
+import { currentRoute, onRouteChange, replaceRoute } from '../routing/router';
 import { ColumnPicker } from '../search/ColumnPicker';
 import {
   type SearchClient,
@@ -31,6 +32,8 @@ import {
   saveRules,
 } from './client';
 import { GroupSection } from './GroupSection';
+import { type ListSort, nextSort, orderBy, routeWithSort, sortKey, sortOfRoute } from './order';
+import { SortMenu } from './SortMenu';
 
 export interface ListPageProps {
   trackKey: string;
@@ -47,13 +50,9 @@ const GROUP_LABELS: Record<GroupField | 'none', MessageId> = {
   targetRelease: 'list.group.targetRelease',
   labels: 'list.group.labels',
 };
-const SORTS = {
-  created: { order: 'created DESC', label: 'list.sort.created' },
-  updated: { order: 'updated DESC', label: 'list.sort.updated' },
-  due: { order: 'due ASC', label: 'list.sort.due' },
-  priority: { order: 'priority DESC', label: 'list.sort.priority' },
-} as const satisfies Record<string, { order: string; label: MessageId }>;
-type Sort = keyof typeof SORTS;
+/** The track's List's own address, which holds its order: `#/tracks/SHOP/list?sort=key`. */
+const isListRoute = (route: string, trackKey: string) =>
+  new RegExp(`^#/tracks/${trackKey}/list/?(?:[?]|$)`).test(route);
 
 /**
  * A group's heading: the value's name, with a type or a priority the workspace started with in
@@ -75,7 +74,8 @@ const TONES: { id: Tone; label: MessageId }[] = [
 
 /**
  * A track's list (M1-049; AGL-016): its tickets as a table in the person's columns (stacked rows
- * on a phone), filtered by a condition, sorted, and grouped by a field with each group's count; cells edit in place
+ * on a phone), filtered by a condition, sorted (by the menu or a column's heading, the order held in
+ * the address; T-330), and grouped by a field with each group's count; cells edit in place
  * through the ticket route (as in search results), and tickets are made at the bottom.
  * Format rules colour rows or cells: each is a condition the server checks against the tickets
  * shown, as the person, and the rule's name stands beside the key so colour is never the only
@@ -89,7 +89,8 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
   const [failed, setFailed] = useState(false);
   const [fields, setFields] = useState<SearchField[]>([]);
   const [group, setGroup] = useState<GroupField | 'none'>('none');
-  const [sort, setSort] = useState<Sort>('created');
+  // The address holds the order (T-330); replacing it tells no one, so the page keeps it as well.
+  const [sort, setSortHere] = useState<ListSort>(() => sortOfRoute(currentRoute()));
   const [filterText, setFilterText] = useState('');
   const [filter, setFilter] = useState('');
   const [columns, setColumns] = useState<string[]>(
@@ -103,6 +104,20 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
   /** Bumped to read every section again (after a ticket is made). */
   const [version, setVersion] = useState(0);
   const nameOf = useColumnName(fields);
+
+  useEffect(
+    () =>
+      onRouteChange(() => {
+        const route = currentRoute();
+        if (isListRoute(route, trackKey)) setSortHere(sortOfRoute(route));
+      }),
+    [trackKey],
+  );
+  const setSort = (next: ListSort) => {
+    setSortHere(next);
+    const route = currentRoute();
+    if (isListRoute(route, trackKey)) replaceRoute(routeWithSort(route, next));
+  };
 
   useEffect(() => {
     let live = true;
@@ -210,7 +225,7 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
   if (!track || !base) return <p className="report-loading">{t('reports.loading')}</p>;
 
   const query = (clause: string | null) =>
-    `${base}${clause ? ` AND ${clause}` : ''} ORDER BY ${SORTS[sort].order}`;
+    `${base}${clause ? ` AND ${clause}` : ''} ORDER BY ${orderBy(sort)}`;
   const section = (
     key: string,
     title: string | null,
@@ -219,7 +234,7 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
     other = false,
   ) => (
     <GroupSection
-      key={`${key}-${version}-${sort}-${base}`}
+      key={`${key}-${version}-${sortKey(sort)}-${base}`}
       sectionKey={key}
       title={title}
       count={count}
@@ -230,6 +245,7 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
       fields={fields}
       format={rules.length > 0 ? format : undefined}
       onTickets={onTickets}
+      onSort={(column) => setSort(nextSort(sort, column))}
     />
   );
 
@@ -259,16 +275,7 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
             ))}
           </select>
         </label>
-        <label className="form-field">
-          <span className="form-label">{t('list.sortBy')}</span>
-          <select value={sort} onChange={(event) => setSort(event.target.value as Sort)}>
-            {(Object.keys(SORTS) as Sort[]).map((s) => (
-              <option key={s} value={s}>
-                {t(SORTS[s].label)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SortMenu sort={sort} nameOf={nameOf} onChange={setSort} />
         <form
           className="list-filter"
           onSubmit={(event) => {

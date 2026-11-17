@@ -346,7 +346,12 @@ export type PlanDuplicated =
 export interface PlanListFile {
   filters: PlanFilters;
   columns: readonly string[];
-  sort: 'created' | 'updated' | 'due' | 'priority';
+  /**
+   * The field the List is ordered by, as the query language names it (`created`, `key`, `cf[40]`),
+   * and which way (T-330).
+   */
+  sort: string;
+  order: 'asc' | 'desc';
   /** Commas or semicolons, as the person's spreadsheet opens them (T-263); commas if left out. */
   separator?: CsvSeparator;
 }
@@ -466,11 +471,12 @@ export const planClient: PlanClient = {
       return { ok: false, error: error.code ?? String(error.status), fields: body?.fields ?? {} };
     }
   },
-  exportHref: (id, { filters, columns, sort, separator }) => {
+  exportHref: (id, { filters, columns, sort, order, separator }) => {
     const params = filterParams(filters);
     params.set('format', 'csv');
     params.set('columns', ['key', ...columns].join(','));
     params.set('sort', sort);
+    params.set('order', order);
     if (separator === 'semicolon') params.set('separator', separator);
     return `${API_BASE}/plans/${id}/export?${params}`;
   },

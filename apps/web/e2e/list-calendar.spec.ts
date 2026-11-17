@@ -230,3 +230,57 @@ test('[AGL-017] a ticket dragged to another day on the calendar is due there', a
   expect(await seriousAxeViolations(page)).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+test('[AGL-016] a heading orders the list by key, by ticket number, and the address keeps it (T-330)', async ({
+  page,
+  isMobile,
+}, testInfo) => {
+  const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
+  expect(signIn.status()).toBe(200);
+  const key = uniqueKey('O', testInfo);
+  await track(page, key, `Order ${key}`);
+  for (let n = 1; n <= 11; n++) {
+    const res = await page.request.post(`${BASE}/api/v1/tickets`, {
+      data: { track: key, summary: `Order ${n}` },
+    });
+    expect(res.status(), await res.text()).toBe(201);
+  }
+  // By number: KEY-9 before KEY-10, which text order would put after KEY-1.
+  const byNumber = Array.from({ length: 11 }, (_, at) => `${key}-${at + 1}`);
+  await page.goto(`${BASE}/#/tracks/${key}/list`);
+  const list = page.getByRole('region', { name: 'List', exact: true });
+  const keysShown = () =>
+    list.getByRole('link', { name: new RegExp(`^${key}-d+$`) }).allTextContents();
+  // Newest created first until asked otherwise.
+  await expect.poll(keysShown).toEqual([...byNumber].reverse());
+
+  if (isMobile) {
+    // A phone has no headings: the menu orders by key.
+    await list.getByRole('combobox', { name: 'Sort by' }).selectOption({ label: 'Key' });
+  } else {
+    const heading = list.getByRole('columnheader', { name: 'Key', exact: true });
+    await heading.getByRole('button', { name: 'Key', exact: true }).click();
+    await expect(heading).toHaveAttribute('aria-sort', 'ascending');
+  }
+  await expect.poll(keysShown).toEqual(byNumber);
+  await expect(page).toHaveURL(/[?&]sort=key(?:&|$)/);
+  await expect(list.getByRole('combobox', { name: 'Sort by' })).toHaveValue('key');
+
+  // A reload, as a link opens it: the same order.
+  await page.reload();
+  await expect.poll(keysShown).toEqual(byNumber);
+  if (isMobile) {
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    return;
+  }
+  // Again by its heading: the other way, and the menu names it.
+  const heading = list.getByRole('columnheader', { name: 'Key', exact: true });
+  await heading.getByRole('button', { name: 'Key', exact: true }).click();
+  await expect(heading).toHaveAttribute('aria-sort', 'descending');
+  await expect.poll(keysShown).toEqual([...byNumber].reverse());
+  await expect(page).toHaveURL(/[?&]sort=key&order=desc(?:&|$)/);
+  await expect(list.getByRole('combobox', { name: 'Sort by' })).toHaveValue('current');
+  expect(await seriousAxeViolations(page)).toEqual([]);
+});

@@ -25,6 +25,7 @@ export function GroupSection({
   cap,
   emptyBody,
   readOnly = false,
+  onSort,
 }: {
   sectionKey: string;
   title: string | null;
@@ -43,6 +44,8 @@ export function GroupSection({
   emptyBody?: ReactNode;
   /** No cell edits in place (a plan's List in a scenario). */
   readOnly?: boolean;
+  /** Ordering by a column's heading (T-330): the column clicked. */
+  onSort?: (column: string) => void;
 }) {
   const t = useT();
   const id = useId();
@@ -110,6 +113,7 @@ export function GroupSection({
           client={search}
           sort={sortOfQuery(query)}
           readOnly={readOnly}
+          {...(onSort ? { onSort } : {})}
           {...(title === null ? {} : { label: t('list.groupTable', { name: title }) })}
           {...(format ? { format } : {})}
           onSaved={(saved) =>

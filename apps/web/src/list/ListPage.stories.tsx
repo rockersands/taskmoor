@@ -101,6 +101,31 @@ export const NotFound: Story = {
   },
 };
 
+/**
+ * Ordered by a heading (T-330): Key orders by ticket number, the menu says so; a second click
+ * reverses it, which the menu names as an entry of its own.
+ */
+export const SortedByAHeading: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('link', { name: 'SHOP-41' });
+    await userEvent.click(canvas.getByRole('button', { name: 'Key' }));
+    await expect(await canvas.findByRole('columnheader', { name: 'Key' })).toHaveAttribute(
+      'aria-sort',
+      'ascending',
+    );
+    const menu = canvas.getByRole('combobox', { name: 'Sort by' });
+    await expect(menu).toHaveDisplayValue('Key');
+    await canvas.findByRole('link', { name: 'SHOP-41' });
+    await userEvent.click(canvas.getByRole('button', { name: 'Key' }));
+    await expect(await canvas.findByRole('columnheader', { name: 'Key' })).toHaveAttribute(
+      'aria-sort',
+      'descending',
+    );
+    await expect(menu).toHaveDisplayValue('Key, descending');
+  },
+};
+
 /** A finger reaches each ticket's key and the buttons of Columns and Format rules (ADR-033). */
 export const OnATouchScreen: Story = {
   tags: ['touch'],
