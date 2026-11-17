@@ -931,20 +931,13 @@ export function registerWorkflowRoutes(app: FastifyInstance, db: Kysely<Database
   });
 
   // What a closing status sets when the editor adds it to a workflow that moves freely (WF-008):
-  // the same answer the server's own paths use, made here if the workspace has no reason to name.
+  // the same answer the server's own paths use, made here if the workspace has no reason to name,
+  // with its one close_reason.created (T-325). Two asking at once make one, and one event.
   app.post('/api/v1/workflows/:id/completed-reason', async (request, reply) => {
     if (!(await workflowAccess(request, reply, true))) return reply;
-    const closeReasonId = await db.transaction().execute(async (trx) => {
-      const found = await closingReasonId(trx, request.workspaceId);
-      if (found !== null) return found;
-      const made = await completedReasonId(trx, by(request));
-      await emit(trx, by(request), {
-        type: 'close_reason.created',
-        subjectId: made,
-        payload: { name: 'Completed' },
-      });
-      return made;
-    });
+    const closeReasonId = await db
+      .transaction()
+      .execute((trx) => completedReasonId(trx, by(request)));
     return { closeReasonId };
   });
 

@@ -66,7 +66,9 @@ them.
   - **What "Completed" means when it was renamed or replaced.** One answer on the server
     (`closingReasonId`): the reason named Completed, else what the default workflow's published
     version sets on entering a closed-stage status, which follows it through a rename and a
-    replacement; only with neither is a Completed made. The editor asks the server for it
+    replacement; only with neither is a Completed made. Making it records `close_reason.created`
+    in the same transaction whichever path made it, and finding one records nothing
+    (`createCloseReason` and `completedReasonId`; T-325). The editor asks the server for it
     (`POST /api/v1/workflows/:id/completed-reason`) when it adds a closing status to a workflow that
     moves freely, rather than matching a name in a list that may be late or unreadable. If the
     request fails the status is not added and the editor says why.
