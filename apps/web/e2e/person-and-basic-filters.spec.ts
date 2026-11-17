@@ -11,6 +11,23 @@ import { expect, type Page, test } from '@playwright/test';
 const BASE = 'http://localhost:4174';
 const ADMIN = { email: 'ada@attach.test', password: process.env.TASKMOOR_E2E_ATTACH_PASSWORD };
 
+/**
+ * A query's days are the person's (QRY-006, ADR-010 T-280): their account's zone, else their
+ * device's. The browser's device is kept on Kiritimati (UTC+14), whose day is not UTC's for 14
+ * hours of every 24, so "on today" checks that the form and the server read the person's day,
+ * and the days the test uses do not depend on where or when it runs.
+ */
+test.use({ timezoneId: 'Pacific/Kiritimati' });
+
+/** The calendar day an instant falls on in a time zone, as `YYYY-MM-DD`. */
+const dayIn = (at: Date, timeZone: string) =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(at);
+
 const AXE = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 async function seriousAxeViolations(page: Page): Promise<string[]> {
   await page.evaluate(readFileSync(AXE, 'utf8'));
@@ -140,17 +157,26 @@ test('[QRY-014] [QRY-006] basic date and field filters run on the server and sur
   const signIn = await page.request.post(`${BASE}/api/v1/session`, { data: ADMIN });
   expect(signIn.status()).toBe(200);
   const word = `flt${testInfo.project.name}${Date.now().toString(36)}`;
-  // Ada's time zone here is Automatic, which queries read as UTC.
-  const today = new Date().toISOString().slice(0, 10);
   const label = `lbl-${word}`;
   const made = await page.request.post(`${BASE}/api/v1/tickets`, {
-    data: { track: 'ATT', summary: `Filter me ${word}`, labels: [label], dueDate: today },
+    data: { track: 'ATT', summary: `Filter me ${word}`, labels: [label] },
   });
   expect(made.status(), await made.text()).toBe(201);
   const ticket = (await made.json()).ticket as {
+    id: number;
     key: string;
+    createdAt: string;
     ticketType: { name: string };
   };
+  // Today is the day the ticket was made on the person's clock: Ada's zone when her account has
+  // one, else the browser's (Automatic). Taken from the ticket, so no midnight falls in between.
+  const device = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const zone = ((await signIn.json()).user.timeZone as string | null) ?? device;
+  const today = dayIn(new Date(ticket.createdAt), zone);
+  const dated = await page.request.patch(`${BASE}/api/v1/tickets/${ticket.id}`, {
+    data: { dueDate: today },
+  });
+  expect(dated.status(), await dated.text()).toBe(200);
   const tracks = await page.request.get(`${BASE}/api/v1/tracks?limit=200`);
   const track = ((await tracks.json()).tracks as { id: number; key: string }[]).find(
     (t) => t.key === 'ATT',
