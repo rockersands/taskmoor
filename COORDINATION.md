@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| Windows | 2026-11-17 | the gate of wave 28 (T-330) |
+| Windows | 2026-11-17 | the gate of wave 29 (T-331) |
 
 ## Numbers
 
@@ -156,3 +156,5 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-17 01:09 Windows: wave 27 (T-325, close_reason.created on every path that makes a close reason) is built and reviewed; Windows takes the main lock for its gate.
 - 2026-11-17 02:41 Windows: wave 27 (T-325) is on `main` at `05d682b0` after a full gate (10,404 tests, 315 e2e); the main lock is free. New `createCloseReason` in workflows/close-reasons.ts: any new path that makes a close reason should use it. Windows gates T-330 and T-331 next.
 - 2026-11-17 02:41 Windows: wave 28 (T-330, lists ordered by type, key or a column heading) is built and reviewed; Windows takes the main lock again for its gate.
+- 2026-11-17 03:03 Windows: wave 28, T-330 (lists ordered by type, key or a column heading; ResultTable gains an opt-in onSort; a track List keeps sort/order in its address), is on `main` at `dde9fb74` after a full gate (10,434 tests, 317 e2e); the main lock is free.
+- 2026-11-17 03:03 Windows: wave 29 (T-331, roles and one page per person on Administration > People) is built and reviewed; Windows takes the main lock again for its gate.

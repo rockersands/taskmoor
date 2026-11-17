@@ -22,7 +22,16 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: close_reason.created on every path (2026-11-17, Windows)
+### Latest: lists ordered by type, key or a heading (2026-11-17, Windows)
+
+On `main` at `dde9fb74` after a full gate (10,434 tests, 317 e2e). No migration (the next is 0114).
+
+- T-330: `apps/web/src/list/order.ts` (one order model: column plus direction; `nextSort`, `usableSort`),
+  `list/SortMenu.tsx`, ResultTable's opt-in `onSort` (Search does not pass it), `GroupSection` keeps its table
+  while a new order loads. Plan files take `sort` (any orderable field or `cf[N]`) and `order`
+  (`plans/model.ts` `exportOrder`). A track's List keeps its order in the address. ADR-065 As built (T-330).
+
+### Earlier: close_reason.created on every path (2026-11-17, Windows)
 
 On `main` at `05d682b0` after a full gate (10,404 tests, 315 e2e). No migration (the next is 0114).
 
