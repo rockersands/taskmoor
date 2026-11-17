@@ -225,6 +225,7 @@ export function allRoutes(ids, source) {
     route('other', 'plan-not-found', '#/plans/999999'),
     route('other', 'bulk-not-found', '#/bulk/999999'),
     route('other', 'workflow-not-found', '#/admin/workflows/999999'),
+    route('other', 'person-not-found', '#/admin/users/999999'),
     ...[
       ['signed-out-home', '#/home'],
       ['signed-out-tracks', '#/tracks'],

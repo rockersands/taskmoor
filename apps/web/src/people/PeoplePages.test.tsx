@@ -2,7 +2,6 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { ADMIN, MEMBER } from '../admin/fixtures';
-import { ApiError } from '../api/client';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
 import { type Session, SessionProvider } from '../session/SessionProvider';
@@ -34,7 +33,7 @@ describe('people (M1-053, IAM-008)', () => {
     const user = userEvent.setup();
     renderPage('users');
     expect((await list()).map((li) => li.querySelector('.people-name')?.textContent)).toEqual([
-      'Ada LovelaceSite administrator',
+      'Ada Lovelace',
       'Bo Rivera',
       'Grace Hopper',
     ]);
@@ -45,82 +44,91 @@ describe('people (M1-053, IAM-008)', () => {
     expect(await screen.findByText('Ken Oduya')).toBeVisible();
   });
 
-  it('[IAM-008] adds a person and shows their one-time link', async () => {
-    const user = userEvent.setup();
-    const client = renderPage('users');
-    await list();
-    await user.click(screen.getByRole('button', { name: 'New person' }));
-    const form = screen.getByRole('form', { name: 'New person' });
-    await user.type(within(form).getByLabelText('Name'), 'Mo Chen');
-    await user.type(within(form).getByLabelText('Email'), 'mo@example.com');
-    await user.click(within(form).getByRole('checkbox', { name: 'Site administrator' }));
-    await user.click(within(form).getByRole('button', { name: 'Add' }));
-    expect(await screen.findByText('Mo Chen was added.')).toBeInTheDocument();
+  it('[IAM-009] shows every administrator role each person holds, the tracks they run, or Member (T-331)', async () => {
+    renderPage('users');
+    const roles = (await list()).map((li) => li.querySelector('.people-roles')?.textContent);
+    expect(roles).toEqual([
+      'Site administrator',
+      'Member',
+      'Configuration administrator, Runs 2 tracks',
+    ]);
+    // Each role is a badge of its own.
+    const grace = screen.getByText('Grace Hopper').closest('li') as HTMLElement;
     expect(
-      (screen.getByRole('textbox', { name: 'Link for Mo Chen' }) as HTMLInputElement).value,
-    ).toContain('#/password?token=');
-    expect(client.calls[0]).toEqual({
-      action: 'createUser',
-      args: [{ name: 'Mo Chen', email: 'mo@example.com', isSiteAdmin: true }],
-    });
-    // The same email twice is refused in words.
-    await user.click(screen.getByRole('button', { name: 'New person' }));
-    const again = screen.getByRole('form', { name: 'New person' });
-    await user.type(within(again).getByLabelText('Name'), 'Mo Again');
-    await user.type(within(again).getByLabelText('Email'), 'mo@example.com');
-    await user.click(within(again).getByRole('button', { name: 'Add' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Someone already has that email.');
+      [...grace.querySelectorAll('.people-role')].map((b) => b.lastChild?.textContent),
+    ).toEqual(['Configuration administrator', 'Runs 2 tracks']);
   });
 
-  it('[IAM-008] deactivates and reactivates someone, and makes a site administrator', async () => {
+  it('[IAM-008] gives each row one Edit link to the person’s page, and no other action (T-331)', async () => {
+    renderPage('users');
+    const rows = await list();
+    for (const row of rows) {
+      const name = row.querySelector('.people-name')?.textContent as string;
+      // The visible word starts the name, which says whom it edits (WCAG 2.5.3).
+      const edit = within(row).getByRole('link', { name: `Edit ${name}` });
+      expect(edit).toHaveTextContent(/^Edit$/);
+      expect(within(row).getAllByRole('link')).toHaveLength(1);
+      expect(within(row).queryByRole('button')).toBeNull();
+    }
+    expect(screen.getByRole('link', { name: 'Edit Bo Rivera' })).toHaveAttribute(
+      'href',
+      '#/admin/users/2',
+    );
+    expect(
+      screen.queryByRole('button', { name: /Deactivate|Erase|Data of|password link/ }),
+    ).toBeNull();
+  });
+
+  it('[IAM-009] filters by role on the server, and keeps the filters in the address (T-331)', async () => {
     const user = userEvent.setup();
-    const client = renderPage('users');
-    await list();
-    const trigger = screen.getByRole('button', { name: 'Deactivate Bo Rivera' });
-    // A destructive action looks it, and asks first, saying what will happen (D13, AD-16).
-    expect(trigger).toHaveClass('button-danger-quiet');
-    await user.click(trigger);
-    expect(client.calls.some((c) => c.action === 'deactivate')).toBe(false);
-    const confirm = screen.getByRole('group', { name: /Bo Rivera is signed out everywhere/ });
-    // The way back has the focus, and Escape takes it.
-    expect(within(confirm).getByRole('button', { name: 'Cancel' })).toHaveFocus();
-    expect(within(confirm).getByRole('button', { name: 'Deactivate Bo Rivera' })).toHaveClass(
-      'button-danger',
-    );
-    // Escape takes the way back, and the focus goes back to the button that asked.
-    await user.keyboard('{Escape}');
-    expect(screen.queryByRole('group', { name: /Bo Rivera is signed out everywhere/ })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Deactivate Bo Rivera' })).toHaveFocus();
-    await user.click(screen.getByRole('button', { name: 'Deactivate Bo Rivera' }));
-    // Cancel does the same.
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(screen.getByRole('button', { name: 'Deactivate Bo Rivera' })).toHaveFocus();
-    await user.click(screen.getByRole('button', { name: 'Deactivate Bo Rivera' }));
-    await user.click(
-      within(screen.getByRole('group', { name: /Bo Rivera is signed out everywhere/ })).getByRole(
-        'button',
-        { name: 'Deactivate Bo Rivera' },
-      ),
-    );
-    expect(
-      await screen.findByText('Bo Rivera was deactivated and signed out everywhere.'),
-    ).toBeInTheDocument();
-    // The button went with the deactivation: the page's heading keeps the focus.
-    expect(screen.getByRole('heading', { level: 1, name: 'People' })).toHaveFocus();
-    expect(screen.queryByText('Bo Rivera')).toBeNull();
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Show' }), 'all');
-    await user.click(await screen.findByRole('button', { name: 'Reactivate Bo Rivera' }));
-    expect(await screen.findByText('Bo Rivera was reactivated.')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Make site administrator: Grace Hopper' }));
-    expect(await screen.findByText('Grace Hopper was changed.')).toBeInTheDocument();
-    // Nobody acts on themselves here: no deactivate or demote for the signed-in administrator.
-    const ada = PEOPLE[0]?.name as string;
-    expect(screen.queryByRole('button', { name: `Deactivate ${ada}` })).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'New password link for Bo Rivera' }));
-    expect(
-      ((await screen.findByRole('textbox', { name: 'Link for Bo Rivera' })) as HTMLInputElement)
-        .value,
-    ).toContain('reset-2');
+    window.location.hash = '#/admin/users?show=all';
+    try {
+      const client = renderPage('users');
+      const asked: unknown[][] = [];
+      const users = client.users;
+      client.users = (...args) => {
+        asked.push(args);
+        return users(...args);
+      };
+      // The address's status is the list's.
+      expect(screen.getByRole('combobox', { name: 'Show' })).toHaveValue('all');
+      await list();
+      const role = screen.getByRole('combobox', { name: 'Role' });
+      expect(role).toHaveValue('any');
+      await user.selectOptions(role, 'People who run tracks');
+      await waitFor(() =>
+        expect(
+          screen
+            .getAllByRole('listitem')
+            .map((li) => li.querySelector('.people-name')?.textContent),
+        ).toEqual(['Grace Hopper']),
+      );
+      expect(asked.at(-1)).toEqual(['', 'all', 0, 'runs_tracks']);
+      expect(window.location.hash).toBe('#/admin/users?show=all&role=runs_tracks');
+      await user.selectOptions(role, 'AI administrators');
+      // Ken, deactivated, keeps his role.
+      expect(await screen.findByText('Ken Oduya')).toBeVisible();
+      await user.selectOptions(role, 'Members, with no role');
+      await waitFor(() => expect(screen.queryByText('Ken Oduya')).toBeNull());
+      expect(screen.getByText('Bo Rivera')).toBeVisible();
+      await user.selectOptions(role, 'Any role');
+      expect(window.location.hash).toBe('#/admin/users?show=all');
+    } finally {
+      window.location.hash = '';
+    }
+  });
+
+  it('[IAM-009] starts from the role the address names', async () => {
+    window.location.hash = '#/admin/users?role=site_admin';
+    try {
+      renderPage('users');
+      expect(screen.getByRole('combobox', { name: 'Role' })).toHaveValue('site_admin');
+      expect((await list()).map((li) => li.querySelector('.people-name')?.textContent)).toEqual([
+        'Ada Lovelace',
+      ]);
+    } finally {
+      window.location.hash = '';
+    }
   });
 
   it('[IAM-008] says only administrators manage people', () => {
@@ -195,89 +203,11 @@ describe('people (M1-053, IAM-008)', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Groups' })).toHaveFocus();
   });
 
-  it('[IAM-008] ASVS 8.3.2: erases a person once their email is typed, and opens their data', async () => {
-    const client = renderPage('users');
-    await list();
-    await userEvent.click(screen.getByRole('button', { name: 'Data of Grace Hopper' }));
-    expect(await screen.findByRole('region', { name: 'Data of Grace Hopper' })).toBeVisible();
-    await userEvent.click(screen.getByRole('button', { name: 'Close' }));
-    expect(screen.queryByRole('region', { name: 'Data of Grace Hopper' })).toBeNull();
-    // Nobody erases themselves: Ada (signed in) has no erase button.
-    expect(screen.queryByRole('button', { name: 'Erase Ada Lovelace' })).toBeNull();
-    // Erase has the danger look of every destructive action, but asks for the email (D13).
-    const eraseTrigger = screen.getByRole('button', { name: 'Erase Grace Hopper' });
-    expect(eraseTrigger).toHaveClass('button-danger-quiet');
-    expect(eraseTrigger).not.toHaveClass('button-secondary');
-    await userEvent.click(eraseTrigger);
-    const form = screen.getByRole('form', { name: 'Erase Grace Hopper' });
-    const erase = within(form).getByRole('button', { name: 'Erase permanently' });
-    expect(erase).toBeDisabled();
-    await userEvent.type(
-      within(form).getByLabelText('Type grace@example.com to confirm'),
-      'grace@example.org',
-    );
-    expect(erase).toBeDisabled();
-    await userEvent.clear(within(form).getByLabelText('Type grace@example.com to confirm'));
-    await userEvent.type(
-      within(form).getByLabelText('Type grace@example.com to confirm'),
-      'Grace@Example.com',
-    );
-    await userEvent.click(erase);
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'The person was erased; they are Former user 3 from now on.',
-    );
-    expect(client.calls).toContainEqual({ action: 'erase', args: [3, 'Grace@Example.com'] });
-    expect(screen.queryByText('Grace Hopper')).toBeNull();
-    // Shown among everyone as erased, with no actions left.
-    await userEvent.selectOptions(screen.getByLabelText('Show'), 'all');
-    const erased = (await screen.findByText('Former user 3')).closest('li') as HTMLElement;
-    expect(within(erased).getByText('Erased')).toBeVisible();
-    expect(within(erased).queryByRole('button')).toBeNull();
-  });
-
-  it('[IAM-034] says why an erasure is refused when a shared track group gave the last one to run a track', async () => {
-    const client = renderPage('users');
-    client.erase = async () => {
-      throw new ApiError(409, { error: 'last_track_admin', trackIds: [4] });
-    };
-    await list();
-    await userEvent.click(screen.getByRole('button', { name: 'Erase Bo Rivera' }));
-    const form = screen.getByRole('form', { name: 'Erase Bo Rivera' });
-    await userEvent.type(
-      within(form).getByLabelText('Type bo@example.com to confirm'),
-      'bo@example.com',
-    );
-    await userEvent.click(within(form).getByRole('button', { name: 'Erase permanently' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Erasing them would take back a role their shared track groups gave the only other person running a track.',
-    );
-    expect(screen.getByText('Bo Rivera')).toBeVisible();
-  });
-
-  it('[IAM-008] keeps the deactivation question open when it is refused, saying why', async () => {
-    const user = userEvent.setup();
-    const client = renderPage('users');
-    client.deactivate = async () => {
-      throw new ApiError(409, { error: 'last_admin' });
-    };
-    await list();
-    await user.click(screen.getByRole('button', { name: 'Deactivate Bo Rivera' }));
-    const question = screen.getByRole('group', { name: /Bo Rivera is signed out everywhere/ });
-    await user.click(within(question).getByRole('button', { name: 'Deactivate Bo Rivera' }));
-    expect(await screen.findByRole('alert')).toBeVisible();
-    // Open still, to try again or cancel.
-    expect(screen.getByRole('group', { name: /Bo Rivera is signed out everywhere/ })).toBe(
-      question,
-    );
-    await user.click(within(question).getByRole('button', { name: 'Cancel' }));
-    expect(screen.getByRole('button', { name: 'Deactivate Bo Rivera' })).toHaveFocus();
-  });
-
   it('fits a small phone', async () => {
     setViewportWidth(375);
     renderPage('users');
     await list();
-    expect(screen.getByRole('button', { name: 'Deactivate Bo Rivera' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Edit Bo Rivera' })).toBeVisible();
   });
 
   it('passes every string through the pseudo-locale', async () => {
@@ -477,15 +407,22 @@ describe('people past the first page (T-307)', () => {
     await screen.findByText('7 people');
     await user.click(showMore());
     await waitFor(() => expect(names()).toHaveLength(5));
-    await user.click(screen.getByRole('button', { name: 'Make site administrator: Person 004' }));
-    expect(await screen.findByText('Person 004 was changed.')).toBeInTheDocument();
-    expect(names()).toEqual([
-      'Person 001',
-      'Person 002',
-      'Person 003',
-      'Person 004Site administrator',
-      'Person 005',
-    ]);
+    // Adding someone reads the list again, as many people as were shown.
+    await user.click(screen.getByRole('button', { name: 'New person' }));
+    const form = screen.getByRole('form', { name: 'New person' });
+    await user.type(within(form).getByLabelText('Name'), 'Person 0045');
+    await user.type(within(form).getByLabelText('Email'), 'person-0045@example.com');
+    await user.click(within(form).getByRole('button', { name: 'Add' }));
+    expect(await screen.findByText('Person 0045 was added.')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(names()).toEqual([
+        'Person 001',
+        'Person 002',
+        'Person 003',
+        'Person 004',
+        'Person 0045',
+      ]),
+    );
     expect(showMore()).toBeVisible();
   });
 

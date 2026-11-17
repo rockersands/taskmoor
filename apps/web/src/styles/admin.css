@@ -797,16 +797,10 @@ details[open] > summary.admin-disclosure::after,
   }
 }
 
-/* People: every row lays out the same, its actions on a line of their own (AD-17). */
+/* People: every row lays out the same, its one action, Edit, at the row's end (AD-17, T-331). */
 .people-list-users .people-actions {
-  flex: 1 1 100%;
-  gap: var(--space-1);
-}
-
-/* Tighter buttons, so a person's five actions stay on one line beside Administration's list at
-   1280 px; 'Erase…' wrapped onto a line of its own. */
-.people-list-users .people-actions > button {
-  padding-inline: var(--space-3);
+  flex: 0 0 auto;
+  align-self: start;
 }
 
 /* Administration's form and list pages keep a reading width; the audit log and the usage tables
