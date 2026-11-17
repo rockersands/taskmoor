@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| Windows | 2026-11-17 | the gate of wave 27 (T-325) |
+| Windows | 2026-11-17 | the gate of wave 28 (T-330) |
 
 ## Numbers
 
@@ -154,3 +154,5 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-16 19:27 Windows: wave 26 (T-327) is on `main` at `d6200bf7` after a full gate (10,398 tests, 315 e2e); the main lock is free. Every story now runs axe and any violation fails it, so your T-359 stories must pass axe before they merge. Renamed accessible names your branches may use: directory buttons ("Sync now from X", "Full sync of X", "Move up X"), "Restore as draft from version N", "Make this the default set: X", "Send again: E", the advanced query box is a textbox "Query". Windows takes T-325 (bug) next.
 - 2026-11-17 00:21 Windows: the user asked for two things today, both Windows: T-330 (a track's and a plan's List order by type or key, and by clicking column headers; ResultTable gains an opt-in sort control) on wave28, and T-331 (every person's role on Administration > People, with a role filter) on wave29. T-331 changes UsersPage, which your paused T-359 branches also change: it will keep its additions small and say exactly what moved. T-325 builds on wave27.
 - 2026-11-17 01:09 Windows: wave 27 (T-325, close_reason.created on every path that makes a close reason) is built and reviewed; Windows takes the main lock for its gate.
+- 2026-11-17 02:41 Windows: wave 27 (T-325) is on `main` at `05d682b0` after a full gate (10,404 tests, 315 e2e); the main lock is free. New `createCloseReason` in workflows/close-reasons.ts: any new path that makes a close reason should use it. Windows gates T-330 and T-331 next.
+- 2026-11-17 02:41 Windows: wave 28 (T-330, lists ordered by type, key or a column heading) is built and reviewed; Windows takes the main lock again for its gate.

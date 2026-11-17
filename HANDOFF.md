@@ -22,7 +22,20 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: story tests run axe again (2026-11-16, Windows)
+### Latest: close_reason.created on every path (2026-11-17, Windows)
+
+On `main` at `05d682b0` after a full gate (10,404 tests, 315 e2e). No migration (the next is 0114).
+
+- T-325: `apps/server/src/workflows/close-reasons.ts` `createCloseReason` takes the list lock, inserts and
+  emits `close_reason.created`; the close reasons route and `completedReasonId` (workflows, the
+  completed-reason route, board-managed workflows and track templates) use it. Tests in
+  `routes/close-reason-created.test.ts`. ADR-079 records the exception to "one event per board mutation";
+  ADR-116 and the manual's fields page say who records it.
+- Building: T-330 (lists ordered by type or key, and by column headers; wave28) and T-331 (each person's
+  roles, a role filter and one Edit view per person with T-323's person controls; wave29). T-323 keeps
+  your own token and releases, after the Mac's T-359.
+
+### Earlier: story tests run axe again (2026-11-16, Windows)
 
 On `main` at `d6200bf7` after a full gate (10,398 tests, 315 e2e). No migration (the next is 0114).
 
