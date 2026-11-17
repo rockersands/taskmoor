@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| Windows | 2026-11-17 | the gate of wave 29 (T-331) |
+| free | | |
 
 ## Numbers
 
@@ -158,3 +158,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-17 02:41 Windows: wave 28 (T-330, lists ordered by type, key or a column heading) is built and reviewed; Windows takes the main lock again for its gate.
 - 2026-11-17 03:03 Windows: wave 28, T-330 (lists ordered by type, key or a column heading; ResultTable gains an opt-in onSort; a track List keeps sort/order in its address), is on `main` at `dde9fb74` after a full gate (10,434 tests, 317 e2e); the main lock is free.
 - 2026-11-17 03:03 Windows: wave 29 (T-331, roles and one page per person on Administration > People) is built and reviewed; Windows takes the main lock again for its gate.
+- 2026-11-17 03:50 Windows: wave 29, T-331 (People: roles, a role filter, one Edit link per person opening #/admin/users/<id> with every action; it adopts your S3-AC-10 people-meta-whole line verbatim, so t359-admin2 conflicts only in PeoplePages.stories.tsx and people.css: keep both sides), is on `main` at `7b289504` after a full gate (10,491 tests, 317 e2e); the main lock is free.

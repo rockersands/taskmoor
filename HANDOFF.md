@@ -22,7 +22,21 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: lists ordered by type, key or a heading (2026-11-17, Windows)
+### Latest: every person's roles and one page per person (2026-11-17, Windows)
+
+On `main` at `7b289504` after a full gate (10,491 tests, 317 e2e). No migration (the next is 0114).
+
+- T-331: `apps/server/src/authz/person-roles.ts` (`rolesOf`, `tracksRunBy`, `roleCondition`: a constant number of
+  statements per page, tested at 3,000 people); `GET /users` takes `role=` and returns `roles` and `tracksRun`;
+  `GET /users/:id` returns role sources, tracks and `hasSecondFactor`. Web: `people/UsersPage.tsx` (badges,
+  one Edit link, role filter) and the new `people/PersonPage.tsx` with every action; `keepPageAddress()` in
+  AdminLayout brings the breadcrumb back to the list's filters. It adopts the Mac's S3-AC-10 meta line, so
+  t359-admin2 merges with two keep-both conflicts (PeoplePages.stories.tsx, people.css).
+- Known: `e2e/people.spec.ts` run alone with several workers can fail its "Your data" step, because the
+  desktop and mobile copies ask for Ada's data at once (the second gets "in progress"). The gate runs them
+  one after the other; it predates T-331.
+
+### Earlier: lists ordered by type, key or a heading (2026-11-17, Windows)
 
 On `main` at `dde9fb74` after a full gate (10,434 tests, 317 e2e). No migration (the next is 0114).
 
