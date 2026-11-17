@@ -1,8 +1,8 @@
 ---
 title: "Single sign-on"
 audience: admins
-sources: apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/server/src/routes/sso.ts, apps/server/src/routes/saml.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/sso/oidc.ts, apps/server/src/sso/saml.ts, apps/server/src/sso/saml-provider.ts, apps/server/src/sso/sign-in.ts, apps/server/src/audit/record.ts, apps/server/src/config.ts, packages/db/src/migrations/0010_identity_providers.ts, packages/db/src/migrations/0020_saml.ts, apps/web/src/sso/IdentityProvidersPage.tsx, apps/web/src/sso/ProviderForm.tsx, apps/web/src/session/SignInForm.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/sso/draft.ts, apps/web/src/trackpeople/InvitationPage.tsx, docs/adr/0119-google-sign-in.md, apps/web/src/sso/RedirectUriField.tsx, apps/web/src/sso/GroupMapField.tsx, apps/web/src/session/GoogleSignInButton.tsx, apps/web/src/session/GoogleMark.tsx, apps/web/src/assets/google/google-g.svg, apps/web/src/fonts/OFL.txt, THIRD_PARTY_NOTICES, apps/web/src/styles/sso.css, docs/plan/decisions.csv, apps/web/src/shell/DangerAction.tsx
-accessed: 2026-11-16
+sources: apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/server/src/routes/sso.ts, apps/server/src/routes/saml.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/sso/oidc.ts, apps/server/src/sso/saml.ts, apps/server/src/sso/saml-provider.ts, apps/server/src/sso/sign-in.ts, apps/server/src/audit/record.ts, apps/server/src/config.ts, packages/db/src/migrations/0010_identity_providers.ts, packages/db/src/migrations/0020_saml.ts, apps/web/src/sso/IdentityProvidersPage.tsx, apps/web/src/sso/ProviderForm.tsx, apps/web/src/session/SignInForm.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/sso/draft.ts, apps/web/src/trackpeople/InvitationPage.tsx, docs/adr/0119-google-sign-in.md, apps/web/src/sso/RedirectUriField.tsx, apps/web/src/sso/GroupMapField.tsx, apps/web/src/session/GoogleSignInButton.tsx, apps/web/src/session/GoogleMark.tsx, apps/web/src/assets/google/google-g.svg, apps/web/src/fonts/OFL.txt, THIRD_PARTY_NOTICES, apps/web/src/styles/sso.css, docs/plan/decisions.csv, apps/web/src/shell/DangerAction.tsx, apps/web/src/people/PersonPage.tsx
+accessed: 2026-11-17
 attestation: own-words
 ---
 # Single sign-on
@@ -349,8 +349,10 @@ password field where single sign-on is enforced.
 An account marked break-glass may still sign in with its password in an enforced domain, so a
 provider outage cannot lock everyone out.
 
-- Mark an account with `PATCH /api/v1/users/:id` and `{"breakGlass": true}` (the People page
-  does not offer it yet). Give it a password with a password link.
+- Mark an account with **Mark as a break-glass account**, under **Sign-in** on its page (**Edit**
+  on its row under **People**; see [A person's page](people-and-groups.md#a-persons-page)), or
+  with `PATCH /api/v1/users/:id` and `{"breakGlass": true}`. Give it a password with a password
+  link.
 - The person signs in at the sign-in page address ending in `#/sign-in?method=password`.
 - Accounts a directory manages cannot be break-glass. Directory syncs and SCIM never
   deactivate a break-glass account.

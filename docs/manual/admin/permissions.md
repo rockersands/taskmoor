@@ -1,8 +1,8 @@
 ---
 title: "Permissions and access"
 audience: admins
-sources: apps/web/src/admin/sections.ts, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/permissions/visibilityClient.ts, apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx, apps/server/src/authz/track-admins.ts, apps/server/src/authz/create-tracks.ts, apps/server/src/routes/setup.ts, docs/adr/0118-track-invitations.md, apps/web/src/admin/NewButton.tsx, apps/web/src/permissions/client.ts, apps/server/src/routes/fields.ts, apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/sets/trackScope.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/server/src/fields/values.ts, apps/server/src/routes/ticket-templates.ts
-accessed: 2026-11-16
+sources: apps/web/src/admin/sections.ts, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/permissions/visibilityClient.ts, apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx, apps/server/src/authz/track-admins.ts, apps/server/src/authz/create-tracks.ts, apps/server/src/routes/setup.ts, docs/adr/0118-track-invitations.md, apps/web/src/admin/NewButton.tsx, apps/web/src/permissions/client.ts, apps/server/src/routes/fields.ts, apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/sets/trackScope.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/server/src/fields/values.ts, apps/server/src/routes/ticket-templates.ts, apps/server/src/authz/person-roles.ts
+accessed: 2026-11-17
 attestation: own-words
 ---
 # Permissions and access
@@ -37,8 +37,10 @@ administrators, and stays in the API for them.
 ## Site and configuration administrators
 
 - A **site administrator** holds every global permission and every track permission in every
-  track. A person becomes one through the flag on the **People** page, or through the global
-  permission **Run the site** given to them or to one of their groups.
+  track. A person becomes one through the mark on their page under **People** (**Make site
+  administrator**), or through the global permission **Run the site** given to them or to one of
+  their groups. Each row on **People** names the administrator roles the person holds, and their
+  page says where each comes from.
 - A **configuration administrator** holds **Change configuration**. They manage roles, access
   policies, visibility policies, workflows, workflow maps, ticket types, layouts and the other
   shared configuration, and hold **Run the track**, **Change layouts**,

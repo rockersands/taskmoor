@@ -394,6 +394,51 @@ is unchanged.
   for both; `e2e/track-settings.spec.ts` on desktop and mobile: delete and restore from Trash,
   switching a track's policy and type set with a mapped ticket, and a local-mode track's note.
 
+**As built (T-331, 2026-11-17): every person's role on People, and one Edit per person.** The
+user asked for two things on Administration > People: to see each person's role ("only the site
+admin has his role on"), and for the rows to hold no quick actions: "put an edit button that opens
+all related actions for that user".
+
+- **Roles on each row.** Under the address, a line of badges names every administrator role the
+  person holds (site, configuration, automation, AI and extensions administrator), **Runs N
+  tracks** when they run tracks, or **Member** (the user's choice). A role counts when something
+  gives it: the account's site administrator flag, or a global grant to the person, to a group
+  they are in (through nesting and a directory's groups too) or to everyone signed in, as the
+  authorizer reads it; a site administrator's implied roles are not listed, so the row says what
+  was given. Running a track counts as the create-tracks rule does (`runningNoTrack`): **Run the
+  track** on a live track through a role (theirs or a group's), a grant or ownership. The server
+  reads both for a whole page in two statements (`authz/person-roles.ts`), measured with 3,000
+  people: a page of 200 takes as many statements as a page of 5.
+- **The role filter.** **Role** sits beside **Show**: any role, one of the five, people who run
+  tracks, or members with none. The server filters (`?role=`) with uncorrelated subqueries, so
+  the total and the pages stay right. The address keeps both choices
+  (`#/admin/users?show=all&role=ai_admin`) only while it is the People page, so going back from a
+  person's page finds the list as it was.
+- **One Edit per person, to a page.** The row's actions (site administrator, password link,
+  deactivate or reactivate, data, erase) leave it; a link styled as a secondary button, visible
+  **Edit**, named "Edit" and the person (the visible word first, WCAG 2.5.3), sits at the row's
+  end and opens **the person's page**, `#/admin/users/<id>` (`people/PersonPage.tsx`), under
+  People in the breadcrumb (`useAdminTrail`). A page, not a dialog or a panel under the row:
+  directories and identity providers open a form under the item because they edit one form, but a
+  person has a dozen independent actions in five parts (roles, profile, sign-in, data, account),
+  each with its own answer and confirmation, which is what the workflow editor and a track's
+  people page are: pages of their own with an address that back and forward and links reach.
+  The page holds: roles with where each comes from, each source a link to where it changes
+  (Groups, Global permissions) and each track run linked to its people page; site administrator
+  on and off; **Profile** (name, email, time zone, language, sending only what changed);
+  **Sign-in** with the password link, the break-glass mark and **Reset second factor** (a
+  `DangerAction`, D13); the person's data downloads; **Account** with Deactivate (`DangerAction`,
+  the heading taking the focus after), Reactivate and **Erase…** (`EraseUserForm`, typed email,
+  as before). The T-323 person controls were API-only and had routes (`PATCH /users/:id`,
+  `POST /users/:id/two-factor/reset`), audited as `user.updated` and `user.two_factor_reset`; no
+  route is new. Oneself: no deactivate, erase or site administrator switch, and one's own second
+  factor stays on the account page. A missing person is a not-found page.
+- **Tests:** server tests for the roles, their sources, the tracks run, the filter's pages and the
+  statement count (`routes/user-roles.test.ts`); unit tests of the list and the page; stories in
+  both skins with axe, at phone width and on a touch screen (Edit, the filters, every action and
+  both answers of a question, the role sources' links at 44 px); `e2e/people.spec.ts` goes through
+  Edit to deactivate, reactivate and erase, and opens the list filtered by role from the address.
+
 ### 2. Layout and density
 
 - Desktop first, and it still works on phones (ADR-033):

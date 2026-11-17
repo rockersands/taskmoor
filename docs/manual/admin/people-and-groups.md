@@ -1,8 +1,8 @@
 ---
 title: "People, groups and teams"
 audience: admins
-sources: apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/api/pages.ts, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, apps/server/src/tracks/membership.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx, apps/server/src/security/alerts.ts, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, apps/server/src/security/refusals.ts, apps/server/src/routes/security-alerts.ts, apps/server/src/audit/record.ts, apps/web/src/admin/SecurityAlertsForm.tsx, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/privacy/erase.ts, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, apps/server/src/audit/query.ts, apps/web/src/people/EraseUserForm.tsx, apps/web/src/account/PersonalDataSection.tsx, docs/adr/0111-personal-data-and-database-tls.md, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md, apps/web/src/shell/DangerAction.tsx, apps/server/src/authz/create-tracks.ts, apps/server/src/trackgroups/access.ts, docs/adr/0122-multi-track.md, docs/adr/0118-track-invitations.md, apps/server/src/routes/service-accounts.ts, apps/server/src/ldap/gateway.ts, apps/web/src/api/teams.ts, apps/server/src/audit/subscriber.ts
-accessed: 2026-11-16
+sources: apps/server/src/routes/users.ts, apps/server/src/authz/person-roles.ts, apps/web/src/people/PersonPage.tsx, apps/web/src/people/peopleWords.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/api/pages.ts, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, apps/server/src/tracks/membership.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx, apps/server/src/security/alerts.ts, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, apps/server/src/security/refusals.ts, apps/server/src/routes/security-alerts.ts, apps/server/src/audit/record.ts, apps/web/src/admin/SecurityAlertsForm.tsx, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/privacy/erase.ts, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, apps/server/src/audit/query.ts, apps/web/src/people/EraseUserForm.tsx, apps/web/src/account/PersonalDataSection.tsx, docs/adr/0111-personal-data-and-database-tls.md, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md, apps/web/src/shell/DangerAction.tsx, apps/server/src/authz/create-tracks.ts, apps/server/src/trackgroups/access.ts, docs/adr/0122-multi-track.md, docs/adr/0118-track-invitations.md, apps/server/src/routes/service-accounts.ts, apps/server/src/ldap/gateway.ts, apps/web/src/api/teams.ts, apps/server/src/audit/subscriber.ts
+accessed: 2026-11-17
 attestation: own-words
 ---
 # People, groups and teams
@@ -19,7 +19,7 @@ administrators.
 
 | Page | Address | What it does |
 |---|---|---|
-| **People** | `#/admin/users` | Add people, make site administrators, deactivate and reactivate, password links, download a person's data, erase a person |
+| **People** | `#/admin/users` | Find people by name, status and role, and add people; **Edit** opens a person's page: their roles, profile, password link, break-glass mark, second factor, data, deactivation and erasure |
 | **Groups** | `#/admin/groups` | Create and delete groups, members, groups inside groups |
 | **Teams** | `#/admin/teams` | Create, rename and delete teams, their members and lead |
 | **Security** | `#/admin/security` | Who must use two-factor authentication, how long sign-ins last, and security alerts |
@@ -37,19 +37,70 @@ also be [invited into a track](invitations.md), or arrive through [single sign-o
 ## The people directory
 
 **People** lists everyone who can sign in. Service accounts are not people and have their own
-list. For each person you see the name, the email, the date they last signed in, and a
-**Site administrator** or **Deactivated** badge where it applies.
+list. For each person you see the name, a **Deactivated** or **Erased** badge where it applies,
+the email, the date they last signed in, and what they are:
+
+- each administrator role they hold: **Site administrator**, **Configuration administrator**,
+  **Automation administrator**, **AI administrator** and **Extensions administrator**, whether it
+  was given to them, to a group they are in (also through a group inside it, or a group a
+  [directory](ldap.md) keeps), or to everyone signed in. A site administrator holds every other
+  role too, but the row names only the roles something gives them;
+- **Runs 3 tracks** when they run tracks: they hold **Run the track** there, through a role in
+  the track (theirs or a group's), a grant, or as the track's owner. Tracks in the trash do not
+  count;
+- **Member** when they hold none of these.
+
+A deactivated person keeps their roles, and the row shows them; they come back into use when the
+person is reactivated.
+
+Each row has one action, **Edit**, which opens [the person's page](#a-persons-page) with
+everything you can do for them. Screen readers hear it as **Edit** and the person's name.
 
 - **Find by name or email** narrows the list as you type.
 - **Show** picks **Active people**, **Deactivated people** or **Everyone**.
+- **Role** picks **Any role**, the holders of one administrator role, **People who run tracks**,
+  or **Members, with no role**. The server does the filtering, so the count and **Show more**
+  stay right.
+- The address keeps **Show** and **Role**, for example `#/admin/users?show=all&role=ai_admin`,
+  so coming back from a person's page finds the list as you left it.
 - Above the list, the count says how many people match. The list shows the first 200 by name;
   **Show more** under it adds the next 199, until everyone who matches is listed: each page
   starts at the last person shown, and when people came or went meanwhile (another
   administrator or the directory deactivated someone) the list is read again from the top, so
   nobody is skipped. Once the last page is in, the keyboard focus goes to the first person it
-  brought. A new search
-  or another **Show** choice starts the list again from the top, and a change to someone keeps
-  the people you had already listed in view.
+  brought. A new search, or another **Show** or **Role** choice, starts the list again from the
+  top, and adding someone keeps the people you had already listed in view.
+
+## A person's page
+
+**Edit** on a person's row opens their page, at `#/admin/users/42` (42 being the account's
+number). The breadcrumb ends at their name, under **People**. Under the name are their email,
+when they last signed in, and a **Deactivated** badge where it applies. The page has these parts:
+
+- **Roles**: each administrator role they hold, and under it where it comes from, as a link to
+  where it changes: **Through the group Approvers** leads to **Groups**; **Given to them on Global
+  permissions** and **Given to everyone signed in, on Global permissions** lead to
+  [global permissions](permissions.md#global-permissions); **Marked on their account** is the site
+  administrator mark that **Make site administrator** and **Remove site administrator** switch,
+  just below. Then **Runs 2 tracks**, with each track by key and name, linked to its people page,
+  where its roles change (the first 100; the rest are counted). Someone with no role reads
+  **Member**. The part also says which groups the person is in themselves.
+- **Profile**: **Name**, **Email**, **Time zone** and **Language and region**, then **Save
+  profile**. Only what you changed is sent. An address another account has is refused. For a
+  person a [directory](ldap.md) keeps, the part names the directory: a read-only one keeps the
+  name and email, a read-and-write one takes the change too.
+- **Sign-in**: **New password link** (see [Password links](#password-links)); the
+  [break-glass](sso.md#the-break-glass-fallback) mark, with **Mark as a break-glass account** and
+  **Remove the break-glass mark**; and **Reset second factor** when they have one (see
+  [Two-factor authentication](#two-factor-authentication)). A person a directory keeps gets
+  neither a link nor the mark.
+- **Data of** the person: their data downloads (see [below](#a-persons-data-download-and-erasure)).
+- **Account**: **Deactivate** or **Reactivate**, and **Erase…**.
+
+On your own page you cannot deactivate, erase or remove your site administrator mark, and your
+second factor is changed on your account page. An erased person's page shows only that they were
+erased. Every change is recorded in the audit log (`user.updated`, `user.password_link_created`,
+`user.two_factor_reset`, `user.deactivated`, `user.reactivated`, `user.erased`).
 
 ## Adding a person
 
@@ -71,7 +122,7 @@ is made; the password must meet the rules below.
 
 ## Password links
 
-A password link lets a person choose a password. **New password link** on a person's row
+A password link lets a person choose a password. **New password link** on a person's page
 makes one: an activation link for someone who never had a password, a reset link otherwise.
 
 - A link works once and expires after three days. Making a new link cancels the person's
@@ -103,24 +154,26 @@ node cli.mjs password-link admin@example.com
 
 ## Changing a person
 
-- **Make site administrator** and **Remove site administrator** switch the flag. The last
-  active site administrator cannot be removed: "This is the last site administrator: make
-  someone else one first." Site administration can also come from a group, see
-  [Permissions and access](permissions.md).
-- The **People** page does not edit names or emails yet. Use `PATCH /api/v1/users/:id` with
-  `name`, `email`, `timeZone`, `locale`, `isSiteAdmin` or `breakGlass`. People change their
-  own name, time zone and language on their Account page (see [your account](../use/account.md)).
-- `breakGlass: true` marks an account that may still sign in with a password where single
-  sign-on is enforced. See [Single sign-on](sso.md).
+- **Make site administrator** and **Remove site administrator**, under **Roles** on the person's
+  page, switch the flag. The last active site administrator cannot be removed: "This is the last
+  site administrator: make someone else one first." Site administration can also come from a
+  group, see [Permissions and access](permissions.md).
+- **Profile** on the person's page changes their name, email, time zone and language. Through the
+  API, `PATCH /api/v1/users/:id` takes `name`, `email`, `timeZone`, `locale`, `isSiteAdmin` or
+  `breakGlass`. People change their own name, time zone and language on their Account page (see
+  [your account](../use/account.md)).
+- **Mark as a break-glass account** marks an account that may still sign in with a password
+  where single sign-on is enforced (`breakGlass: true`). See [Single sign-on](sso.md).
 - For people a directory manages, a read-only directory refuses name and email changes; a
   read-and-write directory takes them. See [LDAP directories](ldap.md).
 
 ## Deactivating and reactivating
 
-**Deactivate** stops a person from using Taskmoor. Their account stays, and everything they
-did stays attributed to them. The button is in the danger colour, as is **Erase…**, and it asks
-first, saying what will happen; **Deactivate** and their name in that question does it,
-**Cancel** leaves the person as they are. Every person's actions sit on a line of their own under their name.
+**Deactivate**, under **Account** on the person's page, stops a person from using Taskmoor.
+Their account stays, and everything they did stays attributed to them. The button is in the
+danger colour, as is **Erase…**, and it asks first, saying what will happen; **Deactivate** and
+their name in that question does it, **Cancel** leaves the person as they are. Once it is done the
+page's heading takes the focus.
 
 - All their sessions end at once and their unused password links stop working.
 - They hold no permissions while deactivated, and their API tokens are refused.
@@ -130,7 +183,8 @@ first, saying what will happen; **Deactivate** and their name in that question d
   [Letting a manager create tracks](invitations.md#letting-a-manager-create-tracks)).
 - You cannot deactivate yourself, nor the last active site administrator.
 
-**Reactivate** (shown with **Deactivated people** or **Everyone**) lets them sign in again
+**Reactivate**, in the same place for a deactivated person (find them with **Deactivated
+people** or **Everyone**), lets them sign in again
 with the password they had. Their old sessions do not come back.
 
 A directory sync and SCIM provisioning also deactivate people. Deactivation keeps their name
@@ -139,12 +193,12 @@ and email; to remove them, erase the person (below).
 ## A person's data: download and erasure
 
 When someone asks for the data Taskmoor keeps about them, or asks to be forgotten, a site
-administrator handles it on the **People** page. People can also download their own data from
+administrator handles it on the person's page (**Edit** on their row under **People**). People can also download their own data from
 their account page (see [Your account](../use/account.md#your-data)).
 
 ### Downloading a person's data
 
-**Data** on a person's row opens their downloads. **Prepare a download** asks the server to
+**Data of** the person, on their page, lists their downloads. **Prepare a download** asks the server to
 make a ZIP file in the background; the list shows when it is ready, and **Download** fetches it.
 Only the administrator who asked can download it, for seven days; after that the file is
 deleted. Downloads need file storage (the same as attachments).
@@ -165,7 +219,8 @@ an administrator's download lists every one, the person's own only those they ca
 
 ### Erasing a person
 
-**Erase…** explains what happens and asks you to type the person's email. **Erase
+**Erase…**, under **Account** on the person's page, explains what happens and asks you to type
+the person's email. **Erase
 permanently** then:
 
 - replaces their name and email by a placeholder, `Former user 42` and
@@ -236,9 +291,11 @@ accounts are never external. Select **Save policy**.
 - A person the policy covers cannot switch off their last factor.
 - The second factor applies to password sign-in, also for people a directory manages. Single
   sign-on relies on the identity provider's own checks.
-- If someone loses every factor, a site administrator removes them all with
-  `POST /api/v1/users/:id/two-factor/reset`. The web page does not offer this yet. If the
-  policy covers them, they set up a new factor at their next sign-in.
+- If someone loses every factor, a site administrator removes them all with **Reset second
+  factor** under **Sign-in** on the person's page (`POST /api/v1/users/:id/two-factor/reset`). It
+  is in the danger colour and asks first, saying that their authenticator app, security keys and
+  recovery codes stop working. If the policy covers them, they set up a new factor at their next
+  sign-in, and they are told by email.
 
 ## Sessions
 
@@ -388,9 +445,9 @@ teams.
 
 | Method and path | What it does |
 |---|---|
-| `GET /api/v1/users?query=&status=&limit=&offset=` | List people (`status`: `active`, `deactivated`, `all`) |
+| `GET /api/v1/users?query=&status=&role=&limit=&offset=` | List people (`status`: `active`, `deactivated`, `all`; `role`: `site_admin`, `configuration_admin`, `automation_admin`, `ai_admin`, `extension_admin`, `runs_tracks` or `member`). Each person has `roles`, the administrator roles something gives them, and `tracksRun`, how many live tracks they run |
 | `POST /api/v1/users` | Add a person |
-| `GET /api/v1/users/:id` | A person, their groups and the directory that manages them |
+| `GET /api/v1/users/:id` | A person, their groups and the directory that manages them; `roles` with each role's `sources` (`account`, `user`, `group` with the group, `everyone`), `tracks` they run (the first 100 by key) and `hasSecondFactor` |
 | `PATCH /api/v1/users/:id` | Change name, email, time zone, locale, site administration, break-glass |
 | `POST /api/v1/users/:id/deactivate` | Deactivate |
 | `POST /api/v1/users/:id/reactivate` | Reactivate |
