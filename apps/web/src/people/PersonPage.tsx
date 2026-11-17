@@ -1,4 +1,13 @@
-import { type FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import {
+  type FormEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useIntl } from 'react-intl';
 import { localeOptions, timeZoneOptions } from '../account/options';
 import { PersonalDataSection } from '../account/PersonalDataSection';
@@ -24,6 +33,24 @@ export interface PersonPageProps {
   userId: number;
   /** Stories and tests pass their own backend; the page calls the API otherwise. */
   client?: PeopleClient;
+}
+
+/**
+ * Where on the page a refusal is said: next to the action that was refused, not at the page's
+ * top, which a long page leaves screens away.
+ */
+type Place = 'roles' | 'profile' | 'password' | 'breakGlass' | 'twoFactor' | 'account';
+
+/** A refusal, said beside its action and brought into view (ImportsPage does the same). */
+function Refusal({ children }: { children: ReactNode }) {
+  const seen = useCallback((p: HTMLParagraphElement | null) => {
+    p?.scrollIntoView?.({ block: 'nearest' });
+  }, []);
+  return (
+    <p role="alert" className="form-error" ref={seen}>
+      {children}
+    </p>
+  );
 }
 
 type State =
@@ -56,8 +83,10 @@ export function PersonPage({ userId, client = peopleClient }: PersonPageProps) {
     notAdmin ? { status: 'forbidden' } : { status: 'loading' },
   );
   const [message, setMessage] = useState('');
-  const [problem, setProblem] = useState<string | null>(null);
+  const [problem, setProblem] = useState<{ at: Place; text: string } | null>(null);
   const [link, setLink] = useState<string | null>(null);
+  const passwordButton = useRef<HTMLButtonElement>(null);
+  const eraseButton = useRef<HTMLButtonElement>(null);
   const [erasing, setErasing] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -86,8 +115,23 @@ export function PersonPage({ userId, client = peopleClient }: PersonPageProps) {
         : null,
   );
 
-  /** Runs a change, says what it did, and reads the person again; a refusal is said in words. */
-  const act = async (work: () => Promise<unknown>, said: () => string): Promise<boolean> => {
+  /** Says why an action at `at` was refused, beside it. */
+  const refuse = (at: Place, error: unknown) => {
+    if (!expired(error)) setProblem({ at, text: peopleRefusal(t, error) });
+  };
+  const refusalAt = (at: Place) => (problem?.at === at ? <Refusal>{problem.text}</Refusal> : null);
+
+  /**
+   * Runs a change, says what it did, and reads the person again; a refusal is said in words
+   * beside the action at `at`. One change at a time: the buttons stay focusable while it runs
+   * (`aria-disabled`), so the focus never falls to the page.
+   */
+  const act = async (
+    at: Place,
+    work: () => Promise<unknown>,
+    said: () => string,
+  ): Promise<boolean> => {
+    if (busy) return false;
     setProblem(null);
     setMessage('');
     setBusy(true);
@@ -97,7 +141,7 @@ export function PersonPage({ userId, client = peopleClient }: PersonPageProps) {
       await load();
       return true;
     } catch (error) {
-      if (!expired(error)) setProblem(peopleRefusal(t, error));
+      refuse(at, error);
       return false;
     } finally {
       setBusy(false);
@@ -158,11 +202,6 @@ export function PersonPage({ userId, client = peopleClient }: PersonPageProps) {
       <p role="status" className="form-status">
         {message}
       </p>
-      {problem && (
-        <p role="alert" className="form-error">
-          {problem}
-        </p>
-      )}
       {user.erased ? (
         <p className="page-note">{t('admin.person.erasedNote')}</p>
       ) : (
@@ -171,19 +210,23 @@ export function PersonPage({ userId, client = peopleClient }: PersonPageProps) {
             detail={detail}
             self={self}
             busy={busy}
+            refusal={refusalAt('roles')}
             onSiteAdmin={(next) =>
               void act(
+                'roles',
                 () => client.updateUser(user.id, { isSiteAdmin: next }),
                 () => t('admin.users.saved', { name: user.name }),
               )
             }
           />
+          {/* Not remounted after a save: Save keeps the focus. */}
           <ProfileSection
-            key={`${user.name}|${user.email}|${user.timeZone}|${user.locale}`}
             detail={detail}
             busy={busy}
+            refusal={refusalAt('profile')}
             onSave={(change) =>
               act(
+                'profile',
                 () => client.updateUser(user.id, change),
                 () => t('admin.users.saved', { name: change.name ?? user.name }),
               )
@@ -204,22 +247,25 @@ export function PersonPage({ userId, client = peopleClient }: PersonPageProps) {
                 <div className="person-action">
                   <p className="page-note">{t('admin.person.passwordLinkHint')}</p>
                   <button
+                    ref={passwordButton}
                     type="button"
                     className="button-secondary people-action"
-                    disabled={busy}
+                    aria-disabled={busy || undefined}
                     onClick={() =>
                       void (async () => {
+                        if (busy) return;
                         setProblem(null);
                         try {
                           setLink(await client.passwordLink(user.id));
                         } catch (error) {
-                          if (!expired(error)) setProblem(peopleRefusal(t, error));
+                          refuse('password', error);
                         }
                       })()
                     }
                   >
                     {t('admin.users.passwordLink')}
                   </button>
+                  {refusalAt('password')}
                   {link && (
                     <div className="people-link">
                       <p className="page-note">{t('admin.users.linkHint', { name: user.name })}</p>
@@ -233,7 +279,11 @@ export function PersonPage({ userId, client = peopleClient }: PersonPageProps) {
                       <button
                         type="button"
                         className="button-secondary"
-                        onClick={() => setLink(null)}
+                        onClick={() => {
+                          setLink(null);
+                          // Done goes with the link: the focus goes back to where it came from.
+                          passwordButton.current?.focus();
+                        }}
                       >
                         {t('admin.users.linkDone')}
                       </button>
@@ -249,22 +299,35 @@ export function PersonPage({ userId, client = peopleClient }: PersonPageProps) {
               <p className="page-note">
                 {t(user.breakGlass ? 'admin.person.isBreakGlass' : 'admin.person.notBreakGlass')}
               </p>
-              {managed ? (
-                <p className="page-note">{t('admin.person.breakGlassDirectory')}</p>
-              ) : (
+              {/* A directory's account cannot be marked; one marked before the directory took it
+                  can still lose the mark, which the server allows (IAM-001). */}
+              {managed && (
+                <p className="page-note">
+                  {t(
+                    user.breakGlass
+                      ? 'admin.person.breakGlassDirectoryMarked'
+                      : 'admin.person.breakGlassDirectory',
+                  )}
+                </p>
+              )}
+              {(!managed || user.breakGlass) && (
                 <button
                   type="button"
                   className="button-secondary people-action"
-                  disabled={busy}
+                  aria-disabled={busy || undefined}
                   onClick={() => {
                     const next = !user.breakGlass;
                     void act(
+                      'breakGlass',
                       () => client.updateUser(user.id, { breakGlass: next }),
                       () =>
                         t(next ? 'admin.person.breakGlassOn' : 'admin.person.breakGlassOff', {
                           name: user.name,
                         }),
-                    );
+                    ).then((done) => {
+                      // A directory's account has no button once unmarked: the heading has the focus.
+                      if (done && managed) title.current?.focus();
+                    });
                   }}
                 >
                   {t(
@@ -274,6 +337,7 @@ export function PersonPage({ userId, client = peopleClient }: PersonPageProps) {
                   )}
                 </button>
               )}
+              {refusalAt('breakGlass')}
             </div>
             {/* Their second factor (IAM-001): reset, they set one up again. */}
             <div className="person-action">
@@ -294,7 +358,7 @@ export function PersonPage({ userId, client = peopleClient }: PersonPageProps) {
                       try {
                         await client.resetTwoFactor(user.id);
                       } catch (error) {
-                        if (!expired(error)) setProblem(peopleRefusal(t, error));
+                        refuse('twoFactor', error);
                         throw error;
                       }
                       setMessage(t('admin.person.twoFactorReset', { name: user.name }));
@@ -302,6 +366,7 @@ export function PersonPage({ userId, client = peopleClient }: PersonPageProps) {
                       await load();
                     }}
                   />
+                  {refusalAt('twoFactor')}
                 </>
               )}
             </div>
@@ -335,8 +400,8 @@ export function PersonPage({ userId, client = peopleClient }: PersonPageProps) {
                         try {
                           await client.deactivate(user.id);
                         } catch (error) {
-                          // Refused: the question stays, and the reason shows above.
-                          if (!expired(error)) setProblem(peopleRefusal(t, error));
+                          // Refused: the question stays, and the reason shows below it.
+                          refuse('account', error);
                           throw error;
                         }
                         setMessage(t('admin.users.deactivatedSaid', { name: user.name }));
@@ -349,18 +414,23 @@ export function PersonPage({ userId, client = peopleClient }: PersonPageProps) {
                     <button
                       type="button"
                       className="button-secondary people-action"
-                      disabled={busy}
+                      aria-disabled={busy || undefined}
                       onClick={() =>
                         void act(
+                          'account',
                           () => client.reactivate(user.id),
                           () => t('admin.users.reactivatedSaid', { name: user.name }),
-                        )
+                        ).then((done) => {
+                          // Deactivate takes the button's place: the heading keeps the focus.
+                          if (done) title.current?.focus();
+                        })
                       }
                     >
                       {t('admin.users.reactivate')}
                     </button>
                   )}
                   <button
+                    ref={eraseButton}
                     type="button"
                     className="button-danger-quiet people-action"
                     aria-expanded={erasing}
@@ -377,7 +447,10 @@ export function PersonPage({ userId, client = peopleClient }: PersonPageProps) {
                   {erasing && (
                     <EraseUserForm
                       user={user}
-                      onCancel={() => setErasing(false)}
+                      onCancel={() => {
+                        setErasing(false);
+                        eraseButton.current?.focus();
+                      }}
                       onErase={async (confirmEmail) => {
                         setProblem(null);
                         try {
@@ -387,12 +460,13 @@ export function PersonPage({ userId, client = peopleClient }: PersonPageProps) {
                           title.current?.focus();
                           await load();
                         } catch (error) {
-                          if (!expired(error)) setProblem(peopleRefusal(t, error));
+                          refuse('account', error);
                         }
                       }}
                     />
                   )}
                 </div>
+                {refusalAt('account')}
               </>
             )}
           </section>
@@ -411,11 +485,14 @@ function RolesSection({
   detail,
   self,
   busy,
+  refusal,
   onSiteAdmin,
 }: {
   detail: PersonDetail;
   self: boolean;
   busy: boolean;
+  /** Why the last change here was refused, said beside its button. */
+  refusal: ReactNode;
   onSiteAdmin: (next: boolean) => void;
 }) {
   const t = useT();
@@ -493,13 +570,14 @@ function RolesSection({
           <button
             type="button"
             className="button-secondary people-action"
-            disabled={busy}
+            aria-disabled={busy || undefined}
             onClick={() => onSiteAdmin(!user.isSiteAdmin)}
           >
             {t(user.isSiteAdmin ? 'admin.users.unmakeAdmin' : 'admin.users.makeAdmin')}
           </button>
         </div>
       )}
+      {refusal}
     </section>
   );
 }
@@ -508,10 +586,13 @@ function RolesSection({
 function ProfileSection({
   detail,
   busy,
+  refusal,
   onSave,
 }: {
   detail: PersonDetail;
   busy: boolean;
+  /** Why the last save was refused, said beside Save. */
+  refusal: ReactNode;
   onSave: (change: {
     name?: string;
     email?: string;
@@ -527,6 +608,19 @@ function ProfileSection({
   const [email, setEmail] = useState(user.email);
   const [timeZone, setTimeZone] = useState(user.timeZone ?? '');
   const [locale, setLocale] = useState(user.locale ?? '');
+  // After a save the person is read again: the fields take what was saved, and the form stays
+  // mounted, so Save keeps the focus.
+  const saved = `${user.name}|${user.email}|${user.timeZone}|${user.locale}`;
+  const [shown, setShown] = useState(saved);
+  if (shown !== saved) {
+    setShown(saved);
+    setName(user.name);
+    setEmail(user.email);
+    setTimeZone(user.timeZone ?? '');
+    setLocale(user.locale ?? '');
+  }
+  // A read-only directory keeps the name and address: shown, not edited (M1-082).
+  const kept = directory !== null && directory.mode !== 'read_write';
   // Data, not UI text: it goes through the catalogue only so the pseudo-locale can bracket it.
   const zones = useMemo(
     () =>
@@ -547,10 +641,13 @@ function ProfileSection({
   const field = (key: string) => `${id}-${key}`;
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    if (busy) return;
     // Only what changed goes: a directory refuses a change to the name or address it keeps.
     const change = {
-      ...(name.trim() !== user.name ? { name: name.trim() } : {}),
-      ...(email.trim().toLowerCase() !== user.email.toLowerCase() ? { email: email.trim() } : {}),
+      ...(!kept && name.trim() !== user.name ? { name: name.trim() } : {}),
+      ...(!kept && email.trim().toLowerCase() !== user.email.toLowerCase()
+        ? { email: email.trim() }
+        : {}),
       ...(timeZone !== (user.timeZone ?? '') ? { timeZone: timeZone || null } : {}),
       ...(locale !== (user.locale ?? '') ? { locale: locale || null } : {}),
     };
@@ -562,7 +659,7 @@ function ProfileSection({
         {t('admin.person.profile')}
       </h2>
       {directory && (
-        <p className="page-note">
+        <p className="page-note" id={field('directory')}>
           {t(
             directory.mode === 'read_write'
               ? 'admin.person.directoryWrites'
@@ -582,6 +679,8 @@ function ProfileSection({
             required
             maxLength={200}
             autoComplete="off"
+            readOnly={kept}
+            aria-describedby={kept ? field('directory') : undefined}
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
@@ -596,6 +695,8 @@ function ProfileSection({
             required
             autoComplete="off"
             spellCheck={false}
+            readOnly={kept}
+            aria-describedby={kept ? field('directory') : undefined}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
@@ -643,10 +744,11 @@ function ProfileSection({
           </p>
         </div>
         <div className="form-actions">
-          <button type="submit" className="button-primary" disabled={busy}>
+          <button type="submit" className="button-primary" aria-disabled={busy || undefined}>
             {t('admin.person.save')}
           </button>
         </div>
+        {refusal}
       </form>
     </section>
   );

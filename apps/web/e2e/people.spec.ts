@@ -82,6 +82,8 @@ test('[IAM-008] the administrator adds a person, sees their link, deactivates an
   await expect(page.getByRole('heading', { level: 1, name })).toBeFocused();
   await page.getByRole('button', { name: 'Reactivate' }).click();
   await expect(page.getByText(`${name} was reactivated.`)).toBeVisible();
+  // Deactivate took Reactivate's place: the heading has the focus, not the page.
+  await expect(page.getByRole('heading', { level: 1, name })).toBeFocused();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   // Back to the list, which keeps its filters in the address: the site administrators.
   await page.goto(`${BASE}/#/admin/users?role=site_admin`);

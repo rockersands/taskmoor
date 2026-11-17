@@ -93,10 +93,16 @@ describe('a person’s page under People (T-331; IAM-008)', () => {
     expect(await screen.findByText('Grace Hopper was changed.')).toBeVisible();
     expect(client.calls).toContainEqual({ action: 'updateUser', args: [3, { isSiteAdmin: true }] });
     // The account's own mark is where the role comes from now.
-    expect(
-      within(section('Roles')).getByText('Marked on their account, with the button below'),
-    ).toBeVisible();
+    expect(within(section('Roles')).getByText('Marked on their account')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Remove site administrator' })).toBeVisible();
+  });
+
+  it('[IAM-008] names the account mark without pointing at a button that is not there: one’s own page', async () => {
+    renderPerson(1);
+    await heading('Ada Lovelace');
+    expect(within(section('Roles')).getByText('Marked on their account')).toBeVisible();
+    expect(screen.queryByText(/button below/)).toBeNull();
+    expect(screen.queryByRole('button', { name: /site administrator/ })).toBeNull();
   });
 
   it('[IAM-008] leaves the signed-in administrator no way to deactivate, erase or demote themselves', async () => {
@@ -125,12 +131,18 @@ describe('a person’s page under People (T-331; IAM-008)', () => {
       args: [2, { name: 'Bo Rivera Soto', timeZone: 'Europe/Madrid' }],
     });
     expect(await heading('Bo Rivera Soto')).toBeVisible();
-    // A taken email is refused in words.
+    // The form stays as it was, with what was saved: Save keeps the focus.
     const again = screen.getByRole('form', { name: 'Profile' });
+    expect(again).toBe(profile);
+    expect(within(again).getByRole('button', { name: 'Save profile' })).toHaveFocus();
+    expect(within(again).getByLabelText('Name')).toHaveValue('Bo Rivera Soto');
+    // A taken email is refused in words, beside Save.
     await user.clear(within(again).getByLabelText('Email'));
     await user.type(within(again).getByLabelText('Email'), 'grace@example.com');
     await user.click(within(again).getByRole('button', { name: 'Save profile' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Someone already has that email.');
+    expect(await within(again).findByRole('alert')).toHaveTextContent(
+      'Someone already has that email.',
+    );
   });
 
   it('[IAM-001] marks and unmarks a break-glass account, which a directory’s account cannot be', async () => {
@@ -148,7 +160,8 @@ describe('a person’s page under People (T-331; IAM-008)', () => {
   });
 
   it('[IAM-001] a directory’s person has no password link or break-glass mark, and says where their name changes', async () => {
-    renderPerson(2, { client: fakePeopleClient({ directoryPerson: 2 }) });
+    const user = userEvent.setup();
+    const client = renderPerson(2, { client: fakePeopleClient({ directoryPerson: 2 }) });
     await heading('Bo Rivera');
     expect(
       screen.getByText(
@@ -160,17 +173,57 @@ describe('a person’s page under People (T-331; IAM-008)', () => {
     expect(
       screen.getByText('An account a directory keeps cannot be a break-glass account.'),
     ).toBeVisible();
+    // A read-only directory keeps the name and address: shown, not edited (M1-082).
+    const profile = screen.getByRole('form', { name: 'Profile' });
+    for (const field of ['Name', 'Email']) {
+      const input = within(profile).getByLabelText(field);
+      expect(input).toHaveAttribute('readonly');
+      expect(input).toHaveAccessibleDescription(/Corporate directory keeps this person/);
+    }
+    // The time zone still changes here, and only it is sent.
+    await user.selectOptions(within(profile).getByLabelText('Time zone'), 'Europe/Madrid');
+    await user.click(within(profile).getByRole('button', { name: 'Save profile' }));
+    expect(await screen.findByText('Bo Rivera was changed.')).toBeVisible();
+    expect(client.calls).toContainEqual({
+      action: 'updateUser',
+      args: [2, { timeZone: 'Europe/Madrid' }],
+    });
+  });
+
+  it('[IAM-001] a directory’s person marked break-glass before the directory took them can lose the mark', async () => {
+    const user = userEvent.setup();
+    const people = PEOPLE.map((p) => (p.id === 2 ? { ...p, breakGlass: true } : p));
+    const client = renderPerson(2, { client: fakePeopleClient({ directoryPerson: 2, people }) });
+    await heading('Bo Rivera');
+    const signIn = section('Sign-in');
+    expect(within(signIn).getByText('This is a break-glass account.')).toBeVisible();
+    expect(
+      within(signIn).getByText(
+        'A directory keeps this account now, so it should not stay a break-glass account: remove the mark.',
+      ),
+    ).toBeVisible();
+    await user.click(within(signIn).getByRole('button', { name: 'Remove the break-glass mark' }));
+    expect(await screen.findByText('Bo Rivera is no longer a break-glass account.')).toBeVisible();
+    expect(client.calls).toContainEqual({ action: 'updateUser', args: [2, { breakGlass: false }] });
+    // Not to be marked again: no button, and the heading has the focus it left.
+    expect(within(section('Sign-in')).queryByRole('button', { name: /break-glass/ })).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Bo Rivera' })).toHaveFocus();
   });
 
   it('[IAM-008] makes a new password link to hand over', async () => {
     const user = userEvent.setup();
     renderPerson(2);
     await heading('Bo Rivera');
-    await user.click(screen.getByRole('button', { name: 'New password link' }));
+    const button = screen.getByRole('button', { name: 'New password link' });
+    await user.click(button);
     expect(
       ((await screen.findByRole('textbox', { name: 'Link for Bo Rivera' })) as HTMLInputElement)
         .value,
     ).toContain('reset-2');
+    // Done goes with the link; the focus goes back to the button that made it.
+    await user.click(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.queryByRole('textbox', { name: 'Link for Bo Rivera' })).toBeNull();
+    expect(button).toHaveFocus();
   });
 
   it('[IAM-001] resets a second factor after a question that says what stops working (D13)', async () => {
@@ -208,7 +261,11 @@ describe('a person’s page under People (T-331; IAM-008)', () => {
     const question = screen.getByRole('group', { name: /Bo Rivera is signed out everywhere/ });
     expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
     await user.click(within(question).getByRole('button', { name: 'Deactivate Bo Rivera' }));
-    expect(await screen.findByRole('alert')).toBeVisible();
+    // The reason is said in the Account card, beside the question, not at the page's top.
+    expect(await within(section('Account')).findByRole('alert')).toHaveTextContent(
+      /the last site administrator/,
+    );
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
     // Open still, to try again or cancel.
     expect(screen.getByRole('group', { name: /Bo Rivera is signed out everywhere/ })).toBe(
       question,
@@ -225,6 +282,33 @@ describe('a person’s page under People (T-331; IAM-008)', () => {
     expect(screen.queryByRole('button', { name: 'New password link' })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Reactivate' }));
     expect(await screen.findByText('Bo Rivera was reactivated.')).toBeVisible();
+    // Deactivate took Reactivate's place: the heading has the focus, not the page.
+    expect(screen.getByRole('heading', { level: 1, name: 'Bo Rivera' })).toHaveFocus();
+  });
+
+  it('[IAM-008] gives the focus back to Erase… when the erase form is cancelled', async () => {
+    const user = userEvent.setup();
+    renderPerson(2);
+    await heading('Bo Rivera');
+    const opener = screen.getByRole('button', { name: 'Erase…' });
+    await user.click(opener);
+    const form = screen.getByRole('form', { name: 'Erase Bo Rivera' });
+    await user.click(within(form).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('form', { name: 'Erase Bo Rivera' })).toBeNull();
+    expect(opener).toHaveFocus();
+    expect(opener).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('[IAM-008] says a refused site administrator change beside its button', async () => {
+    const user = userEvent.setup();
+    const client = renderPerson(3);
+    await heading('Grace Hopper');
+    client.updateUser = async () => {
+      throw new ApiError(409, { error: 'last_admin' });
+    };
+    await user.click(screen.getByRole('button', { name: 'Make site administrator' }));
+    expect(await within(section('Roles')).findByRole('alert')).toBeVisible();
+    expect(within(section('Account')).queryByRole('alert')).toBeNull();
   });
 
   it('[IAM-008] ASVS 8.3.2: shows the person’s data and erases them once their email is typed', async () => {
@@ -271,7 +355,7 @@ describe('a person’s page under People (T-331; IAM-008)', () => {
       'bo@example.com',
     );
     await user.click(within(form).getByRole('button', { name: 'Erase permanently' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(
+    expect(await within(section('Account')).findByRole('alert')).toHaveTextContent(
       'Erasing them would take back a role their shared track groups gave the only other person running a track.',
     );
   });
@@ -311,6 +395,41 @@ describe('a person’s page under People (T-331; IAM-008)', () => {
       window.location.hash = '#/admin/users/99';
       render(<App session={ADMIN} />);
       expect(await heading('Person not found')).toBeVisible();
+    } finally {
+      window.location.hash = '';
+    }
+  });
+
+  it('[IAM-008] the breadcrumb’s People goes back to the list as it was left, its filters and search with it', async () => {
+    const user = userEvent.setup();
+    const listed = PEOPLE.slice(0, 3).map((p) => ({ ...p, roles: [], tracksRun: 0 }));
+    stubBackend({
+      'GET /users?*': () => jsonResponse(200, { users: listed, total: listed.length }),
+      'GET /users/3': () =>
+        jsonResponse(200, {
+          user: { ...PEOPLE[2], roles: [], tracksRun: 0 },
+          roles: [],
+          tracks: [],
+          hasSecondFactor: false,
+          groups: [],
+          effectiveGroupIds: [],
+          directory: null,
+        }),
+      'GET /users/3/data-exports': () => jsonResponse(200, { exports: [] }),
+      'GET /*': () => jsonResponse(403, { error: 'forbidden' }),
+    });
+    window.location.hash = '#/admin/users?show=all&role=ai_admin&q=gr';
+    try {
+      render(<App session={ADMIN} />);
+      await user.click(await screen.findByRole('link', { name: 'Edit Grace Hopper' }));
+      expect(await heading('Grace Hopper')).toBeVisible();
+      const crumbs = screen.getByRole('navigation', { name: 'Where this page sits' });
+      const people = await within(crumbs).findByRole('link', { name: 'People' });
+      expect(people).toHaveAttribute('href', '#/admin/users?show=all&role=ai_admin&q=gr');
+      await user.click(people);
+      expect(await screen.findByRole('combobox', { name: 'Role' })).toHaveValue('ai_admin');
+      expect(screen.getByRole('combobox', { name: 'Show' })).toHaveValue('all');
+      expect(screen.getByRole('searchbox', { name: 'Find by name or email' })).toHaveValue('gr');
     } finally {
       window.location.hash = '';
     }

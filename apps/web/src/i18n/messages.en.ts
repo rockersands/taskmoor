@@ -3144,7 +3144,7 @@ export const messagesEn = {
     'Roles are given on Global permissions, to the person or to a group they are in, and a track’s administrators on that track’s People page; each role below links to where it changes. Changes here are recorded in the audit log.',
   'admin.person.roles': 'Roles',
   'admin.person.member': 'Member: they hold no administrator role and run no track.',
-  'admin.person.source.account': 'Marked on their account, with the button below',
+  'admin.person.source.account': 'Marked on their account',
   'admin.person.source.user': 'Given to them on Global permissions',
   'admin.person.source.group': 'Through the group {group}',
   'admin.person.source.everyone': 'Given to everyone signed in, on Global permissions',
@@ -3180,6 +3180,8 @@ export const messagesEn = {
   'admin.person.breakGlassOff': '{name} is no longer a break-glass account.',
   'admin.person.breakGlassDirectory':
     'An account a directory keeps cannot be a break-glass account.',
+  'admin.person.breakGlassDirectoryMarked':
+    'A directory keeps this account now, so it should not stay a break-glass account: remove the mark.',
   'admin.person.twoFactor': 'Second factor',
   'admin.person.withoutTwoFactor': 'They have no second factor.',
   'admin.person.hasTwoFactor': 'They have set up a second factor.',

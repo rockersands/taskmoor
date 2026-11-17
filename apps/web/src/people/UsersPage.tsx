@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
+import { keepPageAddress } from '../admin/AdminLayout';
 import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { pageAfter } from '../api/pages';
 import { useT } from '../i18n/I18nProvider';
-import { currentRoute, replaceRoute, routeHref } from '../routing/router';
+import { currentRoute, onRouteChange, replaceRoute, routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import { EmptyState } from '../shell/EmptyState';
@@ -25,31 +26,55 @@ export const personHref = (id: number) => `${USERS_ROUTE}/${id}`;
 
 const STATUSES: readonly UserStatus[] = ['active', 'deactivated', 'all'];
 
+/** Whether the route is the list's own, with or without its filters. */
+const isListRoute = (route: string) => route === USERS_ROUTE || route.startsWith(`${USERS_ROUTE}?`);
+
+/** The route's query, empty without one. */
+const paramsOf = (route: string) =>
+  new URLSearchParams(route.includes('?') ? route.slice(route.indexOf('?') + 1) : '');
+
+interface Filters {
+  status: UserStatus;
+  role: RoleFilter;
+  query: string;
+}
+
 /**
- * The filters the address keeps (T-331): `#/admin/users?show=all&role=ai_admin`, so going back
- * from a person's page finds the list as it was. Other addresses (stories, tests) keep nothing.
+ * The filters the address keeps (T-331): `#/admin/users?show=all&role=ai_admin&q=grace`, so going
+ * back from a person's page, by Back or by the breadcrumb, finds the list as it was. Other
+ * addresses (stories, tests) keep nothing.
  */
-function filtersInAddress(): { status: UserStatus; role: RoleFilter } {
-  const route = currentRoute();
-  const kept = { status: 'active' as UserStatus, role: 'any' as RoleFilter };
-  if (!route.startsWith(`${USERS_ROUTE}?`)) return kept;
-  const params = new URLSearchParams(route.slice(route.indexOf('?') + 1));
+function filtersInAddress(route = currentRoute()): Filters {
+  const kept: Filters = { status: 'active', role: 'any', query: '' };
+  if (!isListRoute(route)) return kept;
+  const params = paramsOf(route);
   const show = params.get('show');
   const role = params.get('role');
   return {
     status: STATUSES.includes(show as UserStatus) ? (show as UserStatus) : kept.status,
     role: (ROLE_FILTERS as readonly string[]).includes(role ?? '') ? (role as RoleFilter) : 'any',
+    query: params.get('q') ?? '',
   };
 }
 
-function keepFilters(status: UserStatus, role: RoleFilter) {
+/**
+ * Writes the filters into the address, in place: only `show`, `role` and `q` change, and every
+ * other parameter stays (`?locale=` above all, NFR-006). The breadcrumb's People step leads back
+ * to the address it leaves.
+ */
+function keepFilters({ status, role, query }: Filters) {
   const route = currentRoute();
-  if (route !== USERS_ROUTE && !route.startsWith(`${USERS_ROUTE}?`)) return;
-  const params = new URLSearchParams();
-  if (status !== 'active') params.set('show', status);
-  if (role !== 'any') params.set('role', role);
-  const query = params.toString();
-  replaceRoute(query ? `${USERS_ROUTE}?${query}` : USERS_ROUTE);
+  if (!isListRoute(route)) return;
+  const params = paramsOf(route);
+  const set = (name: string, value: string | null) =>
+    value === null ? params.delete(name) : params.set(name, value);
+  set('show', status === 'active' ? null : status);
+  set('role', role === 'any' ? null : role);
+  set('q', query === '' ? null : query);
+  const search = params.toString();
+  const next = search ? `${USERS_ROUTE}?${search}` : USERS_ROUTE;
+  if (next !== route) replaceRoute(next);
+  keepPageAddress(USERS_ROUTE, next);
 }
 
 export interface UsersPageProps {
@@ -74,7 +99,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
   const statusId = useId();
   const roleId = useId();
   const notAdmin = session.status === 'signed-in' && !session.user.isSiteAdmin;
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(() => filtersInAddress().query);
   const [status, setStatus] = useState<UserStatus>(() => filtersInAddress().status);
   const [role, setRole] = useState<RoleFilter>(() => filtersInAddress().role);
   const [state, setState] = useState<
@@ -185,7 +210,21 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
   }, [load, notAdmin, query]);
 
   // The address keeps the filters, so going back from a person's page finds them (T-331).
-  useEffect(() => keepFilters(status, role), [status, role]);
+  useEffect(() => keepFilters({ status, role, query }), [status, role, query]);
+  // And the list follows the address when it changes under the page: People in Administration's
+  // navigation is the list with no filter, whatever this one showed.
+  useEffect(
+    () =>
+      onRouteChange(() => {
+        const route = currentRoute();
+        if (!isListRoute(route)) return;
+        const kept = filtersInAddress(route);
+        setStatus(kept.status);
+        setRole(kept.role);
+        setQuery(kept.query);
+      }),
+    [],
+  );
 
   const when = (iso: string | null) =>
     iso ? intl.formatDate(new Date(iso), { dateStyle: 'medium' }) : t('admin.users.never');

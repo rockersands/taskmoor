@@ -154,6 +154,35 @@ describe('people and their roles (T-331)', () => {
     await group('Ops', ['ali'], 'Staff');
     await grant('ai_admin', { group: 'Staff' });
     await group('Directory people', ['dee']);
+    // A directory's group: its link to the directory's entry, as a sync leaves it (M1-082).
+    const directory = await database.db
+      .insertInto('ldap_directory')
+      .values({
+        workspace_id: 1,
+        name: 'Roles directory',
+        kind: 'openldap',
+        url: 'ldaps://directory.roles.test:636',
+        bind_dn: 'cn=reader,dc=roles,dc=test',
+        // Never used: nothing here talks to the directory.
+        bind_password_sealed: 'unused',
+        base_dn: 'dc=roles,dc=test',
+        user_filter: '(objectClass=person)',
+        group_filter: '(objectClass=groupOfNames)',
+        attribute_map: '{}',
+        position: 1,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await database.db
+      .insertInto('ldap_group')
+      .values({
+        workspace_id: 1,
+        group_id: groups['Directory people'] as number,
+        directory_id: directory.id,
+        external_id: 'directory-people',
+        dn: 'cn=Directory people,dc=roles,dc=test',
+      })
+      .execute();
     await grant('extension_admin', { group: 'Directory people' });
     // Not an administrator role: it never shows.
     await grant('bulk_change', { user: 'plain' });
@@ -364,6 +393,52 @@ describe('people and their roles (T-331)', () => {
       'name',
       'timeZone',
     ]);
+  });
+
+  it('[IAM-008] an erased person holds no role and runs no track, and no role filter lists them', async () => {
+    // Eve holds roles every way, and runs tracks; erasure keeps the rows that gave them.
+    await person('eve');
+    await database.db
+      .insertInto('group_member')
+      .values({ workspace_id: 1, group_id: groups.Ops as number, user_id: ids.eve as number })
+      .execute();
+    await grant('configuration_admin', { user: 'eve' });
+    await actor(await track('eve'), runsRole, { user: 'eve' });
+    const names = async (role: string) => (await list(`&role=${role}`)).users.map((u) => u.name);
+    expect(rowOf(await list(), 'eve')).toMatchObject({
+      roles: ['configuration_admin', 'ai_admin'],
+      tracksRun: 1,
+    });
+    expect(await names('ai_admin')).toContain('eve');
+
+    const erased = await as({
+      method: 'POST',
+      url: `/api/v1/users/${ids.eve}/erase`,
+      payload: { confirmEmail: 'eve@roles.test' },
+    });
+    expect(erased.statusCode, erased.body).toBe(200);
+    const placeholder = (await list()).users.find((u) => u.id === ids.eve);
+    expect(placeholder).toMatchObject({ roles: [], tracksRun: 0 });
+    const page = (await as({ method: 'GET', url: `/api/v1/users/${ids.eve}` })).json();
+    expect(page.roles).toEqual([]);
+    expect(page.tracks).toEqual([]);
+    for (const role of ['configuration_admin', 'ai_admin', 'runs_tracks', 'member']) {
+      expect(await names(role)).not.toContain(placeholder?.name);
+    }
+    // A role given to everyone signed in is not the placeholder's either.
+    await grant('automation_admin', {});
+    try {
+      expect((await list()).users.find((u) => u.id === ids.eve)?.roles).toEqual([]);
+      const everyone = await list('&role=automation_admin');
+      expect(everyone.users.map((u) => u.id)).not.toContain(ids.eve);
+      expect(everyone.users.map((u) => u.name)).toContain('ada');
+    } finally {
+      await database.db
+        .deleteFrom('global_grant')
+        .where('permission', '=', 'automation_admin')
+        .where('grantee', '=', 'any_user')
+        .execute();
+    }
   });
 });
 

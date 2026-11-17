@@ -411,9 +411,17 @@ all related actions for that user".
   people: a page of 200 takes as many statements as a page of 5.
 - **The role filter.** **Role** sits beside **Show**: any role, one of the five, people who run
   tracks, or members with none. The server filters (`?role=`) with uncorrelated subqueries, so
-  the total and the pages stay right. The address keeps both choices
-  (`#/admin/users?show=all&role=ai_admin`) only while it is the People page, so going back from a
-  person's page finds the list as it was.
+  the total and the pages stay right. The address keeps both choices and the search
+  (`#/admin/users?show=all&role=ai_admin&q=grace`) only while it is the People page, changing
+  only those three parameters, so `?locale=` and any other stays (NFR-006). Going back from a
+  person's page finds the list as it was, by Back or by the breadcrumb: a list page that keeps
+  its filters in the address tells the breadcrumb (`keepPageAddress`), whose step back to it
+  leads to the address it left. When the address changes under the list (People in the
+  navigation), the list follows it.
+- **Erased people hold nothing.** Erasure (ADR-111) keeps the group memberships, grants, track
+  roles and owned tracks that gave someone a role, so the role queries leave erased people out
+  themselves, as `runningNoTrack` does: their row has no role and no track, and every role
+  filter, Member included, leaves them out (an erased person is a placeholder, not a member).
 - **One Edit per person, to a page.** The row's actions (site administrator, password link,
   deactivate or reactivate, data, erase) leave it; a link styled as a secondary button, visible
   **Edit**, named "Edit" and the person (the visible word first, WCAG 2.5.3), sits at the row's
@@ -433,6 +441,18 @@ all related actions for that user".
   `POST /users/:id/two-factor/reset`), audited as `user.updated` and `user.two_factor_reset`; no
   route is new. Oneself: no deactivate, erase or site administrator switch, and one's own second
   factor stays on the account page. A missing person is a not-found page.
+- **On a long page, the answer sits by its action.** A refusal shows in the part whose button was
+  pressed, beside it (under a confirmation that stays open, D13), and scrolls into view; none
+  shows under the page's header. The focus never falls to the page: after Reactivate (Deactivate
+  takes its place) the heading takes it, as after Deactivate; **Done** under a password link
+  gives it back to **New password link**, Cancel in the erase form to **Erase…**; **Profile**
+  is not remounted after a save, so **Save profile** keeps it; and the page's buttons are
+  `aria-disabled` while a change runs, never `disabled`, which would drop it. A read-only
+  directory's person shows the name and email read-only, and Save sends neither. A person marked
+  break-glass before a directory took the account (an unlinked entry that came back) still gets
+  **Remove the break-glass mark**, which the server allows; marking stays refused. The site
+  administrator source says "Marked on their account", without pointing at a button that one's
+  own page and a deactivated person's do not show.
 - **Tests:** server tests for the roles, their sources, the tracks run, the filter's pages and the
   statement count (`routes/user-roles.test.ts`); unit tests of the list and the page; stories in
   both skins with axe, at phone width and on a touch screen (Edit, the filters, every action and

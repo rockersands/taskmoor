@@ -118,6 +118,50 @@ describe('people (M1-053, IAM-008)', () => {
     }
   });
 
+  it('[IAM-009] NFR-006: writes only its own filters into the address and keeps every other parameter, ?locale= too', async () => {
+    const user = userEvent.setup();
+    window.location.hash = '#/admin/users?locale=en&role=ai_admin&show=all';
+    try {
+      renderPage('users');
+      expect(screen.getByRole('combobox', { name: 'Role' })).toHaveValue('ai_admin');
+      expect(await screen.findByText('Ken Oduya')).toBeVisible();
+      expect(window.location.hash).toBe('#/admin/users?locale=en&role=ai_admin&show=all');
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Role' }), 'Any role');
+      expect(window.location.hash).toBe('#/admin/users?locale=en&show=all');
+      // The search is kept too.
+      const search = screen.getByRole('searchbox', { name: 'Find by name or email' });
+      await user.type(search, 'ken');
+      expect(window.location.hash).toBe('#/admin/users?locale=en&show=all&q=ken');
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Show' }), 'active');
+      expect(window.location.hash).toBe('#/admin/users?locale=en&q=ken');
+      await user.clear(search);
+      expect(window.location.hash).toBe('#/admin/users?locale=en');
+    } finally {
+      window.location.hash = '';
+    }
+  });
+
+  it('[IAM-009] starts from the search the address names, and follows the address when it changes under the page', async () => {
+    window.location.hash = '#/admin/users?role=site_admin&q=ada';
+    try {
+      renderPage('users');
+      expect(screen.getByRole('searchbox', { name: 'Find by name or email' })).toHaveValue('ada');
+      expect((await list()).map((li) => li.querySelector('.people-name')?.textContent)).toEqual([
+        'Ada Lovelace',
+      ]);
+      // People in Administration's navigation: the list with no filter, as the address says.
+      window.location.hash = '#/admin/users';
+      await waitFor(() =>
+        expect(screen.getByRole('combobox', { name: 'Role' })).toHaveValue('any'),
+      );
+      expect(screen.getByRole('searchbox', { name: 'Find by name or email' })).toHaveValue('');
+      expect(await screen.findByText('Bo Rivera')).toBeVisible();
+      expect(window.location.hash).toBe('#/admin/users');
+    } finally {
+      window.location.hash = '';
+    }
+  });
+
   it('[IAM-009] starts from the role the address names', async () => {
     window.location.hash = '#/admin/users?role=site_admin';
     try {

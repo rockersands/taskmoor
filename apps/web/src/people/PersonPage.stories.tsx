@@ -4,7 +4,7 @@ import { expect, userEvent, within } from 'storybook/test';
 import { ADMIN, MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
 import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
-import { fakePeopleClient } from './fixtures';
+import { fakePeopleClient, PEOPLE } from './fixtures';
 import { PersonPage } from './PersonPage';
 
 /** The width of a small phone; nothing inside may stick out sideways. */
@@ -93,6 +93,30 @@ export const KeptByADirectory: Story = {
         'Corporate directory keeps this person: their name and email change there, not here.',
       ),
     ).toBeVisible();
+    // Shown, not edited: the directory keeps them.
+    await expect(canvas.getByLabelText('Name')).toHaveAttribute('readonly');
+    await expect(canvas.getByLabelText('Email')).toHaveAttribute('readonly');
+  },
+};
+
+/**
+ * Marked break-glass before a directory took the account: it says the mark should go, and
+ * offers only removing it.
+ */
+export const KeptByADirectoryAndMarked: Story = {
+  args: {
+    userId: 2,
+    client: fakePeopleClient({
+      directoryPerson: 2,
+      people: PEOPLE.map((p) => (p.id === 2 ? { ...p, breakGlass: true } : p)),
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('button', { name: 'Remove the break-glass mark' }),
+    ).toBeVisible();
+    await expect(canvas.getByLabelText('Name')).toHaveAttribute('readonly');
   },
 };
 

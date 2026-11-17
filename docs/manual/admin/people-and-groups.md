@@ -1,7 +1,7 @@
 ---
 title: "People, groups and teams"
 audience: admins
-sources: apps/server/src/routes/users.ts, apps/server/src/authz/person-roles.ts, apps/web/src/people/PersonPage.tsx, apps/web/src/people/peopleWords.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/api/pages.ts, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, apps/server/src/tracks/membership.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx, apps/server/src/security/alerts.ts, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, apps/server/src/security/refusals.ts, apps/server/src/routes/security-alerts.ts, apps/server/src/audit/record.ts, apps/web/src/admin/SecurityAlertsForm.tsx, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/privacy/erase.ts, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, apps/server/src/audit/query.ts, apps/web/src/people/EraseUserForm.tsx, apps/web/src/account/PersonalDataSection.tsx, docs/adr/0111-personal-data-and-database-tls.md, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md, apps/web/src/shell/DangerAction.tsx, apps/server/src/authz/create-tracks.ts, apps/server/src/trackgroups/access.ts, docs/adr/0122-multi-track.md, docs/adr/0118-track-invitations.md, apps/server/src/routes/service-accounts.ts, apps/server/src/ldap/gateway.ts, apps/web/src/api/teams.ts, apps/server/src/audit/subscriber.ts
+sources: apps/server/src/routes/users.ts, apps/web/src/admin/AdminLayout.tsx, apps/server/src/authz/person-roles.ts, apps/web/src/people/PersonPage.tsx, apps/web/src/people/peopleWords.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/api/pages.ts, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, apps/server/src/tracks/membership.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx, apps/server/src/security/alerts.ts, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, apps/server/src/security/refusals.ts, apps/server/src/routes/security-alerts.ts, apps/server/src/audit/record.ts, apps/web/src/admin/SecurityAlertsForm.tsx, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/privacy/erase.ts, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, apps/server/src/audit/query.ts, apps/web/src/people/EraseUserForm.tsx, apps/web/src/account/PersonalDataSection.tsx, docs/adr/0111-personal-data-and-database-tls.md, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md, apps/web/src/shell/DangerAction.tsx, apps/server/src/authz/create-tracks.ts, apps/server/src/trackgroups/access.ts, docs/adr/0122-multi-track.md, docs/adr/0118-track-invitations.md, apps/server/src/routes/service-accounts.ts, apps/server/src/ldap/gateway.ts, apps/web/src/api/teams.ts, apps/server/src/audit/subscriber.ts
 accessed: 2026-11-17
 attestation: own-words
 ---
@@ -51,7 +51,9 @@ the email, the date they last signed in, and what they are:
 - **Member** when they hold none of these.
 
 A deactivated person keeps their roles, and the row shows them; they come back into use when the
-person is reactivated.
+person is reactivated. An erased person holds no role and runs no track, whatever groups and
+grants they had: their row shows none, and no **Role** choice lists them, **Members, with no
+role** included.
 
 Each row has one action, **Edit**, which opens [the person's page](#a-persons-page) with
 everything you can do for them. Screen readers hear it as **Edit** and the person's name.
@@ -61,8 +63,11 @@ everything you can do for them. Screen readers hear it as **Edit** and the perso
 - **Role** picks **Any role**, the holders of one administrator role, **People who run tracks**,
   or **Members, with no role**. The server does the filtering, so the count and **Show more**
   stay right.
-- The address keeps **Show** and **Role**, for example `#/admin/users?show=all&role=ai_admin`,
-  so coming back from a person's page finds the list as you left it.
+- The address keeps **Show**, **Role** and the search, for example
+  `#/admin/users?show=all&role=ai_admin&q=grace`, and leaves the rest of the address as it is (a
+  `?locale=` stays). Coming back from a person's page, with the browser's Back or the
+  breadcrumb's **People**, finds the list as you left it; **People** in Administration's
+  navigation opens it with no filter.
 - Above the list, the count says how many people match. The list shows the first 200 by name;
   **Show more** under it adds the next 199, until everyone who matches is listed: each page
   starts at the last person shown, and when people came or went meanwhile (another
@@ -82,20 +87,24 @@ when they last signed in, and a **Deactivated** badge where it applies. The page
   permissions** and **Given to everyone signed in, on Global permissions** lead to
   [global permissions](permissions.md#global-permissions); **Marked on their account** is the site
   administrator mark that **Make site administrator** and **Remove site administrator** switch,
-  just below. Then **Runs 2 tracks**, with each track by key and name, linked to its people page,
+  just below (not on your own page, nor for a deactivated person). Then **Runs 2 tracks**, with each track by key and name, linked to its people page,
   where its roles change (the first 100; the rest are counted). Someone with no role reads
   **Member**. The part also says which groups the person is in themselves.
 - **Profile**: **Name**, **Email**, **Time zone** and **Language and region**, then **Save
   profile**. Only what you changed is sent. An address another account has is refused. For a
   person a [directory](ldap.md) keeps, the part names the directory: a read-only one keeps the
-  name and email, a read-and-write one takes the change too.
+  name and email, which show but cannot be edited here; a read-and-write one takes the change too.
 - **Sign-in**: **New password link** (see [Password links](#password-links)); the
   [break-glass](sso.md#the-break-glass-fallback) mark, with **Mark as a break-glass account** and
   **Remove the break-glass mark**; and **Reset second factor** when they have one (see
   [Two-factor authentication](#two-factor-authentication)). A person a directory keeps gets
-  neither a link nor the mark.
+  neither a link nor the mark; one marked before the directory took the account says the mark
+  should go, and offers only **Remove the break-glass mark**.
 - **Data of** the person: their data downloads (see [below](#a-persons-data-download-and-erasure)).
 - **Account**: **Deactivate** or **Reactivate**, and **Erase…**.
+
+When something is refused (the last site administrator, an address another account has), the
+reason shows beside the button you pressed, in its part of the page.
 
 On your own page you cannot deactivate, erase or remove your site administrator mark, and your
 second factor is changed on your account page. An erased person's page shows only that they were

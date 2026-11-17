@@ -3231,7 +3231,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Los roles se dan en Permisos globales, a la persona o a un grupo en el que está, y los administradores de un track en la página Personas de ese track; cada rol de abajo enlaza adonde cambia. Los cambios de aquí quedan en el registro de auditoría.',
   'admin.person.roles': 'Roles',
   'admin.person.member': 'Miembro: no tiene ningún rol de administrador ni dirige ningún track.',
-  'admin.person.source.account': 'Marcado en su cuenta, con el botón de abajo',
+  'admin.person.source.account': 'Marcado en su cuenta',
   'admin.person.source.user': 'Dado a la persona en Permisos globales',
   'admin.person.source.group': 'Por el grupo {group}',
   'admin.person.source.everyone':
@@ -3268,6 +3268,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.person.breakGlassOff': '{name} ya no es una cuenta de emergencia.',
   'admin.person.breakGlassDirectory':
     'Una cuenta que mantiene un directorio no puede ser de emergencia.',
+  'admin.person.breakGlassDirectoryMarked':
+    'Ahora mantiene esta cuenta un directorio, así que no debería seguir siendo de emergencia: quita la marca.',
   'admin.person.twoFactor': 'Segundo factor',
   'admin.person.withoutTwoFactor': 'No tiene segundo factor.',
   'admin.person.hasTwoFactor': 'Tiene un segundo factor configurado.',

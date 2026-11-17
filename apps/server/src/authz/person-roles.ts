@@ -18,6 +18,11 @@ type Db = Kysely<Database> | Transaction<Database>;
  * row says "Site administrator" and not five roles. Roles are read for deactivated people too:
  * deactivation keeps them, and they come back with the person.
  *
+ * An erased person (ADR-111) holds no role and runs no track, whatever rows erasure left behind
+ * (their group memberships, grants and track roles stay, as do the tracks they owned): the same
+ * as `runningNoTrack`, which counts them out. So their row carries no role, and every role
+ * filter, Member included, leaves them out: an erased person is a placeholder, not a member.
+ *
  * The roles are `ADMIN_GLOBAL_PERMISSIONS`, in the same order (a test holds them equal).
  *
  * Running a track is holding `administer_track` on a track not in the trash: through a role
@@ -52,11 +57,16 @@ export interface HeldRole {
 const ROLE_LIST = () => sql.join(ADMIN_ROLES.map((r) => sql`${r}`));
 const ID_LIST = (ids: readonly number[]) => sql.join(ids.map((id) => sql`${id}::int`));
 
+/** These of the people who are not erased, as a subquery of ids: the erased hold nothing. */
+const LIVE_IDS = (workspaceId: number, ids: readonly number[]) => sql`
+  SELECT p.id FROM app_user p
+   WHERE p.workspace_id = ${workspaceId} AND p.erased_at IS NULL AND p.id IN (${ID_LIST(ids)})`;
+
 /** Each of these people's groups, direct or through nesting: `mine(user_id, group_id)`. */
 const MINE = (workspaceId: number, ids: readonly number[]) => sql`
   mine(user_id, group_id) AS (
     SELECT m.user_id, m.group_id FROM group_member m
-     WHERE m.workspace_id = ${workspaceId} AND m.user_id IN (${ID_LIST(ids)})
+     WHERE m.workspace_id = ${workspaceId} AND m.user_id IN (${LIVE_IDS(workspaceId, ids)})
     UNION
     SELECT mine.user_id, n.parent_id FROM group_nesting n JOIN mine ON n.child_id = mine.group_id
      WHERE n.workspace_id = ${workspaceId}
@@ -85,11 +95,12 @@ export async function rolesOf(
            NULL::int AS group_id, NULL::text AS group_name
       FROM app_user u
      WHERE u.workspace_id = ${workspaceId} AND u.id IN (${ID_LIST(ids)}) AND u.is_site_admin
+       AND u.erased_at IS NULL
     UNION
     SELECT g.user_id, g.permission, 'user', NULL::int, NULL::text
       FROM global_grant g
      WHERE g.workspace_id = ${workspaceId} AND g.grantee = 'user'
-       AND g.user_id IN (${ID_LIST(ids)}) AND g.permission IN (${ROLE_LIST()})
+       AND g.user_id IN (${LIVE_IDS(workspaceId, ids)}) AND g.permission IN (${ROLE_LIST()})
     UNION
     SELECT mine.user_id, g.permission, 'group', ug.id, ug.name
       FROM global_grant g
@@ -102,7 +113,8 @@ export async function rolesOf(
       FROM global_grant g
       JOIN app_user u ON u.workspace_id = g.workspace_id
      WHERE g.workspace_id = ${workspaceId} AND g.grantee = 'any_user'
-       AND u.id IN (${ID_LIST(ids)}) AND g.permission IN (${ROLE_LIST()})`.execute(db);
+       AND u.id IN (${ID_LIST(ids)}) AND u.erased_at IS NULL
+       AND g.permission IN (${ROLE_LIST()})`.execute(db);
   const order = (s: RoleSource) => ['account', 'user', 'group', 'everyone'].indexOf(s.kind);
   for (const row of rows) {
     const role = row.permission as AdminRole;
@@ -154,7 +166,7 @@ const RUNS = (workspaceId: number, ids: readonly number[]) => sql`
       JOIN live t ON t.id = a.track_id
       JOIN admin_grants p ON p.policy_id = t.access_policy_id AND p.grantee = 'role'
                          AND p.role_id = a.role_id
-     WHERE a.user_id IN (${ID_LIST(ids)})
+     WHERE a.user_id IN (${LIVE_IDS(workspaceId, ids)})
     UNION
     SELECT mine.user_id, a.track_id
       FROM track_role_actor a
@@ -165,7 +177,7 @@ const RUNS = (workspaceId: number, ids: readonly number[]) => sql`
     UNION
     SELECT p.user_id, t.id
       FROM admin_grants p JOIN live t ON t.access_policy_id = p.policy_id
-     WHERE p.grantee = 'user' AND p.user_id IN (${ID_LIST(ids)})
+     WHERE p.grantee = 'user' AND p.user_id IN (${LIVE_IDS(workspaceId, ids)})
     UNION
     SELECT mine.user_id, t.id
       FROM admin_grants p
@@ -175,12 +187,13 @@ const RUNS = (workspaceId: number, ids: readonly number[]) => sql`
     UNION
     SELECT t.owner_id, t.id
       FROM live t JOIN admin_grants p ON p.policy_id = t.access_policy_id
-     WHERE p.grantee = 'track_owner' AND t.owner_id IN (${ID_LIST(ids)})
+     WHERE p.grantee = 'track_owner' AND t.owner_id IN (${LIVE_IDS(workspaceId, ids)})
     UNION
     SELECT u.id, t.id
       FROM admin_grants p
       JOIN live t ON t.access_policy_id = p.policy_id
       JOIN app_user u ON u.workspace_id = ${workspaceId} AND u.id IN (${ID_LIST(ids)})
+                     AND u.erased_at IS NULL
      WHERE p.grantee IN ('any_user', 'anyone')
   )`;
 
@@ -298,18 +311,22 @@ function runnersOf(workspaceId: number): RawBuilder<unknown> {
 /**
  * The list's role filter as a condition on `app_user.id`: holders of the role, people who run a
  * track, or people who are neither (Member). The subqueries are uncorrelated, so the database
- * reads each once, and paging and the total count stay right.
+ * reads each once, and paging and the total count stay right. They read the rows erasure keeps,
+ * so the condition itself leaves erased people out of every filter, as `rolesOf` does.
  */
 export function roleCondition(workspaceId: number, filter: RoleFilter): RawBuilder<boolean> {
-  if (filter === 'runs_tracks') return sql<boolean>`app_user.id IN (${runnersOf(workspaceId)})`;
+  const live = sql<boolean>`app_user.erased_at IS NULL`;
+  if (filter === 'runs_tracks') {
+    return sql<boolean>`${live} AND app_user.id IN (${runnersOf(workspaceId)})`;
+  }
   if (filter === 'member') {
     const holders = sql.join(
       ADMIN_ROLES.map((role) => sql`(${holdersOf(workspaceId, role)})`),
       sql` UNION `,
     );
-    return sql<boolean>`app_user.id NOT IN (${holders}) AND app_user.id NOT IN (${runnersOf(workspaceId)})`;
+    return sql<boolean>`${live} AND app_user.id NOT IN (${holders}) AND app_user.id NOT IN (${runnersOf(workspaceId)})`;
   }
-  return sql<boolean>`app_user.id IN (${holdersOf(workspaceId, filter)})`;
+  return sql<boolean>`${live} AND app_user.id IN (${holdersOf(workspaceId, filter)})`;
 }
 
 export function isAdminRole(value: string): value is AdminRole {
