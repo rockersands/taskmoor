@@ -7,7 +7,11 @@ import { diff, emit } from '../events/bus';
 import { enforceLimit } from '../guardrails/model';
 import { checkLabels, LABEL_MAX, lockList, rewriteTickets, writeOrder } from '../tickets/fields';
 import { priorityLevel } from '../tickets/priority-level';
-import { replaceCloseReason, workflowsSettingCloseReason } from '../workflows/close-reasons';
+import {
+  createCloseReason,
+  replaceCloseReason,
+  workflowsSettingCloseReason,
+} from '../workflows/close-reasons';
 
 /**
  * The workspace's lists of priorities and close reasons, priority sets, and labels (M1-014;
@@ -681,32 +685,13 @@ export function registerPriorityRoutes(app: FastifyInstance, db: Kysely<Database
     const parsed = createReasonBody.safeParse(request.body);
     if (!parsed.success) return invalid(reply);
     const body = parsed.data;
-    const ws = request.workspaceId;
     try {
-      const row = await db.transaction().execute(async (trx) => {
-        await lockList(trx, ws, 'close_reason');
-        const last = await trx
-          .selectFrom('close_reason')
-          .select(sql<number>`coalesce(max(sort_order), 0)`.as('n'))
-          .where('workspace_id', '=', ws)
-          .executeTakeFirstOrThrow();
-        const created = await trx
-          .insertInto('close_reason')
-          .values({
-            workspace_id: ws,
-            name: body.name,
-            description: body.description ?? '',
-            sort_order: Number(last.n) + 1,
-          })
-          .returning(['id', 'name', 'description', 'sort_order'])
-          .executeTakeFirstOrThrow();
-        await emit(trx, by(request), {
-          type: 'close_reason.created',
-          subjectId: created.id,
-          payload: { name: created.name },
-        });
-        return created;
-      });
+      const row = await db.transaction().execute((trx) =>
+        createCloseReason(trx, by(request), {
+          name: body.name,
+          description: body.description ?? '',
+        }),
+      );
       return reply.code(201).send({ closeReason: reasonView(row) });
     } catch (error) {
       if (uniqueViolation(error) === 'close_reason_name_idx') {
