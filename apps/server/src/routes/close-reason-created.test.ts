@@ -233,15 +233,19 @@ describe('a close reason made on the way records its event (T-325)', () => {
       post(`/api/v1/workflows/${workflowId}/completed-reason`),
       post(`/api/v1/workflows/${workflowId}/completed-reason`),
     ]);
-    for (let waiting = 0, i = 0; waiting < 2 && i < 400; i++) {
+    let waiting = 0;
+    for (let i = 0; waiting < 2 && i < 400; i++) {
       const { rows } = await sql<{ n: number }>`
         SELECT count(*)::int AS n FROM pg_stat_activity
          WHERE datname = current_database() AND wait_event = 'advisory'`.execute(database.db);
       waiting = rows[0]?.n ?? 0;
       if (waiting < 2) await new Promise((resolve) => setTimeout(resolve, 25));
     }
+    // Both must have been waiting on the list, or the race never happened and the test proves nothing.
+    // Release first either way, so a failure does not leave the holder's transaction open.
     release();
     await holder;
+    expect(waiting, 'both requests waiting on the close-reason list').toBe(2);
     const [first, second] = await asking;
     expect(first?.statusCode, first?.body).toBe(200);
     expect(second?.statusCode, second?.body).toBe(200);
