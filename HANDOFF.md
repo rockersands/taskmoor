@@ -22,7 +22,31 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: touch stories in their own projects (2026-11-16, Windows)
+### Latest: story tests run axe again (2026-11-16, Windows)
+
+On `main` at `d6200bf7` after a full gate (10,398 tests, 315 e2e). No migration (the next is 0114).
+
+- T-327: `.storybook/vitest.setup.ts` passes `@storybook/addon-a11y/preview` to `setProjectAnnotations`
+  (it had been missing since 2026-10-12, so no story ran axe). Any violation fails a story, whatever its
+  impact (ADR-024 has a section on it). `src/test/storyAxe.test.tsx` guards it; `tsconfig.json` now
+  typechecks `.storybook/*.ts(x)`.
+- Names changed to start with their visible words (WCAG 2.5.3): directory Sync, Full sync, Move and
+  "Sync and remove what left" (the manual's ldap page too), a SAML provider's metadata link, a workflow
+  version's Restore, Make this the default set, Hide tokens, Send again. Webhook deliveries' title is an h2.
+- The advanced query box is a text box (no combobox role) with a polite "N suggestions" status and the
+  hint in its description; e2e and the fresh-install spec look for `textbox` "Query".
+- Grouped result tables are named after their group; AI usage's table scrollers have their own names.
+- Story decorators: AdminSection reads `parameters.session`; invitation stories (`parameters.ownFrame`)
+  skip the track pages' main. StandaloneFrame's side-by-side stories are the one harness exception.
+- The first gate failed on two stories, both found and fixed: (1) the Gmail story waited 1 s for
+  Google's G (story tests keep Testing Library's 1 s default); it now awaits `decode()`. (2) Touch
+  story timeouts: with axe on, each story test sent axe's whole result (about 1 MB for a ticket page)
+  to Vitest's main process, which stalled for up to 12 s parsing them. Story tests now use axe's
+  `no-passes` reporter (every rule runs, violations fail with their elements), and axe-core loads
+  with the setup file. ADR-024 has the measurements and the one 6 s pause that remains under load.
+- For the Mac's T-359 branches: new stories must pass axe; renamed buttons above may need their locators.
+
+### Earlier: touch stories in their own projects (2026-11-16, Windows)
 
 On `main` at `98dfd0f5` after a full gate (10,396 tests, 315 e2e).
 

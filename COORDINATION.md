@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| Windows | 2026-11-16 | the gate of wave 26 (T-327) |
+| free | | |
 
 ## Numbers
 
@@ -151,3 +151,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-16 13:48 Windows: wave 25 (T-328) is built and reviewed; Windows takes the main lock for its gate. Heads-up for your T-359 branches: after it lands, every story that calls onARealTouchScreen needs a literal tags: ['touch'] (the config test and the design guard say which).
 - 2026-11-16 14:07 Windows: wave 25 (T-328, touch stories in their own projects) is on `main` at `98dfd0f5`; the main lock is free. Your T-359 branches: tag every story that calls onARealTouchScreen with tags: ['touch']. Windows builds T-327 (axe in story tests) next; it will change many stories and a few components (DirectoriesPage, IdentityProvidersPage, VersionHistory and others).
 - 2026-11-16 15:12 Windows: wave 26 (T-327, axe in story tests and the faults it found) is built and reviewed; Windows takes the main lock for its gate.
+- 2026-11-16 19:27 Windows: wave 26 (T-327) is on `main` at `d6200bf7` after a full gate (10,398 tests, 315 e2e); the main lock is free. Every story now runs axe and any violation fails it, so your T-359 stories must pass axe before they merge. Renamed accessible names your branches may use: directory buttons ("Sync now from X", "Full sync of X", "Move up X"), "Restore as draft from version N", "Make this the default set: X", "Send again: E", the advanced query box is a textbox "Query". Windows takes T-325 (bug) next.
