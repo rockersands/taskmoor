@@ -25,6 +25,26 @@ describe('a plan view in the address', () => {
     const all = '#/plans/12/list?assignee=me&zoom=weeks&month=2027-02&from=2027-02-28&sort=due';
     expect(planHref(12, 'list', readView(all))).toBe(all);
     expect(planHref(12, 'list', readView('#/plans/12/list'))).toBe('#/plans/12/list');
+    // The List's order is a column and a way (T-330): the way only when it is the other one.
+    for (const held of [
+      'sort=key',
+      'sort=key&order=desc',
+      'sort=type&order=desc',
+      'sort=created&order=asc',
+    ]) {
+      expect(planHref(12, 'list', readView(`#/plans/12/list?${held}`))).toBe(
+        `#/plans/12/list?${held}`,
+      );
+    }
+    expect(readView('#/plans/12/list?sort=key&order=desc').position).toEqual({
+      sort: 'key',
+      order: 'desc',
+    });
+    // Its own way, or the default, is held without the way.
+    expect(planHref(12, 'list', readView('#/plans/12/list?sort=key&order=asc'))).toBe(
+      '#/plans/12/list?sort=key',
+    );
+    expect(planHref(12, 'list', readView('#/plans/12/list?sort=created'))).toBe('#/plans/12/list');
   });
 
   it('[PLN-014] leaves out values that could not be meant', () => {
@@ -37,8 +57,10 @@ describe('a plan view in the address', () => {
       'from=2027-02-30',
       'from=tomorrow',
       'from=2027-2-1',
-      'sort=summary',
+      'sort=labels',
       'sort=created%20DESC',
+      'sort=key&order=up',
+      'order=desc',
       'critical=yes',
       'critical=0',
     ]) {

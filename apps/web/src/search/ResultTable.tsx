@@ -25,6 +25,7 @@ import {
   editorStart,
   isDateTimeColumn,
   numberShowOfColumn,
+  orderOfColumn,
   type TableSort,
   valueText,
 } from './columns';
@@ -51,6 +52,12 @@ export interface ResultTableProps {
   format?: (ticket: SearchTicket) => RowFormat | null;
   /** The order the rows are in, marked on that column's header (PL-11). */
   sort?: TableSort | null;
+  /**
+   * Ordering by a column's heading (T-330): a heading the query language can order by becomes a
+   * button that calls this with its column; the page decides the order (`nextSort`) and gives it
+   * back as `sort`. Without it the headings are plain words, as search shows them.
+   */
+  onSort?: (column: string) => void;
   /** No cell edits in place: a plan's List read in a scenario (ADR-122 stage 6). */
   readOnly?: boolean;
   /**
@@ -177,6 +184,7 @@ export function ResultGrid({
   onSaved,
   format,
   sort,
+  onSort,
   readOnly = false,
   label,
 }: ResultTableProps) {
@@ -214,8 +222,7 @@ export function ResultGrid({
         <thead>
           <tr>
             <th scope="col" aria-sort={sortOf('key', sort)}>
-              {t('search.column.key')}
-              <SortMark column="key" sort={sort} />
+              <Heading column="key" name={t('search.column.key')} sort={sort} onSort={onSort} />
             </th>
             {columns.map((column) => (
               <th
@@ -225,8 +232,7 @@ export function ResultGrid({
                 data-one-line={ONE_LINE.has(column) || undefined}
                 aria-sort={sortOf(column, sort)}
               >
-                {nameOf(column)}
-                <SortMark column={column} sort={sort} />
+                <Heading column={column} name={nameOf(column)} sort={sort} onSort={onSort} />
               </th>
             ))}
           </tr>
@@ -275,6 +281,38 @@ function SortMark({ column, sort }: { column: string; sort: TableSort | null | u
     <span className="search-sort-mark" aria-hidden="true">
       {sort.direction === 'ascending' ? '\u2191' : '\u2193'}
     </span>
+  );
+}
+
+/**
+ * A column's heading: its name and the arrow when the rows follow it. Where the page orders by
+ * headings (T-330) and the query language can order by the column, a button named by those
+ * words: a click or Enter orders by it, and again the other way. The `th` keeps `aria-sort`.
+ */
+function Heading({
+  column,
+  name,
+  sort,
+  onSort,
+}: {
+  column: string;
+  name: string;
+  sort: TableSort | null | undefined;
+  onSort: ((column: string) => void) | undefined;
+}) {
+  if (!onSort || !orderOfColumn(column)) {
+    return (
+      <>
+        {name}
+        <SortMark column={column} sort={sort} />
+      </>
+    );
+  }
+  return (
+    <button type="button" className="search-sort-button" onClick={() => onSort(column)}>
+      {name}
+      <SortMark column={column} sort={sort} />
+    </button>
   );
 }
 

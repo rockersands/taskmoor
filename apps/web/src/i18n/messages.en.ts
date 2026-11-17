@@ -6314,6 +6314,12 @@ export const messagesEn = {
   'list.sort.updated': 'Recently updated',
   'list.sort.due': 'Due date',
   'list.sort.priority': 'Priority',
+  'list.sort.type': 'Type',
+  'list.sort.key': 'Key',
+  'list.sort.current': '{column}, {direction, select, ascending {ascending} other {descending}}',
+  'list.sort.current.date':
+    '{column}, {direction, select, ascending {earliest first} other {latest first}}',
+  'list.sort.announce': 'Sorted by {order}',
   'list.filter': 'Filter',
   'list.filterPlaceholder': 'assignee = currentUser()',
   'list.filterApply': 'Apply filter',
