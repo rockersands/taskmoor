@@ -69,6 +69,7 @@ test('[IAM-008] the administrator adds a person, sees their link, deactivates an
   await expect(
     page.getByRole('navigation', { name: 'Where this page sits' }).getByRole('link', {
       name: 'People',
+      exact: true,
     }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Deactivate', exact: true }).click();
