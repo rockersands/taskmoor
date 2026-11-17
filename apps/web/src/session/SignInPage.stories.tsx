@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import { StandaloneFrame } from '../shell/StandaloneFrame';
 import { fakeSignInSso, PARTNERS, STAFF, UMBRELLA } from '../sso/fixtures';
 import { SessionProvider } from './SessionProvider';
@@ -112,7 +112,15 @@ export const GoogleForAGmailAddress: Story = {
     await expect(google).toHaveClass('google-sign-in');
     const mark = google.querySelector('img.google-sign-in-mark') as HTMLImageElement;
     await expect(mark).not.toBeNull();
-    await waitFor(() => expect(mark.complete && mark.naturalWidth > 0).toBe(true));
+    // Under Vitest the G is not a data URL as in the build: the story's Vite server serves the
+    // file, which the image fetches when the page first draws. Under a full gate's load that
+    // fetch outlasted the 1 s of Testing Library's `waitFor` (T-327). `decode()` resolves once
+    // the file is fetched and decoded, however long that takes within the story's time, and
+    // rejects if it fails to load or decode.
+    await mark.decode().catch((cause: unknown) => {
+      throw new Error(`Google's G did not load or decode: ${mark.currentSrc}`, { cause });
+    });
+    await expect(mark.naturalWidth).toBeGreaterThan(0);
   },
 };
 

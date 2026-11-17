@@ -572,9 +572,10 @@ function Deliveries({ webhook, client }: { webhook: Webhook; client: WebhooksCli
 
   return (
     <section aria-labelledby={`${id}-title`} className="glass-card admin-panel">
-      <h3 id={`${id}-title`} className="facts-title">
+      {/* The page's own sections: the next level below its title, as no row has a heading. */}
+      <h2 id={`${id}-title`} className="facts-title">
         {t('webhooks.deliveriesOf', { name: webhook.name })}
-      </h3>
+      </h2>
       <div className="form-field">
         <label htmlFor={`${id}-state`} className="form-label">
           {t('webhooks.show')}

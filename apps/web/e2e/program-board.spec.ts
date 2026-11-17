@@ -59,7 +59,10 @@ async function ok<T>(answer: ReturnType<APIRequestContext['post']>): Promise<T> 
 /** A calendar day `days` after `from`. */
 const plus = (from: string, days: number) =>
   new Date(Date.parse(`${from}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
-/** This week's Monday, as the page's own day reckons it (UTC here, as the browsers run). */
+/**
+ * The Monday of UTC's week. The page's own today is the person's (ADR-010 T-280), which can be a
+ * day off; nothing here turns on it, since every day the test checks is counted from this one.
+ */
 const thisMonday = () => {
   const today = new Date().toISOString().slice(0, 10);
   return plus(today, -((new Date().getUTCDay() + 6) % 7));

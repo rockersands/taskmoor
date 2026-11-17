@@ -64,7 +64,7 @@ export const Failed: Story = { args: { versions: null, failed: true } };
 export const ConfirmingRestore: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const trigger = canvas.getByRole('button', { name: 'Restore version 1 as the draft' });
+    const trigger = canvas.getByRole('button', { name: 'Restore as draft from version 1' });
     await expect(trigger).toHaveClass('button-danger-quiet');
     await userEvent.click(trigger);
     const question = canvas.getByRole('group', {
@@ -86,7 +86,7 @@ export const ConfirmingRestoreOnAPhone: Story = {
   ],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole('button', { name: 'Restore version 1 as the draft' }));
+    await userEvent.click(canvas.getByRole('button', { name: 'Restore as draft from version 1' }));
     await expect(canvas.getByRole('group', { name: /^Restoring version 1/ })).toBeVisible();
     const box = canvas.getByTestId('phone-width');
     await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
@@ -99,7 +99,7 @@ export const NothingToReplace: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(
-      canvas.getByRole('button', { name: 'Restore version 1 as the draft' }),
+      canvas.getByRole('button', { name: 'Restore as draft from version 1' }),
     ).toHaveClass('button-secondary');
   },
 };

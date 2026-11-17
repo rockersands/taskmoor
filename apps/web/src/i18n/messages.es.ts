@@ -767,6 +767,7 @@ export const messagesEs: Record<MessageId, string> = {
   'search.run': 'Buscar',
   'search.query': 'Consulta',
   'search.suggestions': 'Sugerencias',
+  'search.suggestionCount': '{count, plural, one {# sugerencia} other {# sugerencias}}',
   'search.hint': 'Ctrl+Espacio sugiere; Tab o Intro toma una sugerencia; Intro busca.',
   'search.errorAt': '{message} (en la columna {column}, cerca de "{near}")',
   'search.results': 'Resultados',
@@ -2621,7 +2622,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.sso.spEntityId': 'ID de entidad que registrar',
   'admin.sso.acsUrl': 'URL del servicio consumidor de aserciones (HTTP-POST)',
   'admin.sso.spMetadata': 'Metadatos que importar',
-  'admin.sso.spMetadataNamed': 'Metadatos de Taskmoor para {name}',
+  'admin.sso.spMetadataNamed': '{url} (metadatos de Taskmoor para {name})',
   'admin.sso.form.protocol': 'Tipo de proveedor',
   'admin.sso.form.protocolOidc': 'OpenID Connect',
   'admin.sso.form.protocolSaml': 'SAML 2.0',
@@ -2781,14 +2782,14 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.directories.neverSynced': 'Aún sin sincronizar',
   'admin.directories.nextSync': 'Próxima sincronización {when}',
   'admin.directories.sync': 'Sincronizar ahora',
-  'admin.directories.syncNamed': 'Sincronizar {name} ahora',
+  'admin.directories.syncNamed': 'Sincronizar ahora desde {name}',
   'admin.directories.fullSync': 'Sincronización completa',
-  'admin.directories.fullSyncNamed': 'Sincronizar todo {name} ahora',
+  'admin.directories.fullSyncNamed': 'Sincronización completa de {name}',
   'admin.directories.syncQueued': 'Hay una sincronización de {name} en camino.',
   'admin.directories.syncDisabled':
     'Este directorio está desactivado. Actívalo para sincronizarlo.',
   'admin.directories.confirmRemovals': 'Sincronizar y quitar',
-  'admin.directories.confirmRemovalsNamed': 'Sincronizar {name} y quitar lo que salió de él',
+  'admin.directories.confirmRemovalsNamed': 'Sincronizar y quitar lo que salió de {name}',
   'admin.directories.confirmRemovalsOutcome':
     'Una sincronización completa de {name} empieza ahora y quita {removed, number} de sus {known, number} {what, select, groups {grupos} other {personas}}: {what, select, groups {los que} other {las que}} salieron del directorio. {what, select, groups {Esos grupos se eliminan, y eso no se puede deshacer. Las personas que salieron de él se desactivan y conservan su trabajo.} other {Esas personas se desactivan y conservan su trabajo. Los grupos que salieron de él se eliminan, y eso no se puede deshacer.}}',
   'admin.directories.confirmRemovalsOutcomeUncounted':
@@ -4297,7 +4298,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.priorities.defaultSetNote':
     'Los tracks que no eligen conjunto usan este. El conjunto predeterminado no se elimina: para eliminarlo, primero haz predeterminado otro conjunto.',
   'admin.priorities.makeDefault': 'Hacer este el conjunto predeterminado',
-  'admin.priorities.makeDefaultOf': 'Hacer {name} el conjunto predeterminado',
+  'admin.priorities.makeDefaultOf': 'Hacer este el conjunto predeterminado: {name}',
   'admin.priorities.madeDefault':
     '{name} es ahora el conjunto predeterminado. Los tracks que no eligen conjunto ofrecen sus prioridades.',
   'admin.priorities.deleteSetOf': 'Eliminar el conjunto de prioridades {name}',
@@ -5228,7 +5229,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.versions.publishedAt': 'Publicada {when} por {name}',
   'admin.workflow.versions.publishedBySystem': 'Publicada {when}',
   'admin.workflow.versions.restore': 'Restaurar como borrador',
-  'admin.workflow.versions.restoreNamed': 'Restaurar la versión {version} como borrador',
+  'admin.workflow.versions.restoreNamed': 'Restaurar como borrador desde la versión {version}',
   'admin.workflow.versions.confirmRestore':
     'Restaurar la versión {version} reemplaza {draft, select, none {todos los cambios sin guardar} other {el borrador (versión {draft}) y todos los cambios sin guardar}}. La versión publicada se queda como está.',
   'admin.workflow.versions.confirmRestoreButton': 'Restaurar la versión {version}',
@@ -6360,6 +6361,7 @@ export const messagesEs: Record<MessageId, string> = {
   'list.group.noValue': 'Ninguno',
   'list.group.other': 'Otros valores',
   'list.groupTitle': '{name} ({count, plural, one {# ticket} other {# tickets}})',
+  'list.groupTable': 'Tabla de resultados de {name}',
   'list.otherHint': 'Tickets con los valores menos frecuentes; búscalos para verlos todos.',
   'list.groupsFailed': 'No se pudieron contar los grupos. Revisa el filtro.',
   'list.sortBy': 'Ordenar por',
@@ -7027,6 +7029,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.aiUsage.scope.eachPerson': 'Cada persona',
   'admin.aiUsage.tokens': '{count, plural, one {# token} other {# tokens}}',
   'admin.aiUsage.limits': 'Límites de gasto',
+  'admin.aiUsage.limitsTable': 'Tabla de límites de gasto',
   'admin.aiUsage.limitsHint':
     'Al llegar a un límite, las llamadas a la IA se detienen hasta que empieza su siguiente periodo; se avisa a los administradores al 80 % y al 100 %.',
   'admin.aiUsage.limitsFailed': 'No se pudieron cargar los límites de gasto.',
@@ -7037,6 +7040,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.aiUsage.period.week': 'Semana',
   'admin.aiUsage.period.month': 'Mes',
   'admin.aiUsage.calls': 'Últimas llamadas a la IA',
+  'admin.aiUsage.callsTable': 'Tabla de las últimas llamadas a la IA',
   'admin.aiUsage.callsHint':
     'El registro de IA: una entrada por llamada, con quién, función, tokens y coste.',
   'admin.aiUsage.outcome.ok': 'Respondida',
@@ -7424,7 +7428,7 @@ export const messagesEs: Record<MessageId, string> = {
   'webhooks.deliveryFacts': '{when}, {attempts, plural, one {# intento} other {# intentos}}.',
   'webhooks.lastStatus': 'Última respuesta {status}.',
   'webhooks.replay': 'Enviar de nuevo',
-  'webhooks.replayOne': 'Enviar {event} de nuevo',
+  'webhooks.replayOne': 'Enviar de nuevo: {event}',
   'webhooks.replayAll': 'Enviar de nuevo todas las fallidas',
   'webhooks.replayed': 'Se pidió enviarlas de nuevo, con el mismo id y contenido.',
   'webhooks.replayFailed': 'No se pudieron enviar de nuevo. Inténtalo de nuevo en un momento.',

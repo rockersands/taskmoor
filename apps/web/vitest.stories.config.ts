@@ -115,6 +115,7 @@ export const STORY_DEPS: readonly string[] = [
   '@formatjs/icu-messageformat-parser',
   '@hocuspocus/provider',
   '@simplewebauthn/browser',
+  '@storybook/addon-a11y/preview',
   '@storybook/react-vite',
   '@tiptap/core',
   '@tiptap/extension-collaboration',
@@ -179,7 +180,8 @@ export function storyDepsCache(skin: StorySkin, pointer: StoryPointer = 'mouse')
 
 /**
  * Every story runs as a test in a real browser, with the a11y addon's axe checks. This is the
- * design system's gate (M0-031): a story with a serious or critical violation fails `pnpm verify`.
+ * design system's gate (M0-031): a story with any axe violation, whatever its impact, fails
+ * `pnpm verify` (ADR-024; `.storybook/preview.tsx` sets `a11y.test: 'error'` with no impact levels).
  * Every project comes from this one function, so the skins and pointers cannot drift apart.
  *
  * Touch is the browser's, not the story's (T-328). A touch project's pages are touch screens from

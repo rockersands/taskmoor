@@ -278,7 +278,9 @@ describe('priorities, priority sets and close reasons (T-320)', () => {
       ),
     ).toBeVisible();
 
-    await user.click(within(sets()).getByRole('button', { name: 'Make Support the default set' }));
+    await user.click(
+      within(sets()).getByRole('button', { name: 'Make this the default set: Support' }),
+    );
     expect(
       await within(sets()).findByText(
         'Support is the default set now. Tracks that choose no set offer its priorities.',

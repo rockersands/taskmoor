@@ -664,7 +664,7 @@ describe('workflow editor (M1-030)', () => {
     const history = await screen.findByRole('region', { name: 'Version history' });
     expect(await within(history).findAllByRole('listitem')).toHaveLength(3);
     const trigger = await within(history).findByRole('button', {
-      name: 'Restore version 1 as the draft',
+      name: 'Restore as draft from version 1',
     });
     expect(trigger).toHaveClass('button-danger-quiet');
     await user.click(trigger);
@@ -690,7 +690,7 @@ describe('workflow editor (M1-030)', () => {
     await user.click(await screen.findByRole('button', { name: 'Version history' }));
     const history = await screen.findByRole('region', { name: 'Version history' });
     const trigger = await within(history).findByRole('button', {
-      name: 'Restore version 1 as the draft',
+      name: 'Restore as draft from version 1',
     });
     expect(trigger).toHaveClass('button-secondary');
     await user.click(trigger);
@@ -701,11 +701,11 @@ describe('workflow editor (M1-030)', () => {
     // Now a draft exists, so the same row's button asks, and it has the focus back.
     await waitFor(() =>
       expect(
-        within(history).getByRole('button', { name: 'Restore version 1 as the draft' }),
+        within(history).getByRole('button', { name: 'Restore as draft from version 1' }),
       ).toHaveFocus(),
     );
     expect(
-      within(history).getByRole('button', { name: 'Restore version 1 as the draft' }),
+      within(history).getByRole('button', { name: 'Restore as draft from version 1' }),
     ).toHaveClass('button-danger-quiet');
   });
 
