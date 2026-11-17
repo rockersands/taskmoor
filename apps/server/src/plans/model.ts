@@ -138,13 +138,36 @@ export const timelineQuery = z.object({ ...filterShape, ...scenarioShape, ...exp
 /** A copy of a plan (PLN-014): only its name is asked for. */
 export const duplicateBody = z.object({ name }).strict();
 
-/** The orders the List offers, and so its file (PLN-014), as the query language says them. */
-export const EXPORT_SORTS = {
-  created: 'created DESC',
-  updated: 'updated DESC',
-  due: 'due ASC',
-  priority: 'priority DESC',
-} as const;
+/**
+ * The fields the List can be ordered by, and so its file (PLN-014; T-330), as the query language
+ * names them, each with the way it goes when the address names none: the column's own, as the
+ * List's menu and a first click on its heading order it. A custom field (`cf[N]`) goes ascending.
+ */
+export const EXPORT_SORTS: ReadonlyMap<string, 'ASC' | 'DESC'> = new Map([
+  ['created', 'DESC'],
+  ['updated', 'DESC'],
+  ['due', 'ASC'],
+  ['priority', 'DESC'],
+  ['key', 'ASC'],
+  ['type', 'ASC'],
+  ['summary', 'ASC'],
+  ['status', 'ASC'],
+  ['assignee', 'ASC'],
+  ['requester', 'ASC'],
+  ['creator', 'ASC'],
+  ['start', 'ASC'],
+  ['closed', 'DESC'],
+  ['targetRelease', 'ASC'],
+  ['area', 'ASC'],
+  ['votes', 'DESC'],
+]);
+const CUSTOM_SORT = /^cf\[\d{1,10}\]$/;
+
+/** The List's file's `ORDER BY`: `key ASC`, or the field's own way when `order` is left out. */
+export function exportOrder(sort: string, order: 'asc' | 'desc' | undefined): string {
+  const way = order ? order.toUpperCase() : (EXPORT_SORTS.get(sort) ?? 'ASC');
+  return `${sort} ${way}`;
+}
 
 /** `GET /plans/:id/export`: the views' filters, the columns and the order of the List's file. */
 export const exportQuery = z
@@ -152,7 +175,15 @@ export const exportQuery = z
     ...filterShape,
     format: z.literal('csv').default('csv'),
     columns: z.string().max(4000).optional(),
-    sort: z.enum(['created', 'updated', 'due', 'priority']).default('created'),
+    sort: z
+      .string()
+      .max(24)
+      .refine(
+        (s) => EXPORT_SORTS.has(s) || CUSTOM_SORT.test(s),
+        'a field the List can be ordered by',
+      )
+      .default('created'),
+    order: z.enum(['asc', 'desc']).optional(),
     /** How the file separates its cells and writes numbers (T-263). */
     separator: z.enum(CSV_SEPARATORS).default('comma'),
   })

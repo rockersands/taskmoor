@@ -334,6 +334,7 @@ export function fakePlanClient(options: FakePlanOptions = {}): PlanClient & {
         ...Object.fromEntries(filterParams(file.filters)),
         columns: ['key', ...file.columns].join(','),
         sort: file.sort,
+        order: file.order,
         ...(file.separator === 'semicolon' ? { separator: 'semicolon' } : {}),
       })}`,
     get: async (id, filters = {}) => {

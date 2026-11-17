@@ -6369,6 +6369,12 @@ export const messagesEs: Record<MessageId, string> = {
   'list.sort.updated': 'Actualizados recientemente',
   'list.sort.due': 'Fecha límite',
   'list.sort.priority': 'Prioridad',
+  'list.sort.type': 'Tipo',
+  'list.sort.key': 'Clave',
+  'list.sort.current': '{column}, {direction, select, ascending {ascendente} other {descendente}}',
+  'list.sort.current.date':
+    '{column}, {direction, select, ascending {primero la fecha más temprana} other {primero la fecha más tardía}}',
+  'list.sort.announce': 'Ordenado por {order}',
   'list.filter': 'Filtro',
   'list.filterPlaceholder': 'assignee = currentUser()',
   'list.filterApply': 'Aplicar el filtro',
