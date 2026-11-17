@@ -10,7 +10,7 @@ import { dependencyOptions, linkTypesNamed } from '../plans/dependencies';
 import {
   createBody,
   duplicateBody,
-  EXPORT_SORTS,
+  exportOrder,
   exportQuery,
   filterQuery,
   idParam,
@@ -620,7 +620,7 @@ export function registerPlanRoutes(
     if (!p.success) return notFound(reply);
     const q = exportQuery.safeParse(request.query ?? {});
     if (!q.success) return invalidFields(reply, shapeErrors(q.error));
-    const { format, columns, sort, separator, ...filters } = q.data;
+    const { format, columns, sort, order, separator, ...filters } = q.data;
     const row = await visible(request, p.data.id);
     if (!row) return notFound(reply);
     let query: string | null;
@@ -636,7 +636,7 @@ export function registerPlanRoutes(
       return searchRefusal(reply, error, timeoutMs);
     }
     return sendTicketExport(db, options.catalogs, request, reply, {
-      q: query === null ? null : `${query} ORDER BY ${EXPORT_SORTS[sort]}`,
+      q: query === null ? null : `${query} ORDER BY ${exportOrder(sort, order)}`,
       format,
       columns,
       separator,
