@@ -38,8 +38,8 @@ const ROWS = 10_000;
  * count; cells edit in place through the ticket route, as in search results. Each group, or the
  * whole list, stops at 10,000 rows and says so. Columns are kept per person and plan in this
  * browser; the order, chosen in the menu or by a column's heading (T-330), is in the address, so a
- * link holds it. Its file (PLN-014) comes from the
- * server and holds every ticket of the plan the person sees, in these columns and this order.
+ * link holds it. Its file (PLN-014) comes from the server and holds every ticket of the plan the
+ * person sees, in these columns and this order.
  */
 export function PlanListPage({
   id,
