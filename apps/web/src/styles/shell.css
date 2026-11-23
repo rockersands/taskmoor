@@ -543,6 +543,21 @@ a {
   box-shadow: var(--shadow-3);
 }
 
+/* The drawer's head (S3-SP-12): the product's name, and a button that closes it. */
+.shell-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-block-end: var(--space-2);
+  padding-inline-start: var(--space-2);
+}
+
+.shell-drawer-brand {
+  font-weight: var(--font-weight-strong);
+  letter-spacing: -0.01em;
+}
+
 /*
  * A small phone: five round controls and the name of the product do not fit in 360 px, and the
  * person's menu stuck out sideways. The name goes, the gaps tighten, and the search field takes

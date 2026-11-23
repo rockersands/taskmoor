@@ -199,3 +199,74 @@ test('[AGL-018] the command palette reaches 30 actions and runs them from the ke
   await page.keyboard.type(key);
   await expect(page.getByRole('option', { name: 'No matching commands' })).toBeVisible();
 });
+
+test('[CORE-022] [NFR-005] a ticket prints across the paper, readable, its fields as values, its cards unframed (S3-SP-2, S3-SP-3, S3-SP-4, PL-27, T-359)', async ({
+  page,
+}, testInfo) => {
+  const signIn = await page.request.post(`${BASE}/api/v1/session`, {
+    data: { email: ADMIN.email, password: ADMIN.password },
+  });
+  expect(signIn.status()).toBe(200);
+  const made = await page.request.post(`${BASE}/api/v1/tickets`, {
+    data: { track: 'ATT', summary: `Printed on ${testInfo.project.name}` },
+  });
+  expect(made.status()).toBe(201);
+  const { key } = (await made.json()).ticket as { key: string };
+  await page.goto(`${BASE}/#/tickets/${key}`);
+  const title = page.getByRole('heading', { level: 1 });
+  await expect(title).toContainText(key);
+  const details = page.getByRole('region', { name: 'Details' });
+  await expect(details.getByLabel('Start date')).toBeVisible();
+
+  await expect(page.locator('.ticket-page .ticket-text .rt-bar')).toHaveCount(1);
+
+  await page.emulateMedia({ media: 'print' });
+  const printed = await page.evaluate(() => {
+    const page = document.querySelector('.ticket-page') as HTMLElement;
+    const left = (selector: string) =>
+      (page.querySelector(selector) as HTMLElement).getBoundingClientRect().left;
+    // Where an element's words start: inside its border and padding.
+    const wordsAt = (el: HTMLElement) => {
+      const style = getComputedStyle(el);
+      return (
+        el.getBoundingClientRect().left +
+        Number.parseFloat(style.borderLeftWidth) +
+        Number.parseFloat(style.paddingLeft)
+      );
+    };
+    const details = page.querySelector('.ticket-details') as HTMLElement;
+    const date = details.querySelector('input[type="date"]') as HTMLElement;
+    // A value shown as words, with no control in it.
+    const value = [...details.querySelectorAll('dd')].find(
+      (dd) => !dd.querySelector('input, select, button, a') && dd.textContent?.trim(),
+    ) as HTMLElement;
+    const bars = [...page.querySelectorAll<HTMLElement>('.ticket-text .rt-bar')];
+    const cards = [
+      ...page.querySelectorAll<HTMLElement>('.ticket-text, .ticket-details, .ticket-activity'),
+    ];
+    return {
+      title: left('h1'),
+      description: left('.ticket-text'),
+      bar: bars.some((bar) => bar.getBoundingClientRect().height > 0),
+      dateIndent: Math.round(wordsAt(date) - wordsAt(value)),
+      rims: cards.map((card) => getComputedStyle(card, '::before').content),
+    };
+  });
+  // The sidebar's column goes with the sidebar: the ticket starts at the paper's edge (S3-SP-3).
+  // No line is left over from the editor's hidden toolbar above the description (S3-SP-4), and a
+  // date edited in place starts its words where the other values do (PL-27). The Description,
+  // Details and Activity cards print without the glass rim round them (T-359).
+  expect(printed).toEqual({
+    title: expect.any(Number),
+    description: expect.any(Number),
+    bar: false,
+    dateIndent: 0,
+    rims: ['none', 'none', 'none'],
+  });
+  expect(printed.title).toBeLessThan(40);
+  expect(printed.description).toBeLessThan(40);
+  // The quieter text (the track and type over the title) reads on paper: axe finds nothing
+  // (S3-SP-2).
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  await page.emulateMedia({ media: 'screen' });
+});

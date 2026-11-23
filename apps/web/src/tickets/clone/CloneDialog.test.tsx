@@ -40,7 +40,8 @@ describe('the clone dialog (M1-124)', () => {
     expect(within(box).getByLabelText('Summary of the copy')).toHaveFocus();
     const track = within(box).getByRole('combobox', { name: 'Track' });
     await waitFor(() => expect(track).toBeEnabled());
-    expect(track).toHaveTextContent('SHOP: Shop');
+    // The key and the name kept apart, as in the create form (S3-SP-13).
+    expect(track).toHaveTextContent('SHOP · Shop');
     for (const name of ['Subtickets', 'Attachments', 'Links and web links']) {
       expect(within(box).getByLabelText(name)).toBeChecked();
     }
@@ -63,7 +64,7 @@ describe('the clone dialog (M1-124)', () => {
     const track = await within(box).findByRole('combobox', { name: 'Track' });
     await waitFor(() => expect(track).toBeEnabled());
     await user.click(track);
-    await user.click(within(box).getByRole('option', { name: 'PAY: Payments' }));
+    await user.click(within(box).getByRole('option', { name: 'PAY · Payments' }));
     await user.click(
       within(box).getByLabelText('Everything below it, at every level (deep clone)'),
     );
@@ -139,7 +140,7 @@ describe('the clone dialog (M1-124)', () => {
     const track = within(box).getByRole('combobox', { name: 'Track' });
     await waitFor(() => expect(track).toBeEnabled());
     await user.click(track);
-    await user.click(within(box).getByRole('option', { name: 'PAY: Payments' }));
+    await user.click(within(box).getByRole('option', { name: 'PAY · Payments' }));
     expect(fake.fieldReads).toEqual([]);
     await user.click(within(box).getByRole('button', { name: 'Clone' }));
     // Risk does not apply to PAY, so PAY's catalogue does not list it: the original's names it.

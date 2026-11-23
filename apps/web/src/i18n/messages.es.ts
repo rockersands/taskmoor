@@ -27,13 +27,13 @@ export const messagesEs: Record<MessageId, string> = {
   'instance.wrong':
     'Se hizo para otro servidor de Taskmoor y no inicia sesión aquí, para que nada de lo que escribas vaya a un servidor que no querías.',
   'instance.wrongAdmin':
-    'Pide a tu administrador la aplicación de este servidor, o la dirección correcta de esta aplicación.',
+    'Pide a un administrador del sitio la aplicación de este servidor, o la dirección correcta de esta aplicación.',
   'update.later': 'Ahora no',
   'update.requiredTitle': 'Actualización necesaria',
   'update.required':
     'Esta versión de la aplicación ({version}) ya no funciona con el servidor, que ejecuta la {server}. Recarga la página para obtener la versión actual.',
   'update.askAdmin':
-    'Si esta página vuelve a aparecer después de recargar, la aplicación necesita actualizarse: pregunta a tu administrador.',
+    'Si esta página vuelve a aparecer después de recargar, la aplicación necesita actualizarse: pregunta a un administrador del sitio.',
   'shell.skipToContent': 'Saltar al contenido',
   'shell.openNavigation': 'Abrir la navegación',
   'shell.closeNavigation': 'Cerrar la navegación',
@@ -407,9 +407,9 @@ export const messagesEs: Record<MessageId, string> = {
   'about.board':
     'Cada columna representa uno o varios estados del flujo de trabajo. Mover una tarjeta ejecuta la transición que lleva a esa columna; si hay varias, Taskmoor te pregunta cuál. Los filtros reducen las tarjetas y los recuentos siempre incluyen todas.',
   'about.ticket':
-    'Los botones bajo el título mueven el ticket por su flujo de trabajo. Los detalles del lateral son sus campos: cambia uno y se guarda al momento. La actividad de abajo guarda los comentarios, el historial de cada cambio y el tiempo registrado.',
+    'El menú de estado bajo el título mueve el ticket por su flujo de trabajo. Los detalles del lateral son sus campos: cambia uno y se guarda al momento. La actividad de abajo guarda los comentarios, el historial de cada cambio y el tiempo registrado.',
   'about.ticketStacked':
-    'Los botones bajo el título mueven el ticket por su flujo de trabajo. Los detalles, después de la descripción y las herramientas del ticket, son sus campos: cambia uno y se guarda al momento. La actividad va al final, con los comentarios, el historial de cada cambio y el tiempo registrado.',
+    'El menú de estado bajo el título mueve el ticket por su flujo de trabajo. Los detalles, después de la descripción y las herramientas del ticket, son sus campos: cambia uno y se guarda al momento. La actividad va al final, con los comentarios, el historial de cada cambio y el tiempo registrado.',
   'about.list':
     'Cada fila es un ticket de este track, en el orden que fija Ordenar por; el lápiz junto a un valor lo cambia ahí mismo. Agrupar por reparte las filas según un campo y cuenta cada grupo. Columnas elige lo que muestran las filas, y las reglas de formato colorean los tickets que encuentra una condición. Las columnas y las reglas se guardan en este navegador. En un teléfono cada ticket es un bloque: su clave, su resumen y luego su estado, su responsable y su prioridad.',
   'about.plan':
@@ -3021,7 +3021,7 @@ export const messagesEs: Record<MessageId, string> = {
   'workflow.field.parent': 'Padre',
   'tickets.create.title': 'Crear un ticket',
   'tickets.create.track': 'Track',
-  'tickets.create.trackName': '{key} {name}',
+  'tickets.create.trackName': '{key} · {name}',
   'tickets.create.type': 'Tipo de ticket',
   'tickets.create.loading': 'Cargando el formulario…',
   'tickets.create.failed': 'No se pudo cargar el formulario. Inténtalo de nuevo en un momento.',
@@ -4497,7 +4497,7 @@ export const messagesEs: Record<MessageId, string> = {
   'clone.title': 'Clonar {key}',
   'clone.summary': 'Resumen de la copia',
   'clone.track': 'Track',
-  'clone.trackOption': '{key}: {name}',
+  'clone.trackOption': '{key} · {name}',
   'clone.subticketHint': 'Un subticket se copia en su propio track, debajo de su padre.',
   'clone.with': 'Copiar junto con él',
   'clone.subtickets': 'Sus subtickets',

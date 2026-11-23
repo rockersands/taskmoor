@@ -59,6 +59,16 @@ describe('frontend and backend versions (M1-106)', () => {
     expect(screen.getByRole('button', { name: 'Reload' })).toBeEnabled();
   });
 
+  it('[API-018] (2) puts what to do on a card, as every stand-alone page, and asks a site administrator (S3-SP-5, S3-SP-6)', async () => {
+    open(backend('1.4.2', '1.3.0', '1.4.0'), '1.2.9');
+    const reload = await screen.findByRole('button', { name: 'Reload' });
+    const card = reload.closest('.glass-card');
+    expect(card).not.toBeNull();
+    expect(card).toHaveTextContent(
+      'If this page comes back after reloading, the app itself needs updating: ask a site administrator.',
+    );
+  });
+
   it('[API-018] says nothing when versions match, on a development backend, or when the backend cannot be asked', async () => {
     const failing: MetaClient = { meta: () => Promise.reject(new Error('offline')) };
     for (const [client, version] of [
@@ -128,6 +138,12 @@ describe('frontend and backend versions (M1-106)', () => {
         }),
       ).toBeVisible();
       expect(screen.queryByRole('heading', { name: 'The app' })).toBeNull();
+      // On a card, and a site administrator to ask (S3-SP-5, S3-SP-6).
+      expect(
+        screen
+          .getByText(/^Ask a site administrator for the app of this server/)
+          .closest('.glass-card'),
+      ).not.toBeNull();
     });
 
     it('[API-017] (2) refuses a backend that signs with another key under the pinned id', async () => {

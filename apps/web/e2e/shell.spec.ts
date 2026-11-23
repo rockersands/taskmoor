@@ -73,5 +73,8 @@ test.describe('mobile', () => {
     for (const link of await page.getByRole('dialog').getByRole('link').all()) {
       expect((await link.boundingBox())?.height).toBeGreaterThanOrEqual(44);
     }
+    // The drawer's own way out, at its top, since the drawer covers the menu button (S3-SP-12).
+    const close = page.getByRole('dialog').getByRole('button', { name: 'Close navigation' });
+    expect((await close.boundingBox())?.height).toBeGreaterThanOrEqual(44);
   });
 });

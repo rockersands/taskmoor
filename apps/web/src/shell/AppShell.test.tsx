@@ -190,20 +190,37 @@ describe('compact layout (phones)', () => {
     const user = userEvent.setup();
     render(<App session={SIGNED_IN} />);
     await user.click(screen.getByRole('button', { name: 'Open navigation' }));
-    await user.click(screen.getByRole('button', { name: 'Close navigation' }));
+    const backdrop = document.querySelector('.shell-backdrop');
+    expect(backdrop).not.toBeNull();
+    await user.click(backdrop as Element);
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('[NFR-005] heads the drawer with the product name and a close button that hands focus back (S3-SP-12)', async () => {
+    const user = userEvent.setup();
+    render(<App session={SIGNED_IN} />);
+    const menu = screen.getByRole('button', { name: 'Open navigation' });
+    await user.click(menu);
+    const drawer = within(screen.getByRole('dialog', { name: 'Navigation' }));
+    expect(drawer.getByText('Taskmoor')).toBeVisible();
+    await user.click(drawer.getByRole('button', { name: 'Close navigation' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(menu).toHaveFocus();
   });
 
   it('keeps Tab focus inside the open drawer', async () => {
     const user = userEvent.setup();
     render(<App session={SIGNED_IN} />);
     await user.click(screen.getByRole('button', { name: 'Open navigation' }));
-    const links = within(screen.getByRole('dialog')).getAllByRole('link');
+    const drawer = within(screen.getByRole('dialog'));
+    const close = drawer.getByRole('button', { name: 'Close navigation' });
+    const links = drawer.getAllByRole('link');
     const last = links[links.length - 1];
     act(() => last?.focus());
 
+    // Round from the last link to the close button at the top, and back.
     await user.tab();
-    expect(links[0]).toHaveFocus();
+    expect(close).toHaveFocus();
     await user.tab({ shift: true });
     expect(last).toHaveFocus();
   });

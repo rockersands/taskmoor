@@ -55,12 +55,23 @@ export const openInDialog = (kind) => async (page) => {
   return { opened: redact(opened, 80) };
 };
 
+/**
+ * The meta answer of a backend that wants another frontend (AD-42): the window it asks for, and a
+ * version of its own that could ask it, the newest the window names. A development backend's own
+ * version beside a window it could never ask made the update pages say both ran 0.0.0-dev.
+ */
+export const fakedMeta = (body, frontend) => ({
+  ...body,
+  frontend,
+  version: frontend.recommended ?? frontend.minimum ?? body.version,
+});
+
 /** The backend says another frontend is wanted; nothing changes on the server. */
 export const metaSays = (frontend) => async (page) => {
   await page.route('**/api/meta*', async (call) => {
     const answer = await call.fetch();
     const body = await answer.json();
-    await call.fulfill({ response: answer, json: { ...body, frontend } });
+    await call.fulfill({ response: answer, json: fakedMeta(body, frontend) });
   });
 };
 

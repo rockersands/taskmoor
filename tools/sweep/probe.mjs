@@ -2,10 +2,44 @@
 // browser, so they use nothing from this file's scope. Roles and accessible names come from axe,
 // which the sweep has already evaluated in the page.
 
-/** The window-fixed background of the skins, as the picture needs it (routes.mjs). */
+/**
+ * The window-fixed background of the skins, as the picture needs it (routes.mjs). The stand-alone
+ * pages paint their canvas and waves on layers fixed to the window instead (AC-4): a full-page
+ * picture of a page taller than the window stopped them at the window's height, with a hard edge
+ * no person sees. In the picture only, those layers scroll with the page too. The rules go into the
+ * page's own stylesheet through the CSSOM, since its content security policy refuses a style
+ * element (and would log it).
+ */
 export function setBackgroundAttachment(value) {
   document.documentElement.style.backgroundAttachment = value;
   document.body.style.backgroundAttachment = value;
+  const RULES = [
+    '.standalone::before, .standalone .setup::after { position: absolute; }',
+    '.standalone .setup { position: static; }',
+  ];
+  // The rules added for an earlier picture go first, whatever this call asks.
+  for (const { sheet, rule } of window.sweepPictureRules ?? []) {
+    const at = [...sheet.cssRules].indexOf(rule);
+    if (at >= 0) sheet.deleteRule(at);
+  }
+  window.sweepPictureRules = [];
+  if (value !== 'scroll') return;
+  const readable = [...document.styleSheets].filter((sheet) => {
+    try {
+      return sheet.cssRules !== null;
+    } catch {
+      return false;
+    }
+  });
+  let sheet = readable.at(-1);
+  if (!sheet) {
+    sheet = new CSSStyleSheet();
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+  }
+  for (const text of RULES) {
+    const at = sheet.insertRule(text, sheet.cssRules.length);
+    window.sweepPictureRules.push({ sheet, rule: sheet.cssRules[at] });
+  }
 }
 
 /** Sideways scroll at the width the page was asked for, and which element reaches furthest. */

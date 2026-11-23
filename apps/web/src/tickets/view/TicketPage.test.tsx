@@ -1114,7 +1114,7 @@ describe('the ticket view after the page review (T-220)', () => {
     expect(follows(details(), activity)).toBe(true);
     // The help says where they are on this screen, not "on the side" (PL-48).
     await userEvent.setup().click(screen.getByRole('button', { name: 'What is SHOP-41 for?' }));
-    expect(screen.getByText(/^The buttons under the title/)).toHaveTextContent(
+    expect(screen.getByText(/^The status menu under the title/)).toHaveTextContent(
       'Details, after the description',
     );
   });
@@ -1127,7 +1127,7 @@ describe('the ticket view after the page review (T-220)', () => {
     renderPage();
     await heading();
     await userEvent.setup().click(screen.getByRole('button', { name: 'What is SHOP-41 for?' }));
-    expect(screen.getByText(/^The buttons under the title/)).toHaveTextContent(
+    expect(screen.getByText(/^The status menu under the title/)).toHaveTextContent(
       'Details, after the description',
     );
   });
@@ -1140,7 +1140,7 @@ describe('the ticket view after the page review (T-220)', () => {
     // In the title's own line, which never lets it wrap away from the title.
     expect(help.closest('.ticket-title-line')).toBe(title.parentElement);
     await userEvent.setup().click(help);
-    expect(screen.getByText(/^The buttons under the title/)).toHaveTextContent(
+    expect(screen.getByText(/^The status menu under the title/)).toHaveTextContent(
       'Details on the side',
     );
   });

@@ -103,11 +103,47 @@ export const SomeFieldsOnly: Story = {
   },
 };
 
-/** A phone: a full-screen sheet. */
+/**
+ * The ticket's pills keep an edge on the pop-up's surface, near white in the light skin (S3-SP-1):
+ * the edge controls have, in both skins, unless pressed.
+ */
+export const PillsWithAnEdge: Story = {
+  play: async () => {
+    const dialog = await within(document.body).findByRole('dialog', { name: NAME });
+    const ticket = within(dialog);
+    const probe = document.createElement('span');
+    probe.style.color = 'var(--color-field-border)';
+    dialog.append(probe);
+    const edge = getComputedStyle(probe).color;
+    probe.remove();
+    for (const name of ['Clone', 'Copy link', 'Keyboard shortcuts']) {
+      const pill = await ticket.findByRole('button', { name });
+      await expect(getComputedStyle(pill).borderTopColor, name).toBe(edge);
+    }
+    const follow = await ticket.findByRole('button', { name: /^Follow \(/ });
+    const pressed = follow.getAttribute('aria-pressed') === 'true';
+    await expect(getComputedStyle(follow).borderTopColor === edge).toBe(!pressed);
+  },
+};
+
+/**
+ * A phone: a full-screen sheet. The ticket's actions follow its status menu at once and fill
+ * their rows, not pushed to the end of a row of their own (S3-SP-9).
+ */
 export const OnAPhone: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   play: async () => {
-    await expect(await within(document.body).findByRole('dialog', { name: NAME })).toBeVisible();
+    const dialog = await within(document.body).findByRole('dialog', { name: NAME });
+    await expect(dialog).toBeVisible();
+    const ticket = within(dialog);
+    const status = (
+      await ticket.findByRole('button', { name: /^Status: / })
+    ).getBoundingClientRect();
+    const follow = (
+      await ticket.findByRole('button', { name: /^Follow \(/ })
+    ).getBoundingClientRect();
+    await expect(follow.top).toBeLessThan(status.bottom);
+    await expect(follow.left - status.right).toBeLessThanOrEqual(16);
   },
 };
 
@@ -149,6 +185,8 @@ export const Printed: Story = {
     const dialog = await canvas.findByRole('dialog', { name: NAME });
     const ticket = within(dialog);
     await expect(await ticket.findByRole('heading', { level: 1 })).toBeVisible();
+    // As a browser does, so the paper is checked as it prints, in the light skin (D37).
+    startPrinting();
     await expect(getComputedStyle(dialog).position).toBe('static');
     // The page beneath is not printed, nor the pop-up's bar or the ticket's buttons.
     await expect(
@@ -158,6 +196,11 @@ export const Printed: Story = {
       ticket.getByRole('link', { name: 'Open full page', hidden: true }),
     ).not.toBeVisible();
     await expect(dialog.querySelector('.ticket-toolbar')).not.toBeVisible();
+    // No glass on paper: the Description, Details and Activity cards print with no rim (T-359).
+    for (const name of ['Description', 'Details', 'Activity']) {
+      const card = await ticket.findByRole('region', { name });
+      await expect(getComputedStyle(card, '::before').content, name).toBe('none');
+    }
   },
 };
 
@@ -165,6 +208,21 @@ export const Printed: Story = {
 const lightness = (colour: string) => {
   const [r = 0, g = 0, b = 0] = (colour.match(/[\d.]+/g) ?? []).map(Number);
   return (r + g + b) / (3 * 255);
+};
+
+/** A colour's channels, 0 to 255, whether the browser writes it as rgb() or color(srgb). */
+const channels = (colour: string) => {
+  const numbers = (colour.match(/[\d.]+/g) ?? []).map(Number).slice(0, 3);
+  return colour.startsWith('color(srgb') ? numbers.map((n) => n * 255) : numbers;
+};
+
+/** WCAG's contrast of a colour against white paper. */
+const contrastOnWhite = (colour: string) => {
+  const [r = 0, g = 0, b = 0] = channels(colour).map((c) => {
+    const s = c / 255;
+    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  return 1.05 / (0.2126 * r + 0.7152 * g + 0.0722 * b + 0.05);
 };
 
 /**
@@ -191,6 +249,19 @@ export const PrintedOnWhite: Story = {
     await expect(lightness(getComputedStyle(document.body).backgroundColor)).toBeGreaterThan(0.95);
     await expect(getComputedStyle(document.body).backgroundImage).toBe('none');
     await expect(lightness(getComputedStyle(title).color)).toBeLessThan(0.3);
+    // The quieter text, the track and type over the title, reads on paper too (S3-SP-2).
+    const crumbs = dialog.querySelector('.ticket-crumbs > span');
+    await expect(crumbs).not.toBeNull();
+    await expect(contrastOnWhite(getComputedStyle(crumbs as Element).color)).toBeGreaterThanOrEqual(
+      4.5,
+    );
+    // A number edited in place prints as a value: flush with the others, and an empty one's
+    // "None" in the values' own colour, not a placeholder's grey (PL-27).
+    const points = await ticket.findByRole('spinbutton', { name: 'Points' });
+    await expect(getComputedStyle(points).paddingInlineStart).toBe('0px');
+    await expect(getComputedStyle(points, '::placeholder').color).toBe(
+      getComputedStyle(points).color,
+    );
     // The tones too: a high priority's glyph prints dark on white, its tint stays pale.
     const page = dialog.querySelector('.ticket-page') ?? dialog;
     for (const tone of ['danger', 'warning', 'success', 'blue', 'blush', 'butter']) {
@@ -205,5 +276,8 @@ export const PrintedOnWhite: Story = {
     }
     window.dispatchEvent(new Event('afterprint'));
     await expect(document.documentElement.dataset.skin).toBe(skin);
+    // Printing again, so the checks after the story (axe) read the paper as it prints; the
+    // story's cleanup ends it.
+    startPrinting();
   },
 };

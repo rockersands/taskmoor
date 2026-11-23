@@ -1,7 +1,7 @@
 ---
 title: "Upgrades"
 audience: admins
-sources: deploy/compose/update.sh, tools/release/sign-update-manifest.sh, packages/builder-core/src/backend.ts, apps/server/src/updates/check.ts, apps/server/src/routes/update-check.ts, apps/web/src/admin/UpdateNotice.tsx, docs/adr/0117-update-command-and-new-version-notice.md, tools/airgap/install-offline.sh, apps/server/src/upgrade.ts, apps/server/src/upgrade-check.ts, apps/server/src/cli.ts, apps/server/src/main.ts, apps/server/src/frontend.ts, apps/server/src/routes/meta.ts, packages/db/src/releases.ts, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/compose/README.md, deploy/compose/upgrade.sh, deploy/allinone/entrypoint.sh, deploy/helm/README.md, deploy/helm/taskmoor/templates/upgrade-check.yaml, docs/adr/0022-upgrades-and-migrations.md, docs/adr/0070-meta-endpoint-and-version-window.md, docs/specs/05b-administration-security-and-self-hosting.md, packages/builder-core/src/postgres-tls.ts, docs/adr/0111-personal-data-and-database-tls.md
+sources: deploy/compose/update.sh, apps/web/src/meta/VersionGate.tsx, tools/release/sign-update-manifest.sh, packages/builder-core/src/backend.ts, apps/server/src/updates/check.ts, apps/server/src/routes/update-check.ts, apps/web/src/admin/UpdateNotice.tsx, docs/adr/0117-update-command-and-new-version-notice.md, tools/airgap/install-offline.sh, apps/server/src/upgrade.ts, apps/server/src/upgrade-check.ts, apps/server/src/cli.ts, apps/server/src/main.ts, apps/server/src/frontend.ts, apps/server/src/routes/meta.ts, packages/db/src/releases.ts, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/compose/README.md, deploy/compose/upgrade.sh, deploy/allinone/entrypoint.sh, deploy/helm/README.md, deploy/helm/taskmoor/templates/upgrade-check.yaml, docs/adr/0022-upgrades-and-migrations.md, docs/adr/0070-meta-endpoint-and-version-window.md, docs/specs/05b-administration-security-and-self-hosting.md, packages/builder-core/src/postgres-tls.ts, docs/adr/0111-personal-data-and-database-tls.md
 accessed: 2026-11-22
 attestation: own-words
 ---
@@ -265,7 +265,9 @@ x.y works with frontends from x.(y-1).0 on; at x.0 it needs x.0.0, because a maj
 changes the API on purpose. Development builds accept any frontend. The web app asks the backend
 when it starts and every 30 minutes:
 
-- below the minimum, it shows **Update required** in place of the app;
+- below the minimum, it shows **Update required** in place of the app, a stand-alone page with
+  **Reload**; if the page comes back after reloading, it asks people to turn to a site
+  administrator, since the frontend kit itself needs replacing;
 - below x.y.0, it shows **A newer version is available.** with **Reload** and **Not now**.
 
 Upgrade the backend first, then replace the frontend kit with one made for the new version (see

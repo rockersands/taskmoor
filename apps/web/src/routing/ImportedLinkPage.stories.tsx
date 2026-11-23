@@ -43,15 +43,16 @@ export const IssueLink: Story = {
 };
 
 /**
- * Nothing imported matches (or the person may not see it): the not-found pattern of every other
- * page (D4, D24): its title, one line said as an alert, Home and Search, and no intro.
+ * Nothing imported matches (or the person cannot see it): the not-found pattern of every other
+ * page (D4, D24): its title, one line said as an alert, Home and Search, and no intro. It words
+ * the miss as the other not-found pages do, "or you cannot see it" (S3-SP-7).
  */
 export const Missing: Story = {
   args: { route: '#/imported/board/99', lookup: async () => null },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('alert')).toHaveTextContent(
-      'Nothing that was imported matches this link',
+      'Nothing that was imported matches this link, or you cannot see it.',
     );
     await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent('Link not found');
     const waysOn = canvas.getByRole('navigation', { name: 'Ways on' });

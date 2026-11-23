@@ -35,7 +35,7 @@ export interface TrackSelectProps {
   /** The chosen track's key. */
   value: string;
   onChange: (key: string) => void;
-  /** Each option's words, from the caller's own catalogue entry: "PAY Payments". */
+  /** Each option's words, from the caller's own catalogue entry: "PAY · Payments" (S3-SP-13). */
   label: (track: TrackOption) => string;
   disabled?: boolean | undefined;
   'aria-describedby'?: string | undefined;
