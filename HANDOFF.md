@@ -29,23 +29,28 @@ of 2026-11-22 and 2026-11-23), then "don't do the language reviews" (T-171 Later
 mobile app at all" (T-180 to T-182 Later). Tokens run out tonight and renew at 08:00; a session wake-up at
 about 08:07 resumes this list.
 
-**In flight (Windows, nothing new on  since ):**
-- T-359 (the Mac's six third-sweep branches, taken over): worktrees   on , then integration in  on . Workflow run   (script  in the session's workflows folder).
-- T-333 (, the live AI checks from one command):  on , run .
-- On resume:  in each worktree; commit any half-done work as ;
-  resume each workflow from its run id. Then gate them one at a time on a quiet machine, merging the
-  coordinator branch into the wave branch first so the docs of 2026-11-14 onwards reach .
+**In flight (Windows, nothing new on `main` since `7b289504`):**
+- T-359 (the Mac's six third-sweep branches, taken over): worktrees `G:/tm-w30-admin2`, `-statistics`,
+  `-states`, `-work`, `-track` and `-admin1` on `wave30/t359-*`, then integration in `G:/tm-w30` on
+  `wave30/t359`. Workflow run `wf_a4be309e-8b7` (script `wave30-t359-takeover-wf_a4be309e-8b7.js` in the
+  session's workflows folder).
+- T-333 (`pnpm ai:live`, the live AI checks from one command): `G:/tm-w31` on `wave31/t333-ai-live`, run
+  `wf_26b0dfb7-8bc`.
+- On resume: `git status` in each worktree; commit any half-done work as "WIP: ... stopped before its tests
+  ran"; resume each workflow from its run id. Then gate them one at a time on a quiet machine, merging the
+  coordinator branch into the wave branch first, so the docs from 2026-11-14 onwards reach `main`.
 
 **Next, in order:**
-1. Going public (T-005, T-031, T-035), the user's choice of 2026-11-22: rewrite  with git-filter-repo
-   (installed; rules and  in the session scratchpad's , trial passed: clean, final tree
-   unchanged, 13 docs' hashes mapped), gate the rewritten clone, rename this repository to an archive name
-   (private), create a fresh public , push, turn on private vulnerability reporting,
-   point this PC at the new history and tell the Mac in COORDINATION to clone again.
-2. T-321, T-323, T-324, T-326, T-332, T-334, T-335, T-357, T-288 (decisions in decisions.csv).
-3. After the last merge: the fuzz stages (T-019, T-197) with the 1M import (T-013b), then  (T-242).
-4. Release 1.0 (T-020, T-021 signing with the key from Drive, T-040, T-022), the user runs  once
-   (T-333), images on ghcr.io (T-036) after the user's two logins, the user's acceptance (T-024).
+1. Going public (T-005, T-031, T-035), the user's choice of 2026-11-22: rewrite `main` with git-filter-repo
+   (installed; the rules and `rewrite.py` are in the session scratchpad's `public/` folder; the trial passed:
+   clean, final tree unchanged, 13 docs' hashes mapped), gate the rewritten clone, rename this repository to
+   an archive name (it stays private), create a fresh public `Rockersands/taskmoor`, push, turn on private
+   vulnerability reporting, point this PC at the new history and tell the Mac in COORDINATION to clone again.
+2. T-321, T-323, T-324, T-326, T-332, T-334, T-335, T-357 and T-288 (decisions in decisions.csv).
+3. After the last merge: the fuzz stages (T-019, T-197) with the 1M import (T-013b), then `pnpm bench:check`
+   (T-242).
+4. Release 1.0 (T-020, T-021 signing with the key from Drive, T-040, T-022); the user runs `pnpm ai:live`
+   once (T-333); images on ghcr.io (T-036) after the user's two logins; the user's acceptance (T-024).
 
 ### Earlier: every person's roles and one page per person (2026-11-17, Windows)
 
