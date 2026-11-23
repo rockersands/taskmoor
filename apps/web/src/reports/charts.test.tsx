@@ -8,6 +8,13 @@ import { StackedAreaChart, stageFill } from './StackedAreaChart';
 
 const hours = (v: number) => `${v / 3600}h`;
 
+/** The chart's lines at their own width, in series order: not the bands beneath them. */
+const lines = () => [...document.querySelectorAll('.chart-line:not(.chart-line-under)')];
+
+/** The points a line passes through, as its path writes them ("x,y"). */
+const points = (line: Element | undefined) =>
+  (line?.getAttribute('d') ?? '').split(/[ML]/).filter(Boolean);
+
 describe('charts (M1-060)', () => {
   it('[RPT-001] picks round ticks, in hours when seconds show as hours', () => {
     expect(niceTicks(16)).toEqual([0, 5, 10, 15, 20]);
@@ -107,6 +114,111 @@ describe('charts (M1-060)', () => {
         .map((r) => r.textContent),
     ).toEqual(['Sprint 81210', 'Sprint 91010']);
   });
+  it('[RPT-001] a column group of zeros writes no zeros over its empty slots (TR-13)', () => {
+    render(
+      <ColumnChart
+        title="Work per sprint"
+        summary="Work per sprint"
+        categories={[
+          { key: '1', label: 'Sprint 1' },
+          { key: '2', label: 'Sprint 2' },
+          { key: 'outside', label: 'Outside the sprints' },
+        ]}
+        series={[
+          { id: 'completed', label: 'Completed', tone: 'one', values: [0, 3, 2] },
+          { id: 'added', label: 'Added', tone: 'two', values: [0, 0, 2] },
+        ]}
+        format={String}
+        tableLabel="Show the numbers"
+        categoryHeader="Sprint"
+      />,
+    );
+    const figure = screen.getByRole('figure', { name: 'Work per sprint' });
+    // Sprint 1 has nothing: no '0 0'. Sprint 2's zero beside a 3 still says so.
+    expect([...figure.querySelectorAll('.chart-value')].map((v) => v.textContent)).toEqual([
+      '3',
+      '0',
+      '2',
+      '2',
+    ]);
+    // The table still gives every number.
+    expect(within(figure).getAllByRole('row')[1]?.textContent).toBe('Sprint 100');
+  });
+
+  it('[RPT-001] lines that only touch, or cross, are drawn as they are', () => {
+    render(
+      <LineChart
+        title="Release progress"
+        summary="Release progress"
+        xLabels={['Aug 18', 'Aug 27', 'Sep 5']}
+        series={[
+          { id: 'scope', label: 'Estimate in scope', tone: 'two', values: [0, 2, 2] },
+          { id: 'completed', label: 'Estimate completed', tone: 'one', values: [0, 0, 2] },
+          { id: 'guide', label: 'Guide', tone: 'guide', values: [0, 2, 2] },
+        ]}
+        format={String}
+        tableLabel="Show the numbers"
+        xHeader="Day"
+      />,
+    );
+    // Scope and completed share single points, never a stretch; a guide line does not count.
+    expect(document.querySelectorAll('.chart-line')).toHaveLength(3);
+    expect(document.querySelectorAll('.chart-line-under')).toHaveLength(0);
+  });
+
+  it('[RPT-001] the release report’s scope stays in sight once all of it is done (second sweep)', () => {
+    render(
+      <LineChart
+        title="Release progress"
+        summary="Release progress"
+        xLabels={['Aug 18', 'Aug 27', 'Sep 5', 'Nov 14']}
+        series={[
+          { id: 'scope', label: 'Estimate in scope', tone: 'two', values: [0, 2, 2, 2] },
+          { id: 'completed', label: 'Estimate completed', tone: 'one', values: [0, 0, 2, 2] },
+        ]}
+        format={String}
+        tableLabel="Show the numbers"
+        xHeader="Day"
+      />,
+    );
+    const [scope, completed] = lines();
+    expect(scope).toHaveClass('chart-line-two');
+    expect(completed).toHaveClass('chart-line-one');
+    // The completed line runs along the scope from Sep 5: that stretch of the scope is the wider
+    // band beneath both.
+    const bands = [...document.querySelectorAll('.chart-line-under')];
+    expect(bands).toHaveLength(1);
+    expect(bands[0]).toHaveClass('chart-line-two');
+    const p = points(scope);
+    expect(bands[0]?.getAttribute('d')).toBe(`M${p[2]}L${p[3]}`);
+  });
+
+  it('[RPT-001] only the stretch where two lines agree is widened, never a whole line (T-359)', () => {
+    render(
+      <LineChart
+        title="Created vs closed"
+        summary="Created vs closed"
+        xLabels={['Nov 1', 'Nov 2', 'Nov 3', 'Nov 4', 'Nov 5', 'Nov 6', 'Nov 7']}
+        series={[
+          { id: 'created', label: 'Created', tone: 'two', values: [0, 0, 3, 1, 0, 0, 2] },
+          { id: 'closed', label: 'Closed', tone: 'one', values: [0, 0, 1, 2, 0, 0, 1] },
+        ]}
+        format={String}
+        tableLabel="Show the numbers"
+        xHeader="Day"
+      />,
+    );
+    // Two quiet stretches at 0 and 0: Created's band covers those two and nothing else, and both
+    // lines are drawn whole at their own width.
+    const [created, closed] = lines();
+    expect(created).toHaveClass('chart-line-two');
+    expect(closed).toHaveClass('chart-line-one');
+    const bands = [...document.querySelectorAll('.chart-line-under')];
+    expect(bands).toHaveLength(1);
+    const p = points(created);
+    expect(bands[0]?.getAttribute('d')).toBe(`M${p[0]}L${p[1]}M${p[4]}L${p[5]}`);
+  });
+
   it('[RPT-001] stacks ordered stages with the last at the bottom, on one ramp', () => {
     render(
       <StackedAreaChart

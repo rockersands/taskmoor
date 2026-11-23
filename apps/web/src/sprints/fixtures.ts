@@ -48,7 +48,8 @@ const section = (
   sequence: id,
   startAt: state === 'active' ? '2026-10-26T09:00:00Z' : null,
   endAt: state === 'active' ? '2026-11-09T09:00:00Z' : null,
-  startedAt: state === 'active' ? '2026-10-26T09:00:00Z' : null,
+  // Started the day after its planned start: the backlog and the report show the planned one.
+  startedAt: state === 'active' ? '2026-10-27T10:00:00Z' : null,
   completedAt: null,
   version: 1,
   tickets,

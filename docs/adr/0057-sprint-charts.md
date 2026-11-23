@@ -45,6 +45,10 @@ both skins and identity that is never color alone.
   ticks in the displayed unit, a legend from two series on, a crosshair or band with every
   value on hover, and a `details` table with the numbers for keyboards, screen readers and
   print. Category labels wrap to two lines, or thin out to every k-th, before they collide.
+  Where a later data line has the same two values as an earlier one from one point to the next,
+  that stretch of the earlier line is drawn again, 6px wide, beneath both, so neither hides the
+  other; the rest of every line keeps the 2px form (T-359: quiet days at 0 and 0 widen only
+  themselves on Created vs closed, never the whole line).
 - **Chart tokens.** `--color-chart-1`, `--color-chart-2` and `--color-chart-guide` in
   `tokens.css`, chosen per skin (light `#2a78d6` and `#eb6834`, dark `#3987e5` and `#d95926`),
   checked for lightness band, chroma, colorblind separation and contrast against each skin's

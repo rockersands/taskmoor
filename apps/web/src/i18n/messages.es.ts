@@ -5757,6 +5757,9 @@ export const messagesEs: Record<MessageId, string> = {
   'sprints.complete.done': 'Se completó {name}.',
   'sprints.report.link': 'Informe del sprint',
   'sprints.report.title': 'Informe del sprint: {name}',
+  'sprints.report.dates.active': 'En curso: del {start} al {end}.',
+  'sprints.report.dates.closed': 'Terminó el {completed}. Estaba previsto del {start} al {end}.',
+  'sprints.report.dates.closedOnly': 'Terminó el {completed}.',
   'sprints.report.toBacklog': 'Volver al backlog',
   'sprints.report.column.key': 'Clave',
   'sprints.report.column.summary': 'Resumen',
@@ -5958,6 +5961,11 @@ export const messagesEs: Record<MessageId, string> = {
   'dashboards.widget.noData': 'Aún no hay nada que mostrar.',
   'dashboards.widget.slice': '{value} · {share}',
   'dashboards.widget.shown': '{shown, plural, one {# ticket} other {# tickets}} de {total}',
+  'dashboards.widget.groupAll': 'Ver los {total} en Buscar',
+  'dashboards.widget.groupAllNamed': 'Ver los {total} en Buscar: {group}',
+  'dashboards.widget.noOpenInRelease.title': 'Ningún ticket abierto apunta a esta versión',
+  'dashboards.widget.noOpenInRelease':
+    'Este informe cuenta los tickets abiertos que apuntan a la versión, y a una versión ya publicada no suele quedarle ninguno. Elige otra versión.',
   'dashboards.widget.cvcSummary':
     'Creados frente a cerrados: {created} creados y {closed} cerrados en el periodo.',
   'dashboards.widget.created': 'Creados',
@@ -5984,7 +5992,8 @@ export const messagesEs: Record<MessageId, string> = {
     '{field}: {count, plural, one {# ticket} other {# tickets}} en el periodo mostrado.',
   'dashboards.widget.groupDone': '{closed} de {total} hechos',
   'dashboards.widget.unestimated': 'Sin estimación',
-  'dashboards.widget.noTime': 'Ningún ticket de aquí tiene un valor para «{statistic}».',
+  'dashboards.widget.noTime':
+    'Ningún ticket de aquí tiene {statistic, select, originalEstimate {estimación original} timeSpent {tiempo invertido} other {estimación restante}}.',
   'dashboards.widget.noneClosed': 'Ningún ticket se cerró en este periodo.',
   'dashboards.widget.workSummary':
     '{statistic} por valor: {value} en {count, plural, one {# ticket} other {# tickets}}.',
@@ -6050,6 +6059,10 @@ export const messagesEs: Record<MessageId, string> = {
   'dashboards.time.remaining': 'Restante',
   'dashboards.time.accuracy': 'Frente a la estimación',
   'dashboards.time.onEstimate': 'Justo en la estimación',
+  'dashboards.time.nothingToCompare': 'Nada estimado con lo que comparar',
+  'dashboards.time.empty.title': 'Aún no hay nada estimado ni registrado',
+  'dashboards.time.empty':
+    'Este informe suma las estimaciones originales y el tiempo registrado en los tickets. Dale a un ticket una estimación original, o registra tiempo en él, y aquí verás los totales.',
   'dashboards.time.under': '{value} por debajo de la estimación',
   'dashboards.time.over': '{value} por encima de la estimación',
   'dashboards.time.estimated':
@@ -6370,6 +6383,8 @@ export const messagesEs: Record<MessageId, string> = {
   'statistics.report': 'Informe',
   'statistics.purpose':
     'Todos los informes de este track en un solo lugar: cómo fluye su trabajo, sus sprints, sus versiones y sus tickets.',
+  'statistics.purposeNoSprints':
+    'Todos los informes de este track en un solo lugar: cómo fluye su trabajo, sus tickets y el tiempo dedicado a ellos.',
   'statistics.about':
     'Cada informe cuenta solo los tickets que puedes ver en este track, así que dos personas pueden leer números distintos. Los informes que siguen sprints necesitan que el tablero del track sea Scrum; los demás funcionan con cualquier tablero.',
   'statistics.group.flow': 'Flujo',

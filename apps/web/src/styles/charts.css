@@ -114,6 +114,12 @@
   stroke: var(--color-chart-guide);
 }
 
+/* The stretch of a line another runs along, drawn again as a wider band beneath both, so the two
+   read where they agree; the rest of the line stays 2px (ADR-057). */
+.chart-line-under {
+  stroke-width: 6;
+}
+
 /* End dots ringed in the surface, so they stay readable where lines cross. */
 .chart-dot {
   stroke: var(--color-surface);
@@ -421,6 +427,30 @@
   margin: 0;
   font-size: var(--font-size-400);
   font-weight: var(--font-weight-strong);
+}
+
+@media (max-width: 767px) {
+  /* Time tracking on a phone: the three figures share a row and the verdict takes the next one
+     whole, so no tile stands half empty beside a verdict wrapped to four lines (S3-ST-1). */
+  .report-stats-time {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .report-stats-time .report-stats-verdict {
+    grid-column: 1 / -1;
+  }
+
+  /* Two-dimensional statistics on a phone: narrow cells and row names that wrap between words,
+     so a table of a handful of columns fits its card, Total included (second sweep). The first
+     and last columns keep the same inset, so the corner's field name and Total never touch the
+     edges of the header band (S3-ST-8). */
+  .report-table .report-two-dimensional :is(th, td) {
+    padding-inline: var(--space-1);
+  }
+
+  .report-table .report-two-dimensional :is(th, td):first-child {
+    min-width: 0;
+  }
 }
 
 /* Wide tables scroll inside their own box, never the page (ADR-033). */

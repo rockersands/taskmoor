@@ -24,6 +24,13 @@ interface Value {
   kind: 'value' | 'none' | 'other';
   total: number;
 }
+/** A group of grouped tickets: its value, done count, first tickets and the search for all. */
+interface Group extends Value {
+  closed: number;
+  tickets: GroupedTicket[];
+  /** The search that finds every ticket of the group; null for the rest gathered as other. */
+  query?: string | null;
+}
 interface GroupedTicket {
   id: number;
   key: string;
@@ -153,7 +160,10 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
         ? t('dashboards.value.other')
         : (v.name ?? v.id ?? '');
   /** The name of the field a table counts by, heading its first column (not 'Value'). */
-  const fieldHeader = (d: { field?: string; fieldName?: string | null }) => {
+  const fieldHeader = (d: {
+    field?: string | undefined;
+    fieldName?: string | null | undefined;
+  }) => {
     const known = d.field ? FIELD_NAMES[d.field] : undefined;
     return known ? t(known) : (d.fieldName ?? t('dashboards.widget.value'));
   };
@@ -417,14 +427,24 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
       );
     }
     case 'two-dimensional': {
-      const d = data as { x: Value[]; y: Value[]; cells: number[][]; total: number };
+      const d = data as {
+        fields?: { x: string; y: string };
+        fieldNames?: { x: string | null; y: string | null };
+        x: Value[];
+        y: Value[];
+        cells: number[][];
+        total: number;
+      };
       return (
         // Past the card's edge the table scrolls with a fade on the side that has more (D2, TR-12).
         <ReportTable label={title}>
-          <table className="report-numbers">
+          <table className="report-numbers report-two-dimensional">
             <thead>
               <tr>
-                <td />
+                {/* The corner heads the rows with their field, inside the header band (S3-ST-8). */}
+                <th scope="col">
+                  {fieldHeader({ field: d.fields?.x, fieldName: d.fieldNames?.x })}
+                </th>
                 {d.y.map((v) => (
                   <th key={`${v.kind}-${v.id}`} scope="col">
                     {valueName(v)}
@@ -619,11 +639,7 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
       );
     }
     case 'group-by': {
-      const d = data as {
-        values: (Value & { closed: number; tickets: GroupedTicket[] })[];
-        total: number;
-        closed: number;
-      };
+      const d = data as { values: Group[]; total: number; closed: number };
       if (d.total === 0) return <EmptyState compact title={t('dashboards.widget.noTickets')} />;
       return (
         <ul className="widget-groups" aria-label={title}>
@@ -653,8 +669,26 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
                 </ul>
               )}
               {v.tickets.length < v.total && v.kind !== 'other' && (
-                <p className="report-note">
+                // The rest of a long group is a search away, never out of reach (S3-ST-2).
+                <p className="report-note widget-group-more">
                   {t('dashboards.widget.shown', { shown: v.tickets.length, total: v.total })}
+                  {v.query && (
+                    <>
+                      {' '}
+                      <a
+                        href={routeHref(
+                          `#/search?${new URLSearchParams({ q: v.query }).toString()}`,
+                        )}
+                        // Its visible words, then the group, so the links read apart (T-359).
+                        aria-label={t('dashboards.widget.groupAllNamed', {
+                          total: v.total,
+                          group: valueName(v),
+                        })}
+                      >
+                        {t('dashboards.widget.groupAll', { total: v.total })}
+                      </a>
+                    </>
+                  )}
                 </p>
               )}
             </li>
@@ -675,7 +709,16 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
       const hours = (v: number) =>
         t('reports.hours', { value: intl.formatNumber(v / H, { maximumFractionDigits: 1 }) });
       const statistic = t(`dashboards.statistic.${d.statistic}` as MessageId);
-      if (d.total === 0) return <EmptyState compact title={t('dashboards.widget.noTickets')} />;
+      if (d.total === 0) {
+        // A release's open tickets: say why there are none, such as a release that shipped (S3-ST-9).
+        return typeof config.release === 'number' && config.open === true ? (
+          <EmptyState compact title={t('dashboards.widget.noOpenInRelease.title')}>
+            {t('dashboards.widget.noOpenInRelease')}
+          </EmptyState>
+        ) : (
+          <EmptyState compact title={t('dashboards.widget.noTickets')} />
+        );
+      }
       if (config.view === 'pie') {
         const sorted = [...d.values]
           .filter((v) => v.seconds > 0)
@@ -697,7 +740,11 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
                 },
               ];
         return slices.length === 0 ? (
-          <EmptyState compact title={t('dashboards.widget.noTime', { statistic })} />
+          <EmptyState
+            compact
+            // The measure in the sentence's own case, not the option's label (second sweep).
+            title={t('dashboards.widget.noTime', { statistic: d.statistic })}
+          />
         ) : (
           <DonutChart
             title={title}
@@ -767,11 +814,19 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
         v === null
           ? t('dashboards.value.none')
           : t('reports.hours', { value: intl.formatNumber(v / H, { maximumFractionDigits: 1 }) });
+      // Nothing estimated and nothing logged: no totals of zero, no verdict on them (S3-ST-1).
+      if (d.estimated === 0 && d.spent === 0 && d.remaining === 0) {
+        return (
+          <EmptyState compact title={t('dashboards.time.empty.title')}>
+            {t('dashboards.time.empty')}
+          </EmptyState>
+        );
+      }
       // Ahead when the estimate is more than the time spent and still to spend.
       const ahead = d.original - d.spent - d.remaining;
       return (
         <>
-          <dl className="report-stats">
+          <dl className="report-stats report-stats-time">
             <div>
               <dt>{t('dashboards.time.original')}</dt>
               <dd>{hours(d.original)}</dd>
@@ -784,14 +839,17 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
               <dt>{t('dashboards.time.remaining')}</dt>
               <dd>{hours(d.remaining)}</dd>
             </div>
-            <div>
+            <div className="report-stats-verdict">
               <dt>{t('dashboards.time.accuracy')}</dt>
               <dd>
-                {ahead === 0
-                  ? t('dashboards.time.onEstimate')
-                  : t(ahead > 0 ? 'dashboards.time.under' : 'dashboards.time.over', {
-                      value: hours(Math.abs(ahead)),
-                    })}
+                {d.estimated === 0
+                  ? // With no original estimate there is nothing to be on, under or over (S3-ST-1).
+                    t('dashboards.time.nothingToCompare')
+                  : ahead === 0
+                    ? t('dashboards.time.onEstimate')
+                    : t(ahead > 0 ? 'dashboards.time.under' : 'dashboards.time.over', {
+                        value: hours(Math.abs(ahead)),
+                      })}
               </dd>
             </div>
           </dl>

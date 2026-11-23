@@ -266,9 +266,8 @@ describe('a dashboard (M1-064)', () => {
       },
     );
     open({ client });
-    expect(
-      await screen.findByText('No ticket here has a value for Remaining estimate.'),
-    ).toBeVisible();
+    // In the sentence's own case, not the option label's capital (second sweep).
+    expect(await screen.findByText('No ticket here has a remaining estimate.')).toBeVisible();
   });
 
   it('[RPT-004] its owner adds, sets up, moves and removes widgets, saved with the version', async () => {

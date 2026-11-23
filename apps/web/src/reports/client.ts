@@ -139,13 +139,39 @@ export interface CycleParams extends ReportParams {
   window?: number;
 }
 
+/** A release of a track as the release reports list it, in the track's order. */
+export interface ReportRelease {
+  id: number;
+  name: string;
+  shipped?: boolean;
+  /** When it shipped (ISO); null or left out while it has not. */
+  shippedAt?: string | null;
+  archived?: boolean;
+}
+
+/**
+ * The release a release report opens on (T-359): the next to ship, which is the first in the
+ * track's order that has not shipped, else the one that shipped last; null with none. A shipped
+ * release's open tickets are usually none, so opening on it would show an empty report.
+ */
+export function openingRelease(list: readonly ReportRelease[]): ReportRelease | null {
+  const next = list.find((r) => !r.shipped && !r.archived);
+  if (next) return next;
+  let latest: ReportRelease | null = null;
+  for (const r of list) {
+    // The later shipping day wins, and on the same day (or with none known) the later in order.
+    if (r.shipped && (!latest || (r.shippedAt ?? '') >= (latest.shippedAt ?? ''))) latest = r;
+  }
+  return latest ?? list[0] ?? null;
+}
+
 export interface ReportClient {
   board(id: number): Promise<Board>;
   cumulativeFlow(boardId: number, params: ReportParams): Promise<CumulativeFlow>;
   cycleTime(boardId: number, params: CycleParams): Promise<CycleTime>;
   timeInStatus(boardId: number, params: ReportParams): Promise<TimeInStatus>;
-  /** The releases of a track, for the release reports. */
-  releases(trackId: number): Promise<{ id: number; name: string }[]>;
+  /** The releases of a track, for the release reports, with whether and when each shipped. */
+  releases(trackId: number): Promise<ReportRelease[]>;
   releaseBurndown(boardId: number, releaseId: number): Promise<ScopeBurndown>;
   /** An outcome by key or id. */
   outcomeBurndown(boardId: number, outcome: string): Promise<ScopeBurndown>;
@@ -176,8 +202,7 @@ export const reportClient: ReportClient = {
   timeInStatus: (boardId, params) =>
     api<TimeInStatus>(reportPath(boardId, 'time-in-status', params)),
   releases: async (trackId) =>
-    (await api<{ releases: { id: number; name: string }[] }>(`/tracks/${trackId}/releases`))
-      .releases,
+    (await api<{ releases: ReportRelease[] }>(`/tracks/${trackId}/releases`)).releases,
   releaseBurndown: (boardId, releaseId) =>
     api<ScopeBurndown>(`/boards/${boardId}/reports/release-burndown?release=${releaseId}`),
   outcomeBurndown: (boardId, outcome) =>

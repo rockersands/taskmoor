@@ -1,8 +1,8 @@
 ---
 title: "Dashboards and reports"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/api/client.ts, apps/server/src/reports/zone.ts, apps/web/src/reports/DonutChart.tsx, apps/web/src/styles/dashboards.css, apps/web/src/tracks/client.ts, apps/web/src/dashboards/DashboardsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/server/src/routes/dashboards.ts, apps/web/src/dashboards/WidgetSettings.tsx, apps/web/src/dashboards/WidgetView.tsx, apps/web/src/sprints/SprintReportPage.tsx, apps/web/src/reports/BoardReportsPage.tsx, apps/web/src/tracks/TrackStatisticsPage.tsx, apps/web/src/tracks/BoardInTrack.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/reports/ScopeReports.tsx, apps/web/src/reports/ReportTable.tsx, apps/web/src/reports/ColumnChart.tsx, apps/web/src/shell/NotFoundPage.tsx, docs/plan/decisions.csv, apps/web/src/i18n/messages.en.ts, apps/server/src/reports/scope-burndown.ts, apps/server/src/reports/general.ts, apps/server/src/routes/scope-reports.ts, docs/adr/0054-sprints.md, docs/adr/0057-sprint-charts.md, docs/adr/0058-flow-reports.md, docs/adr/0059-general-and-release-reports.md, docs/adr/0060-dashboards.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/days.ts, apps/web/src/i18n/zone.ts
-accessed: 2026-11-16
+sources: apps/web/src/App.tsx, apps/web/src/api/client.ts, apps/server/src/reports/zone.ts, apps/web/src/reports/DonutChart.tsx, apps/web/src/styles/dashboards.css, apps/web/src/tracks/client.ts, apps/web/src/dashboards/DashboardsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/server/src/routes/dashboards.ts, apps/web/src/dashboards/WidgetSettings.tsx, apps/web/src/dashboards/WidgetView.tsx, apps/web/src/sprints/SprintReportPage.tsx, apps/web/src/reports/BoardReportsPage.tsx, apps/web/src/tracks/TrackStatisticsPage.tsx, apps/web/src/tracks/BoardInTrack.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/reports/ScopeReports.tsx, apps/web/src/reports/client.ts, apps/web/src/reports/ReportTable.tsx, apps/web/src/reports/ColumnChart.tsx, apps/web/src/reports/LineChart.tsx, apps/web/src/styles/charts.css, apps/web/src/styles/boards.css, apps/web/src/shell/NotFoundPage.tsx, docs/plan/decisions.csv, apps/web/src/i18n/messages.en.ts, apps/server/src/reports/scope-burndown.ts, apps/server/src/reports/general.ts, apps/server/src/routes/scope-reports.ts, docs/adr/0054-sprints.md, docs/adr/0057-sprint-charts.md, docs/adr/0058-flow-reports.md, docs/adr/0059-general-and-release-reports.md, docs/adr/0060-dashboards.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/days.ts, apps/web/src/i18n/zone.ts
+accessed: 2026-11-23
 attestation: own-words
 ---
 # Dashboards and reports
@@ -94,7 +94,10 @@ labels, target and found-in release, area, or a custom field that groups. A fiel
 counts under each.
 
 In **Created vs closed**, a closing is the moment a close reason is set, so a ticket closed,
-reopened and closed again counts twice. **Tickets by date** counts each ticket once, by the date
+reopened and closed again counts twice. Where two lines of a line chart run together from one
+point to the next, as **Created** and **Closed** do over quiet days with nothing created or
+closed, that stretch of the line named first in the legend shows as a wider band beneath the
+other, so neither hides the other; the rest of each line stays thin. **Tickets by date** counts each ticket once, by the date
 it has now. A ticket is done when its status is in the closed stage, the same rule progress uses
 everywhere. **Workload** and **Time tracking** add up time in hours, and say so when time
 tracking is turned off on the site. Sprint widgets need a Scrum board you can see; when the
@@ -104,7 +107,8 @@ A pie chart widget with no title of its own is named by what it counts, such as 
 Status**. A table of counts heads its first column with the field it counts by, such as
 **Priority**, and its share bars are as long as their shares. **Time to close** says **No ticket
 was closed in this period** rather than drawing a line on zero hours, and a **Workload** pie with
-no time to add up says which measure no ticket has a value for.
+no time to add up says which measure no ticket has, such as **No ticket here has a remaining
+estimate**. Empty progress tracks keep a visible edge in both skins.
 
 A dashboard that does not exist, or that is not shared with you, shows **Dashboard not found**
 with the way to **Home** and to **Search**. One that cannot be read for another reason keeps its
@@ -143,7 +147,8 @@ different numbers. Reports and dashboard widgets count days on [your clock](acco
 ticket created late in the evening counts on that day. A report with nothing to chart says so and what to try, such as a longer period.
 
 Sprint and release reports follow sprints, so only a track with a Scrum board lists them. A Kanban
-track does not list them. An old link to one says it needs a Scrum board, and those who may change
+track does not list them, and the line under its title names only what it has: how its work
+flows, its tickets and the time spent on them. An old link to one says it needs a Scrum board, and those who may change
 the board get a link to its settings. Flow, ticket, time and workload reports work on any board. On a Kanban track, a
 customized Summary also leaves out sprint widgets: they stay in its editor, to take away.
 
@@ -158,10 +163,18 @@ These read the whole track, with no query to write:
   start) in each period, or a running total.
 - **Pie chart** and **Ticket statistics**: how many tickets have each value of one **Field**.
 - **Two-dimensional statistics**: a table of two fields against each other, as **Rows** and
-  **Columns**. Its numbers align at their end, and on a narrow screen it scrolls sideways inside
-  its card, the edge past which more columns wait faded.
+  **Columns**, its corner naming the field of the rows. Its numbers align at their end. On a phone
+  its cells draw closer so a handful of columns fits the card, **Total** included; a table wider
+  than that scrolls sideways inside its card, the edge past which more columns wait faded.
 - **Grouped tickets**: each value of a **Field** with its tickets, how many of them are done, and
-  the most recently updated ones, each a link to the ticket.
+  the most recently updated ones, each a link to the ticket. Keys, summaries and statuses sit in
+  columns shared by every group. A group with more tickets than it lists says how many it shows
+  and links to the search that finds all of them (**See all 20 in Search**). That search lists them
+  in the report's order, most recently updated first, so it starts with the ones the group shows.
+  It names a release, an area, a team or a ticket type by its number, so two of the same name,
+  such as a track's own **Bug** type and the shared one, stay apart, and an option of a select
+  list by its text, or by its number where another option shares that text. An option that
+  neither names alone, which takes texts that are other options' numbers, has no link.
 
 Wherever a report asks for a **Field**, **Rows** or **Columns**, the list also offers the custom
 fields used in the track whose values group: select lists, people, groups, releases, areas, teams
@@ -176,10 +189,17 @@ These add up the time on the track's tickets, in hours:
 
 - **Time tracking**: the **Original estimate**, **Time spent** and **Remaining** of the whole track
   or of one **Release**, whether the work is under or over the estimate, and the tickets with the
-  most time spent. Time spent is the sum of the tickets' time entries.
+  most time spent. Time spent is the sum of the tickets' time entries. With no original estimate
+  on any ticket there is nothing to be under or over: the verdict reads **Nothing estimated to
+  compare**, and when nothing is estimated or logged at all the report says **Nothing estimated or
+  logged yet** instead of totals of zero. On a phone the three figures share a row and the
+  verdict takes the next one.
 - **Workload by person**: the remaining estimate of the open tickets per assignee, with how many
   have no estimate.
-- **Release workload**: the same for the open tickets that target a chosen **Release**.
+- **Release workload**: the same for the open tickets that target a chosen **Release**. It starts
+  on the next release to ship, the first in the track's order that has not shipped, or, when all
+  have shipped, the one that shipped last. A release with no open tickets, such as one that
+  shipped, says **No open tickets target this release** and why.
 - **Workload pie chart**: a **Measure** (remaining or original estimate, or time spent) by any
   **Field**, as a pie, for the open tickets or all of them.
 
@@ -199,10 +219,13 @@ sprint report shows three charts, each with **Show the numbers** for a table:
 - **Velocity**: work **Committed** and **Completed** in the board's last completed sprints (up
   to seven), with the average completed. It appears once the board has completed a sprint.
 
-Below the charts are the totals, on a card of their own (**Committed at the start**, **Added after
+Under its title the report says whether the sprint is **In progress** or when it finished, with
+its planned dates, so a finished sprint's report never reads like the running one's. Below the
+charts are the totals, on a card of their own (**Committed at the start**, **Added after
 the start**, **Removed**, **Completed** and, with time tracking on, **Remaining estimate**), and the
 tables of **Completed tickets**, **Tickets not completed** and **Tickets removed from the sprint**,
-with a column each for **Key**, **Summary**, **Status** and **Estimate**. On a phone each row
+with a column each for **Key**, **Summary**, **Status** and **Estimate**; the status and estimate
+columns have one width in every table, so the stacked tables line up. On a phone each row
 takes two lines: the key and summary, then the status and the estimate. Tickets added after the
 start are marked, and estimates that changed show their old and new value.
 
@@ -250,7 +273,8 @@ same numbers. Tickets in statuses no column shows are counted apart and named un
 
 These follow a Scrum board's sprints, counted by the board's estimation setting:
 
-- **Release burndown**: choose a **Release** of the board's track.
+- **Release burndown**: choose a **Release** of the board's track. It starts on the next release
+  to ship, else the one that shipped last; the **Release report** starts the same way.
 - **Outcome burndown**: choose one of the track's outcomes under **Outcome**; the first is
   chosen to start with. A board outside any track asks for an outcome's key instead, with
   **Show**.
@@ -259,16 +283,18 @@ Both show the **Remaining work** at the start of each sprint and now, the **Work
 (**Completed**, **Added** and **Removed**), and a forecast of how many more sprints the work
 needs at the board's velocity (the average of its last three completed sprints). Work done, added
 or removed while no sprint ran has a column of its own, **Outside the sprints**, so the columns
-add up to the sentence above them. When the estimates add up to nothing, the burndown says **No
-estimates to add up** instead of charting zeros.
+add up to the sentence above them, and a sprint with nothing in it shows an empty slot rather than
+zeros over it. When the estimates add up to nothing, the burndown says **No estimates to add up**
+instead of charting zeros.
 
 - **Release report**: **Release progress**, the scope and the completed work day by day from
   the release's start (without one, from the earliest of the day it was made, its first ticket
   and its release date), its planned date and the day the work would be done at the pace of the
   last 14 days. Its legend names what the lines add up, such as **Estimate in scope** and
-  **Estimate completed** (or **Hours** or **Tickets**); the completed line is drawn over the scope
-  line, so it stays in sight once all the work is done. Once the release has shipped it says the day it shipped on, as its page does, and no
-  forecast. These days carry their year, as the Releases list writes them (**Planned for
+  **Estimate completed** (or **Hours** or **Tickets**). Where the completed line runs along the
+  scope line, as once all the work is done, that stretch of the scope is drawn as a wider band
+  beneath it, so both stay in sight. Once the release has shipped it says the day it shipped on,
+  as its page does, and no forecast. These days carry their year, as the Releases list writes them (**Planned for
   Nov 30, 2026.**); the chart's axis keeps the short **Nov 30**.
 - **Outcome report**: choose an outcome as for its burndown. **Outcome progress**: the same chart
   for the tickets under the outcome, from the day the first one joined it, its axis and legend

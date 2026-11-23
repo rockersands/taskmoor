@@ -256,6 +256,22 @@ const ISO = (t: Typed): Scalar => {
 
 const lower = (s: string) => s.toLowerCase();
 
+/**
+ * The options of one field a value names: those with that value (any case) before the one with
+ * that id, as the catalogues name a value by name before id, so `Severity = 3` is the option "3"
+ * even when another option of the field has the id 3 (T-359). Only digits can be an id. A grouped
+ * report's search names an option so that this finds it alone (`valueQuery`).
+ */
+export function pickOptions<T extends { id: number; value: string }>(
+  options: readonly T[],
+  text: string,
+): T[] {
+  const wanted = lower(text);
+  const byValue = options.filter((o) => lower(o.value) === wanted);
+  if (byValue.length > 0 || !/^\d+$/.test(wanted)) return byValue;
+  return options.filter((o) => String(o.id) === wanted);
+}
+
 /** Sorted, distinct ids. */
 const idList = (values: Iterable<number>) => [...new Set(values)].sort((a, b) => a - b);
 
@@ -576,6 +592,28 @@ type NamedKind =
   | 'release'
   | 'role'
   | 'team';
+
+/**
+ * The kinds whose bare numbers are ids before names (T-359), as `crossTrackRelease`'s are: a
+ * release or an area may share its name with one of another track, and a ticket type of a
+ * local-mode track with a shared one, so an id is how a search names exactly one of them (a
+ * report's link to one of its groups, a release's page). A quoted number is a name before an id.
+ */
+const ID_FIRST: ReadonlySet<NamedKind> = new Set(['release', 'area', 'team', 'type']);
+
+/**
+ * The rows a value names: by name (any case) before id, or, for a bare number when `idFirst`,
+ * by id before name. Only digits can be an id.
+ */
+function pickNamed<T extends Named>(rows: readonly T[], value: Typed, idFirst: boolean): T[] {
+  const given = content(value);
+  const wanted = lower(String(given.value));
+  const byName = () => rows.filter((r) => lower(r.name) === wanted);
+  const byId = () => (/^\d+$/.test(wanted) ? rows.filter((r) => String(r.id) === wanted) : []);
+  const [first, second] = idFirst && given.type === 'number' ? [byId, byName] : [byName, byId];
+  const found = first();
+  return found.length > 0 ? found : second();
+}
 
 class Binder {
   readonly warnings: string[] = [];
@@ -1182,19 +1220,17 @@ class Binder {
     return ids;
   }
 
-  /** Options by value or id, and the values no option has. */
+  /** Options by value before id (`pickOptions`), and the values no option has. */
   private findOptions(field: CustomField, values: Typed[]): Found {
     const ids: number[] = [];
     const missing: string[] = [];
+    const options = [...this.ctx.catalog.options.values()].filter((o) => o.fieldId === field.id);
     for (const v of values) {
       if (isCall(v)) {
         ids.push(...this.optionFunction(field, v));
         continue;
       }
-      const wanted = lower(String(v.value));
-      const found = [...this.ctx.catalog.options.values()].filter(
-        (o) => o.fieldId === field.id && (lower(o.value) === wanted || String(o.id) === wanted),
-      );
+      const found = pickOptions(options, String(v.value));
       if (found.length === 0) missing.push(String(v.value));
       ids.push(...found.map((o) => o.id));
     }
@@ -1202,14 +1238,13 @@ class Binder {
   }
 
   /**
-   * `choiceOption(ids...)`: options of the field by id or value. `cascadeOption(parent,
-   * child?)`: a cascade's top-level option, or the child of it named.
+   * `choiceOption(ids...)`: options of the field by value before id (`pickOptions`).
+   * `cascadeOption(parent, child?)`: a cascade's top-level option, or the child of it named.
    */
   private optionFunction(field: CustomField, call: CallValue): number[] {
     const options = [...this.ctx.catalog.options.values()].filter((o) => o.fieldId === field.id);
     const pick = (value: Typed, among: typeof options) => {
-      const wanted = lower(String(content(value).value));
-      const found = among.filter((o) => lower(o.value) === wanted || String(o.id) === wanted);
+      const found = pickOptions(among, String(content(value).value));
       if (found.length === 0) {
         throw new SearchError(
           `${label(field)} has no option "${String(content(value).value)}"`,
@@ -1952,7 +1987,10 @@ class Binder {
     return ids;
   }
 
-  /** Ids by name (any case) or by id, and the names nothing is called now. */
+  /**
+   * Ids by name (any case) or by id, and the names nothing is called now. A name comes before an
+   * id, but a bare number of the kinds in `ID_FIRST` is an id before a name.
+   */
   private async findNamed(kind: NamedKind, values: Typed[]): Promise<Found> {
     const rows = await this.table(kind);
     const ids: number[] = [];
@@ -1962,10 +2000,7 @@ class Binder {
         ids.push(...(await this.namedFunction(kind, v)));
         continue;
       }
-      const wanted = lower(String(v.value));
-      let found = rows.filter((r) => lower(r.name) === wanted);
-      if (found.length === 0 && /^\d+$/.test(wanted))
-        found = rows.filter((r) => String(r.id) === wanted);
+      const found = pickNamed(rows, v, ID_FIRST.has(kind));
       if (found.length === 0) missing.push(String(v.value));
       ids.push(...found.map((r) => r.id));
     }
@@ -2021,7 +2056,10 @@ class Binder {
     return idList(rows.filter(test).map((r) => r.id));
   }
 
-  /** Releases after or before one in its track's order (`fixVersion > "1.0"`). */
+  /**
+   * Releases after or before one in its track's order (`fixVersion > "1.0"`). The one compared
+   * with is named as `=` names it: a bare number is an id before a name.
+   */
   private async releasesBeyond(op: Comparison, given: Typed, field: string): Promise<number[]> {
     const value = content(given);
     const rows = await this.db
@@ -2029,8 +2067,7 @@ class Binder {
       .select(['id', 'track_id', 'name', 'sort_order'])
       .where('workspace_id', '=', this.ws)
       .execute();
-    const wanted = lower(String(value.value));
-    const pivots = rows.filter((r) => lower(r.name) === wanted || String(r.id) === wanted);
+    const pivots = pickNamed(rows, value, ID_FIRST.has('release'));
     if (pivots.length === 0) {
       throw new SearchError(`${field} has no value "${String(value.value)}"`, 'unknown_value');
     }

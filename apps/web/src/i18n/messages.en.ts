@@ -5629,6 +5629,9 @@ export const messagesEn = {
   'sprints.complete.done': '{name} completed.',
   'sprints.report.link': 'Sprint report',
   'sprints.report.title': 'Sprint report: {name}',
+  'sprints.report.dates.active': 'In progress: {start} to {end}.',
+  'sprints.report.dates.closed': 'Finished on {completed}. Planned for {start} to {end}.',
+  'sprints.report.dates.closedOnly': 'Finished on {completed}.',
   'sprints.report.toBacklog': 'Back to the backlog',
   'sprints.report.column.key': 'Key',
   'sprints.report.column.summary': 'Summary',
@@ -5830,6 +5833,11 @@ export const messagesEn = {
   'dashboards.widget.noData': 'Nothing to show yet.',
   'dashboards.widget.slice': '{value} · {share}',
   'dashboards.widget.shown': '{shown, plural, one {# ticket} other {# tickets}} of {total}',
+  'dashboards.widget.groupAll': 'See all {total} in Search',
+  'dashboards.widget.groupAllNamed': 'See all {total} in Search: {group}',
+  'dashboards.widget.noOpenInRelease.title': 'No open tickets target this release',
+  'dashboards.widget.noOpenInRelease':
+    'This report counts the open tickets that target the release, and a release that has shipped usually has none left. Choose another release.',
   'dashboards.widget.cvcSummary':
     'Created vs closed: {created} created and {closed} closed in the period.',
   'dashboards.widget.created': 'Created',
@@ -5856,7 +5864,8 @@ export const messagesEn = {
     '{field}: {count, plural, one {# ticket} other {# tickets}} in the period shown.',
   'dashboards.widget.groupDone': '{closed} of {total} done',
   'dashboards.widget.unestimated': 'Without an estimate',
-  'dashboards.widget.noTime': 'No ticket here has a value for {statistic}.',
+  'dashboards.widget.noTime':
+    'No ticket here has {statistic, select, originalEstimate {an original estimate} timeSpent {any time spent} other {a remaining estimate}}.',
   'dashboards.widget.noneClosed': 'No ticket was closed in this period.',
   'dashboards.widget.workSummary':
     '{statistic} by value: {value} over {count, plural, one {# ticket} other {# tickets}}.',
@@ -5919,6 +5928,10 @@ export const messagesEn = {
   'dashboards.time.remaining': 'Remaining',
   'dashboards.time.accuracy': 'Against the estimate',
   'dashboards.time.onEstimate': 'On the estimate',
+  'dashboards.time.nothingToCompare': 'Nothing estimated to compare',
+  'dashboards.time.empty.title': 'Nothing estimated or logged yet',
+  'dashboards.time.empty':
+    'This report adds up the original estimates and the time logged on the tickets. Give a ticket an original estimate, or log time on it, and the totals show here.',
   'dashboards.time.under': '{value} under the estimate',
   'dashboards.time.over': '{value} over the estimate',
   'dashboards.time.estimated':
@@ -6230,6 +6243,8 @@ export const messagesEn = {
   'statistics.report': 'Report',
   'statistics.purpose':
     'Every report of this track in one place: how its work flows, its sprints, its releases and its tickets.',
+  'statistics.purposeNoSprints':
+    'Every report of this track in one place: how its work flows, its tickets and the time spent on them.',
   'statistics.about':
     'Each report counts only the tickets you can see in this track, so two people may read different numbers. Reports that follow sprints need the track’s board to be a Scrum board; the others work on any board.',
   'statistics.group.flow': 'Flow',

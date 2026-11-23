@@ -791,6 +791,16 @@
   white-space: nowrap;
 }
 
+/* The status and estimate columns keep one width in every card, so the stacked tables line up
+   whatever their own contents (S3-ST-4); a longer value still widens its column. */
+.sprint-report-table .sprint-report-status {
+  width: 10rem;
+}
+
+.sprint-report-table .sprint-report-estimate {
+  width: 9rem;
+}
+
 .sprint-report-table td.sprint-report-key a {
   font-weight: var(--font-weight-strong);
 }
@@ -828,11 +838,13 @@
 
   .sprint-report-table .sprint-report-status {
     grid-area: status;
+    width: auto;
     white-space: normal;
   }
 
   .sprint-report-table .sprint-report-estimate {
     grid-area: estimate;
+    width: auto;
     text-align: end;
   }
 }

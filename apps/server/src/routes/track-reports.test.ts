@@ -497,6 +497,52 @@ describe('a track’s reports equal their searches', () => {
     }
   });
 
+  it('[RPT-002] grouped tickets: each group names the search that finds all of it, first the tickets it lists (S3-ST-2, T-359)', async () => {
+    for (const who of viewers) {
+      for (const field of ['status', 'priority', 'type', 'assignee', 'labels', 'targetRelease']) {
+        const data = await statistic(who, 'RPS', 'group-by', `field=${field}&limit=2`);
+        const values = data.values as (Value & {
+          query: string | null;
+          tickets: { id: number }[];
+        })[];
+        // Some group lists fewer tickets than it has, so its search is the way to the rest.
+        expect(
+          values.some((v) => v.tickets.length < v.total),
+          `${who} ${field}`,
+        ).toBe(true);
+        for (const v of values) {
+          expect(v.query, `${who} ${field} ${v.name}`).toMatch(
+            /^track = "RPS" AND .+ ORDER BY updated DESC$/,
+          );
+          const ids = await found(who, v.query as string);
+          expect(ids.length, `${who} ${v.query}`).toBe(v.total);
+          // The search lists the group's tickets in the report's order: its first are the listed.
+          expect(ids.slice(0, v.tickets.length), `${who} ${v.query}`).toEqual(
+            v.tickets.map((t) => t.id),
+          );
+          if (v.kind === 'none') expect(v.query).toContain(`${field} IS EMPTY`);
+        }
+      }
+    }
+    // A name only where the catalogue's names are unique; a person or a type by id, as names
+    // may repeat.
+    const byStatus = await statistic('member', 'RPS', 'group-by', 'field=status');
+    expect(byStatus.values[0].query).toBe(
+      `track = "RPS" AND status = "${byStatus.values[0].name}" ORDER BY updated DESC`,
+    );
+    const byPerson = await statistic('member', 'RPS', 'group-by', 'field=assignee');
+    const member = (byPerson.values as (Value & { query: string })[]).find(
+      (v) => v.id === String(users.member.id),
+    );
+    expect(member?.query).toBe(
+      `track = "RPS" AND assignee = ${users.member.id} ORDER BY updated DESC`,
+    );
+    const byType = await statistic('member', 'RPS', 'group-by', 'field=type');
+    expect(byType.values[0].query).toBe(
+      `track = "RPS" AND type = ${byType.values[0].id} ORDER BY updated DESC`,
+    );
+  });
+
   it('[RPT-002] workload by person, of a release and as a pie: each sum is over a search', async () => {
     const open = `${BASE} AND stage != closed`;
     for (const who of viewers) {

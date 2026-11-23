@@ -34,7 +34,10 @@ const M = { top: 12, right: 64, bottom: 28, left: 48 };
  * A line chart (M1-060; ADR-057): 2px lines with round ends, an end dot ringed in the surface
  * color and the series' last value beside it, recessive hairline gridlines, a legend from two
  * series on, a crosshair with the day's values on hover, and the numbers as a table for
- * keyboards, screen readers and print. Colors come from the skin's chart tokens.
+ * keyboards, screen readers and print. Colors come from the skin's chart tokens. Where a later
+ * data line runs along an earlier one, from one point to the next, that stretch of the earlier
+ * line is also drawn as a wider band beneath both, so the two stay in sight where they agree (the
+ * release report's scope once all of it is done); the rest of it stays a 2px line.
  */
 export function LineChart({
   title,
@@ -68,6 +71,33 @@ export function LineChart({
     .map((label, i) => ({ label, i }))
     .filter(({ i }) => i === 0 || i === n - 1 || (i % every === 0 && n - 1 - i >= every));
 
+  // The stretches of a data line that a later data line covers, from one point to the next where
+  // both have the same two values: only those are drawn as a wider band beneath it, so the rest of
+  // the line keeps its 2px form (a quiet day at 0 and 0 does not widen a whole Created line).
+  const under = series.map((s, k) => {
+    if (s.tone === 'guide') return '';
+    const later = series.slice(k + 1).filter((l) => l.tone !== 'guide');
+    let d = '';
+    let pen = false;
+    for (let i = 0; i + 1 < s.values.length; i++) {
+      const v = s.values[i];
+      const next = s.values[i + 1];
+      if (
+        v === null ||
+        v === undefined ||
+        next === null ||
+        next === undefined ||
+        !later.some((l) => l.values[i] === v && l.values[i + 1] === next)
+      ) {
+        pen = false;
+        continue;
+      }
+      if (!pen) d += `M${x(i).toFixed(1)},${y(v).toFixed(1)}`;
+      d += `L${x(i + 1).toFixed(1)},${y(next).toFixed(1)}`;
+      pen = true;
+    }
+    return d;
+  });
   const paths = series.map((s) => {
     let d = '';
     let pen = false;
@@ -149,6 +179,15 @@ export function LineChart({
               y1={M.top}
               y2={M.top + plotH}
             />
+          )}
+          {series.map((s, k) =>
+            under[k] ? (
+              <path
+                key={`${s.id}-under`}
+                className={`chart-line chart-line-${s.tone} chart-line-under`}
+                d={under[k]}
+              />
+            ) : null,
           )}
           {series.map((s, k) => (
             <path key={s.id} className={`chart-line chart-line-${s.tone}`} d={paths[k]} />

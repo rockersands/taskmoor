@@ -7,14 +7,15 @@ import { setViewportWidth } from '../test/viewport';
 import { fakeSprintClient } from './fixtures';
 import { SprintReportPage } from './SprintReportPage';
 
-function open(locale: Locale = 'en', client = fakeSprintClient()) {
+/** The report as a person reads it, on their own clock when `timeZone` is given (T-280). */
+function open(locale: Locale = 'en', client = fakeSprintClient(), timeZone: string | null = null) {
   const errors: Error[] = [];
   const view = render(
-    <I18nProvider locale={locale} onError={(e) => errors.push(e)}>
+    <I18nProvider locale={locale} timeZone={timeZone} onError={(e) => errors.push(e)}>
       <SprintReportPage boardId={7} sprintId={11} client={client} />
     </I18nProvider>,
   );
-  return { errors, container: view.container };
+  return { errors, container: view.container, unmount: view.unmount };
 }
 
 describe('sprint charts on the report (M1-060)', () => {
@@ -87,6 +88,44 @@ describe('sprint charts on the report (M1-060)', () => {
     ).toEqual(['CHK-2', 'Show the order total', 'Closed', '2h']);
     // The totals sit on a card of their own (TR-14).
     expect(screen.getByText('Committed at the start').closest('dl')).toHaveClass('glass-card');
+  });
+
+  it('[AGL-010] says whether the sprint still runs or finished, and its planned dates on the person’s clock (S3-ST-5)', async () => {
+    // Planned from Oct 26, started on Oct 27: the report gives the planned start, as the backlog.
+    const running = open('en', fakeSprintClient(), 'UTC');
+    expect(await screen.findByText('In progress: Oct 26, 2026 to Nov 9, 2026.')).toBeVisible();
+    running.unmount();
+    const closed = fakeSprintClient();
+    const report = closed.report;
+    closed.report = async (id) => {
+      const read = await report(id);
+      return {
+        ...read,
+        sprint: { ...read.sprint, state: 'closed', completedAt: '2026-11-10T16:00:00Z' },
+      };
+    };
+    const finished = open('en', closed, 'UTC');
+    expect(
+      await screen.findByText('Finished on Nov 10, 2026. Planned for Oct 26, 2026 to Nov 9, 2026.'),
+    ).toBeVisible();
+    finished.unmount();
+    // At UTC+14 it finished on the 11th, though it was still the 10th in London.
+    const far = open('es', closed, 'Pacific/Kiritimati');
+    expect(
+      await screen.findByText(
+        'Terminó el 11 nov 2026. Estaba previsto del 26 oct 2026 al 9 nov 2026.',
+      ),
+    ).toBeVisible();
+    far.unmount();
+    // With no planned start, the day it started stands in.
+    const unplanned = fakeSprintClient();
+    const read = unplanned.report;
+    unplanned.report = async (id) => {
+      const got = await read(id);
+      return { ...got, sprint: { ...got.sprint, startAt: null } };
+    };
+    open('en', unplanned, 'UTC');
+    expect(await screen.findByText('In progress: Oct 27, 2026 to Nov 9, 2026.')).toBeVisible();
   });
 
   it('[RPT-001] explains a sprint with no estimates instead of drawing empty charts and zero totals (TR-13)', async () => {

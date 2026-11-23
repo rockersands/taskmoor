@@ -397,7 +397,12 @@ class Resolver {
         return { type: 'number', value: id };
       }
       case 'crossTrackRelease':
-        // A bare number is an id; quoted, it is a name, so the two can be told apart (PLN-007).
+      case 'release':
+      case 'area':
+      case 'team':
+      case 'ticketType':
+        // A bare number is an id before a name; quoted, a name before an id, so the two can be
+        // told apart (PLN-007; T-359 for releases, areas, teams and ticket types).
         if (v.kind === 'number') return { type: 'number', value: v.value };
         return { type: 'text', value: this.text(v) };
       default:
