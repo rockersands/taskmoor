@@ -143,6 +143,15 @@ describe('Administration (ADR-114)', () => {
     expect(within(waiting).queryByText('Ada')).toBeNull();
     const alerts = screen.getByRole('region', { name: 'Security alerts' });
     expect(await within(alerts).findByText(/from 203\.0\.113\.9/)).toBeVisible();
+    // Worded as the Security page's latest alerts: the window in the unit its rule uses.
+    expect(
+      within(alerts)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      expect.stringMatching(/^Failed sign-ins from one address: 25 in 15 minutes, .* from 203/),
+      expect.stringMatching(/^Bulk exports by one person: 5 in 1 hour, /),
+    ]);
   });
 
   it('[AGL-018] keeps the other panels when one read fails', async () => {

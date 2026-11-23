@@ -279,6 +279,10 @@ describe('security settings: alert rules (ADR-109)', () => {
     expect(within(latest).getAllByRole('listitem')[0]).toHaveTextContent(
       /Failed sign-ins from one address: 25 in 15 minutes.*from 203\.0\.113\.9/,
     );
+    // An alert's window in the unit its rule is set in, not '5 in 60 minutes' (S3-AC-6).
+    expect(within(latest).getAllByRole('listitem')[1]).toHaveTextContent(
+      /^Bulk exports by one person: 5 in 1 hour, /,
+    );
 
     const threshold = within(account).getByLabelText('Alert after this many');
     await user.clear(threshold);

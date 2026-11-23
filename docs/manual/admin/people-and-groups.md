@@ -2,7 +2,7 @@
 title: "People, groups and teams"
 audience: admins
 sources: apps/server/src/routes/users.ts, apps/web/src/admin/AdminLayout.tsx, apps/server/src/authz/person-roles.ts, apps/web/src/people/PersonPage.tsx, apps/web/src/people/peopleWords.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/api/pages.ts, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, apps/server/src/tracks/membership.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx, apps/server/src/security/alerts.ts, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, apps/server/src/security/refusals.ts, apps/server/src/routes/security-alerts.ts, apps/server/src/audit/record.ts, apps/web/src/admin/SecurityAlertsForm.tsx, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/privacy/erase.ts, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, apps/server/src/audit/query.ts, apps/web/src/people/EraseUserForm.tsx, apps/web/src/account/PersonalDataSection.tsx, docs/adr/0111-personal-data-and-database-tls.md, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md, apps/web/src/shell/DangerAction.tsx, apps/server/src/authz/create-tracks.ts, apps/server/src/trackgroups/access.ts, docs/adr/0122-multi-track.md, docs/adr/0118-track-invitations.md, apps/server/src/routes/service-accounts.ts, apps/server/src/ldap/gateway.ts, apps/web/src/api/teams.ts, apps/server/src/audit/subscriber.ts
-accessed: 2026-11-17
+accessed: 2026-11-22
 attestation: own-words
 ---
 # People, groups and teams
@@ -362,7 +362,9 @@ Select **Save alert rules**. Windows are fixed: a 15-minute window starts on the
 A rule raises at most one alert per window for the same account, address, person or token.
 Every site administrator then gets an item in their inbox (under **Priority**) and an email, and
 the audit log records `security.alert_raised`, so it also reaches syslog and webhooks. The
-section lists the latest alerts. AI spend alerts (see [AI usage](ai-usage.md)) reach site
+section lists the latest alerts, each with its rule, the count, the window in the same unit as
+the rules and when it was raised, for example "Bulk exports by one person: 5 in 1 hour", then the
+address or email it came from. AI spend alerts (see [AI usage](ai-usage.md)) reach site
 administrators the same way.
 
 ## Groups

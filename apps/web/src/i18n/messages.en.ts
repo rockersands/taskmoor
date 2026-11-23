@@ -2507,7 +2507,7 @@ export const messagesEn = {
     'Choose a number from 1 to 100,000, within 1 minute to 24 hours, for every rule.',
   'admin.alerts.recent': 'Latest alerts',
   'admin.alerts.none': 'No alert has been raised.',
-  'admin.alerts.raised': '{rule}: {count} in {minutes} minutes, {time}',
+  'admin.alerts.raised': '{rule}: {count} in {length}, {time}',
   'admin.alerts.address': 'from {address}',
   'admin.alerts.email': 'email typed: {email}',
   'admin.security.saved': 'Policy saved.',

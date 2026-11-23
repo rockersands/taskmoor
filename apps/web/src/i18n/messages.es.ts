@@ -2573,7 +2573,7 @@ export const messagesEs: Record<MessageId, string> = {
     'Elige un número de 1 a 100.000, en un tiempo de 1 minuto a 24 horas, para cada regla.',
   'admin.alerts.recent': 'Últimas alertas',
   'admin.alerts.none': 'No se ha generado ninguna alerta.',
-  'admin.alerts.raised': '{rule}: {count} en {minutes} minutos, {time}',
+  'admin.alerts.raised': '{rule}: {count} en {length}, {time}',
   'admin.alerts.address': 'desde {address}',
   'admin.alerts.email': 'correo escrito: {email}',
   'admin.security.saved': 'Política guardada.',
