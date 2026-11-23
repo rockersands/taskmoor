@@ -1192,7 +1192,7 @@ test("[CORE-013] [CORE-008] the create form follows the track's field rules: req
   await expect(page.getByLabel('Environment')).toHaveCount(0);
   // The backend refuses what is missing, at each field (CORE-008 (3)).
   await page.getByLabel('Summary (required)').fill('Checkout fails');
-  await page.getByRole('button', { name: 'Create' }).click();
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
   await expect(
     page.getByText('Some fields need attention before the ticket can be created.'),
   ).toBeVisible();
@@ -1204,7 +1204,7 @@ test("[CORE-013] [CORE-008] the create form follows the track's field rules: req
   );
   await page.getByLabel('Due date (required)').fill('2026-12-01');
   await page.getByLabel('Severity (required)').selectOption({ label: 'Blocker' });
-  await page.getByRole('button', { name: 'Create' }).click();
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
   await expect(page.getByText('FORM-1 was created.')).toBeVisible();
   const created = (await (await page.request.get('/api/v1/tickets/FORM-1')).json()) as {
     ticket: { dueDate: string; fields: Record<string, { value: string }> };
@@ -1217,7 +1217,7 @@ test("[CORE-013] [CORE-008] the create form follows the track's field rules: req
   await page.getByRole('option', { name: 'Chore', exact: true }).click();
   await expect(page.getByLabel('Due date', { exact: true })).toBeVisible();
   await page.getByLabel('Summary (required)').fill('Tidy the cart code');
-  await page.getByRole('button', { name: 'Create' }).click();
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
   await expect(page.getByText('FORM-2 was created.')).toBeVisible();
   await page.request.delete('/api/v1/session');
 });
