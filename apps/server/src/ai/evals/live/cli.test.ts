@@ -37,6 +37,8 @@ interface Ran {
   files: Map<string, string>;
   json: string;
   report: string;
+  /** After how many seconds the test had to stop the command; null when it ended by itself. */
+  stoppedAfter: number | null;
 }
 
 function filesUnder(dir: string): string[] {
@@ -50,11 +52,13 @@ function filesUnder(dir: string): string[] {
  * The command in a fresh output folder, with only `env` added to a clean environment. stdin is
  * not a terminal, so the command never asks for the key; with `preload`, a module loaded into
  * the command before it starts (to play the person at the question), stdin is a pipe left open.
+ * After `limitMs` the test stops the command (and, on Windows, every process it started), so it
+ * is never left waiting on a question nobody answers; `stoppedAfter` says when it had to.
  */
 function runCommand(
   env: Record<string, string>,
   args: string[] = [],
-  preload?: string,
+  { preload, limitMs = 150_000 }: { preload?: string; limitMs?: number } = {},
 ): Promise<Ran> {
   const out = mkdtempSync(join(tmpdir(), 'ai-live-test-'));
   const json = join(out, '.verify', 'ai-live.json');
@@ -82,8 +86,11 @@ function runCommand(
       stdio: [preload ? 'pipe' : 'ignore', 'pipe', 'pipe'],
       windowsHide: true,
     });
-    // Never left waiting on a question nobody answers.
-    const stop = setTimeout(() => child.kill(), 150_000);
+    let stoppedAfter: number | null = null;
+    const stop = setTimeout(() => {
+      stoppedAfter = limitMs / 1000;
+      child.kill();
+    }, limitMs);
     let stdout = '';
     let stderr = '';
     child.stdout?.setEncoding('utf8').on('data', (d: string) => {
@@ -96,13 +103,21 @@ function runCommand(
       clearTimeout(stop);
       const files = new Map(filesUnder(out).map((f) => [f, readFileSync(f, 'utf8')]));
       rmSync(out, { recursive: true, force: true });
-      resolve({ code, stdout, stderr, files, json, report });
+      resolve({ code, stdout, stderr, files, json, report, stoppedAfter });
     });
   });
 }
 
 /** Everything the command printed or kept. */
 const everything = (ran: Ran) => [ran.stdout, ran.stderr, ...ran.files.values()].join('\n');
+
+/** The command ended by itself; if the test had to stop it, the failure says so, and where. */
+function endedByItself(ran: Ran): void {
+  expect(
+    ran.stoppedAfter,
+    `the test stopped ai:live after ${ran.stoppedAfter} s; its output until then:\n${ran.stdout.slice(-3000)}\n${ran.stderr.slice(-3000)}`,
+  ).toBeNull();
+}
 
 describe('pnpm ai:live (T-333)', () => {
   const fake = new FakeProviderServer();
@@ -130,6 +145,7 @@ describe('pnpm ai:live (T-333)', () => {
     timeout: 180_000,
   }, async () => {
     const ran = await runCommand({});
+    endedByItself(ran);
     expect(ran.code).toBe(2);
     expect(ran.stderr).toContain(
       'ai:live could not run: no API key, and the input is not a terminal, so the command cannot ask for one.',
@@ -146,13 +162,14 @@ describe('pnpm ai:live (T-333)', () => {
   }, async () => {
     const before = fake.requests.length;
     const ran = await runCommand({ TASKMOOR_AI_KEY: REJECTED }, ['--yes', '--base-url', url]);
+    expect(everything(ran)).not.toContain(REJECTED);
+    endedByItself(ran);
     expect(ran.code).toBe(2);
     expect(ran.stderr).toContain('the API did not accept the key');
     // Only the free model list was asked for.
     expect(fake.requests.slice(before).map((r) => `${r.method} ${r.path}`)).toEqual([
       'GET /v1/models',
     ]);
-    expect(everything(ran)).not.toContain(REJECTED);
     expect(ran.files.has(ran.report)).toBe(false);
   });
 
@@ -168,7 +185,8 @@ describe('pnpm ai:live (T-333)', () => {
       '  return write(chunk, ...rest);',
       '};',
     ].join('\n');
-    const ran = await runCommand({ TASKMOOR_AI_KEY: KEY }, ['--base-url', url], ctrlC);
+    const ran = await runCommand({ TASKMOOR_AI_KEY: KEY }, ['--base-url', url], { preload: ctrlC });
+    endedByItself(ran);
     expect(ran.stderr).toContain('Go on? [y/N]');
     expect(ran.code).toBe(2);
     expect(ran.stderr).toContain(
@@ -193,12 +211,22 @@ describe('pnpm ai:live (T-333)', () => {
       // The eval run's database on the test server, so it starts no cluster of its own.
       { TASKMOOR_AI_KEY: KEY, TASKMOOR_TEST_DATABASE_URL: testPgAdminUrl() },
       ['--yes', '--base-url', url],
+      // The real children run the whole eval set: about 45 s alone, and 150 s within a full run
+      // of the server tests, where seeding the eval dataset alone takes a minute. The test's
+      // guard stays under its own limit, so a run too slow for it fails as one, by name.
+      { limitMs: 840_000 },
     );
     const output = everything(ran);
     expect(output).not.toContain(KEY);
+    endedByItself(ran);
     // The key was there to scrub: the eval run printed the fake model's answers. (Every other
     // way out of the command is scrubbed by the same object, tested in checks.test.ts.)
-    expect(ran.files.get(join(dirname(ran.json), 'ai-live', 'evals.log'))).toContain('[key]');
+    const evalsLog = ran.files.get(join(dirname(ran.json), 'ai-live', 'evals.log')) ?? '';
+    expect(evalsLog).toContain('[key]');
+    // The eval run's progress, kept in its log and shown as it came.
+    expect(evalsLog).toMatch(/^eval: seeded in \d+ s$/m);
+    expect(evalsLog).toMatch(/^eval: injection done in \d+ s$/m);
+    expect(ran.stdout).toMatch(/^ {4}query started$/m);
 
     expect(ran.stdout).toContain('Rough cost:');
     const summary = JSON.parse(ran.files.get(ran.json) ?? '{}') as LiveSummary;

@@ -1,5 +1,5 @@
 import { type ChildProcess, spawn } from 'node:child_process';
-import { createWriteStream } from 'node:fs';
+import { closeSync, openSync, writeSync } from 'node:fs';
 import { LineScrubber } from './scrub';
 
 /** What a child run left: its exit code and its output, scrubbed, a line at a time. */
@@ -10,6 +10,8 @@ export interface ChildResult {
   seconds: number;
   /** Why it could not start, when it could not. */
   failedToStart: string | null;
+  /** How it was stopped before its end (Ctrl+C, or a signal); null when it ended by itself. */
+  stopped: string | null;
 }
 
 /**
@@ -37,16 +39,20 @@ export function childEnvironment(
 // biome-ignore lint/suspicious/noControlCharactersInRegex: matching terminal escape codes is the point
 const ANSI = /\u001b\[[0-9;?]*[A-Za-z]/g;
 
-/** The child running now, so Ctrl+C can stop it. */
-let current: ChildProcess | null = null;
+/** The child running now, so Ctrl+C can stop it, and whether it was asked to. */
+let current: { child: ChildProcess; stopAsked: boolean } | null = null;
 
 export function stopCurrentChild(): void {
-  current?.kill();
+  if (!current) return;
+  current.stopAsked = true;
+  current.child.kill();
 }
 
 /**
  * Runs a child to its end. Each line of its output is scrubbed before anything else sees it:
- * the log, `onLine` and the result all get the scrubbed text only.
+ * the log, `onLine` and the result all get the scrubbed text only. Each line reaches the log the
+ * moment it arrives, so a step that is slow, stopped or killed with the command around it leaves
+ * everything it printed until then; a step that was stopped says so at the end of its log.
  */
 export function runChild(options: {
   command: string;
@@ -59,30 +65,42 @@ export function runChild(options: {
   onLine?: (line: string) => void;
 }): Promise<ChildResult> {
   const started = Date.now();
-  const log = createWriteStream(options.log);
+  const seconds = () => (Date.now() - started) / 1000;
+  const log = openSync(options.log, 'w');
   const out: string[] = [];
   const err: string[] = [];
   const keep = (into: string[]) => (line: string) => {
     const clean = line.replace(ANSI, '');
     into.push(clean);
-    log.write(`${clean}\n`);
+    writeSync(log, `${clean}\n`);
     options.onLine?.(clean);
   };
   const stdout = new LineScrubber(options.scrub, keep(out));
   const stderr = new LineScrubber(options.scrub, keep(err));
-  const done = (code: number | null, failedToStart: string | null): Promise<ChildResult> =>
-    new Promise((resolve) =>
-      // Why it could not start goes to the log too: the summary only points there.
-      log.end(failedToStart ? `could not start: ${failedToStart}\n` : '', () =>
-        resolve({
-          code,
-          stdout: out.join('\n'),
-          stderr: err.join('\n'),
-          seconds: (Date.now() - started) / 1000,
-          failedToStart,
-        }),
-      ),
-    );
+  const done = (
+    code: number | null,
+    failedToStart: string | null,
+    stopped: string | null,
+  ): ChildResult => {
+    // Why it could not start, or that it was stopped, goes to the log too: the summary only
+    // points there.
+    if (failedToStart) writeSync(log, `could not start: ${failedToStart}\n`);
+    if (stopped) {
+      writeSync(
+        log,
+        `ai:live: this step was stopped (${stopped}) after ${Math.round(seconds())} s; the lines above are what it printed until then.\n`,
+      );
+    }
+    closeSync(log);
+    return {
+      code,
+      stdout: out.join('\n'),
+      stderr: err.join('\n'),
+      seconds: seconds(),
+      failedToStart,
+      stopped,
+    };
+  };
   return new Promise((resolve) => {
     let child: ChildProcess;
     try {
@@ -93,25 +111,32 @@ export function runChild(options: {
         windowsHide: true,
       });
     } catch (error) {
-      resolve(done(null, options.scrub(error instanceof Error ? error.message : String(error))));
+      const why = options.scrub(error instanceof Error ? error.message : String(error));
+      resolve(done(null, why, null));
       return;
     }
-    current = child;
+    const running = { child, stopAsked: false };
+    current = running;
     let settled = false;
-    const settle = (code: number | null, failedToStart: string | null) => {
+    const settle = (
+      code: number | null,
+      signal: NodeJS.Signals | null,
+      failedToStart: string | null,
+    ) => {
       if (settled) return;
       settled = true;
-      current = null;
+      if (current === running) current = null;
       stdout.end();
       stderr.end();
-      resolve(done(code, failedToStart));
+      const stopped = running.stopAsked ? 'Ctrl+C' : signal;
+      resolve(done(code, failedToStart, stopped));
     };
     child.stdout?.setEncoding('utf8').on('data', (chunk: string) => stdout.push(chunk));
     child.stderr?.setEncoding('utf8').on('data', (chunk: string) => stderr.push(chunk));
     // A child that never started may not close.
     child.on('error', (error) => {
-      if (child.pid === undefined) settle(null, options.scrub(error.message));
+      if (child.pid === undefined) settle(null, null, options.scrub(error.message));
     });
-    child.on('close', (code) => settle(code, null));
+    child.on('close', (code, signal) => settle(code, signal, null));
   });
 }

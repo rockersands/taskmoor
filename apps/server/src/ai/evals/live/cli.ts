@@ -13,7 +13,8 @@
 // Before anything is spent: a free check that the API accepts the key, the plan with a rough cost,
 // and a question (--yes skips it). Then each step runs, whatever the one before did. The summary
 // goes to .verify/ai-live.json and docs/ai/live-checks.md (--json and --report move them); the
-// steps' output, error messages included, stays in .verify/ai-live/*.log, which git ignores.
+// steps' output, error messages included, stays in .verify/ai-live/*.log, which git ignores,
+// written a line at a time as it comes, so a slow or stopped step leaves what it printed.
 // Exit code 0 when every check passes, 1 when one fails, 2 when it could not run (Ctrl+C
 // included, at any point).
 //
@@ -69,6 +70,12 @@ const shown = (path: string) => relative(process.cwd(), path).replaceAll('\\', '
 function progress(line: string): void {
   const m = /^\s*(\S+)\s+\|ai\|\s.*>\s(.+)$/.exec(line);
   if (m) say(`    ${m[1]} ${m[2]}`);
+}
+
+/** The eval run's progress lines (`eval: query started`), shown as they come. */
+function evalProgress(line: string): void {
+  const m = /^eval: (.+)$/.exec(line);
+  if (m) say(`    ${m[1]}`);
 }
 
 const resolveIn = (pkg: string, path: string) =>
@@ -244,6 +251,7 @@ async function main(): Promise<number> {
           TASKMOOR_AI_EVAL_BASE_URL: baseUrl,
         }),
         log,
+        onLine: evalProgress,
       });
       return { code: child.code, report: parseJson(child.stdout), records: [], log: shown(log) };
     } finally {
@@ -262,7 +270,7 @@ async function main(): Promise<number> {
       checks.push(injectionCheck(injection, sizes.injectionCases));
     }
     if (!interrupted) {
-      say(`3/3 ${STEPS[2]?.title} (${STEPS[2]?.runs}); it prints nothing until it ends`);
+      say(`3/3 ${STEPS[2]?.title} (${STEPS[2]?.runs})`);
       checks.push(...evalChecks(await evalStep()));
     }
   } finally {

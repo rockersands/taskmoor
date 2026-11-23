@@ -22,7 +22,7 @@ import {
   summarize,
   verdicts,
 } from './results';
-import { childEnvironment } from './run';
+import { childEnvironment, stopCurrentChild } from './run';
 import { KEY_MARK, keyScrubber, LineScrubber, PART_OF_KEY_LINE } from './scrub';
 
 /**
@@ -241,6 +241,44 @@ describe('ai:live scrubs every way out of the command (T-333)', () => {
       const logged = readFileSync(log, 'utf8');
       expect(logged).toContain(`out ${KEY_MARK}`);
       expect(logged).not.toContain(KEY);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('[IAM-020] [OPS-020] keeps each line of a step in its log as it comes, and says when the step was stopped', async () => {
+    const io = new ScrubbedIo(capture().stream, capture().stream);
+    io.useKey(KEY);
+    const dir = mkdtempSync(join(tmpdir(), 'ai-live-io-'));
+    try {
+      const log = join(dir, 'evals.log');
+      // A step that prints a line, then would run for a minute; Ctrl+C once the line is out.
+      const script =
+        'console.error("eval: query started " + process.env.K); setTimeout(() => {}, 60_000)';
+      const seen: string[] = [];
+      const child = await io.run({
+        command: process.execPath,
+        args: ['-e', script],
+        cwd: dir,
+        env: { ...process.env, K: KEY },
+        log,
+        onLine: () => {
+          seen.push(readFileSync(log, 'utf8'));
+          stopCurrentChild();
+        },
+      });
+      // The line was in the log, scrubbed, while the step still ran.
+      expect(seen).toEqual([`eval: query started ${KEY_MARK}\n`]);
+      expect(child).toMatchObject({ code: null, stopped: 'Ctrl+C' });
+      const kept = readFileSync(log, 'utf8');
+      expect(kept.split('\n')).toEqual([
+        `eval: query started ${KEY_MARK}`,
+        expect.stringMatching(
+          /^ai:live: this step was stopped \(Ctrl\+C\) after \d+ s; the lines above are what it printed until then\.$/,
+        ),
+        '',
+      ]);
+      expect(kept).not.toContain(KEY);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

@@ -90,7 +90,10 @@ the other measurements stand. When the judge disagrees with a graded example, th
   value and result, and which of M1-073, M1-074 and M1-079 the run closes. Commit it after the
   run, or leave it for the coordinator.
 - `.verify/ai-live.json`: the same for tools, or why the command could not run;
-  `.verify/ai-live/*.log`: each step's output with the full error messages, scrubbed of the key.
+  `.verify/ai-live/*.log`: each step's output with the full error messages, scrubbed of the key,
+  written a line at a time as it comes. The eval step's progress goes there and to the screen
+  (`eval: query started`, `eval: query done in 840 s` in its log), so a slow step shows where it
+  is; a step stopped with Ctrl+C keeps what it printed until then, and its log ends by saying so.
 - The last lines say what the coordinator records in `docs/plan/progress.csv`.
 
 ## Options

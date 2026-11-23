@@ -165,7 +165,12 @@ case holding only once the model has answered); then `pnpm eval all` with `candi
   no key, header, prompt, answer or error text: a failure is named by its kind and HTTP status,
   since a provider's message can carry the organization's id and an assertion's can quote the
   answer), the coordinator's lines at the end, exit code 0, 1 when a check fails, 2 when it could
-  not run. The steps' full output stays in `.verify/ai-live/*.log`, which git ignores.
+  not run. The steps' full output stays in `.verify/ai-live/*.log`, which git ignores, each line
+  written the moment it arrives; the eval run prints its progress on stderr (`eval: query
+  started`, `eval: query done in 840 s`), which the command shows and keeps, and a step stopped
+  with Ctrl+C ends its log by saying so. Before (T-333, 2026-11-23), `pnpm eval --json` printed
+  nothing until its end, so a stopped eval step left an empty log: the command's own test, which
+  stopped it after 150 s while the step took 127 of them inside a full test run, found just that.
 - **What the injection run counts:** a feature that fails holds too, so `injection-eval.ts`
   records which features the model answered for each case (`answeredBy`, `byFeature`; a refusal
   counts as an answer), and the live check fails unless every feature got an answer for every
