@@ -4,9 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { App } from '../App';
 import { ADMIN, MEMBER } from '../admin/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
-import { SessionProvider } from '../session/SessionProvider';
+import { type Session, SessionProvider } from '../session/SessionProvider';
 import { type Handler, noContent, stubBackend } from '../test/backend';
 import { jsonResponse } from '../test/setup';
+import { useTimeZone } from '../test/timeZone';
 import { setViewportWidth } from '../test/viewport';
 import { AdminTokensPage } from './AdminTokensPage';
 import type { AdminTokensClient, ApiToken, BulkCriteria, TokenPolicy } from './client';
@@ -73,10 +74,10 @@ function inventoryBackend(extra: Record<string, Handler> = {}) {
   });
 }
 
-async function openPage(extra: Record<string, Handler> = {}) {
+async function openPage(extra: Record<string, Handler> = {}, session: Session = ADMIN) {
   const calls = inventoryBackend(extra);
   window.location.hash = '#/admin/tokens';
-  render(<App session={ADMIN} />);
+  render(<App session={session} />);
   await screen.findByRole('heading', { level: 1, name: 'API tokens' });
   const tokens = within(screen.getByRole('region', { name: 'Tokens' }));
   await tokens.findByRole('list', { name: 'Tokens' });
@@ -448,5 +449,33 @@ describe('the token inventory past the first page (T-308)', () => {
     // The last page: the button goes, and the focus is on the token it brought.
     expect(tokens.queryByRole('button', { name: 'Show more' })).toBeNull();
     await waitFor(() => expect(tokens.getByText('Token 007').closest('li')).toHaveFocus());
+  });
+});
+
+/**
+ * One clock per person (T-280): the day tokens were created before starts at midnight on the
+ * account's zone, whatever the device's. The device here is New York.
+ */
+describe('admin token inventory on the account’s clock', () => {
+  useTimeZone('America/New_York');
+  const admin = ADMIN as Extract<Session, { status: 'signed-in' }>;
+
+  it('[IAM-007] [NFR-006] revokes tokens created before the start of a day on the account’s zone', async () => {
+    const user = userEvent.setup();
+    const { calls, region } = await openPage(
+      {},
+      { status: 'signed-in', user: { ...admin.user, timeZone: 'Europe/Madrid' } },
+    );
+    const bulk = region('Revoke in bulk');
+    await user.click(bulk.getByRole('radio', { name: 'Tokens created before a date' }));
+    await user.type(bulk.getByLabelText('Created before'), '2026-11-16');
+    await user.click(bulk.getByRole('button', { name: 'Revoke tokens' }));
+    // Midnight in Madrid (UTC+1) is 23:00 the day before in UTC, not New York's 05:00.
+    await waitFor(() =>
+      expect(calls.filter((c) => c.method === 'POST').at(-1)?.body).toEqual({
+        createdBefore: '2026-11-15T23:00:00.000Z',
+        dryRun: true,
+      }),
+    );
   });
 });

@@ -67,8 +67,8 @@ describe('directory administration (M1-082)', () => {
       within(lab).getByText(/^Full sync failed .*it would have removed more than half/),
     ).toBeVisible();
     // The first can only go down, the last only up.
-    expect(within(office).queryByRole('button', { name: 'Move Head office up' })).toBeNull();
-    expect(within(lab).queryByRole('button', { name: 'Move Research lab down' })).toBeNull();
+    expect(within(office).queryByRole('button', { name: 'Move up Head office' })).toBeNull();
+    expect(within(lab).queryByRole('button', { name: 'Move down Research lab' })).toBeNull();
     expect(
       within(screen.getByRole('navigation', { name: 'Main' })).getByRole('link', {
         name: 'Administration',
@@ -225,7 +225,7 @@ describe('directory administration (M1-082)', () => {
       },
     });
     const item = await directoryItem('Head office');
-    await user.click(within(item).getByRole('button', { name: 'Sync Head office now' }));
+    await user.click(within(item).getByRole('button', { name: 'Sync now from Head office' }));
     expect(await screen.findByText('A sync of Head office is on its way.')).toBeVisible();
     expect(await within(item).findByText(/: 4 accounts updated$/)).toBeVisible();
     expect(calls.find((c) => c.path === '/directories/1/sync')?.body).toEqual({
@@ -234,7 +234,7 @@ describe('directory administration (M1-082)', () => {
 
     const failing = await directoryItem('Research lab');
     const trigger = within(failing).getByRole('button', {
-      name: 'Sync Research lab and remove what left it',
+      name: 'Sync and remove what left Research lab',
     });
     expect(trigger).toHaveClass('button-danger-quiet');
     // Asks first, naming how many go (D13); Escape gives the focus back, sending nothing.
@@ -245,15 +245,15 @@ describe('directory administration (M1-082)', () => {
     expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
     await user.keyboard('{Escape}');
     expect(
-      within(failing).getByRole('button', { name: 'Sync Research lab and remove what left it' }),
+      within(failing).getByRole('button', { name: 'Sync and remove what left Research lab' }),
     ).toHaveFocus();
     expect(calls.find((c) => c.path === '/directories/2/sync')).toBeUndefined();
 
     await user.click(
-      within(failing).getByRole('button', { name: 'Sync Research lab and remove what left it' }),
+      within(failing).getByRole('button', { name: 'Sync and remove what left Research lab' }),
     );
     await user.click(
-      within(failing).getByRole('button', { name: 'Sync Research lab and remove what left it' }),
+      within(failing).getByRole('button', { name: 'Sync and remove what left Research lab' }),
     );
     expect(calls.find((c) => c.path === '/directories/2/sync')?.body).toEqual({
       mode: 'full',
@@ -263,7 +263,7 @@ describe('directory administration (M1-082)', () => {
     // The stop is answered, so the question goes: the full sync it started takes the focus.
     expect(within(failing).queryByRole('group')).toBeNull();
     expect(
-      within(failing).getByRole('button', { name: 'Sync all of Research lab now' }),
+      within(failing).getByRole('button', { name: 'Full sync of Research lab' }),
     ).toHaveFocus();
   });
 
@@ -284,7 +284,7 @@ describe('directory administration (M1-082)', () => {
     });
     const failing = await directoryItem('Research lab');
     await user.click(
-      within(failing).getByRole('button', { name: 'Sync Research lab and remove what left it' }),
+      within(failing).getByRole('button', { name: 'Sync and remove what left Research lab' }),
     );
     expect(
       within(failing).getByRole('group', {
@@ -303,10 +303,10 @@ describe('directory administration (M1-082)', () => {
     });
     const failing = await directoryItem('Research lab');
     await user.click(
-      within(failing).getByRole('button', { name: 'Sync Research lab and remove what left it' }),
+      within(failing).getByRole('button', { name: 'Sync and remove what left Research lab' }),
     );
     await user.click(
-      within(failing).getByRole('button', { name: 'Sync Research lab and remove what left it' }),
+      within(failing).getByRole('button', { name: 'Sync and remove what left Research lab' }),
     );
     expect(
       await within(failing).findByText('This directory is disabled. Enable it to sync it.'),
@@ -317,7 +317,7 @@ describe('directory administration (M1-082)', () => {
   it('[IAM-005] says when a disabled directory cannot sync', async () => {
     openPage();
     const lab = await directoryItem('Research lab');
-    expect(within(lab).getByRole('button', { name: 'Sync Research lab now' })).toBeDisabled();
+    expect(within(lab).getByRole('button', { name: 'Sync now from Research lab' })).toBeDisabled();
   });
 
   it('[IAM-005] looks again while a sync waits or runs', async () => {
@@ -348,7 +348,7 @@ describe('directory administration (M1-082)', () => {
     const user = userEvent.setup();
     const calls = openPage({ 'PUT /directories/order': () => noContent() });
     const office = await directoryItem('Head office');
-    await user.click(within(office).getByRole('button', { name: 'Move Head office down' }));
+    await user.click(within(office).getByRole('button', { name: 'Move down Head office' }));
     expect(await screen.findByText('Moved Head office.')).toBeVisible();
     expect(calls.find((c) => c.method === 'PUT')?.body).toEqual({ ids: [2, 1] });
   });

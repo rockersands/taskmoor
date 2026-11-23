@@ -68,6 +68,19 @@ describe('audit log page (M1-085)', () => {
     await expect.poll(() => client.calls.at(-1)).not.toContain('"action"');
   });
 
+  it('[IAM-013] [NFR-006] downloads the CSV with semicolons for a person whose region writes 1,5 (T-263)', async () => {
+    const session =
+      ADMIN.status === 'signed-in' ? { ...ADMIN, user: { ...ADMIN.user, locale: 'de-DE' } } : ADMIN;
+    renderPage(fakeAuditClient(), 'en', session);
+    await screen.findByRole('table');
+    expect(screen.getByRole('link', { name: 'Download as CSV' }).getAttribute('href')).toBe(
+      '/api/v1/audit/export?format=csv&separator=semicolon',
+    );
+    expect(screen.getByRole('link', { name: 'Download as JSON Lines' }).getAttribute('href')).toBe(
+      '/api/v1/audit/export?format=jsonl',
+    );
+  });
+
   it('[IAM-013] scrolls a table too wide for a tablet in a named region the keyboard reaches (AD-3)', async () => {
     setViewportWidth(900);
     renderPage();

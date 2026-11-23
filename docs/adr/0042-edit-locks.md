@@ -21,9 +21,9 @@ which fields are required or hidden, so they are where a field's editors belong.
   lock applies, to hold one of its roles or groups. Site administrators are not exempt, as with
   visibility levels (ADR-012): they add themselves to a role or change the configuration.
 - **Status locks on every write path.** `apps/server/src/workflows/locks.ts` reads the
-  published workflow's lists once per track (cached by workflow version, which never changes)
-  and the person's roles and groups before the write's transaction, then checks the status of
-  the locked ticket row inside it. Edit covers every field change, a move to another track and
+  published workflow's lists once per track (cached per database by workflow version, which
+  never changes) and the person's roles and groups before the write's transaction, then checks
+  the status of the locked ticket row inside it. Edit covers every field change, a move to another track and
   co-editing rich text (M1-017); assign covers assignee changes; attach covers uploading and
   removing files; transition stays with the engine. Comment is enforced by comments (M1-018).
   An empty list lets nobody through, as the workflow engine reads it.

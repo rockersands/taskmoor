@@ -125,8 +125,17 @@ describe('permission administration (M1-053)', () => {
     await user.click(within(give).getByRole('button', { name: 'Give' }));
     expect(await screen.findByText('Edit tickets was given to Bo Rivera.')).toBeInTheDocument();
 
+    // A grant reaches every track of the policy: removing it asks first, saying so (D13, T-267).
     await user.click(
       await screen.findByRole('button', { name: 'Remove Role Viewers from Edit tickets' }),
+    );
+    const removing = screen.getByRole('group', {
+      name: 'Role Viewers loses Edit tickets in every track that uses this policy, and none does yet.',
+    });
+    expect(within(removing).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    expect(client.calls.some((c) => c.action === 'removeGrant')).toBe(false);
+    await user.click(
+      within(removing).getByRole('button', { name: 'Remove Role Viewers from Edit tickets' }),
     );
     expect(await screen.findByText('Role Viewers no longer has Edit tickets.')).toBeInTheDocument();
     expect(client.calls.filter((c) => c.action === 'addGrant').map((c) => c.args[1])).toEqual([
@@ -142,6 +151,26 @@ describe('permission administration (M1-053)', () => {
     expect(await screen.findByText('Partners was deleted.')).toBeInTheDocument();
     expect(within(policies).getByRole('heading', { name: 'Access policies' })).toHaveFocus();
     expect(client.calls.some((c) => c.action === 'deletePolicy')).toBe(true);
+  });
+
+  it('[IAM-010] names the tracks that use the policy when a grant would go, and keeps it on Cancel', async () => {
+    const user = userEvent.setup();
+    const client = renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Manage Default access policy' }));
+    const trigger = await screen.findByRole('button', {
+      name: 'Remove Anyone signed in from See the track',
+    });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    const question = screen.getByRole('group', {
+      name: 'Anyone signed in loses See the track in SHOP, OPS, the 2 tracks that use this policy.',
+    });
+    await user.keyboard('{Escape}');
+    expect(question).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Remove Anyone signed in from See the track' }),
+    ).toHaveFocus();
+    expect(client.calls.some((c) => c.action === 'removeGrant')).toBe(false);
   });
 
   it('[IAM-010] refuses to delete a policy tracks use', async () => {
@@ -180,9 +209,18 @@ describe('permission administration (M1-053)', () => {
     const remove = screen.getByRole('button', {
       name: 'Remove Group Approvers from Change many tickets at once',
     });
-    // The danger look every removing action has (D13, AD-16).
+    // The danger look every removing action has, and the question it asks (D13, AD-16, T-267).
     expect(remove).toHaveClass('button-danger-quiet');
     await user.click(remove);
+    const question = screen.getByRole('group', {
+      name: 'Group Approvers loses Change many tickets at once across the whole site.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await user.click(
+      within(question).getByRole('button', {
+        name: 'Remove Group Approvers from Change many tickets at once',
+      }),
+    );
     expect(
       await screen.findByText('Group Approvers no longer has Change many tickets at once.'),
     ).toBeInTheDocument();

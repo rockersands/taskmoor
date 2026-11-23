@@ -102,6 +102,20 @@ describe('track summary page (M1-064)', () => {
     expect(await screen.findByRole('link', { name: '10,000+' })).toBeVisible();
   });
 
+  it('[CORE-015] [CORE-029] leads to the track’s ticket templates and areas, for anyone who reads it', async () => {
+    open();
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Summary' });
+    const header = heading.closest('header') as HTMLElement;
+    expect(within(header).getByRole('link', { name: 'Ticket templates' })).toHaveAttribute(
+      'href',
+      '#/tracks/SHOP/templates',
+    );
+    expect(within(header).getByRole('link', { name: 'Areas' })).toHaveAttribute(
+      'href',
+      '#/tracks/SHOP/areas',
+    );
+  });
+
   it('[RPT-006] says when the track cannot be read', async () => {
     open('en', fakeTrackClient(null));
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -408,7 +422,9 @@ describe('filtering a track summary for oneself (RPT-006; T-075a)', () => {
     );
     expect(within(form).getByLabelText('Only tickets that match')).toHaveValue(MINE);
     expect(within(form).getByText(`Showing only the tickets that match ${MINE}.`)).toBeVisible();
-    expect(within(form).getByText(/Only you see this filter/)).toBeVisible();
+    // Only the viewer's view changes, and the link can be shared (T-264).
+    expect(within(form).getByText(/This filter changes only your view/)).toBeVisible();
+    expect(within(form).getByText(/share the link/)).toBeVisible();
     expect(client.filters).toEqual(['', MINE]);
     // Nothing was saved for anyone.
     expect(client.saved).toEqual([]);

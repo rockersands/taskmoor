@@ -1,4 +1,5 @@
 import { ApiError, api } from '../api/client';
+import { everyTeam } from '../api/teams';
 import type { NumberField, SprintSettings } from '../sprints/client';
 import { loadSubticketProgress, type SubticketProgress } from '../tickets/tools/client';
 import { type Transition as TicketTransition, ticketClient } from '../tickets/view/client';
@@ -351,10 +352,7 @@ export const boardClient: BoardClient = {
       .filter((f) => f.type === 'number')
       .map((f) => ({ id: f.id, name: f.name })),
   teams: async () =>
-    (await api<{ teams: { id: number; name: string }[] }>('/teams')).teams.map((t) => ({
-      id: t.id,
-      name: t.name,
-    })),
+    (await everyTeam<{ id: number; name: string }>()).map((t) => ({ id: t.id, name: t.name })),
   data: (id, filters, sprints, people) => api<BoardData>(dataPath(id, filters, sprints, people)),
   move: async (id, move) => {
     try {

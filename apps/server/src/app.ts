@@ -78,9 +78,11 @@ import { registerNotificationRoutes } from './routes/notifications';
 import { registerOAuthRoutes, resourceMetadataUrl } from './routes/oauth';
 import { registerPasswordCheckRoute, registerPasswordLinkRoutes } from './routes/password-links';
 import { registerPersonalDataRoutes } from './routes/personal-data';
+import { registerPlanBaselineRoutes } from './routes/plan-baselines';
 import { registerPlanCapacityRoutes } from './routes/plan-capacity';
 import { registerPlanScenarioRoutes } from './routes/plan-scenarios';
 import { registerPlanScheduleRoutes } from './routes/plan-schedule';
+import { registerPlanStructureRoutes } from './routes/plan-structures';
 import { registerPlanViewRoutes } from './routes/plan-views';
 import { registerPlanRoutes } from './routes/plans';
 import { registerPriorityRoutes } from './routes/priorities';
@@ -612,6 +614,16 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     registerPlanScenarioRoutes(app, db, {
       catalogs: fieldCatalogs,
       authorizer,
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
+    // Baselines (ADR-122 stage 9): frozen copies of a plan's days, compared with the days now.
+    registerPlanBaselineRoutes(app, db, {
+      catalogs: fieldCatalogs,
+      ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
+    });
+    // The Grid (ADR-122 stage 10): saved structures and their rows, built for each viewer.
+    registerPlanStructureRoutes(app, db, {
+      catalogs: fieldCatalogs,
       ...(deps.queryTimeoutMs !== undefined ? { timeoutMs: deps.queryTimeoutMs } : {}),
     });
     // The auto-scheduler (ADR-122 stage 7): proposals as draft days in a scenario, nothing more.

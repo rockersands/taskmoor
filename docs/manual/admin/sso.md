@@ -1,8 +1,8 @@
 ---
 title: "Single sign-on"
 audience: admins
-sources: apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/server/src/routes/sso.ts, apps/server/src/routes/saml.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/sso/oidc.ts, apps/server/src/sso/saml.ts, apps/server/src/sso/saml-provider.ts, apps/server/src/sso/sign-in.ts, apps/server/src/audit/record.ts, apps/server/src/config.ts, packages/db/src/migrations/0010_identity_providers.ts, packages/db/src/migrations/0020_saml.ts, apps/web/src/sso/IdentityProvidersPage.tsx, apps/web/src/sso/ProviderForm.tsx, apps/web/src/session/SignInForm.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/sso/draft.ts, apps/web/src/trackpeople/InvitationPage.tsx, docs/adr/0119-google-sign-in.md, apps/web/src/sso/RedirectUriField.tsx, apps/web/src/sso/GroupMapField.tsx, apps/web/src/session/GoogleSignInButton.tsx, apps/web/src/session/GoogleMark.tsx, apps/web/src/styles/sso.css, docs/plan/decisions.csv, apps/web/src/shell/DangerAction.tsx
-accessed: 2026-11-14
+sources: apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/server/src/routes/sso.ts, apps/server/src/routes/saml.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/sso/oidc.ts, apps/server/src/sso/saml.ts, apps/server/src/sso/saml-provider.ts, apps/server/src/sso/sign-in.ts, apps/server/src/audit/record.ts, apps/server/src/config.ts, packages/db/src/migrations/0010_identity_providers.ts, packages/db/src/migrations/0020_saml.ts, apps/web/src/sso/IdentityProvidersPage.tsx, apps/web/src/sso/ProviderForm.tsx, apps/web/src/session/SignInForm.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/sso/draft.ts, apps/web/src/trackpeople/InvitationPage.tsx, docs/adr/0119-google-sign-in.md, apps/web/src/sso/RedirectUriField.tsx, apps/web/src/sso/GroupMapField.tsx, apps/web/src/session/GoogleSignInButton.tsx, apps/web/src/session/GoogleMark.tsx, apps/web/src/assets/google/google-g.svg, apps/web/src/fonts/OFL.txt, THIRD_PARTY_NOTICES, apps/web/src/styles/sso.css, docs/plan/decisions.csv, apps/web/src/shell/DangerAction.tsx, apps/web/src/people/PersonPage.tsx
+accessed: 2026-11-17
 attestation: own-words
 ---
 # Single sign-on
@@ -143,15 +143,22 @@ Then [invite people](invitations.md) by their Gmail address, and try it from a p
 
 A provider at Google's issuer gets Google's own sign-in button on the sign-in page, as Google's
 [sign-in branding guidelines](https://developers.google.com/identity/branding-guidelines) describe
-it: Google's four-colour "G" at the left and **Sign in with Google** in the person's language
+it: Google's current "G" at the left and **Sign in with Google** in the person's language
 (**Iniciar sesión con Google** in Spanish), whatever name you gave the provider. It follows the
 person's skin: Google's light button (white, with a grey edge) in the light skin, Google's dark
 button in the dark skin. It keeps Google's colours and shape rather than Taskmoor's, is 40 pixels
-high, and a finger's height on a touch screen. For a Gmail address it takes the place of the
-highlighted button under the email field. Where a Google provider has **Single sign-on required**
-(a Google Workspace domain, say), the form's one button, which the password field gives way to, is
-Google's button too, and pressing Enter in the email field leads there. Other providers keep
-Taskmoor's plain button.
+high, and a finger's height (44 pixels) on a touch screen. For a Gmail address it takes the place
+of the highlighted button under the email field. Where a Google provider has **Single sign-on
+required** (a Google Workspace domain, say), the form's one button, which the password field gives
+way to, is Google's button too, and pressing Enter in the email field leads there. Other providers
+keep Taskmoor's plain button.
+
+The "G" is Google's own, taken from Google's sign-in branding files, and the words are in Google
+Sans, the font the guidelines name. Both ship with Taskmoor and your server sends them: browsers
+never fetch anything from Google to draw the button, so it looks the same on a network with no
+internet access. Only pages that show the button load the font. Where both come from, and their
+licences, are in the `THIRD_PARTY_NOTICES` file of the source code. Because the button follows
+Google's guidelines, its looks should raise no questions when you ask Google to verify your app.
 
 What decides it is the issuer, not the name: the button appears for an OpenID Connect provider
 whose **Issuer URL** is `https://accounts.google.com`, and the public provider list marks it with
@@ -342,8 +349,10 @@ password field where single sign-on is enforced.
 An account marked break-glass may still sign in with its password in an enforced domain, so a
 provider outage cannot lock everyone out.
 
-- Mark an account with `PATCH /api/v1/users/:id` and `{"breakGlass": true}` (the People page
-  does not offer it yet). Give it a password with a password link.
+- Mark an account with **Mark as a break-glass account**, under **Sign-in** on its page (**Edit**
+  on its row under **People**; see [A person's page](people-and-groups.md#a-persons-page)), or
+  with `PATCH /api/v1/users/:id` and `{"breakGlass": true}`. Give it a password with a password
+  link.
 - The person signs in at the sign-in page address ending in `#/sign-in?method=password`.
 - Accounts a directory manages cannot be break-glass. Directory syncs and SCIM never
   deactivate a break-glass account.

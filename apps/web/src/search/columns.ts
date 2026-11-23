@@ -1,4 +1,5 @@
 import { parseWithDiagnostics, SYSTEM_FIELDS } from '@taskmoor/query';
+import { type NumberSettings, type NumberShow, numberShowOf } from '../fields/numberFormat';
 import type { SearchTicket } from './client';
 
 /**
@@ -44,6 +45,8 @@ export interface ColumnField {
   name: string;
   type: string;
   multiple?: boolean;
+  /** Its type settings: how a number shows (T-320). */
+  config?: NumberSettings;
 }
 
 export const customColumn = (id: number) => `cf[${id}]`;
@@ -111,7 +114,58 @@ const ORDER_COLUMNS: Record<string, string> = {
   due: 'dueDate',
   start: 'startDate',
   closed: 'closedAt',
+  targetRelease: 'targetReleases',
+  area: 'areas',
 };
+
+/**
+ * A column a list can be ordered by (T-330): the query language's name for it and the way it
+ * goes first. Times past (created, updated, closed) come newest first, times ahead (start, due)
+ * soonest first, priority and votes highest first; the key goes by ticket number within a track
+ * (ATT-9 before ATT-10, the order tickets were made in), and names, types, statuses and releases
+ * go from the start of their order (A to Z, the workflow's order, the track's release order).
+ */
+export interface ColumnOrder {
+  field: string;
+  natural: TableSort['direction'];
+}
+
+const ORDERABLE: Record<string, ColumnOrder> = {
+  key: { field: 'key', natural: 'ascending' },
+  summary: { field: 'summary', natural: 'ascending' },
+  ticketType: { field: 'type', natural: 'ascending' },
+  status: { field: 'status', natural: 'ascending' },
+  assignee: { field: 'assignee', natural: 'ascending' },
+  priority: { field: 'priority', natural: 'descending' },
+  requester: { field: 'requester', natural: 'ascending' },
+  creator: { field: 'creator', natural: 'ascending' },
+  startDate: { field: 'start', natural: 'ascending' },
+  dueDate: { field: 'due', natural: 'ascending' },
+  createdAt: { field: 'created', natural: 'descending' },
+  updatedAt: { field: 'updated', natural: 'descending' },
+  closedAt: { field: 'closed', natural: 'descending' },
+  targetReleases: { field: 'targetRelease', natural: 'ascending' },
+  areas: { field: 'area', natural: 'ascending' },
+  voteCount: { field: 'votes', natural: 'descending' },
+};
+
+/**
+ * How a column orders a list, or null when the query language cannot order by it (labels, the
+ * track, the parent). A custom field's column orders by the field itself, from its start.
+ */
+export function orderOfColumn(column: string): ColumnOrder | null {
+  if (customFieldId(column) !== null) return { field: column, natural: 'ascending' };
+  return ORDERABLE[column] ?? null;
+}
+
+/** The column a list's order names by its field (`key`, `due`, `cf[40]`), or null. */
+export function columnOfOrder(field: string): string | null {
+  if (customFieldId(field) !== null) return field;
+  for (const [column, order] of Object.entries(ORDERABLE)) {
+    if (order.field === field) return column;
+  }
+  return null;
+}
 
 /**
  * The order a query's results come in (QRY-014): its first `ORDER BY` key, or newest created
@@ -194,6 +248,19 @@ export function isDateTimeColumn(column: string, fields: readonly ColumnField[])
   if (DATE_TIME_COLUMNS.has(column)) return true;
   const id = customFieldId(column);
   return id !== null && fields.some((f) => f.id === id && f.type === 'datetime');
+}
+
+/**
+ * How a column's numbers show (T-320): a number field's format, decimals and currency, or a
+ * formula's number, currency or percentage output; null for a column whose numbers read plainly.
+ */
+export function numberShowOfColumn(
+  column: string,
+  fields: readonly ColumnField[],
+): NumberShow | null {
+  const id = customFieldId(column);
+  const field = id === null ? undefined : fields.find((f) => f.id === id);
+  return field ? numberShowOf(field.type, field.config) : null;
 }
 
 /** The value a cell holds, as the ticket view in search returns it. */

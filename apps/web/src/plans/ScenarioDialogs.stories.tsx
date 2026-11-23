@@ -111,6 +111,7 @@ export const MakeMainAsks: Story = {
 
 /** On a touch screen the dialog's field and buttons take a finger (ADR-033). */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const body = canvasElement.ownerDocument.body;

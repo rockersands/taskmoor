@@ -38,6 +38,19 @@ export const NewTemplate: Story = {};
 
 export const Editing: Story = { args: { template: RELEASE_TEMPLATE } };
 
+/** An assignee the reader may not see named, or who is gone: by number, with Remove (T-283). */
+export const HiddenAssignee: Story = {
+  args: { template: { ...RELEASE_TEMPLATE, assignee: null } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const assignee = canvas.getByRole('list', { name: 'Assignee' });
+    await expect(within(assignee).getByText('Person 21, hidden from you or gone')).toBeVisible();
+    await expect(
+      canvas.getByRole('button', { name: 'Remove Person 21, hidden from you or gone as assignee' }),
+    ).toBeVisible();
+  },
+};
+
 /** Custom release and area values by name, an archived one marked, each with Remove (T-291). */
 export const ReleaseAndAreaValues: Story = {
   args: { template: HOTFIX_TEMPLATE, client: fakeTemplateClient([HOTFIX_TEMPLATE]) },
@@ -126,6 +139,7 @@ export const RefusedThenEdited: Story = {
 
 /** A finger reaches each value's Remove and the lists to add from (ADR-033, T-299). */
 export const ValuesOnATouchScreen: Story = {
+  tags: ['touch'],
   args: { template: HOTFIX_TEMPLATE, client: fakeTemplateClient([HOTFIX_TEMPLATE]) },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
@@ -229,6 +243,7 @@ export const AddingOnAPhone: Story = {
 
 /** A finger reaches the search fields and each person, group or team found (ADR-033, T-350). */
 export const FindingOnATouchScreen: Story = {
+  tags: ['touch'],
   args: { template: PEOPLE_TEMPLATE, client: fakeTemplateClient([PEOPLE_TEMPLATE]) },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {

@@ -6,6 +6,7 @@ import type { CapacityUnit } from './client';
 import type {
   ScheduleArgs,
   ScheduleEntry,
+  ScheduleOverLeft,
   ScheduleReason,
   ScheduleResult,
   ScheduleWarning,
@@ -70,6 +71,10 @@ const REASONS: Record<ScheduleReason, MessageId> = {
   blocker_undated: 'schedule.reason.blockerUndated',
   blocker_not_placed: 'schedule.reason.blockerNotPlaced',
   no_room: 'schedule.reason.noRoom',
+  moved_off_over: 'schedule.evenOut.reason.movedOffOver',
+  pushed_by_move: 'schedule.evenOut.reason.pushedByMove',
+  still_over: 'schedule.evenOut.reason.stillOver',
+  would_make_late: 'schedule.evenOut.reason.wouldMakeLate',
 };
 /** Each warning's sentence, after "Note:". */
 const WARNINGS: Record<ScheduleWarningKind, MessageId> = {
@@ -86,7 +91,10 @@ export const SCHEDULE_WARNING_WORDS = WARNINGS;
  * The words of an auto-schedule run (ADR-122 stage 7): one sentence per reason and warning, for
  * example "Placed in 1 Dec to 14 Dec: Atlas had 8 of 20 points free after 4 higher-ranked
  * tickets." or "Not placed: waits on a ticket this plan does not show you.", and a warning after
- * "Note:", in words, never by colour alone.
+ * "Note:", in words, never by colour alone. Evening out's reasons (ADR-122 stage 9) read "Moved 2
+ * weeks later, from Dec 1–Dec 14 to Dec 15–Dec 28: Atlas was 6 points over." and "Not moved:
+ * moving it would make kept SPA-4 late.", and a cell left over "Atlas is 6 points over in Feb
+ * 1–Feb 14: no later period of the run has room."
  */
 export function useScheduleWords(unit: CapacityUnit, names: Partial<ScheduleLookup> = {}) {
   const t = useT();
@@ -124,6 +132,16 @@ export function useScheduleWords(unit: CapacityUnit, names: Partial<ScheduleLook
     }
     return t('schedule.name.someone');
   };
+  /** "2 weeks later" for whole weeks, else "3 days later". */
+  const later = (value: unknown) => {
+    const days = num(value);
+    return days > 0 && days % 7 === 0
+      ? t('schedule.evenOut.weeksLater', { count: days / 7 })
+      : t('schedule.evenOut.daysLater', { count: days });
+  };
+  /** A period as its first and last day. */
+  const span = (start: unknown, end: unknown) =>
+    t('schedule.evenOut.span', { start: day(start), end: day(end) });
   /** Keys as a list, "SPA-3 and SPA-4", with how many more it does not name. */
   const tickets = (ids: unknown, total: number) => {
     const list = Array.isArray(ids) ? ids : [];
@@ -194,6 +212,36 @@ export function useScheduleWords(unit: CapacityUnit, names: Partial<ScheduleLook
             : 'schedule.reason.noRoomAnyone',
           { subject: subject(args), until: day(args.until) },
         );
+      case 'moved_off_over':
+        return t('schedule.evenOut.reason.movedOffOver', {
+          later: later(args.days),
+          from: span(args.fromPeriod, args.fromPeriodEnd),
+          to: span(args.toPeriod, args.toPeriodEnd),
+          subject: subject(args),
+          over: amount(args.over),
+        });
+      case 'pushed_by_move':
+        return t('schedule.evenOut.reason.pushedByMove', {
+          later: later(args.days),
+          blocker: ticket(args.blockerId),
+        });
+      case 'still_over':
+        return t('schedule.evenOut.reason.stillOver', {
+          subject: subject(args),
+          until: day(args.until),
+        });
+      case 'would_make_late':
+        return args.why === 'past_end'
+          ? t('schedule.evenOut.reason.wouldPassEnd', {
+              ticket: ticket(args.ticketId),
+              until: day(args.until),
+            })
+          : t(
+              args.why === 'kept'
+                ? 'schedule.evenOut.reason.wouldMakeKeptLate'
+                : 'schedule.evenOut.reason.wouldMakeLate',
+              { ticket: ticket(args.ticketId) },
+            );
       default: {
         // A reason this page does not know yet (a newer server) still says something.
         const id = REASONS[entry.reason] as MessageId | undefined;
@@ -231,9 +279,20 @@ export function useScheduleWords(unit: CapacityUnit, names: Partial<ScheduleLook
     }
   };
 
+  /** A cell evening out left over capacity, and why. */
+  const overLeft = (cell: ScheduleOverLeft) =>
+    t(cell.onlyFixed ? 'schedule.evenOut.overLeftOnlyFixed' : 'schedule.evenOut.overLeftNoRoom', {
+      subject: subject({
+        ...(cell.teamId === undefined ? {} : { teamId: cell.teamId }),
+        ...(cell.userId === undefined ? {} : { userId: cell.userId }),
+      }),
+      over: amount(cell.over),
+      span: span(cell.periodStart, cell.periodEnd),
+    });
+
   /** The reason and its notes, as one line: the change list's "why". */
   const why = (entry: Pick<ScheduleEntry, 'key' | 'reason' | 'args' | 'warnings'>) =>
     [reason(entry), ...entry.warnings.map(warning)].join(' ');
 
-  return { reason, warning, why, day };
+  return { reason, warning, why, day, overLeft };
 }

@@ -54,6 +54,18 @@
   justify-self: start;
 }
 
+/*
+ * A label is one word of up to 255 characters (T-322): each line and button of the Labels page
+ * that names one breaks inside the word rather than push a phone's page sideways.
+ */
+.labels-page :is(.page-note, .form-status, .form-error, .empty-state-title, .button-danger) {
+  overflow-wrap: anywhere;
+}
+
+.labels-page .button-danger {
+  max-width: 100%;
+}
+
 .people-filters {
   display: flex;
   flex-wrap: wrap;
@@ -132,6 +144,19 @@
   overflow-wrap: anywhere;
 }
 
+/* A phrase that does not break inside, such as 'last signed in Nov 14, 2026' (S3-AC-10). */
+.people-meta-whole {
+  white-space: nowrap;
+}
+
+/* A person's roles (T-331): a line of badges under the address, wrapping on a phone. */
+.people-roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+}
+
 .people-actions {
   display: flex;
   flex-wrap: wrap;
@@ -175,12 +200,72 @@
   max-width: 100%;
 }
 
-.people-confirm {
+/*
+ * A person's page (T-331): cards one under another, each a part of what can be done for them. A
+ * role is its badge with where it comes from under it; a part of a card is a small heading, a
+ * note and its button.
+ */
+.person-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  margin: 0;
+}
+
+.person-roles {
+  gap: var(--space-3);
+}
+
+.person-roles > li.person-role {
+  display: grid;
+  justify-content: start;
+  gap: var(--space-1);
+}
+
+.person-sources {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding-inline-start: var(--space-4);
+  overflow-wrap: anywhere;
+}
+
+.person-page .people-card a {
+  color: var(--color-accent);
+}
+
+.person-action {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.person-action > .people-link {
+  justify-self: stretch;
+}
+
+.person-subtitle {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-300);
   font-weight: var(--font-weight-strong);
 }
 
 @media (pointer: coarse) {
   .people-action {
+    min-height: var(--hit-target-touch);
+  }
+
+  /* Edit is one short word: wide enough for a finger too (T-331). */
+  .people-edit {
+    min-width: var(--hit-target-touch);
+  }
+
+  /* The links that say where a role comes from, each on a line of its own. */
+  :is(.person-sources, .person-where) a {
+    display: inline-flex;
+    align-items: center;
     min-height: var(--hit-target-touch);
   }
 }

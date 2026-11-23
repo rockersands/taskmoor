@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { ADMIN, MEMBER, TRACK_ADMIN } from '../admin/fixtures';
@@ -124,6 +124,215 @@ describe('configuration set administration (M1-053)', () => {
     ).toHaveAttribute('href', '#/admin/layouts');
   });
 
+  it('[CORE-005] orders a set’s types, preselects one and makes the set the default for a kind of track', async () => {
+    const user = userEvent.setup();
+    const client = renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Manage Software types' }));
+    const panel = screen.getByRole('form', { name: 'Settings of Software types' });
+    const order = within(panel).getByRole('list', { name: 'Order in the set' });
+    expect(order).toHaveAccessibleDescription('The create form offers the types in this order.');
+    const names = () =>
+      within(order)
+        .getAllByRole('listitem')
+        .map((item) => item.firstChild?.textContent);
+    expect(names()).toEqual(['Bug', 'Task', 'Story']);
+    expect(within(panel).getByRole('button', { name: 'Move Bug up' })).toBeDisabled();
+    await user.click(within(panel).getByRole('button', { name: 'Move Story up' }));
+    expect(names()).toEqual(['Bug', 'Story', 'Task']);
+    // The keyboard stays on the type it moved.
+    expect(within(panel).getByRole('button', { name: 'Move Story up' })).toHaveFocus();
+    await user.click(within(panel).getByRole('button', { name: 'Move Story up' }));
+    expect(names()).toEqual(['Story', 'Bug', 'Task']);
+    // At the top, Up is not offered: the keyboard goes to Down.
+    expect(within(panel).getByRole('button', { name: 'Move Story down' })).toHaveFocus();
+
+    const preselected = within(panel).getByLabelText('Preselected type');
+    expect(preselected).toHaveDisplayValue('Task');
+    await user.selectOptions(preselected, 'Story');
+    // The set is the default for software tracks, which another set must take over to change.
+    const kinds = within(panel).getByRole('group', {
+      name: 'Default set for new tracks of these kinds',
+    });
+    expect(within(kinds).getByLabelText('Software tracks')).toBeChecked();
+    expect(within(kinds).getByLabelText('Software tracks')).toBeDisabled();
+    expect(kinds).toHaveAccessibleDescription(
+      'Every kind of track has a default set. To give one up, tick it on another set instead.',
+    );
+    await user.click(within(kinds).getByLabelText('Business tracks'));
+    await user.click(within(panel).getByRole('button', { name: 'Save the set' }));
+    expect(await screen.findByText('Software types was saved.')).toBeInTheDocument();
+    expect(await screen.findByText('Default for software and business tracks')).toBeVisible();
+    expect(client.calls.map((c) => [c.action, ...c.args])).toEqual([
+      [
+        'updateTypeSet',
+        1,
+        { ticketTypeIds: [7, 5, 6], defaultTypeId: 7, defaultFor: ['software', 'business'] },
+      ],
+    ]);
+  });
+
+  it('[CORE-005] adds a set with its preselected type and the kind of track it is the default for', async () => {
+    const user = userEvent.setup();
+    const client = renderPage();
+    await user.click(await screen.findByRole('button', { name: 'New type set' }));
+    const form = screen.getByRole('form', { name: 'Add a type set' });
+    await user.type(within(form).getByLabelText('Type set name'), 'Support types');
+    await user.click(within(form).getByLabelText('Task'));
+    await user.click(within(form).getByLabelText('Bug'));
+    await user.selectOptions(within(form).getByLabelText('Preselected type'), 'Bug');
+    // Unticking the preselected type leaves none preselected: the first in the order then.
+    await user.click(within(form).getByLabelText('Bug'));
+    expect(within(form).getByLabelText('Preselected type')).toHaveDisplayValue(
+      'None: the first type in the order',
+    );
+    await user.click(within(form).getByLabelText('Bug'));
+    await user.selectOptions(within(form).getByLabelText('Preselected type'), 'Bug');
+    await user.click(within(form).getByLabelText('Service tracks'));
+    await user.click(within(form).getByRole('button', { name: 'Add a type set' }));
+    expect(await screen.findByText('Support types was added.')).toBeInTheDocument();
+    expect(await screen.findByText('Default for service tracks')).toBeVisible();
+    expect(client.calls.map((c) => [c.action, ...c.args])).toEqual([
+      [
+        'createTypeSet',
+        { name: 'Support types', ticketTypeIds: [6, 5], defaultTypeId: 5, defaultFor: ['service'] },
+      ],
+    ]);
+  });
+
+  it('[CORE-005] (2) asks where the tickets of a dropped type go, and maps them to a type of their level', async () => {
+    const user = userEvent.setup();
+    const client = renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Manage Software types' }));
+    const panel = screen.getByRole('form', { name: 'Settings of Software types' });
+    await user.click(within(panel).getByLabelText('Bug'));
+    await user.click(within(panel).getByRole('button', { name: 'Save the set' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Tickets have a type the set would drop: choose the type they take below, then save again.',
+    );
+    const mapping = within(panel).getByRole('group', { name: 'Tickets of the types you drop' });
+    expect(mapping).toHaveAccessibleDescription(
+      '7 tickets in the tracks that use this set have a type the set would drop. Choose the type they take, at the same level, then save again.',
+    );
+    const target = within(mapping).getByLabelText('Tickets of Bug become');
+    // The question takes the keyboard; the choices are the kept types of Bug's level.
+    expect(target).toHaveFocus();
+    expect(
+      within(target)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['Choose a type', 'Task', 'Story']);
+    await user.selectOptions(target, 'Task');
+    await user.click(within(panel).getByRole('button', { name: 'Save the set' }));
+    expect(
+      await screen.findByText('Software types was saved; 7 tickets took another type.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(
+      within(panel).queryByRole('group', { name: 'Tickets of the types you drop' }),
+    ).toBeNull();
+    expect(client.calls.map((c) => [c.action, ...c.args])).toEqual([
+      ['updateTypeSet', 1, { ticketTypeIds: [6, 7] }],
+      ['updateTypeSet', 1, { ticketTypeIds: [6, 7], ticketTypeMapping: { '5': 6 } }],
+    ]);
+  });
+
+  it('[CORE-005] (2) keeps a dropped type mapped before while another is mapped, and counts them all', async () => {
+    const user = userEvent.setup();
+    const client = renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Manage Software types' }));
+    const panel = screen.getByRole('form', { name: 'Settings of Software types' });
+    const save = () => user.click(within(panel).getByRole('button', { name: 'Save the set' }));
+    const mapping = () =>
+      within(panel).getByRole('group', { name: 'Tickets of the types you drop' });
+    await user.click(within(panel).getByLabelText('Bug'));
+    await user.click(within(panel).getByLabelText('Task'));
+    await save();
+    await screen.findByRole('alert');
+    expect(mapping()).toHaveAccessibleDescription(/^9 tickets in the tracks/);
+    // Only Bug's tickets are given a type: the server names Task alone the second time.
+    await user.selectOptions(within(mapping()).getByLabelText('Tickets of Bug become'), 'Story');
+    await save();
+    await waitFor(() => expect(client.calls).toHaveLength(2));
+    expect(within(mapping()).getByLabelText('Tickets of Bug become')).toHaveDisplayValue('Story');
+    expect(mapping()).toHaveAccessibleDescription(/^9 tickets in the tracks/);
+    await user.selectOptions(within(mapping()).getByLabelText('Tickets of Task become'), 'Story');
+    await save();
+    expect(
+      await screen.findByText('Software types was saved; 9 tickets took another type.'),
+    ).toBeInTheDocument();
+    expect(client.calls.map((c) => c.args[1])).toEqual([
+      // Task was the set's default type: with it dropped, the set has none.
+      { ticketTypeIds: [7], defaultTypeId: null },
+      { ticketTypeIds: [7], defaultTypeId: null, ticketTypeMapping: { '5': 7 } },
+      { ticketTypeIds: [7], defaultTypeId: null, ticketTypeMapping: { '5': 7, '6': 7 } },
+    ]);
+  });
+
+  it('[CORE-005] (2) a type dropped after the question appears joins it, keeping the earlier choice', async () => {
+    const user = userEvent.setup();
+    const client = renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Manage Software types' }));
+    const panel = screen.getByRole('form', { name: 'Settings of Software types' });
+    const save = () => user.click(within(panel).getByRole('button', { name: 'Save the set' }));
+    const mapping = () =>
+      within(panel).getByRole('group', { name: 'Tickets of the types you drop' });
+    await user.click(within(panel).getByLabelText('Bug'));
+    await save();
+    await user.selectOptions(await within(panel).findByLabelText('Tickets of Bug become'), 'Story');
+    await user.click(within(panel).getByLabelText('Task'));
+    await save();
+    await waitFor(() => expect(client.calls).toHaveLength(2));
+    expect(within(mapping()).getByLabelText('Tickets of Bug become')).toHaveDisplayValue('Story');
+    expect(mapping()).toHaveAccessibleDescription(/^9 tickets in the tracks/);
+    await user.selectOptions(within(mapping()).getByLabelText('Tickets of Task become'), 'Story');
+    await save();
+    expect(
+      await screen.findByText('Software types was saved; 9 tickets took another type.'),
+    ).toBeInTheDocument();
+    expect(client.calls.at(-1)?.args[1]).toEqual({
+      ticketTypeIds: [7],
+      defaultTypeId: null,
+      ticketTypeMapping: { '5': 7, '6': 7 },
+    });
+  });
+
+  it('[CORE-005] (2) says when the set keeps no type at a dropped type’s level, and forgets a type ticked again', async () => {
+    const user = userEvent.setup();
+    const client = fakeSetsClient();
+    const read = client.ticketTypes;
+    // Task and Story sit at Outcome here: nothing the set keeps shares Bug's level.
+    client.ticketTypes = async (trackId) =>
+      (await read(trackId)).map((type) =>
+        type.id === 5 ? type : { ...type, level: { id: 3, name: 'Outcome' } },
+      );
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={ADMIN}>
+          <main>
+            <ConfigurationSetsPage client={client} />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    await user.click(await screen.findByRole('button', { name: 'Manage Software types' }));
+    const panel = screen.getByRole('form', { name: 'Settings of Software types' });
+    await user.click(within(panel).getByLabelText('Bug'));
+    await user.click(within(panel).getByRole('button', { name: 'Save the set' }));
+    expect(
+      await within(panel).findByText(
+        'The set keeps no type at the Standard level, so tickets of Bug have nowhere to go: keep Bug, or add a type of that level.',
+      ),
+    ).toBeVisible();
+    // Bug kept after all: no question, and nothing about where its tickets go.
+    await user.click(within(panel).getByLabelText('Bug'));
+    expect(
+      within(panel).queryByRole('group', { name: 'Tickets of the types you drop' }),
+    ).toBeNull();
+    await user.click(within(panel).getByRole('button', { name: 'Save the set' }));
+    expect(await screen.findByText('Software types was saved.')).toBeInTheDocument();
+    expect(client.calls.at(-1)?.args).toEqual([1, { ticketTypeIds: [6, 7, 5] }]);
+  });
+
   it('fits a small phone', async () => {
     setViewportWidth(375);
     renderPage();
@@ -165,8 +374,12 @@ describe('a local-mode track’s own configuration sets, for whoever runs the tr
     const client = renderOwn(4);
     expect(await screen.findByText('OPS · Operations')).toBeVisible();
     await user.click(await screen.findByRole('button', { name: 'Manage Operations types' }));
-    // Neither the shared type sets nor another track's.
-    expect(manageButtons()).toEqual(['Manage Operations types', 'Manage Ops rules']);
+    // Neither the shared type sets nor another track's; its own ticket type comes first (T-322).
+    expect(manageButtons()).toEqual([
+      'Manage ticket type Runbook',
+      'Manage Operations types',
+      'Manage Ops rules',
+    ]);
     expect(screen.queryByRole('form', { name: 'Add a type set' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'New type set' })).toBeNull();
     expect(
@@ -181,6 +394,12 @@ describe('a local-mode track’s own configuration sets, for whoever runs the tr
     await user.click(within(panel).getByRole('button', { name: 'Save the set' }));
     expect(await screen.findByText('Operations types was saved.')).toBeInTheDocument();
     expect(within(panel).queryByRole('button', { name: /^Delete set/ })).toBeNull();
+    // Its order and preselected type are its own; a track's own set is never a default.
+    expect(within(panel).getByRole('list', { name: 'Order in the set' })).toBeVisible();
+    expect(within(panel).getByLabelText('Preselected type')).toHaveDisplayValue('Bug');
+    expect(
+      within(panel).queryByRole('group', { name: 'Default set for new tracks of these kinds' }),
+    ).toBeNull();
     expect(client.calls.map((c) => [c.action, ...c.args])).toEqual([
       ['updateTypeSet', 30, { ticketTypeIds: [5, 9, 6] }],
     ]);
@@ -367,7 +586,193 @@ describe('a local-mode track’s own configuration sets, for whoever runs the tr
     renderOwn(4, { locale: 'en-XA' });
     const main = screen.getByRole('main');
     await within(main).findAllByRole('listitem');
-    const data = new Set(['Operations types', 'Ops rules']);
+    const data = new Set([
+      'Operations types',
+      'Ops rules',
+      'Runbook',
+      'What to do when an alarm goes off.',
+    ]);
     expect(untranslated(visibleTexts(main)).filter((t) => !data.has(t))).toEqual([]);
+  });
+});
+
+describe('a local-mode track’s own ticket types, on its own configuration sets (T-322)', () => {
+  function renderOwn(
+    options: { session?: Session; locale?: Locale; trackId?: number | null } = {},
+  ) {
+    const client = fakeSetsClient();
+    render(
+      <I18nProvider locale={options.locale ?? 'en'}>
+        <SessionProvider session={options.session ?? TRACK_ADMIN}>
+          <main>
+            <ConfigurationSetsPage
+              client={client}
+              trackId={options.trackId === undefined ? 4 : options.trackId}
+            />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    return client;
+  }
+
+  it('[CORE-005] [CORE-003] adds a type the track owns, offers it in its type set, changes it and deletes it', async () => {
+    const user = userEvent.setup();
+    const client = renderOwn();
+    const own = await screen.findByRole('region', { name: 'Its own ticket types' });
+    // Its own type says whether its type set offers it.
+    const listed = within(own).getByRole('list', { name: 'Ticket types of OPS' });
+    expect(within(listed).getByText('Standard level · in its type set')).toBeVisible();
+    expect(within(listed).getByText('What to do when an alarm goes off.')).toBeVisible();
+
+    const opener = within(own).getByRole('button', { name: 'New ticket type' });
+    await user.click(opener);
+    const form = within(own).getByRole('form', { name: 'Add a ticket type' });
+    await user.type(within(form).getByLabelText('Ticket type name'), 'Alarm');
+    await user.type(within(form).getByLabelText('Description'), 'Something paged us.');
+    expect(within(form).getByLabelText('Level')).toHaveDisplayValue('Standard');
+    await user.click(within(form).getByLabelText('Bug'));
+    await user.click(within(form).getByRole('button', { name: 'Add a ticket type' }));
+    expect(
+      await screen.findByText('Alarm was added. Tick it in the type set to offer it.'),
+    ).toBeInTheDocument();
+    expect(opener).toHaveFocus();
+    const alarm = (
+      await within(own).findByRole('button', { name: 'Manage ticket type Alarm' })
+    ).closest('li') as HTMLElement;
+    expect(within(alarm).getByText('Standard level · not in its type set yet')).toBeVisible();
+
+    // The type set offers it once it is ticked there.
+    await user.click(screen.getByRole('button', { name: 'Manage Operations types' }));
+    const set = screen.getByRole('form', { name: 'Settings of Operations types' });
+    await user.click(within(set).getByLabelText('Alarm'));
+    await user.click(within(set).getByRole('button', { name: 'Save the set' }));
+    expect(await screen.findByText('Operations types was saved.')).toBeInTheDocument();
+    expect(await within(alarm).findByText('Standard level · in its type set')).toBeVisible();
+
+    // Renamed and put at another level: the keyboard stays on Save.
+    await user.click(within(alarm).getByRole('button', { name: 'Manage ticket type Alarm' }));
+    const panel = within(alarm).getByRole('form', { name: 'Settings of Alarm' });
+    const name = within(panel).getByLabelText('Ticket type name');
+    await user.clear(name);
+    await user.type(name, 'Page');
+    await user.selectOptions(within(panel).getByLabelText('Level'), 'Outcome');
+    const save = within(panel).getByRole('button', { name: 'Save the type' });
+    await user.click(save);
+    expect(await screen.findByText('Page was saved.')).toBeInTheDocument();
+    expect(await within(alarm).findByText('Outcome level · in its type set')).toBeVisible();
+    expect(save).toHaveFocus();
+
+    // Deleting it is refused while the type set holds it, then done once it is unticked.
+    await user.click(within(panel).getByRole('button', { name: 'Delete ticket type Page' }));
+    const question = within(panel).getByRole('group', {
+      name: 'Delete Page? Nothing can use it afterwards, and this cannot be undone.',
+    });
+    await user.click(within(question).getByRole('button', { name: 'Delete ticket type Page' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Page is in Operations types: untick it there and save the set first.',
+    );
+    await user.click(within(question).getByRole('button', { name: 'Cancel' }));
+    await user.click(within(set).getByLabelText('Page'));
+    await user.click(within(set).getByRole('button', { name: 'Save the set' }));
+    expect(await screen.findByText('Operations types was saved.')).toBeInTheDocument();
+    await user.click(within(panel).getByRole('button', { name: 'Delete ticket type Page' }));
+    await user.click(
+      within(within(panel).getByRole('group', { name: /^Delete Page\?/ })).getByRole('button', {
+        name: 'Delete ticket type Page',
+      }),
+    );
+    expect(await screen.findByText('Page was deleted.')).toBeInTheDocument();
+    expect(within(own).getByRole('heading', { name: 'Its own ticket types' })).toHaveFocus();
+    await waitFor(() =>
+      expect(within(own).queryByRole('button', { name: 'Manage ticket type Page' })).toBeNull(),
+    );
+
+    const made = client.calls.filter((c) => c.action !== 'updateTypeSet');
+    expect(made.map((c) => [c.action, ...c.args])).toEqual([
+      [
+        'createType',
+        {
+          name: 'Alarm',
+          levelId: 2,
+          trackId: 4,
+          description: 'Something paged us.',
+          icon: 'bug',
+        },
+      ],
+      ['updateType', 101, { name: 'Page', levelId: 3 }],
+      ['deleteType', 101],
+      ['deleteType', 101],
+    ]);
+  });
+
+  it('[CORE-005] Save with nothing changed says the type was saved, as on Ticket types', async () => {
+    const user = userEvent.setup();
+    const client = renderOwn();
+    const own = await screen.findByRole('region', { name: 'Its own ticket types' });
+    await user.click(within(own).getByRole('button', { name: 'Manage ticket type Runbook' }));
+    const panel = within(own).getByRole('form', { name: 'Settings of Runbook' });
+    await user.click(within(panel).getByRole('button', { name: 'Save the type' }));
+    expect(await screen.findByText('Runbook was saved.')).toBeInTheDocument();
+    expect(client.calls.at(-1)).toEqual({ action: 'updateType', args: [9, {}] });
+  });
+
+  it('[CORE-005] (2) refuses to delete a type its tickets have, saying how many', async () => {
+    const user = userEvent.setup();
+    renderOwn();
+    // Runbook leaves the type set first; its three tickets go to Bug, which the set keeps.
+    await user.click(await screen.findByRole('button', { name: 'Manage Operations types' }));
+    const set = screen.getByRole('form', { name: 'Settings of Operations types' });
+    await user.click(within(set).getByLabelText('Runbook'));
+    await user.click(within(set).getByRole('button', { name: 'Save the set' }));
+    await user.selectOptions(await screen.findByLabelText('Tickets of Runbook become'), 'Bug');
+    await user.click(within(set).getByRole('button', { name: 'Save the set' }));
+    expect(await screen.findByText(/^Operations types was saved/)).toBeInTheDocument();
+    const own = screen.getByRole('region', { name: 'Its own ticket types' });
+    expect(await within(own).findByText('Standard level · not in its type set yet')).toBeVisible();
+    await user.click(within(own).getByRole('button', { name: 'Manage ticket type Runbook' }));
+    await user.click(within(own).getByRole('button', { name: 'Delete ticket type Runbook' }));
+    await user.click(
+      within(within(own).getByRole('group', { name: /^Delete Runbook\?/ })).getByRole('button', {
+        name: 'Delete ticket type Runbook',
+      }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '3 tickets have this type, the trash included: give them another type first.',
+    );
+  });
+
+  it('[CORE-005] a name the track already uses is refused in words', async () => {
+    const user = userEvent.setup();
+    renderOwn();
+    const own = await screen.findByRole('region', { name: 'Its own ticket types' });
+    await user.click(within(own).getByRole('button', { name: 'New ticket type' }));
+    const form = within(own).getByRole('form', { name: 'Add a ticket type' });
+    await user.type(within(form).getByLabelText('Ticket type name'), 'runbook');
+    await user.click(within(form).getByRole('button', { name: 'Add a ticket type' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'There is a ticket type with that name already.',
+    );
+    // The form stays, with what was typed.
+    expect(within(form).getByLabelText('Ticket type name')).toHaveValue('runbook');
+  });
+
+  it('[CORE-005] says when the track has no type of its own yet; the shared page has no such section', async () => {
+    // An administrator on LAB's own page: LAB owns no ticket type.
+    renderOwn({ session: ADMIN, trackId: 6 });
+    expect(await screen.findByText('LAB has no ticket type of its own yet.')).toBeVisible();
+    cleanup();
+    renderOwn({ session: ADMIN, trackId: null });
+    await screen.findByRole('region', { name: 'Type sets' });
+    expect(screen.queryByRole('region', { name: 'Its own ticket types' })).toBeNull();
+  });
+
+  it('fits a small phone, in Spanish too', async () => {
+    const user = userEvent.setup();
+    setViewportWidth(375);
+    renderOwn({ locale: 'es' });
+    const own = await screen.findByRole('region', { name: 'Sus tipos de ticket propios' });
+    await user.click(within(own).getByRole('button', { name: 'Nuevo tipo de ticket' }));
+    expect(within(own).getByRole('form', { name: 'Añadir un tipo de ticket' })).toBeVisible();
   });
 });

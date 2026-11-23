@@ -80,13 +80,20 @@ test('[CORE-001] the administrator adds a track, gives a role, archives and rest
   await page.getByRole('button', { name: 'Remove Ada Attach as Viewers' }).click();
   await expect(page.getByText('Ada Attach is no longer Viewers.')).toBeVisible();
 
+  // Archiving locks everyone out of changing it: it asks first (D13, T-267), focus on Cancel.
   await page.getByRole('button', { name: `Archive track ${key}` }).click();
-  await page.getByRole('button', { name: 'Yes' }).click();
+  const archiving = page.getByRole('group', {
+    name: `Nobody can change the tickets of ${key} until it is restored, and search leaves them out. They stay readable.`,
+  });
+  await expect(archiving.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await archiving.getByRole('button', { name: `Archive track ${key}` }).click();
   await expect(page.getByText(`Track ${key} was archived.`)).toBeVisible();
   const manage = page.getByRole('button', { name: `Manage track ${key}` });
   if ((await manage.getAttribute('aria-expanded')) !== 'true') await manage.click();
+  // Restoring loses nothing: no question.
   await page.getByRole('button', { name: `Restore track ${key}` }).click();
-  await page.getByRole('button', { name: 'Yes' }).click();
   await expect(page.getByText(`Track ${key} was restored.`)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
@@ -175,8 +182,11 @@ test('[CORE-009] the administrator adds a choice list, keeps its options and del
   await page.getByRole('button', { name: 'Stop offering South' }).click();
   await expect(page.getByText('South is no longer offered.')).toBeVisible();
   expect(await seriousAxeViolations(page)).toEqual([]);
+  // A plain option comes back by typing its name: it goes at once (D13, T-267), and the keyboard
+  // stays on the page.
   await page.getByRole('button', { name: 'Delete North east' }).click();
   await expect(page.getByText('North east was deleted.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Options in Default' })).toBeFocused();
 
   await page.getByRole('button', { name: `Delete field ${field}` }).click();
   // Asks first, saying what will happen (D13); the answer names what goes.
@@ -232,7 +242,12 @@ test('[IAM-010] the administrator adds a role and a policy, grants, and deletes 
   );
   await askRole.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByRole('button', { name: `Delete role ${role}` })).toBeFocused();
+  // A grant reaches every track of the policy: removing it asks first (D13, T-267).
   await page.getByRole('button', { name: `Remove Role ${role} from Edit tickets` }).click();
+  await page
+    .getByRole('group', { name: /loses Edit tickets in/ })
+    .getByRole('button', { name: `Remove Role ${role} from Edit tickets` })
+    .click();
   await expect(page.getByText(`Role ${role} no longer has Edit tickets.`)).toBeVisible();
   await page.getByRole('button', { name: `Delete policy ${policy}` }).click();
   await page
@@ -265,7 +280,12 @@ test('[IAM-011] the administrator gives a person a global permission and takes i
   await give.getByRole('button', { name: 'Give' }).click();
   await expect(page.getByText(`${permission} was given to Ada Attach.`)).toBeVisible();
   expect(await seriousAxeViolations(page)).toEqual([]);
+  // A global grant reaches the whole site: removing it asks first (D13, T-267).
   await page.getByRole('button', { name: `Remove Ada Attach from ${permission}` }).click();
+  await page
+    .getByRole('group', { name: `Ada Attach loses ${permission} across the whole site.` })
+    .getByRole('button', { name: `Remove Ada Attach from ${permission}` })
+    .click();
   await expect(page.getByText(`Ada Attach no longer has ${permission}.`)).toBeVisible();
 });
 
@@ -283,13 +303,13 @@ test('[CORE-008] the administrator adds a type set and a field rule set, changes
   await page.getByRole('button', { name: 'New type set' }).click();
   const addTypes = page.getByRole('form', { name: 'Add a type set' });
   await addTypes.getByLabel('Type set name').fill(types);
-  const boxes = addTypes.getByRole('checkbox');
-  await boxes.nth(0).check();
-  await boxes.nth(1).check();
+  // Ticked by name: another test may add a type for a while, and it would not leave a set.
+  await addTypes.getByRole('checkbox', { name: 'Bug', exact: true }).check();
+  await addTypes.getByRole('checkbox', { name: 'Chore', exact: true }).check();
   await addTypes.getByRole('button', { name: 'Add a type set' }).click();
   await expect(page.getByText(`${types} was added.`)).toBeVisible();
   const typePanel = page.getByRole('form', { name: `Settings of ${types}` });
-  await typePanel.getByRole('checkbox').nth(1).uncheck();
+  await typePanel.getByRole('checkbox', { name: 'Chore', exact: true }).uncheck();
   await typePanel.getByRole('button', { name: 'Save the set' }).click();
   await expect(page.getByText(`${types} was saved.`)).toBeVisible();
   await typePanel.getByRole('button', { name: `Delete set ${types}` }).click();

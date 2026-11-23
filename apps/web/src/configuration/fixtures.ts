@@ -1,10 +1,15 @@
 import { ApiError } from '../api/client';
+import type { RunTrack } from '../sets/trackScope';
 import type {
   ConfigurationClient,
+  MappingImpact,
+  MapWorkflow,
   Named,
   RoleActors,
+  StatusMigration,
   Track,
   TrackBoard,
+  TypeStatusMapping,
   WorkflowMap,
 } from './client';
 
@@ -17,11 +22,49 @@ export const TYPES: Named[] = [
   { id: 6, name: 'Task' },
   { id: 7, name: 'Story' },
 ];
+/** OPS's own workflow and ticket type (T-322): its map may name them, no other may. */
+export const OWN_WORKFLOW: MapWorkflow = { id: 3, name: 'Runbook flow', trackId: 4 };
+export const OWN_TYPE: Named = { id: 8, name: 'Runbook' };
 export const ROLES: Named[] = [
   { id: 7, name: 'Administrators' },
   { id: 8, name: 'Members' },
   { id: 9, name: 'Viewers' },
 ];
+
+/**
+ * What a change of map does when tickets need a mapping (T-320): Bug tickets in two statuses the
+ * Bug workflow lacks, which offers Open, Fixing and Closed.
+ */
+export const MAPPING_IMPACT: MappingImpact = {
+  ticketCount: 15,
+  lostStatuses: [
+    {
+      ticketType: { id: 5, name: 'Bug' },
+      status: { id: 3, name: 'In review' },
+      ticketCount: 12,
+      workflow: { id: 2, name: 'Bug workflow' },
+    },
+    {
+      ticketType: { id: 5, name: 'Bug' },
+      status: { id: 4, name: 'Waiting' },
+      ticketCount: 3,
+      workflow: { id: 2, name: 'Bug workflow' },
+    },
+  ],
+  targetWorkflows: [
+    {
+      id: 2,
+      name: 'Bug workflow',
+      statuses: [
+        { id: 10, name: 'Open' },
+        { id: 11, name: 'Fixing' },
+        { id: 12, name: 'Closed' },
+      ],
+    },
+  ],
+};
+
+const NO_IMPACT: MappingImpact = { ticketCount: 0, lostStatuses: [], targetWorkflows: [] };
 
 export interface FakeConfigurationClient extends ConfigurationClient {
   calls: { action: string; args: unknown[] }[];
@@ -30,11 +73,45 @@ export interface FakeConfigurationClient extends ConfigurationClient {
 /** An in-memory backend for stories and tests: it answers as the API would. */
 export function fakeConfigurationClient(
   start: {
+    /**
+     * Tickets are in statuses the new workflows lack (WF-001): a preview names them, and a change
+     * without a status mapping is refused.
+     */
     refuseMapping?: boolean;
+    /** The mapped tickets move in the background: the change answers before they have (T-320). */
+    moving?: boolean;
+    /** Tickets change after the preview, so the first change with a mapping is refused. */
+    changedAfterPreview?: boolean;
     /** A sprint running in SHOP, so its sprints cannot be turned off (AGL-010). */
     runningSprint?: string;
+    /** The tracks the person runs (T-322): SHOP and OPS unless given. */
+    runs?: RunTrack[];
   } = {},
 ): FakeConfigurationClient {
+  let raced = false;
+  /** The answer to a change of map: refused without a mapping, or the tickets it moves. */
+  const remap = (typeStatusMapping?: TypeStatusMapping): StatusMigration | null => {
+    if (!start.refuseMapping) return null;
+    const refuse = () =>
+      new ApiError(409, {
+        error: 'status_mapping_required',
+        statuses: MAPPING_IMPACT.lostStatuses.map((l) => ({
+          ticketTypeId: l.ticketType.id,
+          statusId: l.status.id,
+          ticketCount: l.ticketCount,
+          workflowId: l.workflow.id,
+        })),
+      });
+    if (!typeStatusMapping) throw refuse();
+    if (start.changedAfterPreview && !raced) {
+      raced = true;
+      throw refuse();
+    }
+    const total = MAPPING_IMPACT.ticketCount;
+    return start.moving
+      ? { id: 77, status: 'running', total, migrated: 0 }
+      : { id: 77, status: 'done', total, migrated: total };
+  };
   let tracks: Track[] = [
     {
       id: 3,
@@ -90,7 +167,21 @@ export function fakeConfigurationClient(
       entries: [{ ticketType: TYPES[0] as Named, workflow: WORKFLOWS[1] as Named }],
       tracks: [],
     },
+    // OPS's own map, made with the track (M1-028): its runbooks follow its own workflow.
+    {
+      id: 21,
+      name: 'OPS workflows',
+      description: '',
+      isDefault: false,
+      defaultWorkflow: WORKFLOWS[0] as Named,
+      entries: [{ ticketType: OWN_TYPE, workflow: { id: 3, name: 'Runbook flow' } }],
+      tracks: [{ id: 4, key: 'OPS', name: 'Operations' }],
+      trackId: 4,
+    },
   ];
+  /** Every workflow and type a map may name, OPS's own included. */
+  const allWorkflows: Named[] = [...WORKFLOWS, { id: OWN_WORKFLOW.id, name: OWN_WORKFLOW.name }];
+  const allTypes: Named[] = [...TYPES, OWN_TYPE];
   const actors: Record<number, RoleActors[]> = {
     3: [
       {
@@ -108,11 +199,34 @@ export function fakeConfigurationClient(
     ],
   };
   let next = 100;
+  /** The tracks deleted, in the trash. */
+  const trashed: number[] = [];
   const calls: FakeConfigurationClient['calls'] = [];
   const log = (action: string, ...args: unknown[]) => calls.push({ action, args });
   const named = (list: Named[], id: number) => list.find((x) => x.id === id) as Named;
   return {
     calls,
+    track: async (id) => {
+      const found = tracks.find((t) => t.id === id);
+      if (!found) throw new ApiError(404, { error: 'not_found' });
+      return {
+        id: found.id,
+        key: found.key,
+        name: found.name,
+        mode: found.mode,
+        archived: found.archived,
+        typeSetId: null,
+        fieldRuleSetId: null,
+        layoutSetId: null,
+      };
+    },
+    managedTracks: async () =>
+      structuredClone(
+        start.runs ??
+          tracks
+            .filter((t) => !t.archived)
+            .map(({ id, key, name, mode }) => ({ id, key, name, mode })),
+      ),
     tracks: async () => structuredClone(tracks),
     createTrack: async (body) => {
       log('createTrack', body);
@@ -139,12 +253,6 @@ export function fakeConfigurationClient(
     },
     updateTrack: async (id, change) => {
       log('updateTrack', id, change);
-      if (change.workflowMapId !== undefined && start.refuseMapping) {
-        throw new ApiError(409, {
-          error: 'status_mapping_required',
-          statuses: [{ ticketTypeId: 5, statusId: 3, ticketCount: 12, workflowId: 2 }],
-        });
-      }
       const track = tracks.find((t) => t.id === id) as Track;
       if (change.features?.sprints === false && start.runningSprint && track.key === 'SHOP') {
         throw new ApiError(409, {
@@ -165,6 +273,14 @@ export function fakeConfigurationClient(
     archiveTrack: async (id, archive) => {
       log('archiveTrack', id, archive);
       Object.assign(tracks.find((t) => t.id === id) as Track, { archived: archive });
+    },
+    // The track goes to the trash and leaves the list; a second delete finds it there.
+    deleteTrack: async (id) => {
+      log('deleteTrack', id);
+      if (trashed.includes(id)) throw new ApiError(409, { error: 'in_trash' });
+      if (!tracks.some((t) => t.id === id)) throw new ApiError(404, { error: 'not_found' });
+      trashed.push(id);
+      tracks = tracks.filter((t) => t.id !== id);
     },
     trackBoard: async (trackId) => structuredClone(boards[trackId] ?? null),
     roles: async () => structuredClone(ROLES),
@@ -206,16 +322,19 @@ export function fakeConfigurationClient(
       { id: 11, name: 'Approvers' },
       { id: 12, name: 'Support' },
     ],
+    // A track's own map is not a shared one: the list leaves it out, as the server does.
     workflowMaps: async () =>
-      maps.map((m) => ({
-        id: m.id,
-        name: m.name,
-        description: m.description,
-        isDefault: m.isDefault,
-        defaultWorkflow: m.defaultWorkflow,
-        entryCount: m.entries.length,
-        trackCount: m.tracks.length,
-      })),
+      maps
+        .filter((m) => m.trackId == null)
+        .map((m) => ({
+          id: m.id,
+          name: m.name,
+          description: m.description,
+          isDefault: m.isDefault,
+          defaultWorkflow: m.defaultWorkflow,
+          entryCount: m.entries.length,
+          trackCount: m.tracks.length,
+        })),
     workflowMap: async (id) => structuredClone(maps.find((m) => m.id === id) as WorkflowMap),
     createWorkflowMap: async (body) => {
       log('createWorkflowMap', body);
@@ -234,28 +353,75 @@ export function fakeConfigurationClient(
     },
     updateWorkflowMap: async (id, change) => {
       log('updateWorkflowMap', id, change);
-      if (start.refuseMapping) {
-        throw new ApiError(409, {
-          error: 'status_mapping_required',
-          statuses: [{ ticketTypeId: 5, statusId: 3, ticketCount: 4, workflowId: 2 }],
-        });
-      }
       const map = maps.find((m) => m.id === id) as WorkflowMap;
+      const statusMigration = map.tracks.length > 0 ? remap(change.typeStatusMapping) : null;
       if (change.defaultWorkflowId)
-        map.defaultWorkflow = named(WORKFLOWS, change.defaultWorkflowId);
+        map.defaultWorkflow = named(allWorkflows, change.defaultWorkflowId);
       if (change.entries) {
         map.entries = change.entries.map((e) => ({
-          ticketType: named(TYPES, e.ticketTypeId),
-          workflow: named(WORKFLOWS, e.workflowId),
+          ticketType: named(allTypes, e.ticketTypeId),
+          workflow: named(allWorkflows, e.workflowId),
         }));
       }
-      return structuredClone(map);
+      return structuredClone({ workflowMap: map, statusMigration });
     },
     deleteWorkflowMap: async (id) => {
       log('deleteWorkflowMap', id);
+      if (maps.find((m) => m.id === id)?.trackId != null) {
+        throw new ApiError(409, { error: 'owned_by_track' });
+      }
       maps = maps.filter((m) => m.id !== id);
     },
     workflows: async () => structuredClone(WORKFLOWS),
     ticketTypes: async () => structuredClone(TYPES),
+    // OPS offers tasks and its runbooks; its map names only the runbooks (T-322).
+    trackWorkflowMap: async (trackId) => {
+      const map = maps.find((m) => m.trackId === trackId);
+      if (!map) throw new ApiError(404, { error: 'not_found' });
+      const offered = [TYPES[1] as Named, OWN_TYPE];
+      const follows = (typeId: number) =>
+        map.entries.find((e) => e.ticketType.id === typeId)?.workflow ?? map.defaultWorkflow;
+      return structuredClone({
+        workflowMap: map,
+        ticketTypes: offered.map((ticketType) => ({
+          ticketType,
+          workflow: follows(ticketType.id),
+        })),
+      });
+    },
+    trackWorkflows: async (trackId) =>
+      structuredClone([
+        ...WORKFLOWS.map((w) => ({ ...w, trackId: null })),
+        ...(OWN_WORKFLOW.trackId === trackId ? [OWN_WORKFLOW] : []),
+      ]),
+    trackMapImpact: async (trackId, workflowMapId) => {
+      log('trackMapImpact', trackId, workflowMapId);
+      return structuredClone(start.refuseMapping ? MAPPING_IMPACT : NO_IMPACT);
+    },
+    workflowMapImpact: async (id, change) => {
+      log('workflowMapImpact', id, change);
+      const map = maps.find((m) => m.id === id) as WorkflowMap;
+      return structuredClone(
+        start.refuseMapping && map.tracks.length > 0 ? MAPPING_IMPACT : NO_IMPACT,
+      );
+    },
+    switchWorkflowMap: async (trackId, workflowMapId, typeStatusMapping) => {
+      log('switchWorkflowMap', trackId, workflowMapId, typeStatusMapping);
+      const statusMigration = remap(typeStatusMapping);
+      const track = tracks.find((t) => t.id === trackId) as Track;
+      track.workflowMapId = workflowMapId;
+      for (const m of maps) {
+        m.tracks = m.tracks.filter((x) => x.id !== trackId);
+        if (m.id === workflowMapId || (workflowMapId === null && m.isDefault)) {
+          m.tracks.push({ id: track.id, key: track.key, name: track.name });
+        }
+      }
+      return structuredClone({ track, statusMigration });
+    },
+    // A migration in the background has moved every ticket by the time it is read again.
+    statusMigration: async (id) => {
+      const total = MAPPING_IMPACT.ticketCount;
+      return { id, status: 'done', total, migrated: total };
+    },
   };
 }

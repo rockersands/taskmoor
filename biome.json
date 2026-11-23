@@ -11,6 +11,7 @@
       "**",
       "!**/__golden__",
       "!apps/web/src/styles/canvas-samples.json",
+      "!apps/web/src/assets/google",
       "!**/pnpm-lock.yaml",
       "!docs/**/*.csv",
       "!docs/api/**/*.json",

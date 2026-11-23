@@ -1,5 +1,6 @@
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword, LOCKOUT } from '@taskmoor/iam';
+import { detectDelimiter } from '@taskmoor/webconfig';
 import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fastify';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -498,6 +499,26 @@ describe('audit log API (M1-003, IAM-013)', () => {
       { format: 'csv', filter: {} },
     ]);
     expect(exports[0]?.actor?.id).toBe(ids.admin);
+  });
+
+  it('[IAM-013] [NFR-006] exports the log with semicolons when asked, the mark still first and once (T-263)', async () => {
+    const csv = await asAdmin({
+      method: 'GET',
+      url: '/api/v1/audit/export?format=csv&separator=semicolon',
+    });
+    expect(csv.statusCode).toBe(200);
+    expect([...csv.rawPayload.subarray(0, 4)]).toEqual([0xef, 0xbb, 0xbf, 's'.charCodeAt(0)]);
+    expect(csv.rawPayload.indexOf(Buffer.from([0xef, 0xbb, 0xbf]), 3)).toBe(-1);
+    const lines = csv.body.slice(1).split('\r\n').filter(Boolean);
+    expect(lines[0]).toBe(CSV_COLUMNS.join(';'));
+    // The importer finds the separator and reads every record back.
+    expect(detectDelimiter(csv.rawPayload)).toBe(';');
+    const back = [...records(csv.rawPayload, ';')].map((r) => r.fields);
+    expect(back[0]).toEqual([...CSV_COLUMNS]);
+    expect(back).toHaveLength(lines.length);
+    expect(back.at(-1)?.[6]).toBe(AUDIT_ACTIONS.exported);
+    const wrong = await asAdmin({ method: 'GET', url: '/api/v1/audit/export?separator=tab' });
+    expect(wrong.statusCode).toBe(400);
   });
 
   it('[IAM-013] streams a large export in batches', async () => {

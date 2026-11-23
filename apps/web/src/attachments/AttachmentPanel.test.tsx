@@ -1,14 +1,19 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { App } from '../App';
 import { MEMBER } from '../admin/fixtures';
+import { I18nProvider } from '../i18n/I18nProvider';
+import type { Session } from '../session/SessionProvider';
 import { type Handler, noContent, stubBackend, untranslated, visibleTexts } from '../test/backend';
 import { jsonResponse } from '../test/setup';
+import { useTimeZone } from '../test/timeZone';
 import { setViewportWidth } from '../test/viewport';
 import { SHOP_41 } from '../tickets/view/fixtures';
+import { AttachmentPanel } from './AttachmentPanel';
 import type { Attachment } from './client';
-import { ATTACHMENTS, SERVER_LOG, ZIP_LISTING } from './fixtures';
+import { type AttachTarget, FileDropProvider } from './FileDrop';
+import { ATTACHMENTS, fakeAttachmentClient, SERVER_LOG, ZIP_LISTING } from './fixtures';
 
 // The whole ticket the page shows (M1-051).
 const TICKET = SHOP_41;
@@ -16,6 +21,7 @@ const TICKET = SHOP_41;
 function openTicket(
   handlers: Record<string, Handler> = {},
   list: { attachments?: Attachment[]; maxFileSize?: number; canCreate?: boolean } = {},
+  session: Session = MEMBER,
 ) {
   const calls = stubBackend({
     'GET /tickets/SHOP-41': () => jsonResponse(200, { ticket: TICKET }),
@@ -37,7 +43,7 @@ function openTicket(
     ...handlers,
   });
   window.location.hash = '#/tickets/SHOP-41';
-  render(<App session={MEMBER} />);
+  render(<App session={session} />);
   return calls;
 }
 
@@ -384,5 +390,106 @@ describe('files dropped anywhere on a ticket (T-162; ADR-114, section 12)', () =
     fireEvent.drop(title, { dataTransfer: carrying([new File(['z'], 'nope.txt')]) });
     expect(card()).toBeNull();
     expect(calls.some(isUpload)).toBe(false);
+  });
+});
+
+describe('a file sent from the ticket’s text editor (T-120)', () => {
+  /** The panel alone, in a ticket that takes what it offers. */
+  function panelIn(client = fakeAttachmentClient()) {
+    const offered: { current: AttachTarget | null } = { current: null };
+    render(
+      <I18nProvider locale="en">
+        <FileDropProvider
+          value={(target) => {
+            offered.current = target;
+          }}
+        >
+          <AttachmentPanel ticket="SHOP-41" client={client} />
+        </FileDropProvider>
+      </I18nProvider>,
+    );
+    return offered;
+  }
+
+  it('[CORE-021] goes through the panel’s own upload, which lists it and answers with what it added', async () => {
+    const client = fakeAttachmentClient({ attachments: [] });
+    const upload = vi.spyOn(client, 'upload');
+    const offered = panelIn(client);
+    await screen.findByLabelText('Attach files');
+    // The panel would come into view for a drop; jsdom has no scrolling of its own.
+    const scroll = vi.fn();
+    const proto = Element.prototype as { scrollIntoView?: unknown };
+    const before = proto.scrollIntoView;
+    proto.scrollIntoView = scroll;
+    onTestFinished(() => {
+      proto.scrollIntoView = before;
+    });
+    // The panel offers itself once its list is in, an effect after the drawing the label is in.
+    await waitFor(() => expect(offered.current?.ready).toBe(true));
+    const target = offered.current;
+    let result: Awaited<ReturnType<AttachTarget['attach']>> | undefined;
+    await act(async () => {
+      result = await target?.attach([new File(['png'], 'shot.png', { type: 'image/png' })], {
+        quiet: true,
+      });
+    });
+    expect(upload).toHaveBeenCalledTimes(1);
+    expect(result?.added.map((a) => [a.name, a.kind])).toEqual([['shot.png', 'image']]);
+    expect(result?.problems).toEqual([]);
+    // Listed in the panel, which stays where it is on the page and says nothing itself.
+    expect(within(panel()).getByText('shot.png')).toBeVisible();
+    expect(scroll).not.toHaveBeenCalled();
+    expect(within(panel()).queryByText('shot.png attached.')).toBeNull();
+  });
+
+  it('[CORE-021] answers with the panel’s own words for a file over the limit, sending nothing', async () => {
+    const client = fakeAttachmentClient({ attachments: [], maxFileSize: 2 });
+    const upload = vi.spyOn(client, 'upload');
+    const offered = panelIn(client);
+    await screen.findByLabelText('Attach files');
+    let result: Awaited<ReturnType<AttachTarget['attach']>> | undefined;
+    await act(async () => {
+      result = await offered.current?.attach([new File(['too big'], 'big.log')], { quiet: true });
+    });
+    expect(upload).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      added: [],
+      problems: ['big.log is larger than the 2 B limit for one file.'],
+    });
+    expect(within(panel()).queryByRole('alert')).toBeNull();
+  });
+});
+
+/**
+ * One clock per person (T-280): a pasted screenshot is named by the time on the zone saved on the
+ * account, not the device's nor UTC. The device here is Mexico City.
+ */
+describe('pasted screenshots on the account’s clock', () => {
+  useTimeZone('America/Mexico_City');
+
+  it('[CORE-021] [NFR-006] names a pasted screenshot by the time on the account’s zone', async () => {
+    // Only the date is fixed: the page's timers run as usual.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    onTestFinished(() => {
+      vi.useRealTimers();
+    });
+    // 02:00 on 5 November in UTC: 11:00 in Tokyo, 20:00 on 4 November on the device.
+    vi.setSystemTime(new Date('2026-11-05T02:00:00Z'));
+    const member = MEMBER as Extract<Session, { status: 'signed-in' }>;
+    openTicket(
+      {
+        'POST /tickets/41/attachments': (body) => {
+          const file = (body as FormData).get('file') as File;
+          return jsonResponse(201, { attachment: uploaded(file.name, 100) });
+        },
+      },
+      {},
+      { status: 'signed-in', user: { ...member.user, timeZone: 'Asia/Tokyo' } },
+    );
+    const input = await screen.findByLabelText('Attach files');
+    fireEvent.paste(input, {
+      clipboardData: { files: [new File(['png'], 'image.png', { type: 'image/png' })] },
+    });
+    expect(await screen.findByText('pasted-2026-11-05-11-00-00.png attached.')).toBeVisible();
   });
 });

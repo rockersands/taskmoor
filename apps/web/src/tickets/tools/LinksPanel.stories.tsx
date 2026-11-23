@@ -32,6 +32,31 @@ export const Default: Story = {
   },
 };
 
+/**
+ * Removing the link to another track asks first, since the form cannot make it again (D13, T-267);
+ * at a small phone's width the question takes the row's whole line.
+ */
+export const RemovingALinkToAnotherTrackOnAPhone: Story = {
+  args: { client: fakeToolsClient() },
+  decorators: [
+    (Story) => (
+      <div data-testid="phone-width" style={{ width: 360 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Remove the link: is blocked by OPS-88' }),
+    );
+    const question = canvas.getByRole('group', { name: /^OPS-88 is in another track/ });
+    await expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    const box = canvas.getByTestId('phone-width');
+    await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+  },
+};
+
 /** The form, with what was typed finding tickets of this track. */
 export const Picking: Story = {
   args: { client: fakeToolsClient() },

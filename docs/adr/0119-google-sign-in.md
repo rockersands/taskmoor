@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-11-03
-- Backlog: Google sign-in (workstream `claude/google-signin`); requirements IAM-031, IAM-032
+- Backlog: Google sign-in (workstream `claude/google-signin`), T-061, T-262; requirements IAM-031, IAM-032
 
 ## Context
 
@@ -103,15 +103,53 @@ in, with the provider emphasised and choosing a password one click away.
 recommendation of a plain button). A provider whose issuer is Google's (the same test the server
 already uses for `prompt=select_account` and for believing Google only about Gmail and hosted domains)
 is marked `brand: "google"` in the public provider list and in discovery, and the sign-in page draws
-Google's button for it, as Google's sign-in branding guidelines describe: the four-colour "G" at the
-left, "Sign in with Google" in the person's language whatever name the operator gave the provider
-(also as the form's submit button where a Google provider requires single sign-on for the domain),
-Google's light or dark look with the skin, 40 px high and the pill shape, and a finger's height on
-touch. Its colours are tokens of each skin (`--color-google-*`) and stay Google's. The "G" is an inline
-SVG written from Google's published four-colour geometry, not a file downloaded from Google; it is to
-be compared with Google's official asset before a release. The label asks for Roboto Medium, which
-the page does not load: where Roboto is not installed the skin's own sans-serif stands in. Earlier
-the button was text only and no logo shipped.
+Google's button for it, as Google's sign-in branding guidelines describe: Google's "G" at the left,
+"Sign in with Google" in the person's language whatever name the operator gave the provider (also as
+the form's submit button where a Google provider requires single sign-on for the domain), Google's
+light or dark look with the skin, 40 px high and the pill shape, and a finger's height (44 px) on
+touch. Its colours are tokens of each skin (`--color-google-*`) and stay Google's; they are those of
+the light and dark buttons in Google's branding bundle. Earlier the button was text only and no logo
+shipped.
+
+**Google's own G and font, served by Taskmoor** (the user's decision of 2026-11-16, T-262, Claude's
+recommendation). The guidelines now ask for the gradient "G" and warn against an outdated one, name
+Google Sans Medium as the button's font (no longer Roboto), and tie app verification to following
+them. So the button now uses Google's files rather than ours:
+
+- The G is taken from Google's branding bundle (`signin-assets.zip`, files dated 2026-04-15). Figma
+  exported it as a mask in the shape of the G over a conic gradient and blurred shapes. Its elements
+  are copied unchanged from the 40 px round light button, and the view is cropped to the G
+  (`apps/web/src/assets/google/google-g.svg`). Every button without words in the bundle, in each
+  theme and shape, draws the same G, and in Chromium the cropped file renders pixel for pixel as
+  they do. The buttons with words draw it 2 px further right, with a few figures rounded
+  differently, and the cropped file is within 1/255 of a colour channel of them. It is shown as an
+  image with empty alternative text: each copy is its own document, so the ids of its mask and
+  filters cannot clash between the two Google buttons the sign-in page can draw. The build puts it
+  in the script as a data URL, which `img-src data:` allows in every policy of the app (the
+  backend's header, the kits' meta element, the single-file kit).
+- The G comes with no licence. Google owns it as a trademark, and Taskmoor shows it on the terms
+  Google sets for it, the Sign in with Google branding guidelines, which ask apps that offer
+  Google sign-in to show it on the button. Taskmoor shows it only there. This is the clean-room
+  checklist's exception for another company's logo shown on its owner's terms
+  (`docs/legal/clean-room.md`, ADR-029), and `THIRD_PARTY_NOTICES` says so.
+- The words are in Google Sans Medium: Google's own weight-500 files for latin and latin-ext,
+  unmodified (SIL OFL 1.1, no Reserved Font Name), 37 KB together, with their licence beside them
+  (`apps/web/src/fonts`). They are declared in `@font-face` rules with Google Fonts' own
+  `unicode-range` and `font-display: swap`. The build keeps them as files, so a browser loads them
+  only for pages that draw the button. The single-file kit carries them as data URLs (`font-src
+  data:`), with their licence in a comment. Other scripts fall back to the skin's font. Letter
+  spacing is none: the words of Google's own button files measure the same as Google Sans Medium
+  at 14 px without any.
+- Nothing is fetched from Google at run time. A self-hosted or air-gapped install serves both files
+  itself (ADR-036: no font CDN), and `THIRD_PARTY_NOTICES` records where they came from.
+- The spacing is that of Google's files. At its narrowest the button has 12 px from its outer edge
+  to the G, then the 20 px G, 10 px, the words and 12 px. Google's files draw the 1 px edge inside
+  the first 12 px, so the padding is 11 px. The button fills the width it is given, as on the
+  sign-in page, and the G and the words are then centred together. The space before the G grows,
+  and the G keeps its size and the 10 px after it.
+- The touch height stays 44 px. The guidelines set no height (their files are 40 px) and let the
+  button grow for a device as long as the G keeps its size and padding. It does: the G stays 20 px
+  and the spacing stays as above.
 
 ### Break-glass
 
@@ -154,10 +192,11 @@ Nothing changes, and nothing needed to: password sign-in never contacts a provid
   runs out as usual, and sign-in then fails.
 - A person who has a live invitation and goes to the sign-in page rather than following the link gets
   an account and no role yet: the role still comes through the link, as ADR-118 says.
-- Google's sign-in branding guidelines ask for its "G" on the button, and say an app must follow them
-  to complete verification. The button now follows them (T-061), but its "G" is drawn here rather than
-  taken from Google's download, and without Roboto loaded, so an operator seeking verification may be
-  asked about either.
+- Google's sign-in branding guidelines ask for its "G" on the button and its font for the words, and
+  say an app must follow them to complete verification. The button uses Google's own G and Google
+  Sans Medium as Google ships them (T-262), so neither is a question at verification any more. When
+  Google changes its assets again, the files are replaced from its bundle and the golden files of the
+  build tests show the change.
 - Google's pages disagree on a user cap: one ties 100 new users before verification to sensitive or
   restricted scopes, which Taskmoor does not ask for; another speaks of a 100-user cap for unverified
   apps in general. Neither says what holds for sign-in alone, and no test can show it. The guide says

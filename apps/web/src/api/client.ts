@@ -1,3 +1,4 @@
+import { personTimeZone } from '../i18n/zone';
 import { runtimeConfig } from '../runtime/config';
 import { oauthClient } from '../session/oauth';
 import { announceApiChange, changedPath } from './changes';
@@ -50,25 +51,17 @@ export async function apiFetch(url: string, init: RequestInit = {}): Promise<Res
   return response;
 }
 
-/** The header that carries the browser's time zone; the server's `viewerTimeZone` reads it. */
+/** The header that carries the person's time zone; the server's `viewerTimeZone` reads it. */
 export const TIME_ZONE_HEADER = 'taskmoor-time-zone';
 
 /**
- * The time zone of this browser, the clock `localDay()` reads, so the server counts a report's
- * days on the same calendar as the person's own "today" (T-272); null when the browser has none.
+ * The request's headers with the person's time zone added (the account's, else the device's:
+ * the clock `localDay()` reads, T-272, T-280), unless the caller set one, so the server counts a
+ * report's days and a search's dates on the same calendar as the person's own "today".
  */
-export function browserTimeZone(): string | null {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
-  } catch {
-    return null;
-  }
-}
-
-/** The request's headers with the browser's time zone added, unless the caller set one. */
 export function withTimeZone(headers: HeadersInit | undefined): Headers {
   const out = new Headers(headers);
-  const zone = browserTimeZone();
+  const zone = personTimeZone();
   if (zone && !out.has(TIME_ZONE_HEADER)) out.set(TIME_ZONE_HEADER, zone);
   return out;
 }

@@ -389,6 +389,8 @@ export const messagesEn = {
     'The buttons under the title move the ticket through its workflow. Details, after the description and the ticket’s tools, are its fields: change one and it saves at once. Activity comes last, with the comments, the history of every change and the time recorded.',
   'about.list':
     'Each row is a ticket of this track, in the order Sort by sets; a pencil beside a value changes it in place. Group by splits the rows by a field and counts each group. Columns chooses what the rows show, and Format rules colour the tickets a condition finds. Columns and rules are kept in this browser. On a phone each ticket is a block: its key, its summary, then its status, assignee and priority.',
+  'about.plan':
+    'Each tab shows this plan’s tickets its own way: Summary counts them, Timeline and Calendar place them on their dates, List gives them as rows, Capacity weighs the work against each team’s room in a period, and Releases and Program boards follow it across tracks. Choose a scenario to try changes as drafts before they reach the tickets. Everyone sees in a plan only the tickets they may see anyway.',
   'help.about': 'What is {name} for?',
   'help.menu': 'Help',
   'help.tutorials': 'Tutorials',
@@ -743,6 +745,7 @@ export const messagesEn = {
   'search.run': 'Search',
   'search.query': 'Query',
   'search.suggestions': 'Suggestions',
+  'search.suggestionCount': '{count, plural, one {# suggestion} other {# suggestions}}',
   'search.hint': 'Ctrl+Space suggests; Tab or Enter takes a suggestion; Enter searches.',
   'search.errorAt': '{message} (at column {column}, near "{near}")',
   'search.results': 'Results',
@@ -1201,6 +1204,166 @@ export const messagesEn = {
   'notifications.event.generic': 'Other changes',
   'notifications.event.track_group_shared': 'A track group is shared with you or set on you',
   'notifications.event.checklist_changed': 'A checklist changes on a ticket you follow',
+  // Notification policies (NTF-001) and Email (NTF-002, NTF-004) in Administration (T-155).
+  'settings.notificationPolicies': 'Notification policies',
+  'settings.notificationPoliciesHint':
+    'Who hears of which changes to tickets, in the tracks that use each policy.',
+  'settings.email': 'Email',
+  'settings.emailHint':
+    'Whether mail can go out, how long changes wait to arrive together, and the digest hour.',
+  'notificationPolicies.title': 'Notification policies',
+  'notificationPolicies.about':
+    'A notification policy pairs events, such as a comment added, with who hears of them: the assignee, the followers, a person, a group, a track role or the people in a field. Each track uses one policy, or the default when it names none, and each person then chooses whether an event reaches their inbox, their email or both. Which policy a track uses is chosen on Which sets a track uses.',
+  'notificationPolicies.trackAbout':
+    'This track has its own configuration, so it can have notification policies of its own: who hears of which changes in this track only. Other tracks are not affected.',
+  'notificationPolicies.trackIntro':
+    'The notification policies this track owns. Shared policies are for site and configuration administrators.',
+  'notificationPolicies.forbidden':
+    'Only site and configuration administrators, and the people who run a track with its own configuration, manage notification policies.',
+  'notificationPolicies.choose.intro':
+    'You run these tracks with their own configuration. Choose one to manage its own notification policies.',
+  'notificationPolicies.choose.none':
+    'None of the tracks you run has its own configuration. They use shared notification policies, which site and configuration administrators change.',
+  'notificationPolicies.choose.open': 'Notification policies of {key} · {name}',
+  'notificationPolicies.scope.shared':
+    '{key} uses shared configuration, so it uses a shared notification policy, which site and configuration administrators change.',
+  'notificationPolicies.loading': 'Reading the notification policies…',
+  'notificationPolicies.failed':
+    'The notification policies could not be read. Try again in a moment.',
+  'notificationPolicies.new': 'New policy',
+  'notificationPolicies.addPolicy': 'Add policy',
+  'notificationPolicies.cancelNew': 'Cancel',
+  'notificationPolicies.name': 'Policy name',
+  'notificationPolicies.description': 'Description',
+  'notificationPolicies.startWith': 'Start with',
+  'notificationPolicies.startEmpty': 'No rules',
+  'notificationPolicies.startCopy': 'The rules of {name}',
+  'notificationPolicies.startHint':
+    'A policy with no rules tells nobody anything, so starting from a copy is usually quicker.',
+  'notificationPolicies.added': 'Policy {name} was added.',
+  'notificationPolicies.sharedList': 'Shared policies',
+  'notificationPolicies.ownList': 'Policies of {key}',
+  'notificationPolicies.chooseNote': 'Which policy a track uses is chosen with its other sets:',
+  'notificationPolicies.chooseLink': 'Which sets a track uses',
+  'notificationPolicies.trackUsesOwn': '{key} uses {name}.',
+  'notificationPolicies.trackUsesShared':
+    '{key} uses a shared policy now. Use one of its own to change who hears of what in it.',
+  'notificationPolicies.emptyTitle': 'No policies yet',
+  'notificationPolicies.empty': 'Add one with New policy, then use it for {key}.',
+  'notificationPolicies.emptyShared':
+    'Add one with New policy, then choose it for tracks on Which sets a track uses.',
+  'notificationPolicies.default': 'Default',
+  'notificationPolicies.defaultUse': 'Tracks that name no other policy use it.',
+  'notificationPolicies.usedBy': 'Used by {tracks}.',
+  'notificationPolicies.unused': 'No track uses it.',
+  'notificationPolicies.moreTracks': '{tracks} and {count} more',
+  'notificationPolicies.ruleCount':
+    '{count, plural, =0 {No rules.} one {# rule.} other {# rules.}}',
+  'notificationPolicies.manage': 'Manage',
+  'notificationPolicies.manageOf': 'Manage {name}',
+  'notificationPolicies.rulesOf': 'Who hears of what in {name}',
+  'notificationPolicies.noRules': 'No rules yet',
+  'notificationPolicies.noRulesBody':
+    'Nobody hears of anything through this policy until it has a rule. Mentions still reach the people mentioned.',
+  'notificationPolicies.remove': 'Remove',
+  'notificationPolicies.removeRule': 'Remove {recipient} from {event}',
+  'notificationPolicies.ruleRemoved': 'Rule removed for {event}: {recipient}.',
+  'notificationPolicies.ruleAdded': 'Rule added for {event}: {recipient}.',
+  'notificationPolicies.addRuleTo': 'Add a rule to {name}',
+  'notificationPolicies.event': 'Event',
+  'notificationPolicies.builtInEvents': 'Events of every track',
+  'notificationPolicies.transitionEvents': 'Events that transitions fire',
+  'notificationPolicies.otherEvent': 'Another transition event…',
+  'notificationPolicies.eventName': 'Transition event name',
+  'notificationPolicies.eventNameHint':
+    'As the transition’s workflow names it: up to 100 letters, digits, spaces, dots, dashes and underscores.',
+  'notificationPolicies.eventNameInvalid':
+    'Give the event’s name: up to 100 letters, digits, spaces, dots, dashes and underscores.',
+  'notificationPolicies.customEvent': 'Transition event “{name}”',
+  'notificationPolicies.recipientKind': 'Who hears of it',
+  'notificationPolicies.findPerson': 'Find a person',
+  'notificationPolicies.person': 'Person',
+  'notificationPolicies.personEmpty': 'Type a name above to find someone',
+  'notificationPolicies.group': 'Group',
+  'notificationPolicies.role': 'Track role',
+  'notificationPolicies.userField': 'User field',
+  'notificationPolicies.groupField': 'Group field',
+  'notificationPolicies.addRule': 'Add rule',
+  'notificationPolicies.duplicate': 'That rule is there already.',
+  'notificationPolicies.pickTarget': 'Choose who the rule names first.',
+  'notificationPolicies.gone': 'something since deleted',
+  'notificationPolicies.recipient.assignee': 'The assignee',
+  'notificationPolicies.recipient.requester': 'The requester',
+  'notificationPolicies.recipient.follower': 'The followers',
+  'notificationPolicies.recipient.area_owner': 'The owners of the ticket’s areas',
+  'notificationPolicies.recipient.track_owner': 'The track owner',
+  'notificationPolicies.recipient.current_user': 'The person who made the change',
+  'notificationPolicies.recipient.user': '{name}',
+  'notificationPolicies.recipient.group': 'Members of {name}',
+  'notificationPolicies.recipient.role': 'People with the role {name}',
+  'notificationPolicies.recipient.user_field': 'People in {name}',
+  'notificationPolicies.recipient.group_field': 'Members of the groups in {name}',
+  'notificationPolicies.kind.user': 'A person',
+  'notificationPolicies.kind.group': 'The members of a group',
+  'notificationPolicies.kind.role': 'The people with a track role',
+  'notificationPolicies.kind.user_field': 'The people in a user field',
+  'notificationPolicies.kind.group_field': 'The members of the groups in a group field',
+  'notificationPolicies.detailsOf': 'Name and description of {name}',
+  'notificationPolicies.saveDetails': 'Save name and description',
+  'notificationPolicies.detailsSaved': '{name} was saved.',
+  'notificationPolicies.useFor': 'Use this policy for {key}',
+  'notificationPolicies.useHint':
+    'From then on the track follows this policy. Only site and configuration administrators can give it a shared one again.',
+  'notificationPolicies.usedFor': '{key} now uses {name}.',
+  'notificationPolicies.delete': 'Delete',
+  'notificationPolicies.deleteOf': 'Delete {name}',
+  'notificationPolicies.confirmDelete':
+    '{name} and its rules are deleted for good. No track uses it, so nobody hears less.',
+  'notificationPolicies.deleted': 'Policy {name} was deleted.',
+  'notificationPolicies.defaultStays':
+    'The default policy cannot be deleted: tracks that name no other policy use it.',
+  'notificationPolicies.inUseStays':
+    'Tracks use this policy, so it cannot be deleted until they use another.',
+  'notificationPolicies.problem.nameTaken':
+    'A policy with that name exists already. Choose another name.',
+  'notificationPolicies.problem.inUse':
+    'Tracks use this policy ({tracks}), so it was not deleted. Choose another policy for them first.',
+  'notificationPolicies.problem.default': 'The default policy cannot be deleted.',
+  'notificationPolicies.problem.invalid':
+    'That was not saved: a rule names something that is no longer there, or a field of another kind. Read the page again and check the rule.',
+  'notificationPolicies.problem.forbidden': 'You may no longer change this policy.',
+  'notificationPolicies.problem.other': 'That could not be saved. Try again in a moment.',
+  // A rule naming a field since deleted (T-155): it reaches nobody and goes with the next change.
+  'notificationPolicies.goneRulesNote':
+    '{count, plural, one {A rule names a field} other {# rules name fields}} since deleted, so {count, plural, one {it reaches} other {they reach}} nobody. The next change to these rules removes {count, plural, one {it} other {them}}.',
+  'notificationPolicies.goneRulesRemoved':
+    '{count, plural, one {The rule naming a field since deleted was} other {# rules naming fields since deleted were}} removed too.',
+  'emailSettings.title': 'Email',
+  'emailSettings.about':
+    'Taskmoor emails notifications through an SMTP server named where it runs (TASKMOOR_SMTP_URL and the variables beside it) or in the first-run setup form; its password only ever comes from the environment, never from this page. Here you see whether a server is set up, and choose how long changes to one ticket wait so that they arrive in one email, and the hour digests go out.',
+  'emailSettings.forbidden': 'Only site administrators change the email settings.',
+  'emailSettings.loading': 'Reading the email settings…',
+  'emailSettings.failed': 'The email settings could not be read. Try again in a moment.',
+  'emailSettings.outgoing': 'Outgoing mail',
+  'emailSettings.server': 'Mail server',
+  'emailSettings.serverOn': 'Set up',
+  'emailSettings.serverOff': 'Not set up',
+  'emailSettings.serverOnNote':
+    'Taskmoor can send email. The server and its sign-in are changed where Taskmoor runs, not on this page.',
+  'emailSettings.serverOffNote':
+    'Email waits unsent, and notifications still reach people’s inboxes. Name an SMTP server where Taskmoor runs (TASKMOOR_SMTP_URL) and what is waiting goes out.',
+  'emailSettings.formLabel': 'When email goes out',
+  'emailSettings.window': 'Wait before emailing a ticket’s changes, in minutes',
+  'emailSettings.windowHint':
+    'Changes to one ticket within this time arrive in one email. From 0 to 60; the default is 2.',
+  'emailSettings.windowInvalid': 'Give a number of minutes from 0 to 60.',
+  'emailSettings.digestHour': 'Digest hour',
+  'emailSettings.digestHourHint':
+    'Daily digests go out at this hour in the time zone saved on each person’s account (UTC for anyone on Automatic, as no device is there when they are sent), and weekly digests on Mondays at the same hour.',
+  'emailSettings.hour': '{hour}:00',
+  'emailSettings.save': 'Save email settings',
+  'emailSettings.saved': 'The email settings were saved.',
+  'emailSettings.saveFailed': 'The email settings could not be saved. Try again in a moment.',
   'unsubscribe.title': 'Unsubscribe',
   'unsubscribe.checking': 'Checking the link…',
   'unsubscribe.noToken':
@@ -1248,10 +1411,18 @@ export const messagesEn = {
   'account.name': 'Name',
   'account.timeZone': 'Time zone',
   'account.timeZoneAutomatic': 'Automatic',
-  'account.timeZoneHint': 'Automatic follows the time zone of the device you are using.',
+  'account.timeZoneHint':
+    'Automatic follows the device you are using. A zone picked here sets your days and times on every device.',
   'account.locale': 'Language and region',
   'account.localeAutomatic': 'Automatic',
   'account.localeHint': 'Automatic follows the language setting of your browser.',
+  // How downloaded CSV files are written (T-263).
+  'account.csv': 'Spreadsheet files (CSV)',
+  'account.csvAutomatic': 'Automatic',
+  'account.csvComma': 'Commas, numbers as 1.5',
+  'account.csvSemicolon': 'Semicolons, numbers as 1,5',
+  'account.csvHint':
+    'How the CSV files you download separate their cells, so your spreadsheet opens them in columns. Automatic follows your language and region: semicolons where numbers are written as 1,5, commas where they are written as 1.5.',
   'account.saveProfile': 'Save profile',
   'account.profileSaved': 'Profile saved.',
   'account.invalidTimeZone': 'That time zone is not recognised.',
@@ -1387,6 +1558,8 @@ export const messagesEn = {
   'account.twoFactor.turnOnApp': 'Turn on',
   'account.twoFactor.appEnabled': 'Authenticator app set up.',
   'account.twoFactor.switchOffApp': 'Switch off the app',
+  'account.twoFactor.appOffOutcome':
+    'Codes from your authenticator app no longer sign you in. To use it again, set it up afresh.',
   'account.twoFactor.appDisabled': 'Authenticator app switched off.',
   'account.twoFactor.keys': 'Security keys',
   'account.twoFactor.keysIntro':
@@ -1397,6 +1570,7 @@ export const messagesEn = {
   'account.twoFactor.keyNeverUsed': 'Not used yet',
   'account.twoFactor.removeKey': 'Remove',
   'account.twoFactor.removeKeyNamed': 'Remove {name}',
+  'account.twoFactor.removeKeyOutcome': 'You can no longer sign in with {name}.',
   'account.twoFactor.keyRemoved': 'Removed {name}.',
   'account.twoFactor.addKey': 'Add a security key',
   'account.twoFactor.keyName': 'Name of the key',
@@ -1910,6 +2084,8 @@ export const messagesEn = {
   'admin.imports.report.code': 'Code {code}.',
   'admin.imports.report.codeDetail': 'Code {code}: {detail}.',
   'admin.imports.report.examples': 'For example {examples}.',
+  // One line of a CSV file the import read as Windows-1252, and its first accented word (T-263).
+  'admin.imports.report.lineExample': 'line {line}: {text}',
   'admin.imports.report.unsupported': 'Not imported',
   'admin.imports.report.unsupportedItem': '{kind}: {count} ({reason})',
   'admin.imports.report.failures': 'Failures',
@@ -2015,6 +2191,8 @@ export const messagesEn = {
     'An earlier key belongs to something else here and stays theirs.',
   'admin.imports.warning.ticket_in_another_open_sprint':
     'A ticket was in two open sprints; it stays in the first.',
+  'admin.imports.warning.read_as_windows_1252':
+    'The file is not UTF-8, so it was read as Windows Western European (Windows-1252), which is how Excel saves a plain CSV file. Check the accented letters on the lines shown. To be sure, save the file from Excel as “CSV UTF-8” and import that instead.',
   'admin.frontends.title': 'Frontends',
   'admin.frontends.forbidden':
     'Only site administrators change which frontends may use this server.',
@@ -2266,7 +2444,7 @@ export const messagesEn = {
   'admin.serviceAccounts.manage': 'Tokens',
   'admin.serviceAccounts.manageNamed': 'Show the tokens of {name}',
   'admin.serviceAccounts.hide': 'Hide tokens',
-  'admin.serviceAccounts.hideNamed': 'Hide the tokens of {name}',
+  'admin.serviceAccounts.hideNamed': 'Hide tokens of {name}',
   'admin.serviceAccounts.deactivate': 'Deactivate',
   'admin.serviceAccounts.deactivateNamed': 'Deactivate {name}',
   'admin.serviceAccounts.deactivateConfirm':
@@ -2396,7 +2574,7 @@ export const messagesEn = {
   'admin.sso.spEntityId': 'Entity ID to register',
   'admin.sso.acsUrl': 'Assertion consumer service URL (HTTP-POST)',
   'admin.sso.spMetadata': 'Metadata to import',
-  'admin.sso.spMetadataNamed': 'Taskmoor metadata for {name}',
+  'admin.sso.spMetadataNamed': '{url} (Taskmoor metadata for {name})',
   'admin.sso.form.protocol': 'Type of provider',
   'admin.sso.form.protocolOidc': 'OpenID Connect',
   'admin.sso.form.protocolSaml': 'SAML 2.0',
@@ -2549,13 +2727,13 @@ export const messagesEn = {
   'admin.directories.neverSynced': 'Not synced yet',
   'admin.directories.nextSync': 'Next sync {when}',
   'admin.directories.sync': 'Sync now',
-  'admin.directories.syncNamed': 'Sync {name} now',
+  'admin.directories.syncNamed': 'Sync now from {name}',
   'admin.directories.fullSync': 'Full sync',
-  'admin.directories.fullSyncNamed': 'Sync all of {name} now',
+  'admin.directories.fullSyncNamed': 'Full sync of {name}',
   'admin.directories.syncQueued': 'A sync of {name} is on its way.',
   'admin.directories.syncDisabled': 'This directory is disabled. Enable it to sync it.',
   'admin.directories.confirmRemovals': 'Sync and remove',
-  'admin.directories.confirmRemovalsNamed': 'Sync {name} and remove what left it',
+  'admin.directories.confirmRemovalsNamed': 'Sync and remove what left {name}',
   'admin.directories.confirmRemovalsOutcome':
     'A full sync of {name} starts now and removes {removed, number} of its {known, number} {what, select, groups {groups} other {people}}: the ones that left the directory. {what, select, groups {Those groups are deleted, which cannot be undone. Any people who left it are deactivated and keep their work.} other {Those people are deactivated and keep their work. Any groups that left it are deleted, which cannot be undone.}}',
   'admin.directories.confirmRemovalsOutcomeUncounted':
@@ -2565,9 +2743,9 @@ export const messagesEn = {
   'admin.directories.historyTitle': 'Recent syncs of {name}',
   'admin.directories.noRuns': 'No syncs yet.',
   'admin.directories.moveUp': 'Move up',
-  'admin.directories.moveUpNamed': 'Move {name} up',
+  'admin.directories.moveUpNamed': 'Move up {name}',
   'admin.directories.moveDown': 'Move down',
-  'admin.directories.moveDownNamed': 'Move {name} down',
+  'admin.directories.moveDownNamed': 'Move down {name}',
   'admin.directories.run.full': 'Full sync',
   'admin.directories.run.incremental': 'Sync',
   'admin.directories.run.queued': '{kind} waiting to start…',
@@ -2814,6 +2992,10 @@ export const messagesEn = {
   'tickets.error.otherTrack': 'A subticket stays in its parent’s track.',
   'tickets.error.archived': 'This release or area is archived. Choose another.',
   'tickets.error.notInTrack': 'This track does not offer this choice. Choose one of its own.',
+  // A release or area the track does not have names which it is (T-286).
+  'tickets.error.releaseNotInTrack':
+    'This release is not in this track. Choose one of its releases.',
+  'tickets.error.areaNotInTrack': 'This area is not in this track. Choose one of its areas.',
   'tickets.create.withheld':
     'You may not set this field on a new ticket. The ticket is created only if a default or the workflow fills it in; if not, ask a track administrator.',
   'tickets.create.parentHint': 'Type a ticket’s key or words from its summary.',
@@ -2956,6 +3138,89 @@ export const messagesEn = {
   'admin.users.problem.erased': 'This person was erased already.',
   'admin.users.problem.lastTrackAdmin':
     'Erasing them would take back a role their shared track groups gave the only other person running a track. Give someone else a role that runs it first.',
+  'admin.users.edit': 'Edit',
+  'admin.users.editOf': 'Edit {name}',
+  'admin.users.role.configuration_admin': 'Configuration administrator',
+  'admin.users.role.automation_admin': 'Automation administrator',
+  'admin.users.role.ai_admin': 'AI administrator',
+  'admin.users.role.extension_admin': 'Extensions administrator',
+  'admin.users.runsTracks': '{count, plural, one {Runs # track} other {Runs # tracks}}',
+  'admin.users.member': 'Member',
+  'admin.users.roleSeparator': ', ',
+  'admin.users.filter.role': 'Role',
+  'admin.users.filter.any': 'Any role',
+  'admin.users.filter.site_admin': 'Site administrators',
+  'admin.users.filter.configuration_admin': 'Configuration administrators',
+  'admin.users.filter.automation_admin': 'Automation administrators',
+  'admin.users.filter.ai_admin': 'AI administrators',
+  'admin.users.filter.extension_admin': 'Extensions administrators',
+  'admin.users.filter.runs_tracks': 'People who run tracks',
+  'admin.users.filter.member': 'Members, with no role',
+  'admin.person.loading': 'Reading the person…',
+  'admin.person.failed': 'The person could not be read. Try again in a moment.',
+  'admin.person.purpose':
+    'Everything about one person: their roles, profile, sign-in, data and account.',
+  'admin.person.about':
+    'Roles are given on Global permissions, to the person or to a group they are in, and a track’s administrators on that track’s People page; each role below links to where it changes. Changes here are recorded in the audit log.',
+  'admin.person.roles': 'Roles',
+  'admin.person.member': 'Member: they hold no administrator role and run no track.',
+  'admin.person.source.account': 'Marked on their account',
+  'admin.person.source.user': 'Given to them on Global permissions',
+  'admin.person.source.group': 'Through the group {group}',
+  'admin.person.source.everyone': 'Given to everyone signed in, on Global permissions',
+  'admin.person.track': '{key} · {name}',
+  'admin.person.moreTracks': '{count, plural, one {and # more track} other {and # more tracks}}',
+  'admin.person.inGroups': 'In the groups {groups}.',
+  'admin.person.groupless': 'In no group.',
+  'admin.person.whereRoles': 'Where roles change:',
+  'admin.person.toPermissions': 'Global permissions',
+  'admin.person.toGroups': 'Groups',
+  'admin.person.profile': 'Profile',
+  'admin.person.directoryKeeps':
+    '{directory} keeps this person: their name and email change there, not here.',
+  'admin.person.directoryWrites':
+    '{directory} keeps this person: a new name or email is written there too.',
+  'admin.person.timeZoneHint': 'Dates and times they see. Automatic follows their device.',
+  'admin.person.localeHint':
+    'How dates and numbers are written for them. Automatic follows their browser.',
+  'admin.person.save': 'Save profile',
+  'admin.person.signIn': 'Sign-in',
+  'admin.person.passwordLinkHint':
+    'A one-time link to set a new password, for you to send them. Their current password keeps working until they use it.',
+  'admin.person.passwordDirectory':
+    'Their password is checked by {directory}, so no link is made here.',
+  'admin.person.breakGlass': 'Break-glass account',
+  'admin.person.breakGlassHint':
+    'A break-glass account may still sign in with a password while single sign-on is enforced, for when the identity provider is down. Keep such accounts few.',
+  'admin.person.isBreakGlass': 'This is a break-glass account.',
+  'admin.person.notBreakGlass': 'This is not a break-glass account.',
+  'admin.person.markBreakGlass': 'Mark as a break-glass account',
+  'admin.person.unmarkBreakGlass': 'Remove the break-glass mark',
+  'admin.person.breakGlassOn': '{name} is a break-glass account now.',
+  'admin.person.breakGlassOff': '{name} is no longer a break-glass account.',
+  'admin.person.breakGlassDirectory':
+    'An account a directory keeps cannot be a break-glass account.',
+  'admin.person.breakGlassDirectoryMarked':
+    'A directory keeps this account now, so it should not stay a break-glass account: remove the mark.',
+  'admin.person.twoFactor': 'Second factor',
+  'admin.person.withoutTwoFactor': 'They have no second factor.',
+  'admin.person.hasTwoFactor': 'They have set up a second factor.',
+  'admin.person.ownTwoFactor': 'Yours is changed on your account page.',
+  'admin.person.resetTwoFactor': 'Reset second factor',
+  'admin.person.resetTwoFactorOf': 'Reset second factor of {name}',
+  'admin.person.resetTwoFactorConfirm':
+    '{name}’s authenticator app, security keys and recovery codes stop working at once. Where the site requires a second factor, they set one up again at their next sign-in.',
+  'admin.person.twoFactorReset': '{name}’s second factor was reset.',
+  'admin.person.account': 'Account',
+  'admin.person.activeNote':
+    'Deactivating signs them out everywhere and keeps their tickets and history. Erasing replaces their name and email everywhere and cannot be undone.',
+  'admin.person.deactivatedNote':
+    'Deactivated: they cannot sign in. Reactivating gives them back their roles. Erasing replaces their name and email everywhere and cannot be undone.',
+  'admin.person.self':
+    'This is you: another site administrator deactivates or erases your account, or changes your site administrator mark.',
+  'admin.person.erasedNote':
+    'This person was erased: the account is a placeholder that keeps their history, with no actions left.',
+  'admin.person.problem.deactivated': 'They are deactivated: reactivate them first.',
   'admin.groups.title': 'Groups',
   'admin.groups.intro':
     'Groups gather people to give them permissions or to restrict what they see. A group inside another counts as part of it.',
@@ -3065,6 +3330,7 @@ export const messagesEn = {
   'trackPeople.ownConfigIntro': '{key} has its own configuration, and you can change it here:',
   'trackPeople.layoutsLink': 'Layout sets: where fields appear on its forms',
   'trackPeople.setsLink': 'Configuration sets: its ticket types and field rules',
+  'trackPeople.notificationsLink': 'Notification policies: who hears of which changes in it',
   'trackPeople.invite': 'Invite people',
   'trackPeople.inviteOff': 'Inviting is off for this track. A site administrator can turn it on.',
   'trackPeople.inviteOffAdmin':
@@ -3092,7 +3358,7 @@ export const messagesEn = {
   'trackPeople.roleGivenWithTracks': '{name} now holds {role} and can create tracks.',
   'trackPeople.createTracks': 'Also let them create tracks',
   'trackPeople.createTracksHint':
-    'A permission for the whole site, not only this track. Taking the role away later does not remove it; a site administrator can, on the Permissions page.',
+    'A permission for the whole site, not only this track. It goes with the role: once they run no track, it goes too. To let them keep it, a site administrator gives it on the Permissions page.',
   'trackPeople.pending': 'Invitations waiting',
   'trackPeople.noPending': 'No invitations are waiting.',
   'trackPeople.pendingMeta': '{role}, invited by {who}.',
@@ -3107,6 +3373,8 @@ export const messagesEn = {
   'trackPeople.linkMade': 'There is a new link for {who}; the old one no longer works.',
   'trackPeople.revoke': 'Withdraw',
   'trackPeople.revokeFor': 'Withdraw the invitation to {who}',
+  'trackPeople.revokeOutcome':
+    'The link sent to {who} stops working. If this invitation already gave them the role {role}, they lose it.',
   'trackPeople.revoked': 'The invitation to {who} was withdrawn.',
   'trackPeople.inviteTitle': 'Invite people to {key}',
   'trackPeople.addresses': 'Email addresses',
@@ -3245,15 +3513,12 @@ export const messagesEn = {
   'admin.tracks.archiveOf': 'Archive track {key}',
   'admin.tracks.restore': 'Restore track',
   'admin.tracks.restoreOf': 'Restore track {key}',
-  'admin.tracks.confirmArchive':
-    'Archive {key}? Its tickets stay readable and nobody can change them.',
-  'admin.tracks.confirmRestore': 'Restore {key}? Its tickets can be changed again.',
-  'admin.tracks.confirmYes': 'Yes',
-  'admin.tracks.confirmNo': 'No',
+  'admin.tracks.archiveOutcome':
+    'Nobody can change the tickets of {key} until it is restored, and search leaves them out. They stay readable.',
   'admin.tracks.archivedSaid': 'Track {key} was archived.',
   'admin.tracks.restored': 'Track {key} was restored.',
   'admin.tracks.problem.mapping':
-    '{tickets, plural, one {# ticket is} other {# tickets are}} in statuses the new workflows lack. Give a status mapping through the API, then switch.',
+    '{tickets, plural, one {# ticket is} other {# tickets are}} in statuses the new workflows lack. Choose the workflow map again to say where they go.',
   'admin.tracks.problem.migrating':
     'Tickets are still moving after an earlier change. Try again when it has finished.',
   'admin.tracks.problem.key': 'That key is taken or not a valid key.',
@@ -3262,7 +3527,8 @@ export const messagesEn = {
   'admin.maps.title': 'Workflow maps',
   'admin.maps.intro':
     'A workflow map says which workflow each ticket type follows in the tracks that use it. Types it does not name follow its default workflow.',
-  'admin.maps.forbidden': 'Only administrators manage workflow maps.',
+  'admin.maps.forbidden':
+    'Only site and configuration administrators, and the people who run a track with its own configuration, manage workflow maps.',
   'admin.maps.loading': 'Reading the workflow maps…',
   'admin.maps.failed': 'The workflow maps could not be read. Try again in a moment.',
   'admin.maps.new': 'New workflow map',
@@ -3293,7 +3559,7 @@ export const messagesEn = {
   'admin.maps.confirmDelete':
     'Delete {name}? No track can use it afterwards, and this cannot be undone.',
   'admin.maps.problem.mapping':
-    '{tickets, plural, one {# ticket is} other {# tickets are}} in statuses the new workflows lack. Give a status mapping through the API, then save.',
+    '{tickets, plural, one {# ticket is} other {# tickets are}} in statuses the new workflows lack. Save the map again to say where they go.',
   'admin.maps.problem.migrating':
     'Tickets are still moving after an earlier change. Try again when it has finished.',
   'admin.maps.problem.nameTaken': 'There is a map with that name already.',
@@ -3361,16 +3627,134 @@ export const messagesEn = {
     '{tracks, plural, one {# track uses} other {# tracks use}} this set: give them another first.',
   'admin.sets.problem.default': 'A default set is not deleted.',
   'admin.sets.problem.typeInUse':
-    'Tickets have a type the set would drop: move them to another type through the API first.',
+    'Tickets have a type the set would drop: choose the type they take below, then save again.',
   'admin.sets.problem.nameTaken': 'There is a set with that name already.',
   'admin.sets.problem.invalid':
     'That combination is not allowed: a field is never required and hidden at once, or required for some editors only.',
   'admin.sets.problem.forbidden': 'You may not change this set.',
+  // Ticket types and levels, and the type set settings (T-320; UI-T21).
+  'settings.ticketTypes': 'Ticket types',
+  'settings.ticketTypesHint':
+    'The kinds of ticket, and the levels that say which ticket can be the parent of which.',
+  'admin.ticketTypes.title': 'Ticket types',
+  'admin.ticketTypes.intro':
+    'Each ticket type sits at a level, and a ticket’s parent sits exactly one level higher; a subticket always has a parent. The three built-in levels are renamed but never moved or removed. Levels you add sit above Outcome. Which types a track offers comes from its type set, on Configuration sets.',
+  'admin.ticketTypes.forbidden':
+    'Only site and configuration administrators manage ticket types and levels.',
+  'admin.ticketTypes.loading': 'Reading the ticket types…',
+  'admin.ticketTypes.failed': 'The ticket types could not be read. Try again in a moment.',
+  'admin.ticketTypes.newType': 'New ticket type',
+  'admin.ticketTypes.newLevel': 'New level',
+  'admin.ticketTypes.addType': 'Add a ticket type',
+  'admin.ticketTypes.addLevel': 'Add a level',
+  'admin.ticketTypes.cancelNew': 'Cancel',
+  'admin.ticketTypes.typeName': 'Ticket type name',
+  'admin.ticketTypes.levelName': 'Level name',
+  'admin.ticketTypes.description': 'Description',
+  'admin.ticketTypes.level': 'Level',
+  'admin.ticketTypes.place': 'Where it goes',
+  'admin.ticketTypes.placeAbove': 'Above {name}',
+  'admin.ticketTypes.placeHint':
+    'Tickets of the new level can be the parents of tickets of the level just below it.',
+  'admin.ticketTypes.icon': 'Icon',
+  'admin.ticketTypes.icon.outcome': 'Outcome',
+  'admin.ticketTypes.icon.feature': 'Feature',
+  'admin.ticketTypes.icon.bug': 'Bug',
+  'admin.ticketTypes.icon.chore': 'Chore',
+  'admin.ticketTypes.icon.toDo': 'To-do',
+  'admin.ticketTypes.icon.idea': 'Idea',
+  'admin.ticketTypes.icon.subticket': 'Subticket',
+  'admin.ticketTypes.icon.plain': 'Plain hexagon',
+  'admin.ticketTypes.levelBuiltin': 'Built in: it can be renamed, not moved or removed.',
+  'admin.ticketTypes.levelAdded': 'Added: it can be renamed, moved and removed.',
+  'admin.ticketTypes.noTypes': 'No ticket type sits at this level.',
+  'admin.ticketTypes.typesAt': 'Ticket types at {name}',
+  'admin.ticketTypes.manage': 'Manage',
+  'admin.ticketTypes.manageOf': 'Manage ticket type {name}',
+  'admin.ticketTypes.settingsOf': 'Settings of {name}',
+  'admin.ticketTypes.save': 'Save the type',
+  'admin.ticketTypes.renameLevel': 'Rename',
+  'admin.ticketTypes.renameLevelOf': 'Rename level {name}',
+  'admin.ticketTypes.saveLevel': 'Save the level',
+  'admin.ticketTypes.up': 'Up',
+  'admin.ticketTypes.down': 'Down',
+  'admin.ticketTypes.moveUp': 'Move level {name} up',
+  'admin.ticketTypes.moveDown': 'Move level {name} down',
+  'admin.ticketTypes.removeLevel': 'Remove level',
+  'admin.ticketTypes.removeLevelOf': 'Remove level {name}',
+  'admin.ticketTypes.confirmRemove':
+    'Remove {name}? {types, plural, =0 {{own, plural, =0 {No ticket type sits at it.} one {# ticket type of a track with its own configuration falls to the {standard} level.} other {# ticket types of tracks with their own configuration fall to the {standard} level.}}} one {Its type, {names}, falls to the {standard} level{own, plural, =0 {.} one {, as does # ticket type of a track with its own configuration.} other {, as do # ticket types of tracks with their own configuration.}}} other {Its types, {names}, fall to the {standard} level{own, plural, =0 {.} one {, as does # ticket type of a track with its own configuration.} other {, as do # ticket types of tracks with their own configuration.}}}} {known, select, yes {{tickets, plural, =0 {No ticket changes level.} one {# ticket changes level.} other {# tickets change level.}}} other {}} This cannot be undone.',
+  'admin.ticketTypes.breaks':
+    '{links, plural, =0 {no parent link would break} one {# parent link would break} other {# parent links would break}}, and {orphans, plural, =0 {no ticket would be left without the parent a subticket needs} one {# ticket would be left without the parent a subticket needs} other {# tickets would be left without the parent a subticket needs}}',
+  'admin.ticketTypes.cannotRemove':
+    '{name} cannot be removed now: {why}. Change those tickets’ parents first.',
+  'admin.ticketTypes.retypePreview':
+    '{tickets, plural, =0 {No ticket of this type changes level.} one {# ticket of this type changes level.} other {# tickets of this type change level.}}',
+  'admin.ticketTypes.retypeRefused': 'This level would be refused: {why}.',
+  'admin.ticketTypes.deleteType': 'Delete ticket type',
+  'admin.ticketTypes.deleteTypeOf': 'Delete ticket type {name}',
+  'admin.ticketTypes.confirmDelete':
+    'Delete {name}? Nothing can use it afterwards, and this cannot be undone.',
+  'admin.ticketTypes.typeAdded': '{name} was added.',
+  'admin.ticketTypes.typeSaved': '{name} was saved.',
+  'admin.ticketTypes.typeDeleted': '{name} was deleted.',
+  'admin.ticketTypes.levelCreated': 'The level {name} was added.',
+  'admin.ticketTypes.levelSaved': 'The level {name} was saved.',
+  'admin.ticketTypes.levelMovedUp': '{name} moved up.',
+  'admin.ticketTypes.levelMovedDown': '{name} moved down.',
+  'admin.ticketTypes.levelRemoved': 'The level {name} was removed.',
+  'admin.ticketTypes.problem.breaks':
+    'Nothing changed: {why}. Change those tickets’ parents first.',
+  'admin.ticketTypes.problem.typeNameTaken': 'There is a ticket type with that name already.',
+  'admin.ticketTypes.problem.levelNameTaken': 'There is a level with that name already.',
+  'admin.ticketTypes.problem.inTypeSets':
+    '{name} is in the type sets {sets}: take it out of them on Configuration sets first.',
+  'admin.ticketTypes.problem.hasTickets':
+    '{tickets, plural, one {# ticket has} other {# tickets have}} this type, the trash included: give them another type first.',
+  'admin.ticketTypes.problem.builtin': 'A built-in level is renamed, never moved or removed.',
+  'admin.ticketTypes.problem.rank': 'A level you add sits above Outcome.',
+  'admin.ticketTypes.problem.forbidden': 'You may not change ticket types or levels.',
+  'admin.ticketTypes.problem.invalid': 'That was not accepted: check the name and the level.',
+  'admin.ticketTypes.problem.other': 'That did not work. Try again in a moment.',
+  'admin.sets.order': 'Order in the set',
+  'admin.sets.orderHint': 'The create form offers the types in this order.',
+  'admin.sets.up': 'Up',
+  'admin.sets.down': 'Down',
+  'admin.sets.moveUp': 'Move {name} up',
+  'admin.sets.moveDown': 'Move {name} down',
+  'admin.sets.preselected': 'Preselected type',
+  'admin.sets.preselectedFirst': 'None: the first type in the order',
+  'admin.sets.defaultForLegend': 'Default set for new tracks of these kinds',
+  'admin.sets.defaultForHint':
+    'Every kind of track has a default set. To give one up, tick it on another set instead.',
+  'admin.sets.kindChoice.software': 'Software tracks',
+  'admin.sets.kindChoice.business': 'Business tracks',
+  'admin.sets.kindChoice.service': 'Service tracks',
+  'admin.sets.kindChoice.discovery': 'Discovery tracks',
+  'admin.sets.mapping': 'Tickets of the types you drop',
+  'admin.sets.mappingIntro':
+    '{tickets, plural, one {# ticket in the tracks that use this set has} other {# tickets in the tracks that use this set have}} a type the set would drop. Choose the type they take, at the same level, then save again.',
+  'admin.sets.mappingFor': 'Tickets of {name} become',
+  'admin.sets.mappingChoose': 'Choose a type',
+  'admin.sets.mappingNowhere':
+    'The set keeps no type at the {level} level, so tickets of {name} have nowhere to go: keep {name}, or add a type of that level.',
+  'admin.sets.savedMapped':
+    '{name} was saved; {tickets, plural, one {# ticket took another type} other {# tickets took another type}}.',
+  'admin.sets.problem.mapping':
+    'Each type you drop needs a type of its own level that the set keeps.',
+  // When the server's counts do not tell how many tickets the dropped types hold (T-320).
+  'admin.sets.mappingIntroUncounted':
+    'Tickets in the tracks that use this set have a type the set would drop. Choose the type they take, at the same level, then save again.',
+  'admin.sets.savedMappedUncounted':
+    '{name} was saved; the tickets of the types you dropped took another type.',
+  'admin.sets.problem.defaultRequired':
+    'Every kind of track has a default set: tick it on another set instead.',
   'admin.sets.problem.other': 'That did not work. Try again in a moment.',
   'admin.fields.title': 'Fields',
   'admin.fields.intro':
     'Custom fields add what tickets need to hold beyond the built-in ones. A field keeps its type; its options can change without touching tickets.',
-  'admin.fields.forbidden': 'Only administrators manage fields.',
+  'admin.fields.forbidden':
+    'Only site and configuration administrators manage fields. The people who run a track with its own configuration manage its own fields from the track’s page.',
   'admin.fields.loading': 'Reading the fields…',
   'admin.fields.failed': 'The fields could not be read. Try again in a moment.',
   'admin.fields.none': 'There are no custom fields yet.',
@@ -3381,14 +3765,12 @@ export const messagesEn = {
   'admin.fields.typeLabel': 'Type',
   'admin.fields.multiple': 'Holds several values',
   'admin.fields.added': '{name} was added.',
-  'admin.fields.saved': '{name} was renamed.',
+  'admin.fields.saved': '{name} was saved.',
   'admin.fields.deleted': '{name} was deleted.',
   'admin.fields.local': 'One track',
   'admin.fields.summaryMultiple': '{type}, several values',
   'admin.fields.manage': 'Manage',
   'admin.fields.manageOf': 'Manage field {name}',
-  'admin.fields.renameOf': 'Rename {name}',
-  'admin.fields.rename': 'Rename',
   'admin.fields.optionsOf': 'Options in {context}',
   'admin.fields.noOptions': 'No options yet.',
   'admin.fields.newOption': 'New option',
@@ -3411,6 +3793,8 @@ export const messagesEn = {
   'admin.fields.optionEnableOf': 'Offer again {value}',
   'admin.fields.optionDelete': 'Delete',
   'admin.fields.optionDeleteOf': 'Delete {value}',
+  'admin.fields.optionDeleteOutcome':
+    '{children, plural, =0 {Delete {value}? It leaves this list for good.} one {Delete {value} and its child option? They leave this list for good.} other {Delete {value} and its # child options? They leave this list for good.}} {isDefault, select, yes {New tickets in {context} start with {value}: once it goes they start empty until a default is saved again. } other {}}{children, plural, =0 {An option a ticket holds is not deleted: stop offering it instead.} other {Options a ticket holds are not deleted: stop offering them instead.}} This cannot be undone.',
   'admin.fields.delete': 'Delete field',
   'admin.fields.deleteOf': 'Delete field {name}',
   'admin.fields.confirmDelete':
@@ -3438,6 +3822,177 @@ export const messagesEn = {
   'admin.fields.problem.valueTaken': 'There is an option with that name already.',
   'admin.fields.problem.forbidden': 'You may not change this field.',
   'admin.fields.problem.other': 'That did not work. Try again in a moment.',
+  // Fields: descriptions, type settings, formulas, contexts, defaults and option order (T-320).
+  'admin.fields.description': 'Description',
+  'admin.fields.descriptionHint':
+    'Forms show it under the field, unless a field rule gives help text of its own.',
+  'admin.fields.detailsOf': 'Name and description of {name}',
+  'admin.fields.saveDetails': 'Save the name and description',
+  'admin.fields.settings.titleOf': 'Settings of {name}',
+  'admin.fields.settings.save': 'Save the settings',
+  'admin.fields.settings.saved': 'The settings of {name} were saved.',
+  'admin.fields.settings.maxChars': 'Most characters',
+  'admin.fields.settings.maxCharsHint':
+    'Left empty, a paragraph holds up to {usual} characters; you may allow up to {most}.',
+  'admin.fields.settings.numberLegend': 'How values show',
+  'admin.fields.settings.format': 'Shows as',
+  'admin.fields.settings.format.number': 'Number',
+  'admin.fields.settings.format.currency': 'Currency',
+  'admin.fields.settings.format.percentage': 'Percentage (40 means 40%)',
+  'admin.fields.settings.decimals': 'Decimals',
+  'admin.fields.settings.decimalsAny': 'As typed',
+  'admin.fields.settings.currency': 'Currency code',
+  'admin.fields.settings.currencyHint': 'Three letters, such as EUR or USD.',
+  'admin.fields.settings.sample': '{plain} shows as {shown} on tickets and in lists.',
+  'admin.fields.formula.titleOf': 'Formula of {name}',
+  'admin.fields.formula.legend': 'Formula',
+  'admin.fields.formula.expression': 'Expression',
+  'admin.fields.formula.hint':
+    'Put field names in braces and call functions by name. The line below checks it as you type.',
+  'admin.fields.formula.output': 'Output',
+  'admin.fields.formula.output.number': 'Number',
+  'admin.fields.formula.output.currency': 'Currency',
+  'admin.fields.formula.output.percentage': 'Percentage (40 means 40%)',
+  'admin.fields.formula.output.date': 'Date',
+  'admin.fields.formula.output.duration': 'Duration',
+  'admin.fields.formula.output.text': 'Text',
+  'admin.fields.formula.save': 'Save the formula',
+  'admin.fields.formula.at': 'Line {line}, column {column}: {problem}',
+  'admin.fields.formula.gives.number': 'It gives a number.',
+  'admin.fields.formula.gives.date': 'It gives a date.',
+  'admin.fields.formula.gives.duration': 'It gives a duration.',
+  'admin.fields.formula.gives.text': 'It gives text.',
+  'admin.fields.formula.gives.boolean': 'It gives yes or no.',
+  'admin.fields.formula.reads': 'It reads {fields}.',
+  'admin.fields.formula.readsNothing': 'It reads no field.',
+  'admin.fields.formula.help': 'What a formula can use',
+  'admin.fields.formula.helpFields': 'Fields it can read',
+  'admin.fields.formula.helpFunctions': 'Functions',
+  'admin.fields.formula.helpMore':
+    'The manual’s page on fields says more under Formula fields: operators, child tickets and working days.',
+  'admin.fields.formula.problem.too_long':
+    'The formula is too long: it may have at most 4,000 characters.',
+  'admin.fields.formula.problem.too_deep':
+    'The formula nests too deeply: split it into simpler parts.',
+  'admin.fields.formula.problem.too_complex': 'The formula has too many parts: make it shorter.',
+  'admin.fields.formula.problem.empty': 'Write a formula.',
+  'admin.fields.formula.problem.unexpected_character': '{text} cannot be used in a formula.',
+  'admin.fields.formula.problem.unexpected_token':
+    '{text} is out of place here: something may be missing before it.',
+  'admin.fields.formula.problem.unexpected_end':
+    'The formula stops too early: something is missing at its end.',
+  'admin.fields.formula.problem.unterminated_string': 'A text in quotes has no closing quote.',
+  'admin.fields.formula.problem.unterminated_field': 'A field name in braces has no closing brace.',
+  'admin.fields.formula.problem.empty_field': 'A pair of braces names no field.',
+  'admin.fields.formula.problem.invalid_number': '{text} is not a number formulas read.',
+  'admin.fields.formula.problem.unknown_name':
+    '{text} is neither a function nor a word formulas know: a field’s name goes in braces.',
+  'admin.fields.formula.problem.unknown_function': 'No function is called {text}.',
+  'admin.fields.formula.problem.arity': '{text} is given the wrong number of values.',
+  'admin.fields.formula.problem.unknown_field':
+    'No field is called {text}, or a formula here cannot see it.',
+  'admin.fields.formula.problem.ambiguous_field':
+    'Several fields are called {text}: name the one you mean by its number, such as cf[12] in braces.',
+  'admin.fields.formula.problem.unsupported_field':
+    'Formulas cannot read {text} yet: they read numbers, dates, text, web addresses and other formulas.',
+  'admin.fields.formula.problem.type_mismatch':
+    '{text} does not fit here: its value is of another kind, such as text where a number goes.',
+  'admin.fields.formula.problem.children_misplaced':
+    '{text} works only inside sum, avg, min, max or count.',
+  'admin.fields.formula.problem.output_mismatch':
+    'What the formula gives does not fit the output chosen: choose another output or change the formula.',
+  'admin.fields.formula.problem.cycle':
+    'Formula fields would need each other’s values here, through {text}.',
+  'admin.fields.formula.problem.other': 'Something is wrong here.',
+  'admin.fields.contexts.title': 'Where {name} applies',
+  'admin.fields.contexts.hint':
+    'Each context covers tracks and ticket types and holds its own default and options. On a ticket the most specific one wins: track and type, then track, then type, then the one for all.',
+  'admin.fields.contexts.none': 'This field applies nowhere.',
+  'admin.fields.contexts.noneBody': 'Add a context to offer it on tickets again.',
+  'admin.fields.contexts.reach': '{tracks}; {types}',
+  'admin.fields.contexts.everyTrack': 'Every track',
+  'admin.fields.contexts.someTracks': 'Tracks: {names}',
+  'admin.fields.contexts.everyType': 'every ticket type',
+  'admin.fields.contexts.someTypes': 'ticket types: {names}',
+  'admin.fields.contexts.peopleAnyone': 'People to choose from: anyone',
+  'admin.fields.contexts.peopleGroup': 'People to choose from: the members of {name}',
+  'admin.fields.contexts.peopleRole':
+    'People to choose from: whoever holds {name} in the ticket’s track',
+  'admin.fields.contexts.change': 'Change',
+  'admin.fields.contexts.changeOf': 'Change context {name}',
+  'admin.fields.contexts.save': 'Save the context',
+  'admin.fields.contexts.saved': 'The context {name} was saved.',
+  'admin.fields.contexts.new': 'New context',
+  'admin.fields.contexts.add': 'Add a context',
+  'admin.fields.contexts.added': 'The context {name} was added.',
+  'admin.fields.contexts.name': 'Context name',
+  'admin.fields.contexts.tracks': 'Tracks',
+  'admin.fields.contexts.allTracks': 'Every track',
+  'admin.fields.contexts.chosenTracks': 'Only these tracks',
+  'admin.fields.contexts.types': 'Ticket types',
+  'admin.fields.contexts.allTypes': 'Every ticket type',
+  'admin.fields.contexts.chosenTypes': 'Only these ticket types',
+  'admin.fields.contexts.ownTrack': 'It covers {name} only: the field belongs to that track.',
+  'admin.fields.contexts.people': 'People to choose from',
+  'admin.fields.contexts.peopleFrom': 'Offer',
+  'admin.fields.contexts.limit.anyone': 'Anyone',
+  'admin.fields.contexts.limit.group': 'The members of a group',
+  'admin.fields.contexts.limit.role': 'The holders of a track role',
+  'admin.fields.contexts.group': 'Group',
+  'admin.fields.contexts.role': 'Track role',
+  'admin.fields.contexts.chooseOne': 'Choose one',
+  'admin.fields.contexts.chooseTrack': 'Tick at least one track, or choose Every track.',
+  'admin.fields.contexts.chooseType': 'Tick at least one ticket type, or choose Every ticket type.',
+  'admin.fields.contexts.choosePeople': 'Choose the group or the role whose people it offers.',
+  'admin.fields.contexts.delete': 'Delete',
+  'admin.fields.contexts.deleteOf': 'Delete context {name}',
+  'admin.fields.contexts.confirmDelete':
+    'Delete {name}? Its default and options go with it, and its tracks and ticket types fall to the field’s other contexts. This cannot be undone.',
+  'admin.fields.contexts.confirmDeleteLast':
+    'Delete {name}? It is the field’s last context, so the field will apply nowhere until you add another. This cannot be undone.',
+  'admin.fields.contexts.deleted': 'The context {name} was deleted.',
+  'admin.fields.default.label': 'Default value',
+  'admin.fields.default.of': 'Default value in {name}',
+  'admin.fields.default.child': 'Default child option',
+  'admin.fields.default.unset': 'No default',
+  'admin.fields.default.clear': 'Remove the default',
+  'admin.fields.default.save': 'Save the default',
+  'admin.fields.default.saved': 'The default in {name} was saved.',
+  'admin.fields.default.removed': '{name} has no default now.',
+  'admin.fields.default.labelsHint': 'Separate labels with spaces.',
+  'admin.fields.default.notTaken': 'A field of type {type} takes no default value.',
+  'admin.fields.defaultBadge': 'Default',
+  'admin.fields.optionUp': 'Up',
+  'admin.fields.optionDown': 'Down',
+  'admin.fields.optionUpOf': 'Move {value} up',
+  'admin.fields.optionDownOf': 'Move {value} down',
+  'admin.fields.optionMoved': '{value} was moved.',
+  'admin.fields.childOptionsOf': 'Child options of {parent}',
+  'admin.fields.noChildOptions': '{parent} has no child options yet.',
+  'admin.fields.newChildOption': 'New child option',
+  'admin.fields.addChild': 'Add the child option',
+  'admin.fields.addChildTo': 'Add a child option to {parent}',
+  'admin.fields.childAdded': '{value} was added under {parent}.',
+  'admin.fields.problem.optionsInUse':
+    '{tickets, plural, one {# ticket holds} other {# tickets hold}} one of its options, the trash included. Stop offering them instead.',
+  'admin.fields.problem.contextNameTaken': 'This field has a context with that name already.',
+  'admin.fields.problem.overlap':
+    'Another context of this field already covers one of those tracks with one of those ticket types. Narrow one of them first.',
+  'admin.fields.problem.invalidDefault':
+    'That default does not fit the field: check the value, or choose an option it still offers.',
+  'admin.fields.problem.listChanged':
+    'Something chosen here no longer exists. Reload the page for the latest lists.',
+  'admin.fields.problem.trackArchived':
+    'The field’s track is archived, so its fields do not change until it is restored.',
+  'admin.fields.problem.limit':
+    'That would pass one of the site’s limits. A site administrator can raise it on the Guardrails page.',
+  'admin.fields.problem.invalid': 'Those settings were not accepted. Check them and try again.',
+  // The Fields page after review (T-320): Delete on an option asks first, a default naming an
+  // option no longer offered, and a context naming a track in the trash.
+  'admin.fields.default.notOffered':
+    'The default still names {values}, no longer offered here, so saving the default leaves that out.',
+  'admin.fields.contexts.goneTracks':
+    '{count, plural, one {A track it names is} other {# tracks it names are}} in the trash, so saving leaves {count, plural, one {it} other {them}} out of this context.',
   'admin.permissions.title': 'Permissions',
   'admin.permissions.intro':
     'Roles name what people do in a track; access policies say what each role, group or person may do in the tracks that use them; global permissions apply everywhere.',
@@ -3493,6 +4048,9 @@ export const messagesEn = {
   'admin.permissions.removed': '{grantee} no longer has {permission}.',
   'admin.permissions.remove': 'Remove',
   'admin.permissions.removeOf': 'Remove {grantee} from {permission}',
+  'admin.permissions.removeOutcome':
+    '{grantee} loses {permission} in {count, plural, =0 {every track that uses this policy, and none does yet} one {{tracks}, the track that uses this policy} other {{tracks}, the # tracks that use this policy}}.',
+  'admin.permissions.removeGlobalOutcome': '{grantee} loses {permission} across the whole site.',
   'admin.permissions.global': 'Global permissions',
   'admin.permissions.newGrantIn': 'New permission in {name}',
   'admin.permissions.newGlobal': 'New global permission',
@@ -3515,6 +4073,56 @@ export const messagesEn = {
   'admin.permissions.granteeKind.anyone': 'Anyone, signed in or not',
   'admin.permissions.granteeKind.requester': 'The requester',
   'admin.permissions.granteeKind.assignee': 'The assignee',
+  // T-320 (UI-T21): field grantees, the status mapping step, renaming groups and service
+  // accounts, and service accounts in groups.
+  'admin.permissions.granteeKind.user_field': 'People in a user field',
+  'admin.permissions.granteeKind.group_field': 'Groups in a group field',
+  'admin.permissions.pickUserField': 'User field',
+  'admin.permissions.pickGroupField': 'Group field',
+  'admin.permissions.pickFieldEmpty': 'No field of this kind yet',
+  'admin.permissions.problem.field': 'That field is gone, or not of this kind. Choose another.',
+  'statusMapping.lead':
+    '{count, plural, one {# ticket is} other {# tickets are}} in statuses the new workflows lack. Choose where they go: they move when you confirm.',
+  'statusMapping.changed':
+    'Tickets changed since this was read. Check where each goes, then confirm again.',
+  'statusMapping.legend': 'Where the tickets go',
+  'statusMapping.moveTo':
+    'Move the {count, plural, one {# {type} ticket} other {# {type} tickets}} in {status} to',
+  'statusMapping.choose': 'Choose a status',
+  'statusMapping.of': 'A status of {workflow}, the new workflow of {type}.',
+  'statusMapping.missing': 'Choose a status for each, then confirm.',
+  'statusMapping.cancel': 'Cancel',
+  'statusMapping.moved':
+    '{count, plural, one {# ticket moved to its new status.} other {# tickets moved to their new statuses.}}',
+  'statusMapping.moving':
+    '{count, plural, one {# ticket is moving to its new status.} other {# tickets are moving to their new statuses.}}',
+  'statusMapping.progress': 'Tickets moved: {moved, number} of {total, number}',
+  'statusMapping.done':
+    '{total, plural, one {The ticket has moved.} other {All # tickets have moved.}}',
+  'statusMapping.progressFailed':
+    'How far the tickets got could not be read. They keep moving: look again in a moment.',
+  'admin.tracks.mappingTitle': 'Switch {key} to {map}',
+  'admin.tracks.mappingConfirm': 'Switch and move the tickets',
+  'admin.maps.mappingTitle': 'Save {name}',
+  'admin.maps.mappingConfirm': 'Save and move the tickets',
+  'admin.groups.editOf': 'Name and description of {name}',
+  'admin.groups.save': 'Save',
+  'admin.groups.saved': '{name} was saved.',
+  'admin.groups.directoryName':
+    'The directory {directory} keeps this group’s name: rename it there. The description is yours to change.',
+  'admin.groups.serviceAccount': 'Service account',
+  'admin.groups.addServiceAccount': 'Add a service account',
+  'admin.groups.addServiceAccountHint':
+    'A service account in a group gets the group’s permissions, as a person does.',
+  'admin.groups.pickServiceAccount': 'Choose a service account',
+  'admin.groups.addServiceAccountShort': 'Add the account',
+  'admin.serviceAccounts.change': 'Change',
+  'admin.serviceAccounts.changeNamed': 'Change the name and description of {name}',
+  'admin.serviceAccounts.save': 'Save',
+  'admin.serviceAccounts.saved': '{name} was saved.',
+  'admin.serviceAccounts.cancelChange': 'Cancel',
+  'admin.serviceAccounts.saveFailed':
+    'The service account could not be saved. Try again in a moment.',
   'admin.permissions.problem.roleInUse':
     'Access policies or tracks still use this role: take it out of them first.',
   'admin.permissions.problem.policyInUse': 'Tracks still use this policy: give them another first.',
@@ -3610,6 +4218,159 @@ export const messagesEn = {
   'closeReason.name.notPlanned': 'Not planned',
   'closeReason.name.duplicate': 'Duplicate',
   'closeReason.name.notReproducible': 'Not reproducible',
+  // Priorities, priority sets and close reasons (T-320; CORE-014; ADR-114 section 1).
+  'settings.priorities': 'Priorities',
+  'settings.prioritiesHint':
+    'The priorities and close reasons tickets choose from, and which priorities each track offers.',
+  'admin.priorities.title': 'Priorities',
+  'admin.priorities.purpose':
+    'Keep the site’s priorities and close reasons, and the priority sets that decide which priorities a track offers.',
+  'admin.priorities.about':
+    'Every ticket has a priority. A track offers the priorities of its priority set, and a new ticket gets that set’s default unless someone chooses another. A close reason says why a ticket was closed; workflows set one as they close a ticket. A priority or close reason that is in use is deleted only once you choose which one takes its place.',
+  'admin.priorities.forbidden':
+    'Only site and configuration administrators change priorities and close reasons.',
+  'admin.priorities.loading': 'Reading the priorities…',
+  'admin.priorities.failed': 'The priorities could not be read. Try again in a moment.',
+  'admin.priorities.name': 'Name',
+  'admin.priorities.description': 'Description (optional)',
+  'admin.priorities.up': 'Up',
+  'admin.priorities.down': 'Down',
+  'admin.priorities.change': 'Change',
+  'admin.priorities.manage': 'Manage',
+  'admin.priorities.delete': 'Delete',
+  'admin.priorities.save': 'Save',
+  'admin.priorities.cancel': 'Cancel',
+  'admin.priorities.added': '{name} was added.',
+  'admin.priorities.saved': '{name} was saved.',
+  'admin.priorities.deleted': '{name} was deleted.',
+  'admin.priorities.movedUp': '{name} moved up.',
+  'admin.priorities.movedDown': '{name} moved down.',
+  'admin.priorities.replaceOf': 'What takes the place of {name}',
+  'admin.priorities.replaceWith': 'Instead, give them',
+  'admin.priorities.problem.nameTaken': 'That name is taken. Choose another.',
+  'admin.priorities.problem.defaultSet':
+    'The default set is not deleted. Make another set the default first.',
+  'admin.priorities.problem.limit':
+    'A priority set offers at most {limit} priorities on this site.',
+  'admin.priorities.problem.listChanged':
+    'The list changed since this page read it, so nothing moved. It has been read again: try once more.',
+  'admin.priorities.problem.gone': 'That is no longer there. The page has been read again.',
+  'admin.priorities.problem.forbidden':
+    'You may no longer change these. A site administrator can give you Change configuration.',
+  'admin.priorities.problem.other': 'That could not be saved. Try again in a moment.',
+  'admin.priorities.priorities': 'Priorities, most urgent first',
+  'admin.priorities.new': 'New priority',
+  'admin.priorities.add': 'Add a priority',
+  'admin.priorities.note':
+    'A new priority joins the default priority set. A priority’s icon comes from its place in this list, from the most urgent at the top to the least at the bottom, so moving one changes its icon.',
+  'admin.priorities.emptyTitle': 'There are no priorities.',
+  'admin.priorities.empty': 'Every ticket needs one: add the first.',
+  'admin.priorities.moveUp': 'Move priority {name} up',
+  'admin.priorities.moveDown': 'Move priority {name} down',
+  'admin.priorities.changeOf': 'Change priority {name}',
+  'admin.priorities.deleteOf': 'Delete priority {name}',
+  'admin.priorities.confirmDelete':
+    'Delete {name}? If tickets have it, you choose next which priority they get instead, and priority sets that offer {name} offer that one. This cannot be undone.',
+  'admin.priorities.inUse':
+    '{count, plural, one {# ticket has {name}.} other {# tickets have {name}.}} Choose the priority they get instead. Priority sets that offer {name} will offer it, and those that give {name} to new tickets give it instead.',
+  'admin.priorities.noOther': 'There is no other priority to give them. Add one first.',
+  'admin.priorities.deletedInto': '{name} was deleted; its tickets have {into} now.',
+  'admin.priorities.sets': 'Priority sets',
+  'admin.priorities.newSet': 'New priority set',
+  'admin.priorities.addSet': 'Add a priority set',
+  'admin.priorities.setsNote':
+    'A track offers the priorities of the set it uses, and a track that chooses none uses the default set. A ticket keeps a priority its track stops offering until someone changes it.',
+  'admin.priorities.setsLink': 'Choose a track’s set on Which sets a track uses.',
+  'admin.priorities.setName': 'Set name',
+  'admin.priorities.offers': 'Priorities it offers',
+  'admin.priorities.newTickets': 'New tickets get',
+  'admin.priorities.middle': 'The middle of what it offers',
+  'admin.priorities.newTicketsHint':
+    'Someone creating a ticket may still choose another priority the set offers.',
+  'admin.priorities.defaultSet': 'Default set',
+  'admin.priorities.setSummary':
+    'Offers {priorities}. New tickets get {priority}. {tracks, plural, =0 {No track uses it.} one {# track uses it.} other {# tracks use it.}}',
+  'admin.priorities.setSummaryMiddle':
+    'Offers {priorities}. New tickets get the middle one. {tracks, plural, =0 {No track uses it.} one {# track uses it.} other {# tracks use it.}}',
+  'admin.priorities.manageSetOf': 'Manage priority set {name}',
+  'admin.priorities.setChangeOf': 'Change priority set {name}',
+  'admin.priorities.defaultSetNote':
+    'Tracks that choose no set use this one. The default set is not deleted: to delete it, make another set the default first.',
+  'admin.priorities.makeDefault': 'Make this the default set',
+  'admin.priorities.makeDefaultOf': 'Make this the default set: {name}',
+  'admin.priorities.madeDefault':
+    '{name} is the default set now. Tracks that choose no set offer its priorities.',
+  'admin.priorities.deleteSetOf': 'Delete priority set {name}',
+  'admin.priorities.confirmDeleteSet':
+    'Delete {name}? {tracks, plural, =0 {No track uses it.} one {The # track that uses it goes back to the default set, {fallback}.} other {The # tracks that use it go back to the default set, {fallback}.}} This cannot be undone.',
+  'admin.priorities.reasons': 'Close reasons',
+  'admin.priorities.newReason': 'New close reason',
+  'admin.priorities.addReason': 'Add a close reason',
+  'admin.priorities.reasonsNote':
+    'Why a ticket was closed. Workflows set one as they close a ticket, or ask for one; their lists follow this order.',
+  'admin.priorities.reasonsEmptyTitle': 'There are no close reasons.',
+  'admin.priorities.reasonsEmpty':
+    'Add one so that workflows have a reason to set when they close a ticket.',
+  'admin.priorities.reasonMoveUp': 'Move close reason {name} up',
+  'admin.priorities.reasonMoveDown': 'Move close reason {name} down',
+  'admin.priorities.reasonChangeOf': 'Change close reason {name}',
+  'admin.priorities.reasonDeleteOf': 'Delete close reason {name}',
+  'admin.priorities.reasonConfirmDelete':
+    'Delete {name}? If tickets were closed with it, or a workflow sets it, you choose next which reason takes its place, and each workflow that sets {name} gets a new version that sets that one. This cannot be undone.',
+  'admin.priorities.reasonInUse':
+    '{count, plural, one {# ticket was closed with {name}.} other {# tickets were closed with {name}.}} Choose the reason they get instead. A workflow that sets {name} gets a new version that sets it too.',
+  'admin.priorities.reasonUsedBy':
+    '{count, plural, one {The workflow {workflows} sets {name}.} other {The workflows {workflows} set {name}.}} Choose the reason to set instead: each of them gets a new version that sets it.',
+  'admin.priorities.reasonNoOther': 'There is no other close reason to choose. Add one first.',
+  'admin.priorities.reasonDeletedInto': '{name} was deleted; {into} takes its place.',
+  // Labels: merging several into one, which also renames one (T-322; CORE-017; ADR-114).
+  'settings.labels': 'Labels',
+  'settings.labelsHint':
+    'Merge labels that mean the same thing, or rename one, on every ticket at once.',
+  'admin.labels.title': 'Labels',
+  'admin.labels.about':
+    'Labels are free words on tickets, suggested from every label in use as people type. When people write one idea in several ways, such as front-end, frontend and FE, merge them: every ticket that has one of them gets the label they become, once, and its history records the change. Merging one label into a new word renames it. The counts include tickets in the trash, which a merge changes too.',
+  'admin.labels.forbidden': 'Only site and configuration administrators merge and rename labels.',
+  'admin.labels.merging': 'Merge or rename',
+  'admin.labels.mergingNote':
+    'Tick labels in the list below, then type the label they become: one already in use, to merge them into it, or a new word, to rename them.',
+  'admin.labels.nothingTicked': 'No label is ticked yet.',
+  'admin.labels.chosen': 'Ticked: {labels}.',
+  'admin.labels.withCount':
+    '{name} ({count, plural, =0 {no tickets} one {# ticket} other {# tickets}})',
+  'admin.labels.into': 'They become',
+  'admin.labels.intoHint':
+    'One word, with no spaces. Case counts: FE and fe are two labels, and merging one into the other makes them one.',
+  'admin.labels.oneWord': 'A label is one word of up to 255 characters, with no spaces.',
+  'admin.labels.chooseOther':
+    'The ticked labels are already {into}: tick another label, or type another word.',
+  'admin.labels.tooMany': 'Tick at most {max} labels at a time.',
+  'admin.labels.merge': 'Merge',
+  'admin.labels.rename': 'Rename',
+  'admin.labels.mergeInto': 'Merge into {into}',
+  'admin.labels.renameTo': 'Rename {label} to {into}',
+  'admin.labels.confirmMerge':
+    '{count, plural, =0 {Merge {labels} into {into}? No ticket has them now, so only the suggestions change.} one {Merge {labels} into {into}? The ticket that has them gets {into} in their place, and its history records it.} other {Merge {labels} into {into}? The tickets that have them, # at most, get {into} in their place, once each, and their history records it.}} This cannot be undone.',
+  'admin.labels.confirmRename':
+    '{count, plural, =0 {Rename {label} to {into}? No ticket has it now, so only the suggestions change.} one {Rename {label} to {into}? Its ticket gets {into} in its place, and its history records it.} other {Rename {label} to {into}? Its # tickets get {into} in its place, and their history records it.}} If {into} is already a label, the two become one. This cannot be undone.',
+  'admin.labels.done':
+    '{count, plural, =0 {{labels} became {into}; no ticket changed.} one {{labels} became {into} on # ticket.} other {{labels} became {into} on # tickets.}}',
+  'admin.labels.clear': 'Clear the ticks',
+  'admin.labels.list': 'Labels on this site',
+  'admin.labels.search': 'Find labels that start with',
+  'admin.labels.count': '{count, plural, =0 {No tickets} one {# ticket} other {# tickets}}',
+  'admin.labels.loading': 'Reading the labels…',
+  'admin.labels.failed': 'The labels could not be read. Try again in a moment.',
+  'admin.labels.emptyTitle': 'No labels yet',
+  'admin.labels.empty':
+    'A label shows here once a ticket has it. People add labels on a ticket, and imports bring theirs.',
+  'admin.labels.noneMatchTitle': 'No label starts with {q}',
+  'admin.labels.noneMatch': 'Try fewer letters, or empty the search to see every label.',
+  'admin.labels.more': 'Show more labels',
+  'admin.labels.moreFailed': 'More labels could not be read. Try again in a moment.',
+  'admin.labels.problem.labels':
+    'Those labels cannot be merged: tick at most {max}, other than the one they become.',
+  'admin.labels.problem.other': 'The labels could not be merged. Try again in a moment.',
   'ticketView.editLabels': 'Edit labels',
   'ticketView.save': 'Save',
   'ticketView.cancel': 'Cancel',
@@ -3927,6 +4688,9 @@ export const messagesEn = {
   'richtext.table.addRow': 'Add a row below',
   'richtext.table.addColumn': 'Add a column to the right',
   'richtext.table.delete': 'Delete the table',
+  // Removing a row or a column (T-120).
+  'richtext.table.deleteRow': 'Delete this row',
+  'richtext.table.deleteColumn': 'Delete this column',
   'richtext.mention': 'Mention someone',
   'richtext.taskItem': 'Checklist item: {text}',
   'richtext.taskItemEmpty': 'Empty checklist item',
@@ -4103,7 +4867,7 @@ export const messagesEn = {
   'admin.workflow.fixTextFirst':
     'Fix the text first: the diagram can only show a definition that reads correctly.',
   'admin.workflow.confirmDiscard':
-    'Discard the draft and every unsaved change? The published version stays as it is.',
+    'The saved draft and every unsaved change are deleted. The published version stays as it is.',
   'admin.workflow.confirmDiscardButton': 'Discard draft',
   'admin.workflow.discarded': 'The draft is gone; the editor shows the published version.',
   'admin.workflow.cancel': 'Cancel',
@@ -4405,6 +5169,10 @@ export const messagesEn = {
   'workflow.problem.unknown_close_reason': '{where}: the close reason it sets no longer exists.',
   'workflow.problem.invalid_pattern': '{where}: {pattern} is not a valid regular expression.',
   'workflow.problem.guards_too_deep': '{where}: the guards nest too deep.',
+  // A workflow with no transitions whose every status closes, with no close reason to close
+  // with, would be live with no move at all (T-260).
+  'workflow.problem.no_moves':
+    'No ticket could ever move in it: it has no transitions, every status is in the closed stage, and there is no close reason for a move to close with. Add a close reason named Completed, make the default workflow set a reason when it closes a ticket, add a status outside the closed stage, or draw the transitions yourself.',
   'workflow.problem.onCreate': 'Creating a ticket',
   'workflow.problem.refused': 'The server refused the definition.',
   'workflow.problem.mappingRequired': 'Choose where the tickets of each dropped status go.',
@@ -4421,7 +5189,7 @@ export const messagesEn = {
     '{count, plural, one {The draft has # warning; it can still be published.} other {The draft has # warnings; it can still be published.}}',
   'admin.workflow.publishPanel.dropped': 'Statuses this version drops',
   'admin.workflow.publishPanel.freeMoves':
-    'This version has no transitions, so publishing gives each of its statuses a move from any status, as a new workflow gets.',
+    'This version has no transitions, so publishing gives its statuses a move from any status, as a new workflow gets. A closed-stage status gets one only when there is a close reason to close with; if no status can get one, the publish is refused and says why.',
   'admin.workflow.publishPanel.moveTo':
     'Move the {count, plural, one {# ticket} other {# tickets}} in {status} to',
   'admin.workflow.publishPanel.empty': '{status}: no tickets to move.',
@@ -4441,9 +5209,9 @@ export const messagesEn = {
   'admin.workflow.versions.publishedAt': 'Published {when} by {name}',
   'admin.workflow.versions.publishedBySystem': 'Published {when}',
   'admin.workflow.versions.restore': 'Restore as draft',
-  'admin.workflow.versions.restoreNamed': 'Restore version {version} as the draft',
+  'admin.workflow.versions.restoreNamed': 'Restore as draft from version {version}',
   'admin.workflow.versions.confirmRestore':
-    'Restoring version {version} replaces the current draft and every unsaved change.',
+    'Restoring version {version} replaces {draft, select, none {every unsaved change} other {the draft (version {draft}) and every unsaved change}}. The published version stays as it is.',
   'admin.workflow.versions.confirmRestoreButton': 'Restore version {version}',
   'admin.workflow.versions.restored':
     'Version {version} is the draft now. Publish it to use it again.',
@@ -5302,6 +6070,8 @@ export const messagesEn = {
   'plans.summary.failed': 'This plan’s numbers could not be loaded.',
   'plans.timeline.failed': 'This plan’s timeline could not be loaded.',
   'plans.calendar.failed': 'This plan’s calendar could not be loaded.',
+  // A sprint on a plan's calendar: what tells it apart first, its track after (S3-PL-4).
+  'plans.calendar.sprint': '{sprint} · {track}',
   'plans.list.capped':
     'The list stops at {count, number} tickets. Filter the plan, or open it in search, to see the rest.',
   'plans.sources.find': 'Find a track or saved search',
@@ -5463,7 +6233,7 @@ export const messagesEn = {
   'summary.filter.mine': 'My tickets',
   'summary.filter.clear': 'Clear the filter',
   'summary.filter.note':
-    'Only you see this filter. It narrows every number and widget here to the tickets that also match, and stays in this page’s address, so you can bookmark it. The summary everyone else sees does not change.',
+    'This filter changes only your view: it narrows every number and widget here to the tickets that also match. It stays in this page’s address, so you can bookmark it or share the link; the summary everyone else sees does not change.',
   'summary.filter.bad': 'That filter does not read as a search. Check it on the search page.',
   'summary.filter.on': 'Showing only the tickets that match {filter}.',
   'summary.filter.sprints': 'Sprint widgets still show their whole sprint.',
@@ -5556,6 +6326,7 @@ export const messagesEn = {
   'list.group.noValue': 'None',
   'list.group.other': 'Other values',
   'list.groupTitle': '{name} ({count, plural, one {# ticket} other {# tickets}})',
+  'list.groupTable': 'Result table of {name}',
   'list.otherHint': 'Tickets with the rarest values; search for them to see them all.',
   'list.groupsFailed': 'The groups could not be counted. Check the filter.',
   'list.sortBy': 'Sort by',
@@ -5563,6 +6334,12 @@ export const messagesEn = {
   'list.sort.updated': 'Recently updated',
   'list.sort.due': 'Due date',
   'list.sort.priority': 'Priority',
+  'list.sort.type': 'Type',
+  'list.sort.key': 'Key',
+  'list.sort.current': '{column}, {direction, select, ascending {ascending} other {descending}}',
+  'list.sort.current.date':
+    '{column}, {direction, select, ascending {earliest first} other {latest first}}',
+  'list.sort.announce': 'Sorted by {order}',
   'list.filter': 'Filter',
   'list.filterPlaceholder': 'assignee = currentUser()',
   'list.filterApply': 'Apply filter',
@@ -5613,7 +6390,7 @@ export const messagesEn = {
   'timeline.legend.sprint': 'Dates from its sprint',
   'timeline.legend.rollup': 'Rolled up from its children',
   'timeline.legend.closed': 'Share of children closed',
-  'timeline.legend.none': 'No dates yet',
+  'timeline.legend.none': 'No dates',
   'timeline.legend.today': 'Today',
   'timeline.legend.release': 'Release',
   'timeline.legend.link': 'Blocks the ticket it leads to',
@@ -5709,6 +6486,82 @@ export const messagesEn = {
   'releases.create.submit': 'Add release',
   'releases.create.taken': 'This track already has a release with that name.',
   'releases.create.failed': 'The release could not be added.',
+  // A track's areas (CORE-015, T-320): its page, and the links to it from the track's pages.
+  'areas.title': 'Areas',
+  'areas.purpose': 'The parts of this track’s work, who owns each, and who gets its new tickets.',
+  'areas.about':
+    'An area is a part of a track’s work, such as API or Billing. A ticket may be in several areas. Each area can name an owner and an owner team, and says who gets a new ticket that names no assignee: the area owner, the track owner, or nobody. The first of a ticket’s areas whose rule names someone decides; if that person may not be given tickets in the track, the ticket stays unassigned. An archived area stays on its tickets but is not offered for new ones. Everyone who can see the track reads this page; its administrators change it.',
+  'areas.loading': 'Loading the areas…',
+  'areas.failed': 'The areas could not be loaded. Try again in a moment.',
+  'areas.new': 'New area',
+  'areas.readOnly': 'Only the administrators of this track can change its areas.',
+  'areas.readOnlyArchived': 'This track is archived, so its areas cannot change.',
+  'areas.none': 'No areas yet',
+  'empty.areas.body':
+    'Areas split the track’s work into parts, such as API or Billing, each with an owner. Once the track has some, the create form offers them. Add one with New area.',
+  'empty.areas.bodyRead':
+    'Areas split the track’s work into parts, such as API or Billing, each with an owner. The track’s administrators add them.',
+  'areas.listLabel': 'Areas of {key}',
+  'areas.archivedTitle': 'Archived areas',
+  'areas.archivedNote': 'They stay on their tickets but are not offered for new ones.',
+  'areas.owner': 'Owner: {name}',
+  'areas.ownerUnset': 'No owner',
+  'areas.ownerTeam': 'Owner team: {name}',
+  'areas.rule.area_owner': 'New tickets with no assignee go to the area owner.',
+  'areas.rule.track_owner': 'New tickets with no assignee go to the track owner.',
+  'areas.rule.unassigned': 'New tickets with no assignee stay unassigned.',
+  'areas.change': 'Change',
+  'areas.changeOf': 'Change area {name}',
+  'areas.archive': 'Archive',
+  'areas.archiveOf': 'Archive area {name}',
+  'areas.restore': 'Restore',
+  'areas.restoreOf': 'Restore area {name}',
+  'areas.delete': 'Delete',
+  'areas.deleteOf': 'Delete area {name}',
+  'areas.confirmDelete':
+    'Delete area {name}? It cannot be brought back. If tickets are in it, you choose where they go next.',
+  'areas.whereTicketsGo': 'Where tickets in {name} go',
+  'areas.inUse':
+    '{count, plural, one {# ticket is} other {# tickets are}} in {name}. Choose where they go; the ticket history records the change.',
+  'areas.inUseSearch': 'Open them in search',
+  'areas.moveTo': 'Move them to',
+  'areas.moveNone': 'No area: take {name} off them',
+  'areas.form.name': 'Name',
+  'areas.form.description': 'Description',
+  'areas.form.owner': 'Owner',
+  'areas.form.ownerHint': 'Type a name to find someone; those who can see this track come first.',
+  'areas.form.removeOwner': 'Remove {name} as owner',
+  'areas.form.team': 'Owner team',
+  'areas.form.teamHint': 'Type a name to find a team.',
+  'areas.form.removeTeam': 'Remove {name} as owner team',
+  'areas.form.rule': 'New tickets with no assignee go to',
+  'areas.form.rule.area_owner': 'The area owner',
+  'areas.form.rule.track_owner': 'The track owner',
+  'areas.form.rule.unassigned': 'Nobody: they stay unassigned',
+  'areas.form.ruleHint':
+    'When a ticket is in several areas, the first whose rule names someone decides; if that person may not be given tickets here, the ticket stays unassigned.',
+  'areas.form.ruleNoOwner':
+    'This area has no owner yet: until it has one, its rule gives new tickets to nobody.',
+  'areas.form.save': 'Save the area',
+  'areas.form.cancel': 'Cancel',
+  'areas.created': 'Area {name} was added.',
+  'areas.saved': 'Area {name} was saved.',
+  'areas.archivedDone': 'Area {name} was archived.',
+  'areas.restoredDone': 'Area {name} was restored.',
+  'areas.deleted': 'Area {name} was deleted.',
+  'areas.deletedMoved': 'Area {name} was deleted; its tickets moved to {to}.',
+  'areas.deletedRemoved': 'Area {name} was deleted and taken off its tickets.',
+  'areas.problem.nameTaken': 'This track already has an area with that name.',
+  'areas.problem.limit':
+    'This track has as many areas as the site allows ({limit}). Archive one first, or ask a site administrator to raise the limit under Guardrails.',
+  'areas.problem.changed': 'Someone changed this area meanwhile. The list has been read again.',
+  'areas.problem.owner': 'That person can no longer own an area. Choose someone else.',
+  'areas.problem.team': 'That team is no longer there. Choose another.',
+  'areas.problem.replacement': 'That area can no longer take the tickets. Choose another.',
+  'areas.problem.other': 'The change could not be saved. Try again in a moment.',
+  'areas.manageTitle': 'Its areas',
+  'areas.manageIntro': 'Who owns each part of {key}’s work, and who gets its new tickets.',
+  'areas.manageLink': 'Areas: the parts of its work and who owns each',
   'release.notFound': 'This release does not exist, or you cannot see it.',
   'release.title': 'Release',
   'release.failed': 'This release could not be loaded. Try again in a moment.',
@@ -5848,6 +6701,7 @@ export const messagesEn = {
   'notFound.dashboard': 'Dashboard not found',
   'notFound.bulk': 'Bulk change not found',
   'notFound.workflow': 'Workflow not found',
+  'notFound.person': 'Person not found',
   'page.itemCount': '{count, plural, =0 {No items} one {# item} other {# items}}',
   'builder.title': 'Taskmoor Builder',
   'builder.intro':
@@ -6138,6 +6992,7 @@ export const messagesEn = {
   'admin.aiUsage.scope.eachPerson': 'Each person',
   'admin.aiUsage.tokens': '{count, plural, one {# token} other {# tokens}}',
   'admin.aiUsage.limits': 'Spend limits',
+  'admin.aiUsage.limitsTable': 'Table of spend limits',
   'admin.aiUsage.limitsHint':
     'At a limit, AI calls stop until its period starts again; administrators are alerted at 80% and 100%.',
   'admin.aiUsage.limitsFailed': 'The spend limits could not be loaded.',
@@ -6148,6 +7003,7 @@ export const messagesEn = {
   'admin.aiUsage.period.week': 'Week',
   'admin.aiUsage.period.month': 'Month',
   'admin.aiUsage.calls': 'Latest AI calls',
+  'admin.aiUsage.callsTable': 'Table of the latest AI calls',
   'admin.aiUsage.callsHint':
     'The AI audit log: one entry per call, with who, feature, tokens and cost.',
   'admin.aiUsage.outcome.ok': 'Answered',
@@ -6282,7 +7138,8 @@ export const messagesEn = {
     'A level hides single tickets from everyone but its members. A track uses one policy, which holds its levels.',
   'admin.visibility.about':
     'Someone must both see the track and be a member of the level to see a ticket at that level. That holds for site administrators too. A ticket without a level is seen by everyone who sees its track.',
-  'admin.visibility.forbidden': 'Only site administrators use this page.',
+  'admin.visibility.forbidden':
+    'Only site and configuration administrators, and the people who run a track with its own configuration, manage visibility policies.',
   'admin.visibility.loading': 'Reading the policies…',
   'admin.visibility.failed': 'The policies could not be read. Try again in a moment.',
   'admin.visibility.emptyTitle': 'No visibility policies yet',
@@ -6348,6 +7205,54 @@ export const messagesEn = {
   'admin.visibility.problem.limit':
     'This goes past a limit. The Guardrails page has the limit on levels.',
   'admin.visibility.problem.other': 'That could not be done. Try again in a moment.',
+  // A local-mode track's own workflow map and visibility policies, and configuration
+  // administrators on Visibility policies (T-322).
+  'admin.visibility.problem.forbidden':
+    'You may not change this policy. Only the people who run its track, and site and configuration administrators, change it.',
+  'admin.visibility.trackAbout':
+    'This track has its own configuration, so it can have visibility policies of its own: levels for its tickets alone. Other tracks are not affected.',
+  'admin.visibility.trackIntro':
+    'The visibility policies this track owns. Shared policies are for site and configuration administrators.',
+  'admin.visibility.trackUsesOwn': '{key} uses {name}.',
+  'admin.visibility.trackUsesShared':
+    '{key} uses a shared policy now. Use one of its own to choose who sees which of its tickets.',
+  'admin.visibility.trackUsesNoPolicy':
+    '{key} uses no visibility policy now, so everyone who sees it sees all its tickets. Use one of its own to give its tickets levels.',
+  'admin.visibility.ownEmpty':
+    'Add one with New visibility policy, give it levels, then use it for {key}.',
+  'admin.visibility.useFor': 'Use this policy for {key}',
+  'admin.visibility.useHint':
+    'Tickets at a level this policy lacks take its default level, or none, so some may become visible to more people. Only site and configuration administrators can give the track a shared policy, or none, again.',
+  'admin.visibility.usedFor': '{key} now uses {name}.',
+  'admin.visibility.choose.intro':
+    'You run these tracks with their own configuration. Choose one to manage its own visibility policies.',
+  'admin.visibility.choose.none':
+    'None of the tracks you run has its own configuration. They use shared visibility policies, which site and configuration administrators change.',
+  'admin.visibility.choose.open': 'Visibility policies of {key} · {name}',
+  'admin.visibility.scope.shared':
+    '{key} uses shared configuration, so it uses a shared visibility policy, or none, which site and configuration administrators choose.',
+  'admin.maps.trackTitle': 'Workflow map',
+  'admin.maps.trackAbout':
+    'This track has its own configuration, so it has a workflow map of its own: which workflow each of its ticket types follows, its own workflows included. Other tracks are not affected.',
+  'admin.maps.trackIntro':
+    'The workflow map this track owns, made with it. Shared maps are for site and configuration administrators.',
+  'admin.maps.trackNote':
+    'Which workflow each ticket type {key} offers follows. A type the map does not name follows the workflow for every other type.',
+  'admin.maps.trackFailed': 'The track’s workflow map could not be read. Try again in a moment.',
+  'admin.maps.ownWorkflow': '{name} ({key}’s own)',
+  'admin.maps.choose.intro':
+    'You run these tracks with their own configuration. Choose one to change its own workflow map.',
+  'admin.maps.choose.none':
+    'None of the tracks you run has its own configuration. They use shared workflow maps, which site and configuration administrators change.',
+  'admin.maps.choose.open': 'Workflow map of {key} · {name}',
+  'admin.maps.scope.shared':
+    '{key} uses shared configuration, so it follows a shared workflow map, which site and configuration administrators choose and change.',
+  'admin.maps.problem.archived':
+    'The track is archived, so its map changes only once it is restored.',
+  'admin.maps.problem.forbidden':
+    'You may not change this map. Only the people who run its track, and site and configuration administrators, change it.',
+  'trackPeople.workflowMapLink': 'Workflow map: which workflow each of its ticket types follows',
+  'trackPeople.visibilityLink': 'Visibility policies: which of its tickets only some people see',
   'admin.explain.title': 'Permission explainer',
   'admin.explain.about':
     'Choose a person, then a track or a ticket and a permission. The answer says yes or no and names what decided it: a role in the track, a group, a global permission or a visibility level. It only reads; nothing changes here.',
@@ -6477,7 +7382,7 @@ export const messagesEn = {
   'webhooks.deliveryFacts': '{when}, {attempts, plural, one {# attempt} other {# attempts}}.',
   'webhooks.lastStatus': 'Last answer {status}.',
   'webhooks.replay': 'Send again',
-  'webhooks.replayOne': 'Send {event} again',
+  'webhooks.replayOne': 'Send again: {event}',
   'webhooks.replayAll': 'Send all failed ones again',
   'webhooks.replayed': 'They are asked to go again, with the same id and body.',
   'webhooks.replayFailed': 'They could not be sent again. Try again in a moment.',
@@ -6555,12 +7460,12 @@ export const messagesEn = {
   'admin.aiLimits.savePrice': 'Save the rate',
   'settings.trackSets': 'Which sets a track uses',
   'settings.trackSetsHint':
-    'Choose a track’s layouts, priorities, visibility policy and notifications.',
+    'Choose a track’s access policy, type set, layouts, priorities, visibility policy and notifications.',
   'admin.trackSets.title': 'Which sets a track uses',
   'admin.trackSets.purpose':
-    'Choose a track’s layouts, priorities, visibility policy and notifications from the sets that exist.',
+    'Choose a track’s access policy, type set, layouts, priorities, visibility policy and notifications from the sets that exist.',
   'admin.trackSets.about':
-    'This page only chooses. Layout sets and visibility policies are made on pages of their own; priority sets and notification policies are made through the API for now. Type sets, field rule sets and workflow maps are chosen where they are made.',
+    'This page only chooses. Access policies, type sets, layout sets, priority sets, visibility policies and notification policies are made on pages of their own. Field rule sets and workflow maps are chosen where they are made. A track with its own configuration keeps its own access policy and type set.',
   'admin.trackSets.forbidden':
     'Only site and configuration administrators choose a track’s sets here.',
   'admin.trackSets.loading': 'Reading…',
@@ -6578,6 +7483,7 @@ export const messagesEn = {
   'admin.trackSets.priorityNone': 'The site’s default priorities',
   'admin.trackSets.priorityHint':
     'The priorities tickets choose from. A ticket keeps a priority its track stops offering.',
+  'admin.trackSets.priorityLink': 'Make and change priority sets on Priorities.',
   'admin.trackSets.visibility': 'Visibility policy',
   'admin.trackSets.visibilityNone': 'None: tickets have no level',
   'admin.trackSets.visibilityHint':
@@ -6585,6 +7491,8 @@ export const messagesEn = {
   'admin.trackSets.notification': 'Notifications',
   'admin.trackSets.notificationNone': 'The site’s default notifications',
   'admin.trackSets.notificationHint': 'Who hears about which changes in this track.',
+  'admin.trackSets.notificationLink':
+    'Make and change notification policies on Notification policies.',
   'admin.trackSets.own': '{name} (its own)',
   'admin.trackSets.save': 'Save',
   'admin.trackSets.saved': '{key} was saved.',
@@ -6593,6 +7501,47 @@ export const messagesEn = {
     'You may not choose that for this track. A site or configuration administrator can.',
   'admin.trackSets.problem.other': 'That could not be saved. Try again in a moment.',
   'admin.tracks.setsLink': 'Choose the sets {key} uses',
+  // Deleting a track to the trash, and a shared-mode track's access policy and type set (T-322).
+  'admin.tracks.delete': 'Delete track',
+  'admin.tracks.deleteOf': 'Delete track {key}',
+  'admin.tracks.deleteOutcome':
+    '{key} goes to the trash with its tickets, releases and areas. Nobody sees it there, and its key stays taken. It can be restored from Trash until its time there is up; then it is deleted for good.',
+  'admin.tracks.deletedSaid': 'Track {key} is in the trash.',
+  'admin.tracks.trashLink': 'Restore {key} from Trash',
+  'admin.tracks.problem.inTrash': 'Track {key} is in the trash already.',
+  'admin.tracks.problem.gone': 'Track {key} is gone, or you may no longer see it.',
+  'admin.trackSets.access': 'Access policy',
+  'admin.trackSets.accessHint':
+    'Who may see the track and what they may do in it. Switching it changes that at once for everyone.',
+  'admin.trackSets.accessLink': 'Make and change access policies on Permissions.',
+  'admin.trackSets.typeSet': 'Type set',
+  'admin.trackSets.typeSetHint':
+    'The ticket types the track offers. When tickets have a type the new set lacks, saving asks which type they take.',
+  'admin.trackSets.typeSetLink': 'Make and change type sets on Configuration sets.',
+  'admin.trackSets.choose': 'Choose one',
+  'admin.trackSets.ownKept':
+    '{key} has its own access policy and type set. Its administrators change the type set on its own Configuration sets page, and the access policy through the API.',
+  'admin.trackSets.ownLink': 'Open the configuration sets of {key}',
+  'admin.trackSets.mapping': 'Tickets of the types {set} lacks',
+  'admin.trackSets.mappingIntro':
+    '{tickets, plural, one {# ticket in {key} has} other {# tickets in {key} have}} a type {set} lacks. Choose the type they take, at the same level, then save again.',
+  'admin.trackSets.mappingIntroUncounted':
+    'Tickets in {key} have a type {set} lacks. Choose the type they take, at the same level, then save again.',
+  'admin.trackSets.mappingNowhere':
+    '{set} has no type at the {level} level, so tickets of {name} have nowhere to go: choose another type set, or add a type of that level to {set}.',
+  'admin.trackSets.savedMapped':
+    '{key} was saved; {tickets, plural, one {# ticket took another type} other {# tickets took another type}}.',
+  'admin.trackSets.savedMappedUncounted':
+    '{key} was saved; the tickets of the types it lacked took another type.',
+  'admin.trackSets.problem.typeInUse':
+    'Tickets in {key} have a type {set} lacks: choose the type they take, then save again.',
+  'admin.trackSets.problem.mapping':
+    'Each type {set} lacks needs a type of the same level that {set} has.',
+  'admin.trackSets.problem.archived':
+    '{key} is archived: restore it on Tracks before changing what it uses.',
+  'admin.trackSets.problem.gone':
+    'A set you chose is gone, or belongs to a track of its own. Open the page again and choose another.',
+  'admin.trackSets.problem.trackGone': '{key} is gone, or you may no longer see it.',
   'summary.templates': 'Ticket templates',
   'settings.ticketTemplates': 'Ticket templates',
   'settings.ticketTemplatesHint': 'Templates offered when a ticket is created in any track.',
@@ -6709,6 +7658,8 @@ export const messagesEn = {
   'ticketTools.links.added': 'Linked: {phrase} {key}.',
   'ticketTools.links.removed': 'Removed: {phrase} {key}.',
   'ticketTools.links.remove': 'Remove the link: {phrase} {key}',
+  'ticketTools.links.removeOutcome':
+    '{key} is in another track: once the link goes, this page cannot link it again.',
   'ticketTools.links.exists': 'That link is already there.',
   'ticketTools.links.disabled': 'Ticket links are turned off on this site.',
   'ticketTools.links.archived': 'That ticket’s track is archived, so its links cannot change.',
@@ -6764,6 +7715,8 @@ export const messagesEn = {
   'ticketTools.checklists.moved': 'The checklist {name} was moved.',
   'ticketTools.checklists.rename': 'Edit checklist {name}',
   'ticketTools.checklists.remove': 'Remove the checklist {name}',
+  'ticketTools.checklists.removeOutcome':
+    'Removing {name} deletes its {count, plural, one {# item} other {# items}} and the state of each: {done, plural, =0 {none was done} one {# was done} other {# were done}}. History keeps only the checklist’s name, so this cannot be undone.',
   'ticketTools.checklists.moveListUp': 'Move up the checklist {name}',
   'ticketTools.checklists.moveListDown': 'Move down the checklist {name}',
   'ticketTools.checklists.addItem': 'Add an item to {name}',
@@ -6817,6 +7770,10 @@ export const messagesEn = {
   'richtext.prompt.file': '{name} ({details})',
   'richtext.prompt.fileBy': 'by {author}',
   'richtext.prompt.fileNumber': 'file {number}',
+  // A file uploaded from the file prompt (T-120).
+  'richtext.prompt.upload': 'Upload a file',
+  'richtext.prompt.uploadHint': 'Up to {limit}. It is also listed under Attachments.',
+  'richtext.prompt.uploading': 'Uploading {name}…',
   'richtext.columns.widths': 'Widths of the {count} columns',
   'richtext.columns.equal': 'Equal',
   'richtext.columns.apply': 'Apply',
@@ -6880,6 +7837,37 @@ export const messagesEn = {
   'ownSets.archived': '{key} is archived: its configuration changes once it is restored.',
   'ownSets.useHint':
     'From then on the track follows this set. Only site and configuration administrators can give it a shared set again.',
+  // A local-mode track's own ticket types and fields, on its own pages (T-322).
+  'ownTypes.title': 'Its own ticket types',
+  'ownTypes.intro':
+    'Ticket types only {key} has. Its type set below offers one once it is ticked there.',
+  'ownTypes.listOf': 'Ticket types of {key}',
+  'ownTypes.none': '{key} has no ticket type of its own yet.',
+  'ownTypes.noneBody': 'Add one for work only this track does. The shared types stay as they are.',
+  'ownTypes.summary':
+    '{level} level · {offered, select, yes {in its type set} other {not in its type set yet}}',
+  'ownTypes.added': '{name} was added. Tick it in the type set to offer it.',
+  'ownTypes.levelHint':
+    'Another level is refused while tickets of this type would lose the parent they need, and the page says how many.',
+  'ownTypes.problem.inTypeSet': '{name} is in {sets}: untick it there and save the set first.',
+  'ownFields.about':
+    'This track has its own configuration: the fields it owns cover it alone, and other tracks are not affected. The shared fields that reach it are for site and configuration administrators.',
+  'ownFields.intro':
+    'The fields this track owns. Shared fields are for site and configuration administrators.',
+  'ownFields.none': '{key} has no field of its own yet.',
+  'ownFields.noneBody':
+    'A field of its own holds what only this track’s tickets need, and nothing about it reaches another track.',
+  'ownFields.choose.intro':
+    'You run these tracks with their own configuration. Choose one to manage its own fields.',
+  'ownFields.choose.none':
+    'None of the tracks you run has its own configuration. Their fields are shared, and site and configuration administrators change them.',
+  'ownFields.choose.open': 'Fields of {key} · {name}',
+  'ownFields.scope.shared':
+    '{key} uses shared configuration, so its fields are shared, and site and configuration administrators change them.',
+  'admin.fields.contexts.groupChosen': 'The group chosen before',
+  'admin.fields.contexts.peopleChosenGroup':
+    'People to choose from: the members of the group chosen before',
+  'trackPeople.fieldsLink': 'Fields: the custom fields it owns',
   'layouts.loading': 'Reading the layouts…',
   'layouts.failed': 'The layout sets could not be read. Try again in a moment.',
   'layouts.setFailed': 'This layout set could not be read. Try again in a moment.',
@@ -7125,6 +8113,9 @@ export const messagesEn = {
   'crossTrack.linked.choose': 'Choose',
   'crossTrack.linked.tooMany': 'One holds at most 100 releases.',
   'crossTrack.linked.remove': 'Remove {name}',
+  'crossTrack.linked.removeConfirm': 'Remove {track} {name}',
+  'crossTrack.linked.removeOutcome':
+    '{name} of {track} leaves this release across tracks: its tickets stop counting here, and its date no longer moves with this one. Only {track}’s administrators can link it again, and only while it is neither shipped nor archived.',
   'crossTrack.linked.removed': '{name} is no longer linked. Its date did not change.',
   'crossTrack.linked.removeFailed': 'The release could not be removed.',
   'crossTrack.edit.open': 'Edit',
@@ -7183,6 +8174,8 @@ export const messagesEn = {
   'release.crossTrack.add': 'Add to a release across tracks…',
   'release.crossTrack.listFailed': 'The releases across tracks could not be read.',
   'release.crossTrack.remove': 'Remove from {name}',
+  'release.crossTrack.removeOutcome':
+    '{name} of {track} leaves {crossTrack}: its tickets stop counting there, and its date no longer moves with it. Only {track}’s administrators can link it again, and only while it is neither shipped nor archived.',
   'release.crossTrack.linked': 'This release is now linked to {name}.',
   'release.crossTrack.unlinked':
     'This release is no longer linked to {name}. Its date did not change.',
@@ -7249,6 +8242,10 @@ export const messagesEn = {
     'A program board lays this plan’s outcomes and work out by team and period. Everyone who sees the plan sees its boards, and moves cards as far as they may change those tickets.',
   'programBoards.noField':
     'A program board places cards by a Team field. Ask a site administrator to add one.',
+  // For those who may add fields themselves (S3-PL-8): where, not whom to ask.
+  'programBoards.noFieldAdmin':
+    'A program board places cards by a Team field. Add a field of the Team type under Fields in Administration, and it can be chosen here.',
+  'programBoards.openFields': 'Open Fields',
   'programBoards.none': 'No program boards yet.',
   'programBoards.failed': 'The program boards could not be loaded. Try again in a moment.',
   'programBoards.new': 'New program board',
@@ -7291,6 +8288,39 @@ export const messagesEn = {
     'A link type you chose no longer exists, or always counts. Reload the page and choose again.',
   'dependencies.via': '({phrase})',
   'dependencies.sameSprint': 'Same sprint',
+  // The critical path on a plan's Timeline (PLN-011; ADR-122 stage 9).
+  'critical.toggle': 'Critical path',
+  'critical.goTo': 'Critical path in words',
+  'critical.failed': 'The critical path could not be read. Try again later.',
+  'critical.loading': 'Working out the critical path…',
+  'critical.bar.on': 'On the critical path',
+  'critical.bar.slack': '{days, plural, one {# day of slack} other {# days of slack}}',
+  'critical.legend': 'On the critical path (heavy outline and ▲)',
+  'critical.title': 'Critical path',
+  'critical.covers':
+    'It covers the tickets this plan shows you, whatever the filters, so it can differ from someone else’s.',
+  'critical.summary':
+    '{count, plural, =0 {No ticket is} one {# ticket is} other {# tickets are}} on the critical path. The plan ends {end}.',
+  'critical.noPath': 'No open ticket of this plan has dates, so there is no critical path.',
+  'critical.chain': 'Chain {number, number}',
+  'critical.step.first': 'starts {start}, ends {end}',
+  'critical.step.firstEnd': 'starts {start}, ends {end}, the plan’s end.',
+  'critical.step.then': 'then starts {start}, ends {end}',
+  'critical.step.thenEnd': 'then starts {start}, ends {end}, the plan’s end.',
+  'critical.step.late':
+    '(a dependency before it is {days, plural, one {# day} other {# days}} late)',
+  'critical.more':
+    '{count, plural, one {# more ticket is} other {# more tickets are}} on the path and not listed here.',
+  'critical.cycles':
+    '{count, plural, one {# ticket is} other {# tickets are}} in a circle of dependencies and {count, plural, one {has} other {have}} no slack.',
+  'critical.waitsElsewhere':
+    '{count, plural, one {# ticket waits} other {# tickets wait}} for work outside this plan or not shown to you; that work is not counted.',
+  'critical.undated':
+    '{count, plural, one {# open ticket has} other {# open tickets have}} no dates and {count, plural, one {is} other {are}} left out.',
+  'critical.csv.slack': 'Slack (days)',
+  'critical.csv.critical': 'Critical',
+  'critical.image.legend':
+    'Heavy outline and ▲: on the critical path. Heavy line: a tight dependency on it.',
   'timeline.badge.sprint': 'same sprint',
   'timeline.badge.withSprint':
     'Blocked by {count, plural, one {# ticket} other {# tickets}}{late, plural, =0 {} other {, # late}}, {sprint, plural, one {# in the same sprint} other {# in the same sprint}}',
@@ -7396,6 +8426,108 @@ export const messagesEn = {
   // Scenarios and draft changes of a plan (T-089e; ADR-122 stage 6).
   'plans.section.changes': 'Changes',
   'plans.section.scenarios': 'Scenarios',
+  'plans.section.baselines': 'Baselines',
+  'baselines.title': 'Baselines',
+  'baselines.intro':
+    'A baseline keeps the days of the plan’s tickets as they are at one moment, so you can see later what moved. Each person sees its days only on tickets this plan shows them.',
+  'baselines.capture': 'Capture baseline…',
+  'baselines.full': 'A plan holds at most {count} baselines. Delete one to capture another.',
+  'baselines.readOnly':
+    'Only the plan’s owner and site administrators capture, rename and delete baselines.',
+  'baselines.empty': 'No baselines yet',
+  'baselines.emptyBody': 'Capture one before the work moves, then compare it with the days later.',
+  'baselines.fromLive': 'From Live',
+  'baselines.fromScenario': 'From {name}',
+  'baselines.madeBy': 'Captured by {name} on {when}',
+  'baselines.tickets': '{count, plural, =0 {No tickets} one {# ticket} other {# tickets}}',
+  'baselines.open': 'Compare',
+  'baselines.open.label': 'Compare with {name}',
+  'baselines.rename': 'Rename',
+  'baselines.rename.label': 'Rename {name}',
+  'baselines.rename.title': 'Rename {name}',
+  'baselines.rename.save': 'Save name',
+  'baselines.rename.done': 'The baseline is now called {name}.',
+  'baselines.delete': 'Delete',
+  'baselines.delete.label': 'Delete {name}',
+  'baselines.delete.ask': '{name} and the days it keeps go. No ticket changes.',
+  'baselines.delete.done': '{name} is deleted.',
+  'baselines.capture.title': 'Capture baseline',
+  'baselines.capture.intro':
+    'Keeps the start and due days of every ticket this plan shows you, or its sprint’s days, as they are now. Nothing changes on the tickets.',
+  'baselines.name': 'Name',
+  'baselines.capture.default': 'Baseline {day}',
+  'baselines.capture.sourceLive': 'What the Timeline shows now: Live',
+  'baselines.capture.sourceScenario': 'What the Timeline shows now: {name}, drafts not applied',
+  'baselines.capture.save': 'Capture',
+  'baselines.capture.done':
+    '{name} is captured: {count, plural, =0 {no tickets} one {# ticket} other {# tickets}}.',
+  'baselines.cancel': 'Cancel',
+  'baselines.nameRequired': 'Give the baseline a name.',
+  'baselines.refused.tooMany': 'A plan holds at most {count} baselines. Delete one first.',
+  'baselines.refused.tooLarge':
+    'The plan has more than {count} tickets, too many to capture in one baseline.',
+  'baselines.refused.conflict':
+    'Someone changed this baseline meanwhile. The list is read again; try once more.',
+  'baselines.refused.forbidden':
+    'Only the plan’s owner and site administrators may change its baselines.',
+  'baselines.refused.gone': 'This baseline or scenario no longer exists.',
+  'baselines.refused.other': 'That did not work. Try again in a moment.',
+  'baselines.listFailed': 'The baselines could not be read. Try again in a moment.',
+  'baselines.compare.title': 'Compared with {name}',
+  'baselines.compare.againstLive': 'The days now: Live.',
+  'baselines.compare.againstScenario': 'The days now: {name}, drafts not applied.',
+  'baselines.compare.close': 'Close the comparison',
+  'baselines.compare.later':
+    '{count, plural, =0 {No ticket ends later than in {name}} one {# ticket ends later than in {name}, by {most, plural, one {# day} other {# days}}} other {# tickets end later than in {name}, by up to {most, plural, one {# day} other {# days}}}}',
+  'baselines.compare.sentence': '{later}; {earlier} earlier; {same} the same.',
+  'baselines.compare.planLater':
+    'The plan ends {count, plural, one {# day} other {# days}} later ({now}, was {was}).',
+  'baselines.compare.planEarlier':
+    'The plan ends {count, plural, one {# day} other {# days}} earlier ({now}, was {was}).',
+  'baselines.compare.planSame': 'The plan ends the same day ({now}).',
+  'baselines.compare.planNone': 'No ticket has days in both, so the plan’s end is not compared.',
+  'baselines.compare.notShown':
+    '{count, plural, one {# ticket in this baseline is not shown to you.} other {# tickets in this baseline are not shown to you.}}',
+  'baselines.compare.others':
+    '{added} not in the baseline; {undatedThen} without days then; {undatedNow} without days now.',
+  'baselines.compare.notInBaseline':
+    'A ticket not in the baseline was added to the plan since, or was not shown to whoever captured it.',
+  'baselines.compare.yours':
+    'Delays are in calendar days, over the tickets this plan shows you with the page’s filters.',
+  'baselines.compare.show': 'Show',
+  'baselines.compare.show.slipped': 'Later ({count})',
+  'baselines.compare.show.earlier': 'Earlier ({count})',
+  'baselines.compare.show.added': 'Not in the baseline ({count})',
+  'baselines.compare.show.all': 'All',
+  'baselines.compare.list': 'Tickets: {which}',
+  'baselines.compare.none': 'No tickets here',
+  'baselines.compare.dayLater':
+    '{count, plural, one {# day later} other {# days later}}: {now}, was {was}',
+  'baselines.compare.dayEarlier':
+    '{count, plural, one {# day earlier} other {# days earlier}}: {now}, was {was}',
+  'baselines.compare.sameEnd': 'Same end: {now}',
+  'baselines.compare.due': 'due {day}',
+  'baselines.compare.ends': 'ends {day}',
+  'baselines.compare.noDays': 'no days',
+  'baselines.compare.addedLine': 'Not in the baseline: {now}',
+  'baselines.compare.undatedThenLine': 'No days then; now {now}',
+  'baselines.compare.undatedNowLine': 'No days now; then {was}',
+  'baselines.compare.closed': '(closed)',
+  'baselines.compare.showMore': 'Show more',
+  'baselines.compare.download': 'Download CSV',
+  'baselines.compare.downloadFailed': 'The file could not be made. Try again in a moment.',
+  'baselines.compare.failed': 'The comparison could not be read. Try again in a moment.',
+  'baselines.csv.baseline': 'Baseline: {name}',
+  'baselines.csv.startThen': 'Start then',
+  'baselines.csv.dueThen': 'Due then',
+  'baselines.csv.datedThen': 'Days then from',
+  'baselines.csv.startNow': 'Start now',
+  'baselines.csv.dueNow': 'Due now',
+  'baselines.csv.datedNow': 'Days now from',
+  'baselines.csv.delay': 'Delay (days)',
+  'baselines.csv.startShift': 'Start moved (days)',
+  'baselines.csv.own': 'Its own days',
+  'baselines.csv.sprint': 'Its sprint',
   'draft.tag': 'Draft',
   'draft.stale':
     'Changed since drafted: the ticket no longer has the values this draft started from.',
@@ -7634,6 +8766,46 @@ export const messagesEn = {
     'A condition does not read as a query, so nothing was written. Check its words and run again.',
   'schedule.dialog.refused.invalid': 'Some choices are not valid. Check them and run again.',
   'schedule.dialog.refused.other': 'The run could not finish. Try again in a moment.',
+  // Evening out load: a mode of the auto-scheduler's run (T-089a; ADR-122 stage 9).
+  'schedule.evenOut.mode': 'What the run does',
+  'schedule.evenOut.mode.fill': 'Place work in rank order',
+  'schedule.evenOut.mode.fillHint':
+    'Places every ticket it may move, from the first day, in rank order with blockers first.',
+  'schedule.evenOut.mode.evenOut': 'Even out load',
+  'schedule.evenOut.mode.evenOutHint':
+    'Moves only work that puts someone over capacity, later, by as little as it can, keeping each ticket’s length.',
+  'schedule.evenOut.kept': 'Kept tickets never move (fixed dates)',
+  'schedule.evenOut.overCells':
+    '{count, plural, one {# period of a team or person is} other {# periods of teams and people are}} over capacity now.',
+  'schedule.evenOut.nothingOver':
+    'No team or person is over capacity now, so evening out would move nothing.',
+  'schedule.evenOut.replaces':
+    'A run that evens out load and one in rank order replace each other’s proposals; both start from the tickets’ days and people’s drafts.',
+  'schedule.evenOut.title': 'Even out load',
+  'schedule.evenOut.counts':
+    '{moved, plural, one {# ticket} other {# tickets}} moved later, {kept} kept, {notMoved} not moved, {withdrawn, plural, one {# earlier proposal} other {# earlier proposals}} removed.',
+  'schedule.evenOut.moved': 'Moved ({count})',
+  'schedule.evenOut.notMoved': 'Not moved ({count})',
+  'schedule.evenOut.overLeft': 'Still over capacity',
+  'schedule.evenOut.allWithin':
+    'Every team and person is within capacity in the run’s periods now.',
+  'schedule.evenOut.overLeftOnlyFixed':
+    '{subject} is {over} over in {span}: only tickets that do not move are there.',
+  'schedule.evenOut.overLeftNoRoom':
+    '{subject} is {over} over in {span}: no later period of the run has room.',
+  'schedule.evenOut.span': '{start}–{end}',
+  'schedule.evenOut.daysLater': '{count, plural, one {# day} other {# days}} later',
+  'schedule.evenOut.weeksLater': '{count, plural, one {# week} other {# weeks}} later',
+  'schedule.evenOut.reason.movedOffOver':
+    'Moved {later}, from {from} to {to}: {subject} was {over} over.',
+  'schedule.evenOut.reason.pushedByMove': 'Moved {later} after {blocker}, which was moved.',
+  'schedule.evenOut.reason.stillOver': 'Still over: no room for {subject} up to {until}.',
+  'schedule.evenOut.reason.wouldMakeLate':
+    'Not moved: moving it would make {ticket} late, and this run does not move that ticket.',
+  'schedule.evenOut.reason.wouldMakeKeptLate':
+    'Not moved: moving it would make kept {ticket} late.',
+  'schedule.evenOut.reason.wouldPassEnd':
+    'Not moved: moving it would push {ticket} past {until}, the run’s last day.',
   'scenario.notShown':
     '{count, plural, one {# more change is on a ticket this plan does not show you.} other {# more changes are on tickets this plan does not show you.}}',
   'scenario.listFailed':
@@ -7826,6 +8998,228 @@ export const messagesEn = {
   'plans.csv.draft': 'Draft',
   'plans.csv.draftStale': 'Yes, changed since drafted',
   'plans.image.inScenario': '{plan} — Scenario: {scenario}, drafts not applied',
+  'plans.section.grid': 'Grid',
+  'grid.loading': 'Loading the grid…',
+  'grid.listFailed': 'The plan’s structures could not be read. Try again in a moment.',
+  'grid.failed': 'The grid could not be read. Try Refresh in a moment.',
+  'grid.timeout':
+    'Reading this structure took too long, so nothing is shown rather than part of it. Narrow it with the filters or a query, or try again.',
+  'grid.tryAgain': 'Try again',
+  'grid.cellsFailed': 'Some cells could not be read, so they show nothing yet.',
+  'grid.structure': 'Structure',
+  'grid.structure.broken': '{name} (partly broken)',
+  'grid.structureGone': 'The structure in this link no longer exists; the plan’s first is shown.',
+  'grid.refresh': 'Refresh',
+  'grid.new': 'New structure…',
+  'grid.edit': 'Edit structure…',
+  'grid.saveDefault': 'Save as a structure…',
+  'grid.delete': 'Delete structure',
+  'grid.delete.label': 'Delete structure {name}',
+  'grid.delete.ask':
+    'Deletes the structure {name} for everyone who sees this plan. Its tickets stay as they are.',
+  'grid.delete.done': 'Deleted {name}.',
+  'grid.full': 'A plan holds at most {count} structures. Delete one to make another.',
+  'grid.unsaved':
+    'This is the default structure, not saved: the plan’s tickets and their children. Save it, or make your own with New structure….',
+  'grid.unsaved.reader':
+    'This is the default structure: the plan’s tickets and their children. The plan’s editors can save others.',
+  'grid.live':
+    'The Grid shows tickets as they are, not drafts, and its cells cannot be edited here.',
+  'grid.saved.made': 'Saved {name}.',
+  'grid.saved.changed': 'Changed {name}.',
+  'grid.refused.tooMany': 'A plan holds at most {count} structures. Delete one to make another.',
+  'grid.refused.nameTaken': 'This plan already has a structure of that name.',
+  'grid.refused.conflict': 'Someone changed this structure meanwhile. Close and open it again.',
+  'grid.refused.forbidden': 'Only the plan’s editors can change its structures.',
+  'grid.refused.gone': 'This structure no longer exists.',
+  'grid.refused.invalid': 'Something in the structure does not work; it is marked below.',
+  'grid.refused.query': 'The Add tickets query does not read. Check it and save again.',
+  'grid.refused.other': 'The structure could not be saved. Try again in a moment.',
+  'grid.empty': 'No rows in this structure',
+  'grid.emptyBody':
+    'The plan has no tickets you can see that this structure adds, with these filters.',
+  'grid.emptyBroken':
+    'The structure’s Add tickets step does not run for you, so it adds nothing; the plan’s editors can change it.',
+  'grid.more': 'Shows the first {count, number} rows.',
+  'grid.queryBroken': 'The Add tickets query does not run for you: {message}',
+  'grid.stepBroken':
+    'A step of this structure names a field or link type that no longer exists; the rest still works.',
+  'grid.column.tree': 'Ticket',
+  'grid.column.formula': 'Formula',
+  'grid.column.broken': 'Does not work: {reason}',
+  'grid.column.gone': 'Does not work: its field no longer exists',
+  'grid.total.below': 'Total of rows below',
+  'grid.total.count': 'Rows below',
+  'grid.total.progress': 'Progress',
+  'grid.total.sum': 'Sum of {field}',
+  'grid.total.min': 'Lowest {field}',
+  'grid.total.max': 'Highest {field}',
+  'grid.total.earliest': 'Earliest {field}',
+  'grid.total.latest': 'Latest {field}',
+  'grid.ref.originalEstimate': 'Original estimate',
+  'grid.ref.remainingEstimate': 'Remaining estimate',
+  'grid.ref.timeSpent': 'Time spent',
+  'grid.ref.start': 'Start date',
+  'grid.ref.due': 'Due date',
+  'grid.hours': '{hours, number} h',
+  'grid.progress': '{closed, number} of {of, number} closed',
+  'grid.partial': '{valued, number} of {of, number} have a value',
+  'grid.group': '{field}: {value}',
+  'grid.groupRows': '{count, plural, one {# row} other {# rows}}',
+  'grid.noValue': 'No value',
+  'grid.unnamed': 'Unnamed',
+  'grid.notInPlan': 'Not in this plan',
+  'grid.notShown': '+{count, number} not shown',
+  'grid.elsewhere':
+    '{count, plural, one {Also reached once more, shown elsewhere} other {Also reached # more times, shown elsewhere}}',
+  'grid.byLink': 'Placed by a link',
+  'grid.cellLoading': 'Loading',
+  'grid.allRows': 'All rows',
+  'grid.defaultName': 'Default structure',
+  'grid.keys':
+    'Arrow keys move between rows and cells; Right and Left expand and collapse a row; Enter edits a cell; Escape cancels; Home and End go to a row’s ends, Control with Home or End to the grid’s; Shift and F10 open a row’s menu, to move it under another parent.',
+  'grid.expandAll': 'Expand all',
+  'grid.collapseAll': 'Collapse all',
+  'grid.expandRow': 'Expand {name}',
+  'grid.collapseRow': 'Collapse {name}',
+  'grid.rows': '{count, plural, one {# row} other {# rows}}',
+  'grid.openCard': 'Open {key}',
+  'grid.sheet.close': 'Close',
+  'grid.dialog.title.new': 'New structure',
+  'grid.dialog.title.edit': 'Edit {name}',
+  'grid.dialog.name': 'Name',
+  'grid.dialog.nameRequired': 'A structure needs a name.',
+  'grid.dialog.steps': 'Steps',
+  'grid.dialog.steps.order':
+    'Steps apply in this order: the plan’s tickets, their groups, their children, then linked tickets.',
+  'grid.dialog.step.insert': 'Add tickets: a query that narrows the plan’s tickets (optional)',
+  'grid.dialog.step.insertHint': 'Leave it empty to start from every ticket of the plan.',
+  'grid.dialog.step.group': 'Group by',
+  'grid.dialog.step.groupThen': 'Then group by',
+  'grid.dialog.group.none': 'No grouping',
+  'grid.dialog.step.children': 'Add children, down every level',
+  'grid.dialog.step.childrenHint':
+    'Children you can see are added under each row, in this plan or not; hidden ones are only counted.',
+  'grid.dialog.step.links': 'Add linked tickets',
+  'grid.dialog.links.type': 'Add linked tickets {n}: tickets this one',
+  'grid.dialog.links.depth': 'How far',
+  'grid.dialog.links.levels': '{count, plural, one {# link away} other {up to # links away}}',
+  'grid.dialog.links.add': 'Add linked tickets',
+  'grid.dialog.links.none': 'The site has no link types, so no linked tickets can be added.',
+  'grid.dialog.links.gone': 'A link type that no longer exists',
+  'grid.dialog.columns': 'Columns',
+  'grid.dialog.columns.count':
+    '{columns, number} of {maxColumns, number} columns; {totals, number} of {maxTotals, number} totals; {formulas, number} of {maxFormulas, number} formulas',
+  'grid.dialog.fn.sum': 'Sum',
+  'grid.dialog.fn.min': 'Lowest',
+  'grid.dialog.fn.max': 'Highest',
+  'grid.dialog.fn.count': 'Count of rows below',
+  'grid.dialog.fn.progress': 'Progress by closed tickets',
+  'grid.dialog.totalOf': '{fn} of {field}',
+  'grid.dialog.check.key': 'Names each row and links its ticket.',
+  'grid.dialog.check.edits': 'Edits in place, through the ticket’s own checks.',
+  'grid.dialog.check.readOnly': 'Shown, not edited in the grid.',
+  'grid.dialog.check.sum': 'Adds up {field} of the rows below each row.',
+  'grid.dialog.check.min': 'The lowest {field} of the rows below each row.',
+  'grid.dialog.check.max': 'The highest {field} of the rows below each row.',
+  'grid.dialog.check.count': 'Counts the ticket rows below each row, at every depth.',
+  'grid.dialog.check.progress':
+    'How many ticket rows below are in a closed status, out of how many.',
+  'grid.dialog.check.unchecked': 'Not checked yet: it is checked when you leave the formula.',
+  'grid.dialog.check.ok': 'The formula checks.',
+  'grid.dialog.check.wrong': 'The formula does not check: {message}',
+  'grid.dialog.formula.name': 'Column name',
+  'grid.dialog.formula.expression': 'Formula of column {n}',
+  'grid.dialog.formula.output': 'Gives',
+  'grid.dialog.formula.decimals': 'Decimals',
+  'grid.dialog.formula.check': 'Check formula',
+  'grid.dialog.formula.default': 'Child rows',
+  'grid.dialog.output.number': 'A number',
+  'grid.dialog.output.currency': 'An amount',
+  'grid.dialog.output.percentage': 'A percentage',
+  'grid.dialog.output.date': 'A date',
+  'grid.dialog.output.duration': 'A duration',
+  'grid.dialog.output.text': 'Text',
+  'grid.dialog.add': 'Add a column',
+  'grid.dialog.add.kind': 'Kind',
+  'grid.dialog.add.ticket': 'Ticket column',
+  'grid.dialog.add.total': 'Total of rows below',
+  'grid.dialog.add.formula': 'Formula',
+  'grid.dialog.add.field': 'Field',
+  'grid.dialog.add.fn': 'Total',
+  'grid.dialog.add.of': 'Of',
+  'grid.dialog.add.button': 'Add column',
+  'grid.dialog.full.columns': 'A structure holds at most 30 columns.',
+  'grid.dialog.full.totals': 'A structure holds at most 10 totals.',
+  'grid.dialog.full.formulas': 'A structure holds at most 5 formulas.',
+  'grid.dialog.up': 'Move {name} up',
+  'grid.dialog.down': 'Move {name} down',
+  'grid.dialog.upShort': 'Up',
+  'grid.dialog.downShort': 'Down',
+  'grid.dialog.remove': 'Remove',
+  'grid.dialog.removeColumn': 'Remove {name}',
+  'grid.dialog.problem.notGroupable': 'This field cannot group: it holds more than one value.',
+  'grid.dialog.problem.duplicate': 'This is chosen twice.',
+  'grid.dialog.problem.gone': 'This no longer exists.',
+  'grid.dialog.problem.unknownField': 'No such field.',
+  'grid.dialog.problem.notSummable': 'This field cannot be totalled this way.',
+  'grid.dialog.problem.required': 'Choose a field to total.',
+  'grid.dialog.problem.notAllowed': 'This total takes no field.',
+  'grid.dialog.problem.other': 'This does not work.',
+  'grid.dialog.save': 'Save structure',
+  'grid.dialog.create': 'Create structure',
+  'grid.dialog.cancel': 'Cancel',
+  'grid.move.grip': 'Move {key}',
+  'grid.move.under': 'Move under…',
+  'grid.move.remove': 'Remove from parent',
+  'grid.move.title': 'Move {key} under…',
+  'grid.move.removeTitle': 'Remove {key} from its parent',
+  'grid.move.find': 'Find the new parent by key or summary',
+  'grid.move.targets': 'New parent',
+  'grid.move.none': 'No row to choose',
+  'grid.move.noneBody':
+    'No ticket row in this grid can be its parent. Type a key to see why a row cannot.',
+  'grid.move.noneFound': 'No ticket row in this grid matches what you typed.',
+  'grid.move.more':
+    '{count, plural, one {# more row matches; type more to narrow the list.} other {# more rows match; type more to narrow the list.}}',
+  'grid.move.ask': 'Move {key} under {to}?',
+  'grid.move.removeAsk': 'Remove {key} from its parent?',
+  'grid.move.change': 'Its parent changes from {from} to {to}.',
+  'grid.move.change.fromNone': 'It has no parent now; {to} becomes its parent.',
+  'grid.move.change.remove': 'Its parent changes from {from} to none.',
+  'grid.move.hiddenParent': 'a ticket you may not see',
+  'grid.move.with': '{count, plural, one {# row moves with it.} other {# rows move with it.}}',
+  'grid.move.choose': 'Choose the new parent first.',
+  'grid.move.confirm': 'Move',
+  'grid.move.removeConfirm': 'Remove from parent',
+  'grid.move.cancel': 'Cancel',
+  'grid.move.no.groupRow': 'A group row is not a ticket, so it does not move.',
+  'grid.move.no.group': 'A group is not a parent.',
+  'grid.move.no.link': 'Its place comes from a link, not its parent.',
+  'grid.move.no.own': 'A row cannot move under its own rows.',
+  'grid.move.no.same': 'This is already its parent.',
+  'grid.move.no.level': 'Its parent must be a ticket exactly one level up.',
+  'grid.move.no.levelNamed': 'Its parent must be a ticket of the {level} level.',
+  'grid.move.no.track': 'A subticket stays in its parent’s track.',
+  'grid.move.no.required': 'A subticket needs a parent.',
+  'grid.move.refused.parentGone': 'That ticket is no longer there, or you may no longer see it.',
+  'grid.move.refused.invalid': 'The ticket’s rules do not allow this move.',
+  'grid.move.refused.forbidden': 'You may not change this ticket.',
+  'grid.move.refused.locked': 'Tickets in this status cannot be changed.',
+  'grid.move.refused.gone': 'This ticket is no longer there, or you may no longer see it.',
+  'grid.move.refused.stale':
+    'Someone changed this ticket since the grid read it, so nothing moved. It has been read again: check and move it again.',
+  'grid.move.refused.archived': 'Its track is archived, so its tickets do not change.',
+  'grid.move.refused.other':
+    'The move could not be saved, so nothing moved. Try again in a moment.',
+  'grid.move.readFailed': '{key} could not be read, so it cannot move now. Try again in a moment.',
+  'grid.move.byLink': '{key} is placed by a link, not its parent, so it cannot move here.',
+  'grid.move.drag.start': 'Moving {key}. Drop it on its new parent, or press Escape.',
+  'grid.move.drag.on': 'Move {key} under {to}',
+  'grid.move.drag.cancelled': '{key} was not moved.',
+  'grid.move.drag.refused': '{key} was not moved: {reason}',
+  'grid.move.done': '{key} moved under {to}.',
+  'grid.move.removed': '{key} no longer has a parent.',
 } as const;
 
 export type MessageId = keyof typeof messagesEn;

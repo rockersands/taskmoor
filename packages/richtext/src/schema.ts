@@ -7,7 +7,7 @@ import type { Schema } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import StarterKit from '@tiptap/starter-kit';
 import { ySyncPluginKey } from '@tiptap/y-tiptap';
-import { columnTracks, expandTitleLine, isAttachmentDigest, TICKET_KEY } from './adf';
+import { columnTracks, expandTitleLine, isAttachmentDigest, isSafeColor, TICKET_KEY } from './adf';
 
 /**
  * The document schema shared by the editor, the server and the importer. Everything the
@@ -251,11 +251,19 @@ const UnknownInline = Node.create({
   renderHTML: () => ['span', { 'data-unknown-inline': '' }],
 });
 
+/**
+ * A colour on text, from an import or another format; no tool makes one. Only a safe value is
+ * ever written into a style (NTF-014, T-318): an import keeps another as an unknown mark, a save
+ * takes it off (`withSafeColors`), and one in a document stored before shows as plain text.
+ */
 const TextColor = Mark.create({
   name: 'textColor',
   addAttributes: () => ({ color: { default: null } }),
   parseHTML: () => [{ tag: 'span[data-text-color]' }],
-  renderHTML: ({ HTMLAttributes }) => ['span', { style: `color: ${HTMLAttributes.color}` }, 0],
+  renderHTML: ({ mark }) =>
+    isSafeColor(mark.attrs.color)
+      ? ['span', { style: `color: ${mark.attrs.color}` }, 0]
+      : ['span', {}, 0],
 });
 
 const SubSup = Mark.create({

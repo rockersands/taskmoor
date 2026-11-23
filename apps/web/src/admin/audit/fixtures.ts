@@ -105,8 +105,10 @@ export function fakeAuditClient(
         nextCursor: start + size < matching.length && last ? String(last.seq) : null,
       };
     },
-    exportUrl: (filter, format) =>
-      `/api/v1/audit/export?format=${format}${filter.action ? `&action=${filter.action}` : ''}`,
+    exportUrl: (filter, format, separator = 'comma') =>
+      `/api/v1/audit/export?format=${format}${filter.action ? `&action=${filter.action}` : ''}${
+        format === 'csv' && separator === 'semicolon' ? '&separator=semicolon' : ''
+      }`,
     verify: async () => ({
       ok: options.brokenAt === undefined,
       checked: records.length,

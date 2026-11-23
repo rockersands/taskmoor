@@ -1,5 +1,6 @@
 import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
 import { useIntl } from 'react-intl';
+import { useCsvSeparator } from '../../account/csvStyle';
 import { ApiError } from '../../api/client';
 import { useT } from '../../i18n/I18nProvider';
 import type { MessageId } from '../../i18n/messages.en';
@@ -30,6 +31,8 @@ type Log =
  */
 export function AuditPage({ client = auditClient }: { client?: AuditClient }) {
   const t = useT();
+  // Commas or semicolons, as the person's spreadsheet opens them (T-263).
+  const csvSeparator = useCsvSeparator();
   const intl = useIntl();
   const { session } = useSession();
   const titleId = useId();
@@ -185,7 +188,11 @@ export function AuditPage({ client = auditClient }: { client?: AuditClient }) {
       </form>
 
       <div className="audit-actions">
-        <a className="button-secondary" href={client.exportUrl(filter, 'csv')} download>
+        <a
+          className="button-secondary"
+          href={client.exportUrl(filter, 'csv', csvSeparator)}
+          download
+        >
           {t('admin.audit.exportCsv')}
         </a>
         <a className="button-secondary" href={client.exportUrl(filter, 'jsonl')} download>

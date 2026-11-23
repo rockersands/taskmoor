@@ -6,6 +6,7 @@ import { requireUser } from '../auth';
 import { boardsLeftByQuery } from '../boards/one-per-track';
 import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
+import { viewerTimeZone } from '../reports/zone';
 import { DEFAULT_QUERY_TIMEOUT_MS, prepareSearch } from '../search/run';
 import { savedSearchVisible } from '../search/saved';
 import { nextRun, parseCron, ScheduleError, validTimeZone } from '../search/schedule';
@@ -659,7 +660,9 @@ export function registerSavedSearchRoutes(
         }
       }
     }
-    const timeZone = body.timeZone ?? user.timeZone ?? 'UTC';
+    // Without a zone named, the person's own (T-280): the account's, else the device's the app
+    // sends; the subscription keeps it, so it stays put when the person travels.
+    const timeZone = body.timeZone ?? viewerTimeZone(request);
     if (!validTimeZone(timeZone)) fields.timeZone = 'invalid';
     if (Object.keys(fields).length > 0) return invalidFields(reply, fields);
     const schedule = {

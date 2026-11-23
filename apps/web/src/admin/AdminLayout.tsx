@@ -17,14 +17,28 @@ import { ADMIN_HOME, type AdminGroup, adminGroupHref, adminPlace, groupsFor } fr
 /** Below this width the section's navigation folds away above the page. */
 const NARROW = '(max-width: 1023px)';
 
-/** The most groups the overview's list opens: more would push the last ones out of view. */
-const OPEN_ON_OVERVIEW = 2;
+/**
+ * The most groups the overview's list opens: a configuration administrator's three (one of them a
+ * single page) fit; a site administrator's six would push the last ones out of view (S3-AD-2).
+ */
+const OPEN_ON_OVERVIEW = 3;
 
 /** A step a page adds after its own name in the breadcrumb: a track, a workflow, a sub-page. */
 export interface AdminCrumb {
   label: string;
   /** Where the step leads; the last step is the page itself and has none. */
   href?: string;
+}
+
+/** The address each list page last left, by the page's own route: its filters with it. */
+const pageAddresses = new Map<string, string>();
+
+/**
+ * A list page whose address keeps its filters (People's `?show=`, `?role=`) says where it is, so
+ * the breadcrumb's step back to it from a page below (a person) finds the list as it was left.
+ */
+export function keepPageAddress(page: string, route: string) {
+  pageAddresses.set(page, route);
 }
 
 const TrailContext = createContext<((trail: readonly AdminCrumb[] | null) => void) | null>(null);
@@ -121,7 +135,7 @@ function AdminNav({
   const currentGroup = place?.group.id ?? null;
   // A page shows only its own group's pages, so the list stays short (D18); any other group
   // opens from its heading. The overview, which lists every page itself, shows every group's
-  // heading closed, so all of them fit beside it (S3-AD-2); with two groups or fewer, as for
+  // heading closed, so all of them fit beside it (S3-AD-2); with three groups or fewer, as for
   // someone who only runs tracks or sets them up, they stay open.
   const [opened, setOpened] = useState<ReadonlySet<string>>(
     () =>
@@ -244,7 +258,9 @@ export function AdminBreadcrumb({
       const more = trail && trail.length > 0;
       steps.push({
         label: t(place.page.labelId),
-        ...(more && groupAllowed ? { href: place.page.href } : {}),
+        ...(more && groupAllowed
+          ? { href: pageAddresses.get(place.page.href) ?? place.page.href }
+          : {}),
       });
       if (more) steps.push(...trail);
     }

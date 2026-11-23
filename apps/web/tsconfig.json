@@ -12,9 +12,12 @@
     "build",
     "e2e",
     "playwright.config.ts",
-    ".storybook",
+    ".storybook/*.ts",
+    ".storybook/*.tsx",
     "vitest.stories.config.ts",
     "vitest.stories-dark.config.ts",
+    "vitest.stories-touch.config.ts",
+    "vitest.stories-dark-touch.config.ts",
     "vitest.stories.config.test.ts",
     "vitest.build.config.ts"
   ],

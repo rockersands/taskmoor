@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
+import { useCsvSeparator } from '../account/csvStyle';
 import { useT } from '../i18n/I18nProvider';
 import { CrossTrackState } from '../releases/CrossTrackState';
 import type { Progress } from '../releases/crossTrackClient';
@@ -39,6 +40,8 @@ export function byDate(releases: readonly PlanRelease[]): PlanRelease[] {
  */
 export function PlanReleasesPage({ id, plan, filters, client, now }: PlanSectionProps) {
   const t = useT();
+  // Commas or semicolons, as the person's spreadsheet opens them (T-263).
+  const csvSeparator = useCsvSeparator();
   const intl = useIntl();
   const domId = useId();
   const endText = useEndText();
@@ -124,7 +127,7 @@ export function PlanReleasesPage({ id, plan, filters, client, now }: PlanSection
               label: t('plans.download.csv'),
               make: async () => {
                 const name = fileName(plan.name, 'releases', localDay(now()), 'csv');
-                saveBlob(name, csvBlob(releasesCsv(t, data)));
+                saveBlob(name, csvBlob(releasesCsv(t, data, csvSeparator)));
                 return name;
               },
             },

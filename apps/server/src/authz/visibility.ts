@@ -59,11 +59,14 @@ export interface Viewer {
 }
 
 const CUSTOM_KEY = /^cf\[(\d{1,10})\]$/;
+/** Field ids are 32-bit integers; a larger one names no field (and the database refuses it). */
+const MAX_FIELD_ID = 2_147_483_647;
 
 /** The field id of a user or group field grantee (`cf[12]`); null for anything else. */
 export function fieldIdOf(fieldKey: string | null): number | null {
   const m = fieldKey === null ? null : CUSTOM_KEY.exec(fieldKey);
-  return m ? Number(m[1]) : null;
+  const id = m ? Number(m[1]) : null;
+  return id !== null && id <= MAX_FIELD_ID ? id : null;
 }
 
 /** Whether a ticket's user or group field holds one of `ids`. */

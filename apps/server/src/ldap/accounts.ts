@@ -10,8 +10,10 @@ import { activeAdminCount } from '../directory';
  * site administrator are never deactivated by a directory, since they are how people get in
  * when the directory is wrong.
  *
- * As every deactivation does, it takes the permission to create tracks that came with a role
- * (T-087b; IAM-033, ADR-118): `lapsed`, for the caller's event. Reactivating does not give it back.
+ * Like every deactivation, it keeps the person's roles and the permission to create tracks that
+ * came with them (T-259; IAM-033, ADR-118), unusable while deactivated and theirs again on
+ * reactivation; it takes only one whose roles are already gone (T-087b): `lapsed`, for the
+ * caller's event.
  */
 export type Protected = 'break_glass' | 'last_admin';
 

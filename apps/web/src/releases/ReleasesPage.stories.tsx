@@ -92,6 +92,7 @@ export const NotFound: Story = {
 
 /** A finger reaches the release across tracks a release is in (ADR-033). */
 export const LinkedOnATouchScreen: Story = {
+  tags: ['touch'],
   args: { client: fakeReleaseClient({ linked: true }) },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
@@ -102,6 +103,7 @@ export const LinkedOnATouchScreen: Story = {
 
 /** A finger reaches each release and the fold-out of the archived ones (ADR-033). */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByText(/archived release/);

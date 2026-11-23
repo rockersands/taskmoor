@@ -41,6 +41,21 @@ function SideBySide() {
 const meta = {
   title: 'Shell/StandaloneFrame',
   component: SideBySide,
+  parameters: {
+    a11y: {
+      config: {
+        // A harness exception (ADR-024, T-327): this file draws two pages side by side to compare
+        // them, so the canvas holds two banners and two mains, which no page of the app does. Only
+        // the rules about landmarks being one of a kind are off, and only here; every other rule
+        // checks both pages, and the pages that use the frame check these in their own stories.
+        rules: [
+          { id: 'landmark-no-duplicate-banner', enabled: false },
+          { id: 'landmark-no-duplicate-main', enabled: false },
+          { id: 'landmark-unique', enabled: false },
+        ],
+      },
+    },
+  },
 } satisfies Meta<typeof SideBySide>;
 
 export default meta;
@@ -68,6 +83,7 @@ export const HeaderRowHeights: Story = {
 
 /** On a touch screen the way out is a finger's height, and the row keeps that height too. */
 export const HeaderRowHeightsOnTouch: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await sameHeights(canvasElement);

@@ -1,6 +1,8 @@
 import type { Database } from '@taskmoor/db';
 import type { EffectDef } from '@taskmoor/workflow';
 import { type Kysely, sql, type Transaction } from 'kysely';
+import { type EventContext, emit } from '../events/bus';
+import { lockList } from '../tickets/fields';
 import { type DefinitionProblem, definitionSchema, type WorkflowDefinition } from './model';
 import {
   type CurrentVersions,
@@ -18,6 +20,44 @@ import {
  * names one.
  */
 const CLOSE_REASON = 'close-reason';
+
+/**
+ * Makes a close reason, last in the list, and records `close_reason.created` in the same
+ * transaction (CORE-014; M1-005). Every path of the application that makes one comes through here:
+ * the close reasons page, and Completed made where a closing status that moves freely needs it
+ * (a new workflow, the workflow editor, a board that manages its workflow, a track's template), so
+ * none makes a reason without its event and audit record (T-325). The list is held, so the order
+ * stays gapless while others make reasons too. A name already taken throws the unique violation on
+ * `close_reason_name_idx`. Imports and migrations write their own rows (ADR-048, ADR-022).
+ */
+export async function createCloseReason(
+  trx: Transaction<Database>,
+  by: EventContext,
+  reason: { name: string; description?: string },
+): Promise<{ id: number; name: string; description: string; sort_order: number }> {
+  await lockList(trx, by.workspaceId, 'close_reason');
+  const last = await trx
+    .selectFrom('close_reason')
+    .select(sql<number>`coalesce(max(sort_order), 0)`.as('n'))
+    .where('workspace_id', '=', by.workspaceId)
+    .executeTakeFirstOrThrow();
+  const created = await trx
+    .insertInto('close_reason')
+    .values({
+      workspace_id: by.workspaceId,
+      name: reason.name,
+      description: reason.description ?? '',
+      sort_order: Number(last.n) + 1,
+    })
+    .returning(['id', 'name', 'description', 'sort_order'])
+    .executeTakeFirstOrThrow();
+  await emit(trx, by, {
+    type: 'close_reason.created',
+    subjectId: created.id,
+    payload: { name: created.name },
+  });
+  return created;
+}
 
 const setsReason = (effect: EffectDef, reason: string): boolean =>
   (effect.type === 'update-system-field' || effect.type === 'update-field') &&

@@ -74,6 +74,7 @@ export const AtPhoneWidth: Story = {
  * beside its label (ADR-033, AD-22).
  */
 export const CheckBoxesOnAPhone: Story = {
+  tags: ['touch'],
   decorators: [atPhoneWidth],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {

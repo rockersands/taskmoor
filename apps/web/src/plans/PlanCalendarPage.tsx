@@ -1,14 +1,37 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCsvSeparator } from '../account/csvStyle';
+import { withoutTrackName } from '../calendar/CalendarPage';
 import { CalendarView, monthOf, monthWeeks } from '../calendar/CalendarView';
 import { useT } from '../i18n/I18nProvider';
 import { useTicketChanges } from '../tickets/view/ticketChanges';
 import { dayNumber, isoDay, localDay } from '../timeline/client';
-import type { PlanCalendar } from './client';
+import type { PlanCalendar, PlanTrack } from './client';
 import { DownloadMenu } from './DownloadMenu';
 import { csvBlob, fileName, saveBlob } from './download';
 import { draftCalls } from './drafting';
 import type { PlanSectionProps } from './PlanSummaryPage';
 import { calendarCsv } from './planExport';
+
+/**
+ * A sprint's name on a plan's calendar (S3-PL-4). A plan spans tracks, so the track's name stays,
+ * but after what tells two sprints apart: a chip cut short reads "Sprint 1 · Mobile apps" and
+ * "Sprint 2 · Mobile apps", not "Mobile apps Spri…" twice. The longest track name that starts the
+ * sprint's is the one taken off; a name no track starts is left as it is.
+ */
+export function planSprintName(
+  name: string,
+  tracks: readonly PlanTrack[],
+  label: (sprint: string, track: string) => string,
+): string {
+  const named = tracks
+    .flatMap((track) => (track.name ? [track.name] : []))
+    .sort((a, b) => b.length - a.length);
+  for (const track of named) {
+    const rest = withoutTrackName(name, track);
+    if (rest !== name) return label(rest, track.trim());
+  }
+  return name;
+}
 
 /**
  * A plan's Calendar (PLN-012): a month of its tickets across tracks on their due and start days,
@@ -28,6 +51,8 @@ export function PlanCalendarPage({
   onDrafted,
 }: PlanSectionProps) {
   const t = useT();
+  // Commas or semicolons, as the person's spreadsheet opens them (T-263).
+  const csvSeparator = useCsvSeparator();
   const today = localDay(now());
   // Kept in the address on a plan's page, so a link opens the same month.
   const [monthHere, setMonthHere] = useState(() => monthOf(dayNumber(today)));
@@ -84,10 +109,20 @@ export function PlanCalendarPage({
         )
       : null;
 
+  const shown = {
+    ...data,
+    sprints: data.sprints.map((s) => ({
+      ...s,
+      name: planSprintName(s.name, data.tracks, (sprint, track) =>
+        t('plans.calendar.sprint', { sprint, track }),
+      ),
+    })),
+  };
+
   return (
     <div className="calendar-page plan-calendar">
       <CalendarView
-        data={data}
+        data={shown}
         month={month}
         onMonth={setMonth}
         move={drafts?.move ?? client.move}
@@ -111,7 +146,7 @@ export function PlanCalendarPage({
                     scenario?.id,
                   );
                   const name = fileName(plan.name, 'calendar', isoDay(month).slice(0, 7), 'csv');
-                  saveBlob(name, csvBlob(calendarCsv(t, fresh)));
+                  saveBlob(name, csvBlob(calendarCsv(t, fresh, csvSeparator)));
                   return name;
                 },
               },
