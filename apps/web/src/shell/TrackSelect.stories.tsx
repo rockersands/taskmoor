@@ -20,7 +20,7 @@ function Picker() {
         id="story-track"
         tracks={TRACKS}
         value={track}
-        label={(t) => `${t.key} ${t.name}`}
+        label={(t) => `${t.key} · ${t.name}`}
         onChange={setTrack}
       />
     </div>
@@ -37,14 +37,14 @@ export const Choosing: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const box = canvas.getByRole('combobox', { name: 'Track' });
-    await expect(box).toHaveTextContent('SHOP Shop');
+    await expect(box).toHaveTextContent('SHOP · Shop');
     await userEvent.click(box);
-    await expect(canvas.getByRole('option', { name: 'SHOP Shop' })).toHaveAttribute(
+    await expect(canvas.getByRole('option', { name: 'SHOP · Shop' })).toHaveAttribute(
       'aria-selected',
       'true',
     );
     await userEvent.keyboard('{ArrowDown}{Enter}');
-    await expect(box).toHaveTextContent('OPS Operations');
+    await expect(box).toHaveTextContent('OPS · Operations');
   },
 };
 
@@ -61,7 +61,7 @@ export const AtPhoneWidth: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('combobox', { name: 'Track' }));
     await userEvent.click(
-      canvas.getByRole('option', { name: 'PAY Payments and refunds across every region' }),
+      canvas.getByRole('option', { name: 'PAY · Payments and refunds across every region' }),
     );
     const box = canvas.getByTestId('phone-width');
     await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);

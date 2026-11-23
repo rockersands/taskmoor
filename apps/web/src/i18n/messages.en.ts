@@ -4381,7 +4381,7 @@ export const messagesEn = {
   'clone.title': 'Clone {key}',
   'clone.summary': 'Summary of the copy',
   'clone.track': 'Track',
-  'clone.trackOption': '{key}: {name}',
+  'clone.trackOption': '{key} · {name}',
   'clone.subticketHint': 'A subticket is copied into its own track, under its parent.',
   'clone.with': 'Copy with it',
   'clone.subtickets': 'Subtickets',

@@ -4488,7 +4488,7 @@ export const messagesEs: Record<MessageId, string> = {
   'clone.title': 'Clonar {key}',
   'clone.summary': 'Resumen de la copia',
   'clone.track': 'Track',
-  'clone.trackOption': '{key}: {name}',
+  'clone.trackOption': '{key} · {name}',
   'clone.subticketHint': 'Un subticket se copia en su propio track, debajo de su padre.',
   'clone.with': 'Copiar junto con él',
   'clone.subtickets': 'Sus subtickets',

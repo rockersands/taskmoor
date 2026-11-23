@@ -49,7 +49,7 @@ export const Copying: Story = {
     const track = await canvas.findByRole('combobox', { name: 'Track' });
     await waitFor(() => expect(track).toBeEnabled());
     await userEvent.click(track);
-    await userEvent.click(canvas.getByRole('option', { name: 'PAY: Payments' }));
+    await userEvent.click(canvas.getByRole('option', { name: 'PAY · Payments' }));
     await userEvent.click(canvas.getByRole('button', { name: 'Clone' }));
     await expect(await canvas.findByText('Copying…')).toBeVisible();
     await expect(canvas.getByLabelText('0 of 12 tickets finished')).toBeVisible();
