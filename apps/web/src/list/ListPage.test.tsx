@@ -281,7 +281,7 @@ describe('a track’s list (M1-049)', () => {
     // 08:00 UTC is 1:30 PM in Kolkata, half an hour off the hour: the person's own clock.
     expect(within(cell).getByText('Oct 29, 2026')).toHaveAttribute('aria-hidden', 'true');
     const whole = /^Oct 29, 2026, 1:30\sPM$/;
-    expect(cell.querySelector('.search-cell-value')?.getAttribute('title')).toMatch(whole);
+    expect(cell.querySelector('.search-cell-value time')?.getAttribute('title')).toMatch(whole);
     expect(within(rowOf('SHOP-41')).getByRole('cell', { name: whole })).toBe(cell);
   });
 
