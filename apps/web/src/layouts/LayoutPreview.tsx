@@ -4,7 +4,7 @@ import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import { EmptyState } from '../shell/EmptyState';
-import type { LayoutsClient, Named, Preview } from './client';
+import type { LayoutsClient, Named, Preview, PreviewField, TrackLists } from './client';
 import { setAtCreate } from './createForm';
 import { type DraftSet, entriesOf, type FormChoice } from './model';
 import { layoutRefusal } from './refusal';
@@ -39,27 +39,41 @@ type State =
   | { status: 'failed'; last: Preview | null };
 
 /** Why a placed field is not on the form: the server's reasons, and the create form's own. */
-type LeftOutReason = Preview['leftOut'][number]['reason'] | 'after_create';
+type LeftOutReason =
+  | Preview['leftOut'][number]['reason']
+  | 'after_create'
+  | 'no_releases'
+  | 'no_areas';
 
 const REASONS: Record<LeftOutReason, MessageId> = {
   hidden: 'layouts.preview.reason.hidden',
   not_applicable: 'layouts.preview.reason.notApplicable',
   computed: 'layouts.preview.reason.computed',
   after_create: 'layouts.preview.reason.afterCreate',
+  no_releases: 'layouts.preview.reason.noReleases',
+  no_areas: 'layouts.preview.reason.noAreas',
 };
+
+/** A list of the track's own that a field picks from. */
+type ListKind = 'release' | 'area';
 
 /**
  * Optional fields the create form leaves out when the track has nothing to offer in them
  * (`CreateTicketPage`'s `listKindOf`): the built-in release and area fields, and custom fields of
- * type release or area. The preview cannot know the track's releases and areas, so it says so
- * under them rather than promising a row the form may not show.
+ * type release or area.
  */
-const ONLY_WHEN_LISTED: Partial<Record<string, MessageId>> = {
-  targetRelease: 'layouts.preview.onlyWithReleases',
-  foundInRelease: 'layouts.preview.onlyWithReleases',
-  area: 'layouts.preview.onlyWithAreas',
-};
-const ONLY_WHEN_LISTED_TYPE: Partial<Record<string, MessageId>> = {
+function listKindOf(key: string, customFields: Preview['customFields']): ListKind | null {
+  const custom = /^cf\[(\d+)\]$/.exec(key)?.[1];
+  if (custom) {
+    const type = customFields.find((f) => f.id === Number(custom))?.type;
+    return type === 'release' || type === 'area' ? type : null;
+  }
+  if (key === 'area') return 'area';
+  return key === 'targetRelease' || key === 'foundInRelease' ? 'release' : null;
+}
+
+/** Without a track's lists, the preview says under such a row that it may go. */
+const ONLY_WHEN_LISTED: Record<ListKind, MessageId> = {
   release: 'layouts.preview.onlyWithReleases',
   area: 'layouts.preview.onlyWithAreas',
 };
@@ -68,29 +82,36 @@ type Shown = Omit<Preview, 'leftOut'> & { leftOut: { field: string; reason: Left
 
 /**
  * The create form as people get it: a field set only once the ticket exists goes, unless it is
- * required (the form then says why it cannot set it). One the layout placed is said under the form;
- * one in the tab of the rest (a tab with no name) was not placed, so it just goes.
+ * required (the form then says why it cannot set it); so does an optional list of the track's
+ * releases or areas when the track has none, once its lists are known. One the layout placed is
+ * said under the form; one in the tab of the rest (a tab with no name) was not placed, so it just
+ * goes.
  */
-function asCreated(preview: Preview): Shown {
-  const later: string[] = [];
+function asCreated(preview: Preview, lists: TrackLists | null): Shown {
+  const gone: { field: string; reason: LeftOutReason }[] = [];
+  const why = (field: PreviewField): LeftOutReason | null => {
+    if (field.required) return null;
+    if (!setAtCreate(field.key)) return 'after_create';
+    const kind = lists ? listKindOf(field.key, preview.customFields) : null;
+    if (kind === 'release' && lists?.releases === 0) return 'no_releases';
+    if (kind === 'area' && lists?.areas === 0) return 'no_areas';
+    return null;
+  };
   const tabs = preview.layout.tabs.map((tab) => ({
     ...tab,
     sections: tab.sections.map((section) => ({
       ...section,
       fields: section.fields.filter((field) => {
-        const kept = field.required || setAtCreate(field.key);
-        if (!kept && tab.name !== null) later.push(field.key);
-        return kept;
+        const reason = why(field);
+        if (reason && tab.name !== null) gone.push({ field: field.key, reason });
+        return reason === null;
       }),
     })),
   }));
   return {
     ...preview,
     layout: { ...preview.layout, tabs },
-    leftOut: [
-      ...preview.leftOut,
-      ...later.map((field) => ({ field, reason: 'after_create' as const })),
-    ],
+    leftOut: [...preview.leftOut, ...gone],
   };
 }
 
@@ -122,6 +143,26 @@ export function LayoutPreview({
   const [state, setState] = useState<State>({ status: 'loading', last: null });
   const typeId = form.ticketTypeId ?? chosenType;
   const layouts = useMemo(() => JSON.stringify(entriesOf(drafts)), [drafts]);
+  // The chosen track's releases and areas, read once per track: the create form drops an
+  // optional row whose list is empty (T-359). Until they are known the preview says it may.
+  const [lists, setLists] = useState<{ trackId: number; lists: TrackLists } | null>(null);
+  const wantsLists = form.operation === 'create' && trackId !== null && Boolean(client.trackLists);
+
+  useEffect(() => {
+    if (!wantsLists || trackId === null || !client.trackLists) return;
+    let live = true;
+    client.trackLists(trackId).then(
+      (read) => {
+        if (live) setLists({ trackId, lists: read });
+      },
+      // Unknown, so the rows keep saying they may go; an expired session is said as anywhere.
+      (error) => void expired(error),
+    );
+    return () => {
+      live = false;
+    };
+  }, [client, trackId, wantsLists, expired]);
+  const known = wantsLists && lists?.trackId === trackId ? lists.lists : null;
 
   useEffect(() => {
     if (typeId === null) return;
@@ -158,20 +199,24 @@ export function LayoutPreview({
   const last = state.status === 'ready' ? state.preview : state.last;
   // The create form leaves out what is set once the ticket exists, Close reason among them, unless
   // it is required (PL-20, D30): the preview leaves out the same, from the form's own lists.
-  const shown = last && last.layout.operation === 'create' ? asCreated(last) : last;
+  // So does a row of an empty list of the track's releases or areas, as the form drops it.
+  const shown = last && last.layout.operation === 'create' ? asCreated(last, known) : last;
   // Why, in the catalogue's words; a refusal the editor does not know is said in general.
   const reason = state.status === 'refused' ? layoutRefusal(t, state.answer, knownName) : null;
   const typeName = types.find((x) => x.id === typeId)?.name ?? '';
-  const customOf = (key: string) => {
+  const nameOf = (key: string) => {
     const custom = /^cf\[(\d+)\]$/.exec(key)?.[1];
-    return custom ? shown?.customFields.find((f) => f.id === Number(custom)) : undefined;
+    const found = custom ? shown?.customFields.find((f) => f.id === Number(custom)) : undefined;
+    return found?.name ?? fieldName(key);
   };
-  const nameOf = (key: string) => customOf(key)?.name ?? fieldName(key);
-  /** Why a row may be missing from the real create form, for a list of the track's own. */
-  const onlyWhenListed = (key: string): MessageId | undefined => {
-    const custom = customOf(key);
-    if (custom) return custom.type ? ONLY_WHEN_LISTED_TYPE[custom.type] : undefined;
-    return /^cf\[/.test(key) ? undefined : ONLY_WHEN_LISTED[key];
+  /**
+   * Under an optional row of a list of the track's own, while the track's lists are not known
+   * (no particular track): the real create form may leave it out.
+   */
+  const mayGo = (key: string): MessageId | null => {
+    if (known || !shown) return null;
+    const kind = listKindOf(key, shown.customFields);
+    return kind ? ONLY_WHEN_LISTED[kind] : null;
   };
 
   return (
@@ -316,9 +361,9 @@ export function LayoutPreview({
                                   )}
                                   {shown.layout.operation === 'create' &&
                                     !field.required &&
-                                    onlyWhenListed(field.key) && (
+                                    mayGo(field.key) && (
                                       <span className="form-hint">
-                                        {t(onlyWhenListed(field.key) as MessageId)}
+                                        {t(mayGo(field.key) as MessageId)}
                                       </span>
                                     )}
                                 </li>

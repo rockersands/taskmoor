@@ -55,6 +55,12 @@ const previewed = () =>
     (label) => label.firstChild?.textContent,
   );
 
+/** A row of the preview, by its field's label. */
+const previewRow = (name: string) =>
+  [...preview().querySelectorAll('.layout-preview-field')].find(
+    (li) => li.querySelector('.layout-preview-label')?.firstChild?.textContent === name,
+  ) as HTMLElement;
+
 /** Picks a move from a grip's menu, as a keyboard or a pointer would. */
 async function choose(user: ReturnType<typeof userEvent.setup>, grip: string, move: string) {
   await user.click(screen.getByRole('button', { name: grip }));
@@ -156,10 +162,7 @@ describe('the layout editor (UI-T15)', () => {
     ).toBeVisible();
     // Releases and areas show on the create form only when the track has some: the preview,
     // which cannot tell, says so under them.
-    const row = (name: string) =>
-      [...preview().querySelectorAll('.layout-preview-field')].find(
-        (li) => li.querySelector('.layout-preview-label')?.firstChild?.textContent === name,
-      ) as HTMLElement;
+    const row = previewRow;
     expect(row('Target releases')).toHaveTextContent(
       'On the form only when the track has releases.',
     );
@@ -175,30 +178,70 @@ describe('the layout editor (UI-T15)', () => {
     expect(unplaced()).toContain('Close reason');
   });
 
-  it('[CORE-008] the create form’s preview says a custom list of releases or areas shows only when the track has some (T-359)', async () => {
+  it('[CORE-008] with no particular track, the create preview says a custom list of releases or areas may go (T-359)', async () => {
     // Customer as a field of type release and Severity as one of type area: the create form
     // leaves either out on a track with none, as it does the built-in ones.
-    const client = fakeLayoutsClient(layoutSetsFixture());
-    const answer = client.preview.bind(client);
-    const types: Record<number, string> = { 12: 'area', 13: 'release' };
-    vi.spyOn(client, 'preview').mockImplementation(async (id, body) => {
-      const preview = await answer(id, body);
-      return {
-        ...preview,
-        customFields: preview.customFields.map((f) => ({ ...f, type: types[f.id] ?? f.type })),
-      };
+    const client = fakeLayoutsClient(layoutSetsFixture(), {
+      fieldTypes: { 12: 'area', 13: 'release' },
     });
     renderPage(CONFIG_ADMIN, { client });
     await editor();
     await within(preview()).findByText('Preview of the create form for Feature');
     await waitFor(() => expect(previewed()).toContain('Customer'));
-    const row = (name: string) =>
-      [...preview().querySelectorAll('.layout-preview-field')].find(
-        (li) => li.querySelector('.layout-preview-label')?.firstChild?.textContent === name,
-      ) as HTMLElement;
-    expect(row('Customer')).toHaveTextContent('On the form only when the track has releases.');
-    expect(row('Severity')).toHaveTextContent('On the form only when the track has areas.');
-    expect(row('Labels')).not.toHaveTextContent('On the form only');
+    expect(previewRow('Customer')).toHaveTextContent(
+      'On the form only when the track has releases.',
+    );
+    expect(previewRow('Severity')).toHaveTextContent('On the form only when the track has areas.');
+    expect(previewRow('Labels')).not.toHaveTextContent('On the form only');
+  });
+
+  it('[CORE-008] with a track, the create preview reads its releases and areas and leaves out the rows the form drops (T-359)', async () => {
+    const user = userEvent.setup();
+    // The create layout places the release and area fields, built-in and custom (Severity, a
+    // release list); SHOP has areas but no releases.
+    const sets = layoutSetsFixture().map((set) => {
+      const create = set.layouts[0];
+      if (set.id !== 1 || !create) return set;
+      const tabs = create.definition.tabs.map((tab) => ({
+        ...tab,
+        sections: tab.sections.map((s, i) =>
+          i === 1 ? { ...s, fields: [...s.fields, 'targetRelease', 'area', 'cf[12]'] } : s,
+        ),
+      }));
+      return { ...set, layouts: [{ ...create, definition: { ...create.definition, tabs } }] };
+    });
+    const client = fakeLayoutsClient(sets, {
+      fieldTypes: { 12: 'release' },
+      trackLists: { 3: { releases: 0, areas: 2 } },
+    });
+    renderPage(CONFIG_ADMIN, { client });
+    await editor();
+    await waitFor(() => expect(previewed()).toContain('Target releases'));
+    await user.selectOptions(within(preview()).getByLabelText('Fields and rules of'), 'SHOP: Shop');
+    expect(
+      await within(preview()).findByText(
+        'Target releases: the track has no releases, so the create form leaves it out.',
+      ),
+    ).toBeVisible();
+    expect(
+      within(preview()).getByText(
+        'Severity: the track has no releases, so the create form leaves it out.',
+      ),
+    ).toBeVisible();
+    expect(previewed()).not.toContain('Target releases');
+    expect(previewed()).not.toContain('Severity');
+    // The track has areas, so the row stays, with nothing said under it.
+    expect(previewRow('Areas')).not.toHaveTextContent('On the form only');
+    expect(within(preview()).queryByText(/the track has no areas/)).toBeNull();
+    // Back to no particular track: the rows return, each saying it may go.
+    await user.selectOptions(
+      within(preview()).getByLabelText('Fields and rules of'),
+      'No particular track',
+    );
+    await waitFor(() => expect(previewed()).toContain('Target releases'));
+    expect(previewRow('Target releases')).toHaveTextContent(
+      'On the form only when the track has releases.',
+    );
   });
 
   it('[CORE-008] moves fields with the keyboard: Alt and the arrows, and each grip’s menu, each move announced', async () => {

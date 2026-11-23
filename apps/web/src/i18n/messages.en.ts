@@ -8037,6 +8037,10 @@ export const messagesEn = {
     'One release across tracks: its end, its linked releases and how far their work has come.',
   'empty.crossTrack.upcoming':
     'One lines up several tracks’ own releases on one end. Make one to start.',
+  'layouts.preview.reason.noReleases':
+    '{field}: the track has no releases, so the create form leaves it out.',
+  'layouts.preview.reason.noAreas':
+    '{field}: the track has no areas, so the create form leaves it out.',
   'empty.crossTrack.shipped': 'One shows here once all its releases have shipped.',
   'empty.crossTrack.candidates':
     'You can link upcoming releases of tracks you administer that are in no other release across tracks.',

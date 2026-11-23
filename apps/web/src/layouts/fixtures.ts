@@ -7,6 +7,7 @@ import type {
   Preview,
   PreviewField,
   PreviewRequest,
+  TrackLists,
 } from './client';
 import { type LayoutDefinition, type LayoutEntry, SYSTEM_FIELD_KEYS } from './model';
 
@@ -62,6 +63,13 @@ export const LAYOUT_TRACKS: ScopeTrack[] = [
   },
 ];
 const TYPE_SETS: Record<number, number[]> = { 1: [1, 2, 3], 30: [1, 2, 9], 31: [1, 3] };
+
+/** The tracks' releases and areas: SHOP has both, OPS neither, LAB releases but no areas. */
+export const TRACK_LISTS: Record<number, TrackLists> = {
+  3: { releases: 2, areas: 3 },
+  4: { releases: 0, areas: 0 },
+  6: { releases: 1, areas: 0 },
+};
 
 /** The tracks the person of the track administrator's stories runs: OPS and SHOP, not LAB. */
 export const RUN_TRACKS: RunTrack[] = LAYOUT_TRACKS.filter((t) => t.key !== 'LAB').map(
@@ -159,7 +167,12 @@ function problemOf(layouts: readonly LayoutEntry[], ownerTrackId: number | null)
 }
 
 /** The form a draft gives, resolved as the server resolves it (`fields/layouts.ts`). */
-export function fakePreview(set: LayoutSet, body: PreviewRequest): Preview {
+export function fakePreview(
+  set: LayoutSet,
+  body: PreviewRequest,
+  /** A custom field's type, by its id; 'text' for any other. */
+  fieldTypes: Record<number, string> = {},
+): Preview {
   const problem = problemOf(body.layouts, set.trackId);
   if (problem) throw new ApiError(400, { error: 'invalid_request', detail: problem });
   const own = body.layouts.find(
@@ -212,7 +225,11 @@ export function fakePreview(set: LayoutSet, body: PreviewRequest): Preview {
     source: own ? 'type' : every ? 'every_type' : 'none',
     layout: { operation: body.operation, tabs },
     leftOut,
-    customFields: LAYOUT_FIELDS.map((f) => ({ id: f.id, name: f.name, type: 'text' })),
+    customFields: LAYOUT_FIELDS.map((f) => ({
+      id: f.id,
+      name: f.name,
+      type: fieldTypes[f.id] ?? 'text',
+    })),
   };
 }
 
@@ -230,7 +247,14 @@ export interface FakeLayoutsClient extends LayoutsClient {
 /** An in-memory backend for the layout editor's stories and tests. */
 export function fakeLayoutsClient(
   sets: LayoutSet[] = layoutSetsFixture(),
-  options: { failPreview?: boolean; runs?: RunTrack[] } = {},
+  options: {
+    failPreview?: boolean;
+    runs?: RunTrack[];
+    /** A custom field's type, by its id ('text' for any other): a release or area list, say. */
+    fieldTypes?: Record<number, string>;
+    /** The tracks' releases and areas; TRACK_LISTS when left out. */
+    trackLists?: Record<number, TrackLists>;
+  } = {},
 ): FakeLayoutsClient {
   const find = (id: number) => {
     const set = client.sets.find((s) => s.id === id);
@@ -305,8 +329,10 @@ export function fakeLayoutsClient(
     preview: async (id, body) => {
       client.previews.push(copy(body));
       if (options.failPreview) throw new ApiError(500, { error: 'internal' });
-      return fakePreview(find(id), body);
+      return fakePreview(find(id), body, options.fieldTypes);
     },
+    trackLists: async (trackId) =>
+      (options.trackLists ?? TRACK_LISTS)[trackId] ?? { releases: 0, areas: 0 },
     assignLayoutSet: async (trackId, setId) => {
       const set = find(setId);
       const track = client.tracks.find((t) => t.id === trackId);

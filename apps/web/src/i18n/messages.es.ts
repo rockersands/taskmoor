@@ -8217,6 +8217,10 @@ export const messagesEs: Record<MessageId, string> = {
     'Una versión entre tracks: su final, sus versiones enlazadas y cuánto ha avanzado su trabajo.',
   'empty.crossTrack.upcoming':
     'Una alinea las versiones de varios tracks en un mismo final. Crea una para empezar.',
+  'layouts.preview.reason.noReleases':
+    '{field}: el track no tiene versiones, así que el formulario de crear lo omite.',
+  'layouts.preview.reason.noAreas':
+    '{field}: el track no tiene áreas, así que el formulario de crear lo omite.',
   'empty.crossTrack.shipped': 'Una aparece aquí cuando todas sus versiones se han publicado.',
   'empty.crossTrack.candidates':
     'Puedes enlazar versiones próximas de tracks que administras y que no estén en otra versión entre tracks.',
