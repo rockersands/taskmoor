@@ -22,7 +22,20 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: resume plan after the token pause (2026-11-23 03:55, Windows)
+### Latest: the live AI checks from one command (2026-11-23, Windows)
+
+On `main` at `a03ad4d8` after a full gate (10,523 tests, 317 e2e). No migration (the next is 0114). This
+wave also carried the coordinator branch's docs from 2026-11-14 onwards to `main`.
+
+- T-333: `pnpm ai:live` (`apps/server/src/ai/evals/live/`: cli, key, scrub, io, run, results). It replaces the
+  older advice to run `pnpm verify` with `TASKMOOR_AI_TEST_KEY` set: the live tests now run only under ai:live
+  (`liveTestKey()` needs `TASKMOOR_AI_LIVE_RESULTS`, which only ai:live sets). The injection corpus has a live
+  mode (`packages/ai/src/injection/harness.ts`, `live.test.ts`). Sonnet 5.5 cache reads are $0.10 per million
+  tokens (spend.ts and spec 02c). How to run it safely: `docs/ai/README.md`. When the user's run passes,
+  mark M1-073, M1-074 and M1-079 done; the M1 gate's injection check follows M1-079.
+- New: T-336 (offer claude-fable-5-2).
+
+### Earlier: resume plan after the token pause (2026-11-23 03:55, Windows)
 
 The user said on 2026-11-22 "you take all decisions but finish all version 1 tickets" (decisions.csv rows
 of 2026-11-22 and 2026-11-23), then "don't do the language reviews" (T-171 Later) and "don't worry about the
