@@ -88,9 +88,29 @@ export const NothingWaiting: Story = {
   },
 };
 
-/** A configuration administrator sees only the setup pages. */
+/**
+ * A configuration administrator sees only the setup pages: their three groups stay open beside
+ * the overview, and the last page is in view inside the card (S3-AD-2).
+ */
 export const ConfigurationAdministrator: Story = {
   parameters: { session: CONFIG_ADMIN },
+  play: async ({ canvasElement }) => {
+    const nav = within(canvasElement).getByRole('navigation', { name: 'Administration pages' });
+    const card = nav.closest('.admin-nav-side') as HTMLElement;
+    for (const name of ['Your tracks', 'People and access', 'Tracks and setup']) {
+      await expect(within(nav).getByRole('button', { name })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      );
+    }
+    const links = within(nav).getAllByRole('link');
+    const last = links.at(-1) as HTMLElement;
+    // Within a pixel: the heights are rounded.
+    await expect(card.scrollHeight - card.clientHeight).toBeLessThanOrEqual(1);
+    await expect(last.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      card.getBoundingClientRect().bottom,
+    );
+  },
 };
 
 /** A group's own page, where a breadcrumb leads back to. */
