@@ -230,10 +230,7 @@ export const OFFENDERS = {
   pagesWithoutHeader: [] as string[],
   noPurpose: {} as Ratchet,
   /** Route pages whose header has no help mark beside the title (ADR-114 §6, S3-WK-1). */
-  pagesWithoutHelp: [
-    // Windows' area (apps/web/src/plans): `about` on the plan's header, as PlansPage has (S3-PL-5).
-    'PlanPage',
-  ] as string[],
+  pagesWithoutHelp: [] as string[],
   /** `<button>` or `<table>` with no class and no rule through a parent. */
   bareControls: {} as Ratchet,
   /** `<fieldset>` classes that no stylesheet names. */

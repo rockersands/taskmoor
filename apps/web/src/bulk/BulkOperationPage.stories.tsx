@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
-import { asOnATouchScreen, tooSmallForAFinger } from '../test/touch';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { BulkOperationPage } from './BulkOperationPage';
 import { FAILURES, fakeBulkClient, RUNNING } from './fixtures';
 
@@ -74,7 +74,8 @@ export const DoneWithFailures: Story = {
  * (S3-WK-7, ADR-033): each stands alone on its line, so each is a finger's height.
  */
 export const OnATouchScreen: Story = {
-  beforeEach: asOnATouchScreen,
+  tags: ['touch'],
+  beforeEach: onARealTouchScreen,
   decorators: [atPhoneWidth],
   args: {
     client: fakeBulkClient(

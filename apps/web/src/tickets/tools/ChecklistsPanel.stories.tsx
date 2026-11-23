@@ -173,6 +173,7 @@ export const ItemsInLine: Story = {
  * holds Edit, the moves and Remove. Every control is a finger's size, and nothing goes sideways.
  */
 export const ItemsOnAPhone: Story = {
+  tags: ['touch'],
   parameters: {
     viewport: {
       options: { phone360: { name: 'Phone', styles: { width: '360px', height: '740px' } } },

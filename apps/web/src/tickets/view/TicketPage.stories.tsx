@@ -351,6 +351,7 @@ const tabsFit = async (canvasElement: HTMLElement, all: string) => {
  * 'All' is whole and clear, not faded at the row's edge as if it were disabled.
  */
 export const ActivityTabsFitAPhone: Story = {
+  tags: ['touch'],
   parameters: PHONE_360,
   globals: { viewport: { value: 'phone360', isRotated: false } },
   beforeEach: onARealTouchScreen,
@@ -359,6 +360,7 @@ export const ActivityTabsFitAPhone: Story = {
 
 /** The same in Spanish, whose 'Registros de tiempo' takes two lines rather than run off the card. */
 export const ActivityTabsFitAPhoneInSpanish: Story = {
+  tags: ['touch'],
   parameters: PHONE_360,
   globals: { viewport: { value: 'phone360', isRotated: false } },
   beforeEach: onARealTouchScreen,
