@@ -1073,8 +1073,9 @@ export const messagesEn = {
   'setup.failed': 'Setup failed. Check the backend logs and try again.',
   'settings.personal': 'Personal',
   'settings.account': 'Account',
+  // Every Account tab, Notifications and Your data included (S3-AC-8).
   'settings.accountHint':
-    'Your name, time zone, language, password, two-factor authentication, signed-in devices and API tokens.',
+    'Your name, time zone and language, notifications, password, two-factor authentication, signed-in devices, API tokens and a download of your data.',
   'settings.administration': 'Administration',
   'settings.systemStatus': 'System status',
   'settings.systemStatusHint': 'Version, database, storage, backups and runtime of this site.',

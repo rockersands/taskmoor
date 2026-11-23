@@ -1101,7 +1101,7 @@ export const messagesEs: Record<MessageId, string> = {
   'settings.personal': 'Personal',
   'settings.account': 'Cuenta',
   'settings.accountHint':
-    'Tu nombre, zona horaria, idioma, contraseña, verificación en dos pasos, dispositivos con sesión iniciada y tokens de API.',
+    'Tu nombre, zona horaria e idioma, las notificaciones, la contraseña, la verificación en dos pasos, los dispositivos con sesión iniciada, los tokens de API y una descarga de tus datos.',
   'settings.administration': 'Administración',
   'settings.systemStatus': 'Estado del sistema',
   'settings.systemStatusHint':

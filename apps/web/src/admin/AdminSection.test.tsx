@@ -114,6 +114,10 @@ describe('Administration (ADR-114)', () => {
         .getAllByRole('link')
         .map((l) => l.textContent),
     ).toEqual(['Account', 'Appearance', 'Tutorials']);
+    // Account is described as it is now, a tab each: Notifications and Your data too (S3-AC-8).
+    const account = within(page).getByRole('link', { name: 'Account' }).closest('li');
+    expect(account).toHaveTextContent(/notifications, password/);
+    expect(account).toHaveTextContent(/API tokens and a download of your data\.$/);
   });
 
   it('[AGL-018] shows a site administrator every group, and health, people and alerts', async () => {
