@@ -459,8 +459,10 @@ describe('people and their roles at scale (T-331)', () => {
     counted = createDb({
       connectionString: database.url,
       maxConnections: 5,
-      onQuery: () => {
-        if (counting) statements += 1;
+      // The session's last_seen_at is written at most once a minute, whenever that minute ends
+      // (auth.ts); on a slow machine it can land in either measured request, so it is not counted.
+      onQuery: ({ sql }) => {
+        if (counting && !/^update "user_session"/i.test(sql)) statements += 1;
       },
     });
     app = await buildApp({
