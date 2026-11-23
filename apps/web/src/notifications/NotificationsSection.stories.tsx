@@ -95,6 +95,7 @@ export const OneCheckBoxLook: Story = {
 
 /** A tap anywhere in a cell of the matrix reaches its check box, drawn at 28 px (ADR-033, AC-12). */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     const boxes = await within(canvasElement).findAllByRole('checkbox');
@@ -136,6 +137,7 @@ export const ChoicesLineUp: Story = {
 
 /** On a touch screen too, where every one of them is drawn at 28 px. */
 export const ChoicesLineUpOnTouch: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => choicesLineUp(canvasElement),
 };

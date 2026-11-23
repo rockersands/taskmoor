@@ -123,6 +123,7 @@ export const NotAnAdministrator: Story = {
  * (ADR-033, AD-22): the site switch, strict mode, each feature and each track.
  */
 export const CheckBoxesOnAPhone: Story = {
+  tags: ['touch'],
   args: { client: fakeAiClient(aiView({ strict: true, tracks: { '1': true } })) },
   decorators: [atPhoneWidth],
   beforeEach: onARealTouchScreen,

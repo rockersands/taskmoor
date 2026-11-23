@@ -1,6 +1,7 @@
 import type { PmJson } from '@taskmoor/richtext';
 import { api } from '../../api/client';
 import { everyPage } from '../../api/pages';
+import { type NumberShow, numberShowOf } from '../../fields/numberFormat';
 import { lockOfField } from '../../locks/useLockText';
 import type { NamedField, ReadFieldNames } from '../customFieldNames';
 import type { TicketForm } from '../form';
@@ -70,6 +71,8 @@ export interface NumberField {
   name: string;
   /** A field rule or the ticket's status keeps the person from changing it. */
   locked: boolean;
+  /** How its values show, by its settings (T-320); plainly when absent. */
+  show?: NumberShow | null;
 }
 
 export interface Transition {
@@ -266,6 +269,7 @@ export const ticketClient: TicketClient = {
         id: f.id,
         name: f.name,
         locked: lockOfField(form.locks, `cf[${f.id}]`) !== null,
+        show: numberShowOf(f.type, f.config),
       }));
   },
   closeReasons: async () =>

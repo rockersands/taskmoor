@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 import { useIntl } from 'react-intl';
+import { useCsvSeparator } from '../account/csvStyle';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { searchHref } from '../releases/client';
@@ -54,6 +55,8 @@ const STAGES: Record<string, MessageId> = {
  */
 export function PlanSummaryPage({ id, plan, filters, client, now }: PlanSectionProps) {
   const t = useT();
+  // Commas or semicolons, as the person's spreadsheet opens them (T-263).
+  const csvSeparator = useCsvSeparator();
   const intl = useIntl();
   const sectionId = useId();
   const [summary, setSummary] = useState<PlanSummary | null>(null);
@@ -129,7 +132,7 @@ export function PlanSummaryPage({ id, plan, filters, client, now }: PlanSectionP
               label: t('plans.download.csv'),
               make: async () => {
                 const name = fileName(plan.name, 'summary', localDay(now()), 'csv');
-                saveBlob(name, csvBlob(summaryCsv(t, summary)));
+                saveBlob(name, csvBlob(summaryCsv(t, summary, csvSeparator)));
                 return name;
               },
             },

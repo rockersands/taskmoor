@@ -301,7 +301,8 @@ describe('custom fields (M1-010)', () => {
         [gone.id]: '2026-11-01',
       },
     });
-    // Audit day stops applying to the ticket's track: its rows keep how they read, not the name.
+    // Audit day stops applying to the ticket's track: its rows keep how they read, and its name,
+    // as Alice may read a shared field's definition (T-283).
     const narrowed = await patch(
       'admin',
       `/api/v1/fields/${gone.id}/contexts/${gone.contexts[0]?.id}`,
@@ -321,12 +322,97 @@ describe('custom fields (M1-010)', () => {
       to: { value: '2026-10-13T09:00:00.000Z', display: null },
     });
     expect(row(note)).toMatchObject({ fieldName: 'Rollout note', valueType: null });
-    expect(row(gone)).toMatchObject({ fieldName: null, valueType: 'date' });
+    expect(row(gone)).toMatchObject({ fieldName: 'Audit day', valueType: 'date' });
     // A system field's row carries neither.
     const summary = rows.find((r) => r.field === 'summary');
     expect(summary).toBeDefined();
     expect(summary).not.toHaveProperty('fieldName');
     expect(summary).not.toHaveProperty('valueType');
+  });
+
+  it('[CORE-022] [CORE-003] names a custom field that no longer applies when the reader may read its definition, never a local field of a track they may not see (T-283)', async () => {
+    const rowOf = async (who: string | null, t: { id: number }, f: { id: number }) => {
+      const res = await (who === null
+        ? app.inject({
+            method: 'GET',
+            url: `/api/v1/tickets/${t.id}/history?order=asc`,
+            remoteAddress: nextAddress(),
+          })
+        : get(who, `/api/v1/tickets/${t.id}/history?order=asc`));
+      expect(res.statusCode, res.body).toBe(200);
+      return (res.json().changes as { field: string; fieldName?: string | null }[]).find(
+        (r) => r.field === `cf[${f.id}]`,
+      );
+    };
+    // A shared field that stops applying to the ticket keeps its name for anyone signed in.
+    const shared = await field({ name: 'Shared T-283', type: 'text' });
+    const onXt = await ticket('XT', { fields: { [shared.id]: 'Kept' } });
+    expect(
+      (
+        await patch('admin', `/api/v1/fields/${shared.id}/contexts/${shared.contexts[0]?.id}`, {
+          trackIds: [tracks.YT],
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(await rowOf('carol', onXt, shared)).toMatchObject({ fieldName: 'Shared T-283' });
+    // A field since deleted has no name.
+    const deleted = await field({ name: 'Deleted T-283', type: 'text' });
+    const cleared = await ticket('XT', { fields: { [deleted.id]: 'Soon gone' } });
+    const emptied = await patch('alice', `/api/v1/tickets/${cleared.id}`, {
+      fields: { [deleted.id]: null },
+    });
+    expect(emptied.statusCode, emptied.body).toBe(200);
+    expect((await del('admin', `/api/v1/fields/${deleted.id}`)).statusCode).toBe(204);
+    expect(await rowOf('alice', cleared, deleted)).toMatchObject({ fieldName: null });
+    // A local field of LOC on a ticket moved to XT: named to those who may read LOC's fields.
+    const local = await field({ name: 'Local T-283', type: 'text', trackId: tracks.LOC }, 'alice');
+    const moved = await ticket('LOC', { fields: { [local.id]: 'Here' } });
+    const move = await post('alice', `/api/v1/tickets/${moved.id}/move`, { track: 'XT' });
+    expect(move.statusCode, move.body).toBe(200);
+    expect(await rowOf('alice', moved, local)).toMatchObject({ fieldName: 'Local T-283' });
+    // An anonymous reader of a track open to anyone sees names only of fields that apply.
+    const policy = (
+      await database.db
+        .selectFrom('track')
+        .select('access_policy_id')
+        .where('id', '=', tracks.XT as number)
+        .executeTakeFirstOrThrow()
+    ).access_policy_id as number;
+    const open = await database.db
+      .insertInto('access_grant')
+      .values({ workspace_id: 1, policy_id: policy, permission: 'browse_track', grantee: 'anyone' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    try {
+      // Carol, out of LOC, sees the ticket in XT but nothing of LOC's own fields (CORE-003 (1)).
+      await database.db
+        .deleteFrom('track_role_actor')
+        .where('track_id', '=', tracks.LOC as number)
+        .where('user_id', '=', users.carol?.id as number)
+        .execute();
+      expect(await rowOf('carol', moved, local)).toMatchObject({ fieldName: null });
+      expect(await rowOf(null, onXt, shared)).toMatchObject({ fieldName: null });
+      const applies = await field({ name: 'Applies T-283', type: 'text' });
+      const plain = await ticket('XT', { fields: { [applies.id]: 'Shown' } });
+      expect(await rowOf(null, plain, applies)).toMatchObject({ fieldName: 'Applies T-283' });
+    } finally {
+      await database.db.deleteFrom('access_grant').where('id', '=', open.id).execute();
+      await database.db
+        .insertInto('track_role_actor')
+        .values({
+          workspace_id: 1,
+          track_id: tracks.LOC as number,
+          role_id: (
+            await database.db
+              .selectFrom('role')
+              .select('id')
+              .where('name', '=', 'Members')
+              .executeTakeFirstOrThrow()
+          ).id,
+          user_id: users.carol?.id as number,
+        })
+        .execute();
+    }
   });
 
   it('[CORE-015][CORE-016] refuses an archived release or area in a custom field, as the system fields do, keeping one a ticket has (T-282)', async () => {
@@ -533,6 +619,43 @@ describe('custom fields (M1-010)', () => {
       id: users.alice?.id,
       name: 'alice',
     });
+  });
+
+  it('[CORE-009] [IAM-009] an unrestricted person field lists people only to holders of "Browse users and groups"; a limited field\'s own list needs no more (T-278)', async () => {
+    const g = await database.db
+      .insertInto('user_group')
+      .values({ workspace_id: 1, name: 'Approvers T-278' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await database.db
+      .insertInto('group_member')
+      .values({ workspace_id: 1, group_id: g.id, user_id: users.bob?.id as number })
+      .execute();
+    const open = await field({ name: 'Open person T-278', type: 'user' });
+    const limited = await field({
+      name: 'Limited person T-278',
+      type: 'user',
+      context: { config: { userGroupId: g.id } },
+    });
+    const people = (f: FieldJson) =>
+      get('alice', `/api/v1/fields/${f.id}/people?track=XT&ticketTypeId=${types.Feature}&q=bo`);
+    expect((await people(open)).json().people).toEqual([{ id: users.bob?.id, name: 'bob' }]);
+    await database.db.deleteFrom('global_grant').where('permission', '=', 'browse_users').execute();
+    try {
+      // The site's people are the directory the permission guards.
+      const refused = await people(open);
+      expect(refused.statusCode).toBe(403);
+      expect(refused.json()).toEqual({ error: 'forbidden' });
+      // The list an administrator narrowed goes to anyone who may fill the field.
+      const own = await people(limited);
+      expect(own.statusCode, own.body).toBe(200);
+      expect(own.json().people).toEqual([{ id: users.bob?.id, name: 'bob' }]);
+    } finally {
+      await database.db
+        .insertInto('global_grant')
+        .values({ workspace_id: 1, permission: 'browse_users', grantee: 'any_user' })
+        .execute();
+    }
   });
 
   it('[CORE-010] a group picker offers the site groups by name to those who may browse them (T-265)', async () => {

@@ -46,6 +46,10 @@ function accountsBackend(extra: Record<string, Handler> = {}) {
       return jsonResponse(201, { serviceAccount: account });
     },
     'GET /service-accounts/9': () => jsonResponse(200, { tokens: [] }),
+    'PATCH /service-accounts/7': (body) => {
+      accounts = accounts.map((a) => (a.id === 7 ? { ...a, ...(body as object) } : a));
+      return jsonResponse(200, { serviceAccount: view(accounts[0] as ServiceAccount) });
+    },
     'POST /service-accounts/7/deactivate': () => {
       accounts = accounts.map((a) => (a.id === 7 ? { ...a, active: false } : a));
       return jsonResponse(200, { serviceAccount: accounts[0] });
@@ -268,6 +272,61 @@ describe('service accounts page', () => {
       '/service-accounts/7/deactivate',
       '/service-accounts/8/reactivate',
     ]);
+  });
+
+  it('[IAM-007] renames a service account and says what it is for (T-320)', async () => {
+    const user = userEvent.setup();
+    const { calls, list } = await openPage();
+    const change = list.getByRole('button', {
+      name: 'Change the name and description of Release robot',
+    });
+    await user.click(change);
+    expect(change).toHaveAttribute('aria-expanded', 'true');
+    const form = list.getByRole('form', {
+      name: 'Change the name and description of Release robot',
+    });
+    const name = within(form).getByRole('textbox', { name: 'Name' });
+    await user.clear(name);
+    await user.type(name, 'Release tagger');
+    const about = within(form).getByRole('textbox', { name: 'What it is for' });
+    await user.clear(about);
+    await user.type(about, 'Tags releases');
+    await user.click(within(form).getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Release tagger was saved.')).toBeInTheDocument();
+    expect(list.queryByRole('form')).toBeNull();
+    const renamed = list.getByRole('button', {
+      name: 'Change the name and description of Release tagger',
+    });
+    expect(renamed).toHaveFocus();
+    expect(calls.filter((c) => c.method === 'PATCH')).toEqual([
+      {
+        method: 'PATCH',
+        path: '/service-accounts/7',
+        body: { name: 'Release tagger', description: 'Tags releases' },
+      },
+    ]);
+    // Cancel closes the form unchanged, the focus back on Change.
+    await user.click(renamed);
+    await user.click(within(list.getByRole('form')).getByRole('button', { name: 'Cancel' }));
+    expect(list.queryByRole('form')).toBeNull();
+    expect(renamed).toHaveFocus();
+  });
+
+  it('[IAM-007] says when a service account could not be saved (T-320)', async () => {
+    const user = userEvent.setup();
+    const { list } = await openPage({
+      'PATCH /service-accounts/8': () => jsonResponse(500, { error: 'internal' }),
+    });
+    await user.click(
+      list.getByRole('button', { name: 'Change the name and description of Backup exporter' }),
+    );
+    const form = list.getByRole('form', {
+      name: 'Change the name and description of Backup exporter',
+    });
+    await user.click(within(form).getByRole('button', { name: 'Save' }));
+    expect(await within(form).findByRole('alert')).toHaveTextContent(
+      'The service account could not be saved. Try again in a moment.',
+    );
   });
 
   it('[IAM-007] is for site administrators only', async () => {

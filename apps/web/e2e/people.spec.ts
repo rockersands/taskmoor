@@ -4,7 +4,8 @@ import { expect, type Page, test } from '@playwright/test';
 
 /**
  * Administration journeys for people and groups (M1-053, IAM-008): a site administrator adds a
- * person and gets their one-time link, deactivates and reactivates them; makes a group, adds
+ * person and gets their one-time link, sees their role, deactivates and reactivates them on
+ * their page (Edit, T-331), and filters the list by role; makes a group, adds
  * the person, nests another group, refuses a loop and deletes the group. No serious axe issue.
  * They use the attachments database (preview 4174), whose site administrator the API server
  * made.
@@ -60,7 +61,18 @@ test('[IAM-008] the administrator adds a person, sees their link, deactivates an
   await page.getByRole('button', { name: 'Done' }).click();
 
   await page.getByRole('searchbox', { name: 'Find by name or email' }).fill(email);
-  await page.getByRole('button', { name: `Deactivate ${name}` }).click();
+  // The row says what the person is, and holds one action: Edit, to their page (T-331).
+  const row = page.getByRole('listitem').filter({ hasText: email });
+  await expect(row.getByText('Member', { exact: true })).toBeVisible();
+  await row.getByRole('link', { name: `Edit ${name}` }).click();
+  await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
+  await expect(
+    page.getByRole('navigation', { name: 'Where this page sits' }).getByRole('link', {
+      name: 'People',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Deactivate', exact: true }).click();
   // Deactivating asks first, saying what will happen (D13).
   const confirm = page.getByRole('group', { name: new RegExp(`${name} is signed out everywhere`) });
   await expect(confirm.getByRole('button', { name: 'Cancel' })).toBeFocused();
@@ -68,11 +80,19 @@ test('[IAM-008] the administrator adds a person, sees their link, deactivates an
   await confirm.getByRole('button', { name: `Deactivate ${name}` }).click();
   await expect(page.getByText(`${name} was deactivated and signed out everywhere.`)).toBeVisible();
   // The button went with the deactivation: the page's heading keeps the focus.
-  await expect(page.getByRole('heading', { level: 1, name: 'People' })).toBeFocused();
-  await page.getByRole('combobox', { name: 'Show' }).selectOption('all');
-  await page.getByRole('button', { name: `Reactivate ${name}` }).click();
+  await expect(page.getByRole('heading', { level: 1, name })).toBeFocused();
+  await page.getByRole('button', { name: 'Reactivate' }).click();
   await expect(page.getByText(`${name} was reactivated.`)).toBeVisible();
+  // Deactivate took Reactivate's place: the heading has the focus, not the page.
+  await expect(page.getByRole('heading', { level: 1, name })).toBeFocused();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  // Back to the list, which keeps its filters in the address: the site administrators.
+  await page.goto(`${BASE}/#/admin/users?role=site_admin`);
+  await expect(page.getByRole('combobox', { name: 'Role' })).toHaveValue('site_admin');
+  const ada = page.getByRole('listitem').filter({ hasText: ADMIN.email });
+  await expect(ada.getByText('Site administrator', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: `Edit ${name}` })).toHaveCount(0);
+  expect(await seriousAxeViolations(page)).toEqual([]);
 });
 
 test('[IAM-008] the administrator makes a group, adds a person, nests a group and deletes it', async ({
@@ -155,7 +175,9 @@ test('[IAM-008] ASVS 8.3.2: a person downloads their own data, and the administr
   await expect(page.getByText(`${name} was added.`)).toBeVisible();
   await page.getByRole('button', { name: 'Done' }).click();
   await page.getByRole('searchbox', { name: 'Find by name or email' }).fill(email);
-  await page.getByRole('button', { name: `Erase ${name}` }).click();
+  // Erasing is on the person's page, behind Edit (T-331).
+  await page.getByRole('link', { name: `Edit ${name}` }).click();
+  await page.getByRole('button', { name: 'Erase…' }).click();
   const erase = page.getByRole('form', { name: `Erase ${name}` });
   await expect(erase.getByRole('button', { name: 'Erase permanently' })).toBeDisabled();
   await erase.getByLabel(`Type ${email} to confirm`).fill(email);
@@ -164,6 +186,8 @@ test('[IAM-008] ASVS 8.3.2: a person downloads their own data, and the administr
   await expect(
     page.getByText(/The person was erased; they are Former user \d+ from now on\./),
   ).toBeVisible();
+  await page.goto(`${BASE}/#/admin/users`);
+  await page.getByRole('searchbox', { name: 'Find by name or email' }).fill(email);
   // Their email finds nobody any more.
   await page.getByRole('combobox', { name: 'Show' }).selectOption('all');
   await expect(page.getByText('Nobody matches.')).toBeVisible();

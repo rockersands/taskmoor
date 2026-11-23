@@ -19,6 +19,7 @@ import {
 } from './capacity';
 import { blockingLinks, dependencyOptions } from './dependencies';
 import { draftOverlay } from './drafts';
+import { countOverCells } from './evenOut';
 import type { Period } from './periods';
 import { browsedTracks, type PlanTickets, planTickets, sourceRows } from './query';
 import {
@@ -460,6 +461,12 @@ export interface Readiness {
    * of tracks the reader browses, as the plan's views show releases.
    */
   releases: { id: number; name: string; date: string | null }[];
+  /**
+   * How many cells of the run (a plan team or one of its members in a period) are over capacity
+   * now, over the reader's tickets with live days and people's drafts in the scenario: what
+   * evening out would work on (ADR-122 stage 9, "Readiness"). Counted, never named.
+   */
+  overCells: number;
 }
 
 /** Choices a leave-out list offers at most. */
@@ -473,7 +480,14 @@ export const MAX_CHOICES = 200;
 export async function readReadiness(
   db: Kysely<Database>,
   request: FastifyRequest,
-  options: { catalogs: FieldCatalogs; timeoutMs: number; plan: RunPlan; periods: Period[] },
+  options: {
+    catalogs: FieldCatalogs;
+    timeoutMs: number;
+    plan: RunPlan;
+    periods: Period[];
+    /** The scenario whose people's drafts give the days, as a run into it reads them. */
+    overlay?: number | null;
+  },
 ): Promise<Readiness & { planTickets: PlanTickets }> {
   const { plan, periods } = options;
   const ws = request.workspaceId;
@@ -538,6 +552,58 @@ export async function readReadiness(
         return { types, releases };
       })
     : { types: [], releases: [] };
+  // Cells over capacity now: each member's load per period as a run starts from it (the plan's
+  // tickets due there, closed ones included, and work elsewhere), and their teams' sums.
+  const loads = new Map<number, number[]>(people.map((id) => [id, periods.map(() => 0)]));
+  if (unfiltered && people.length > 0 && periods.length > 0) {
+    const over = draftOverlay(options.overlay ?? null, unfiltered, 'so', { origin: 'person' });
+    const windowStart = periods[0]?.start as string;
+    const windowEnd = periods.at(-1)?.end as string;
+    const read = await readOnly(db, options.timeoutMs, async (trx) => {
+      const due = (
+        await sql<{ assignee_id: number; due: string; amount: number }>`
+          SELECT k.assignee_id, ${over.due}::text AS due,
+                 COALESCE(sum(${value}), 0)::float8 AS amount
+            FROM ticket k
+            ${over.join}
+           WHERE ${unfiltered} AND k.assignee_id = ANY(${people}::int[])
+             AND ${over.due} BETWEEN ${windowStart}::date AND ${windowEnd}::date
+           GROUP BY k.assignee_id, ${over.due}`.execute(trx)
+      ).rows;
+      const elsewhere = await elsewhereWork(trx, { ws, people, where: unfiltered, value, periods });
+      return { due, elsewhere };
+    });
+    for (const r of read.due) {
+      const at = periodIndex(periods, r.due);
+      const row = loads.get(r.assignee_id);
+      if (row && at >= 0) row[at] = (row[at] as number) + Number(r.amount);
+    }
+    for (const [id, cells] of read.elsewhere) {
+      const row = loads.get(id);
+      if (!row) continue;
+      cells.forEach((c, i) => {
+        row[i] = (row[i] as number) + c.amount;
+      });
+    }
+  }
+  const overCells = countOverCells({
+    from: periods[0]?.start ?? '',
+    periods,
+    tickets: [],
+    links: [],
+    teams: teams.map((t) => ({
+      id: t.id,
+      members: t.members,
+      capacity: inHundredths(t.capacity.periods),
+    })),
+    people: people.map((id) => ({
+      id,
+      capacity: inHundredths(personCapacity.get(id)?.periods ?? []),
+      load: (loads.get(id) ?? []).map(hundredths),
+    })),
+    leaveOut: { typeIds: [], releaseIds: [] },
+    keep: { inProgress: true, inActiveSprint: true },
+  });
   const browses = await browsedTracks(request);
   return {
     planTickets: tickets,
@@ -557,5 +623,6 @@ export async function readReadiness(
       .filter((r) => browses(r.track_id))
       .slice(0, MAX_CHOICES)
       .map((r) => ({ id: r.id, name: r.name, date: r.date })),
+    overCells,
   };
 }

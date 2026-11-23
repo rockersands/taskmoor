@@ -158,6 +158,8 @@ export const closeReasons: Loader<CloseReasonCommand> = {
         .execute();
       return plan.targetId as number;
     }
+    // Not `createCloseReason`: an import records no event per row it writes, as with priorities
+    // and statuses. Its trail is the run's report and `import_run.finished` (ADR-048).
     const row = await ctx.trx
       .insertInto('close_reason')
       .values({

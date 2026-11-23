@@ -29,6 +29,12 @@ export interface DangerActionProps {
  * nothing, and a second press sends nothing more. A refusal leaves the question open to try again
  * or cancel; saying why is the caller's. A dimmed answer stays focusable (`aria-disabled`), and the
  * button gets focus back even while it is unavailable, so focus never falls to the page.
+ *
+ * Which removals use it (ADR-114 D13, T-267): one that loses what its page cannot put back (a
+ * list's items, a saved draft, second-level options, a link the page cannot make again), or that
+ * takes something from people beyond the row (an invitation, a release's place in a release across
+ * tracks, a grant, a track made read-only). One the same page puts back at once, with nothing lost,
+ * stays a plain `button-secondary` that acts on the first press.
  */
 export function DangerAction({
   label,

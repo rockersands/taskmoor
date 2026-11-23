@@ -3,9 +3,11 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
+import { fieldIdOf } from '../authz/visibility';
 import { diff, emit } from '../events/bus';
 import {
   CHANNELS,
+  CUSTOM_PREFIX,
   isNotificationEvent,
   isPreferenceEvent,
   NOTIFICATION_EVENTS,
@@ -152,6 +154,11 @@ export function registerNotificationRoutes(app: FastifyInstance, db: Kysely<Data
       .orderBy('key')
       .execute();
 
+  /**
+   * A policy with its rules and the tracks it serves. Each rule also names what it points at
+   * (`userName`, `groupName`, `roleName`, `fieldName`; T-155), so the web page and a local-mode
+   * track's administrators need no list that only administrators may read.
+   */
   async function policyView(d: Db, ws: number, policyId: number) {
     const policy = await d
       .selectFrom('notification_policy')
@@ -161,12 +168,40 @@ export function registerNotificationRoutes(app: FastifyInstance, db: Kysely<Data
       .executeTakeFirst();
     if (!policy) return null;
     const rules = await d
-      .selectFrom('notification_rule')
-      .select(['id', 'event', 'recipient', 'user_id', 'group_id', 'role_id', 'field_key'])
-      .where('policy_id', '=', policyId)
-      .orderBy('event')
-      .orderBy('id')
+      .selectFrom('notification_rule as r')
+      .leftJoin('app_user as u', 'u.id', 'r.user_id')
+      .leftJoin('user_group as g', 'g.id', 'r.group_id')
+      .leftJoin('role as o', 'o.id', 'r.role_id')
+      .select([
+        'r.id',
+        'r.event',
+        'r.recipient',
+        'r.user_id',
+        'r.group_id',
+        'r.role_id',
+        'r.field_key',
+        'u.name as user_name',
+        'g.name as group_name',
+        'o.name as role_name',
+      ])
+      .where('r.policy_id', '=', policyId)
+      .orderBy('r.event')
+      .orderBy('r.id')
       .execute();
+    const fieldIds = [
+      ...new Set(rules.flatMap((r) => (r.field_key ? [Number(/\d+/.exec(r.field_key)?.[0])] : []))),
+    ];
+    const fields =
+      fieldIds.length === 0
+        ? []
+        : await d
+            .selectFrom('field')
+            .select(['id', 'name'])
+            .where('workspace_id', '=', ws)
+            .where('id', 'in', fieldIds)
+            .execute();
+    const fieldName = (key: string | null) =>
+      key === null ? null : (fields.find((f) => `cf[${f.id}]` === key)?.name ?? null);
     return {
       id: policy.id,
       name: policy.name,
@@ -181,9 +216,65 @@ export function registerNotificationRoutes(app: FastifyInstance, db: Kysely<Data
         groupId: r.group_id,
         roleId: r.role_id,
         fieldKey: r.field_key,
+        userName: r.user_name,
+        groupName: r.group_name,
+        roleName: r.role_name,
+        fieldName: fieldName(r.field_key),
       })),
       usedBy: await usedBy(d, policy.id, policy.is_default),
     };
+  }
+
+  /**
+   * The events that published transitions fire (`custom:<name>`; WF-006 (3), NTF-001 (2)), for
+   * those who make policies: shared workflows' for site and configuration administrators, and
+   * with a local-mode track its own workflows' too, for those who may change its policy. Anyone
+   * else gets none: a policy takes any well-formed name, so the list only spares typing.
+   */
+  async function transitionEvents(request: FastifyRequest, trackId: number | null) {
+    if (!request.user) return [];
+    const ws = request.workspaceId;
+    const admin = await isAdmin(request);
+    let own = false;
+    if (trackId !== null) {
+      const track = await db
+        .selectFrom('track')
+        .select(['mode', 'deleted_at'])
+        .where('id', '=', trackId)
+        .where('workspace_id', '=', ws)
+        .executeTakeFirst();
+      own =
+        track !== undefined &&
+        !track.deleted_at &&
+        track.mode === 'local' &&
+        (admin || (await request.authz.can('administer_track', trackId)));
+    }
+    if (!admin && !own) return [];
+    const rows = await db
+      .selectFrom('workflow as w')
+      .innerJoin('workflow_version as v', (join) =>
+        join.onRef('v.workflow_id', '=', 'w.id').onRef('v.version', '=', 'w.published_version'),
+      )
+      .select('v.definition')
+      .where('w.workspace_id', '=', ws)
+      .where((eb) =>
+        own && trackId !== null
+          ? eb.or([eb('w.owner_track_id', 'is', null), eb('w.owner_track_id', '=', trackId)])
+          : eb('w.owner_track_id', 'is', null),
+      )
+      .execute();
+    const names = new Set<string>();
+    for (const { definition } of rows) {
+      // A transition's event; creating a ticket is always ticket_created, whatever it names.
+      const transitions = (definition as { transitions?: unknown } | null)?.transitions;
+      for (const transition of Array.isArray(transitions) ? transitions : []) {
+        const event = (transition as { event?: unknown } | null)?.event;
+        if (typeof event !== 'string' || event === '' || event === 'generic') continue;
+        const custom = `${CUSTOM_PREFIX}${event}`;
+        if (isNotificationEvent(custom)) names.add(custom);
+      }
+    }
+    return [...names].sort();
   }
 
   /** What a rule names must exist; a field rule names a user or group field. */
@@ -207,10 +298,12 @@ export function registerNotificationRoutes(app: FastifyInstance, db: Kysely<Data
       if (!row) return label;
     }
     if (rule.fieldKey !== undefined) {
+      const fieldId = fieldIdOf(rule.fieldKey);
+      if (fieldId === null) return 'fieldKey';
       const field = await db
         .selectFrom('field')
         .select(['type', 'track_id'])
-        .where('id', '=', Number(/\d+/.exec(rule.fieldKey)?.[0]))
+        .where('id', '=', fieldId)
         .where('workspace_id', '=', ws)
         .executeTakeFirst();
       const wanted = rule.recipient === 'user_field' ? 'user' : 'group';
@@ -251,11 +344,14 @@ export function registerNotificationRoutes(app: FastifyInstance, db: Kysely<Data
 
   app.get('/api/v1/notification-events', async (request, reply) => {
     if (!requireUser(request, reply)) return reply;
+    const parsed = listQuery.safeParse(request.query);
+    if (!parsed.success) return invalid(reply);
     return {
       events: NOTIFICATION_EVENTS,
       productEvents: PRODUCT_EVENTS,
       recipients: RECIPIENTS,
       channels: CHANNELS,
+      customEvents: await transitionEvents(request, parsed.data.trackId ?? null),
     };
   });
 

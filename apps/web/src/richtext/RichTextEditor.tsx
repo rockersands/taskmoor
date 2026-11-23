@@ -37,6 +37,7 @@ import {
   SLASH_TOOLS,
   type SlashContext,
   type SlashTool,
+  tableLineDeletable,
 } from './slashTools';
 
 /**
@@ -216,6 +217,21 @@ const TABLE_TOOLS: Tool[] = [
     icon: 'addColumn',
     label: 'richtext.table.addColumn',
     run: (e) => chain(e).addColumnAfter().run(),
+  },
+  // Off on a table's last row or column, which only Delete the table removes (T-120).
+  {
+    id: 'deleteRow',
+    icon: 'deleteRow',
+    label: 'richtext.table.deleteRow',
+    run: (e) => chain(e).deleteRow().run(),
+    enabled: (e) => tableLineDeletable(e.state, 'row'),
+  },
+  {
+    id: 'deleteColumn',
+    icon: 'deleteColumn',
+    label: 'richtext.table.deleteColumn',
+    run: (e) => chain(e).deleteColumn().run(),
+    enabled: (e) => tableLineDeletable(e.state, 'column'),
   },
   {
     id: 'deleteTable',

@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Kysely, Transaction } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
+import { fieldIdOf } from '../authz/visibility';
 import { diff, emit } from '../events/bus';
 import { enforceLimit } from '../guardrails/model';
 import { loadTicket, resolveTicket, resolveTrack } from '../tickets/store';
@@ -273,7 +274,8 @@ export function registerVisibilityRoutes(app: FastifyInstance, db: Kysely<Databa
       if (!row) return 'userId';
     }
     if (m.fieldKey !== undefined) {
-      const fieldId = Number(/\d+/.exec(m.fieldKey)?.[0]);
+      const fieldId = fieldIdOf(m.fieldKey);
+      if (fieldId === null) return 'fieldKey';
       const field = await d
         .selectFrom('field')
         .select(['type', 'track_id'])

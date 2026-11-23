@@ -1,7 +1,9 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useT } from '../../i18n/I18nProvider';
+import { type EditorTools, EditorToolsProvider } from '../../richtext/EditorTools';
 import { RichTextEditor } from '../../richtext/RichTextEditor';
 import { PersonPicker } from '../PersonPicker';
+import { pickerQuery, ticketToolsClient } from '../tools/client';
 import type {
   FieldChoice,
   FieldRule,
@@ -31,6 +33,17 @@ import {
 } from './draft';
 
 const MAX_SUBTICKETS = 50;
+
+/**
+ * What the description's blocks reach (NTF-013, T-120): another ticket, through search, as the
+ * person may see it. A template has no files of its own.
+ */
+const TEMPLATE_EDITOR_TOOLS: EditorTools = {
+  tickets: (typed) => {
+    const query = pickerQuery(typed);
+    return query ? ticketToolsClient.pick(query) : Promise.resolve([]);
+  },
+};
 
 /** Why the server refused a control's value, under it (T-291). */
 function Problem({ id, text }: { id: string; text: string | undefined }) {
@@ -287,7 +300,11 @@ function ListedValues({
   );
 }
 
-/** Finding the person a track's template assigns, with the create form's person picker. */
+/**
+ * Finding the person a track's template assigns, with the create form's person picker and its
+ * assignee search: only people who may be given tickets in the track (T-269). One the reader may
+ * not see named, or who is gone, shows by number and can be removed (T-283).
+ */
 function AssigneeChooser({
   client,
   track,
@@ -308,8 +325,19 @@ function AssigneeChooser({
       <PersonPicker
         label={t('workflow.field.assignee')}
         hint={t('tickets.templates.assigneeHint')}
-        search={(typed) => client.people(track, typed)}
-        chosen={chosen ? [chosen] : []}
+        search={(typed) => client.assignable(track, typed)}
+        chosen={
+          chosen
+            ? [
+                {
+                  id: chosen.id,
+                  name:
+                    chosen.name ||
+                    t('tickets.templates.unnamedValue', { type: 'user', id: chosen.id }),
+                },
+              ]
+            : []
+        }
         removeLabel={(name) => t('tickets.templates.removeAssignee', { name })}
         describedBy={problem ? `${id}-problem` : undefined}
         invalid={problem !== undefined}
@@ -662,7 +690,7 @@ export function TemplateForm({
     const body = bodyOf(draft, template, options.fields, track);
     (template ? client.update(template.id, body) : client.create(body)).then(onSaved, (error) => {
       setBusy(false);
-      setRefusal(saveRefusalOf(error, draft));
+      setRefusal(saveRefusalOf(error, draft, options.fields));
     });
   };
 
@@ -759,11 +787,13 @@ export function TemplateForm({
         <span id={`${id}-description`} className="form-label rt-label">
           {t('workflow.field.description')}
         </span>
-        <RichTextEditor
-          labelledBy={`${id}-description`}
-          initial={template?.description ?? null}
-          onChange={(doc) => change({ description: doc })}
-        />
+        <EditorToolsProvider value={TEMPLATE_EDITOR_TOOLS}>
+          <RichTextEditor
+            labelledBy={`${id}-description`}
+            initial={template?.description ?? null}
+            onChange={(doc) => change({ description: doc })}
+          />
+        </EditorToolsProvider>
         <Problem id={`${id}-description-problem`} text={problemAt('description')} />
       </div>
       <div className="ticket-template-grid">

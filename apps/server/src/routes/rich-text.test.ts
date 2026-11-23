@@ -362,6 +362,66 @@ describe('rich text formats and mentions (M1-017)', () => {
     ).toBe(400);
   });
 
+  it('[NTF-014] [NTF-007] holds only safe text colours: an import keeps another aside, a save takes it off (T-318)', async () => {
+    const unsafe = 'red; position: fixed; inset: 0';
+    const coloured = (text: string, color: string, marks: { type: string }[] = []) => ({
+      type: 'text',
+      text,
+      marks: [...marks, { type: 'textColor', attrs: { color } }],
+    });
+    const adf = adfDoc([
+      { type: 'paragraph', content: [coloured('green', '#36b37e'), coloured('odd', unsafe)] },
+    ]);
+    const created = await as('alice', {
+      method: 'POST',
+      url: '/api/v1/tickets?format=adf',
+      payload: { track: 'RT', summary: 'Coloured import', description: adf },
+    });
+    expect(created.statusCode, created.body).toBe(201);
+    const key = created.json().ticket.key as string;
+    const stored = await as('alice', { method: 'GET', url: `/api/v1/tickets/${key}` });
+    const [green, odd] = stored.json().ticket.description.content[0].content;
+    expect(green.marks).toMatchObject([{ type: 'textColor', attrs: { color: '#36b37e' } }]);
+    // Not a colour the document shows: kept whole, only to be written back.
+    expect(odd.marks).toEqual([
+      { type: 'unknownMark', attrs: { type: 'textColor', attrs: { color: unsafe } } },
+    ]);
+    const back = await as('alice', { method: 'GET', url: `/api/v1/tickets/${key}?format=adf` });
+    expect(canonicalAdf(back.json().ticket.description)).toEqual(canonicalAdf(adf));
+
+    // The editor's own form, as a document stored before colours were checked holds it: saved,
+    // not refused, with the colour taken off and the text and its other marks kept.
+    const saved = await as('alice', {
+      method: 'PATCH',
+      url: `/api/v1/tickets/${key}`,
+      payload: {
+        description: {
+          type: 'doc',
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                coloured('kept', '#36b37e'),
+                { type: 'text', text: ' and ' },
+                coloured('plain', unsafe, [{ type: 'bold' }]),
+              ],
+            },
+          ],
+        },
+      },
+    });
+    expect(saved.statusCode, saved.body).toBe(200);
+    expect(saved.json().ticket.description.content[0].content).toEqual([
+      {
+        type: 'text',
+        text: 'kept',
+        marks: [{ type: 'textColor', attrs: { color: '#36b37e', adfAttrs: null } }],
+      },
+      { type: 'text', text: ' and ' },
+      { type: 'text', text: 'plain', marks: [{ type: 'bold' }] },
+    ]);
+  });
+
   it('[NTF-005] offers people to mention, saying who can see the ticket', async () => {
     const created = await as('alice', {
       method: 'POST',
@@ -497,6 +557,74 @@ describe('rich text formats and mentions (M1-017)', () => {
         .insertInto('global_grant')
         .values({ workspace_id: 1, permission: 'browse_users', grantee: 'any_user' })
         .execute();
+    }
+  });
+
+  it('[CORE-008] [IAM-010] [IAM-009] finds assignees for those who may assign without "Browse users and groups": by name, once typed, among those who may see the ticket (T-269)', async () => {
+    const created = await as('alice', {
+      method: 'POST',
+      url: '/api/v1/tickets',
+      payload: { track: 'RT', summary: 'To assign' },
+    });
+    const key = created.json().ticket.key as string;
+    const find = (who: Person, query: string) =>
+      as(who, { method: 'GET', url: `/api/v1/people/mentionable?${query}` });
+    const names = async (who: Person, query: string) => {
+      const res = await find(who, query);
+      expect(res.statusCode, res.body).toBe(200);
+      return res.json().people as { id: number; name: string; canView: boolean }[];
+    };
+    const policy = (
+      await database.db
+        .selectFrom('track')
+        .select('access_policy_id')
+        .where('key', '=', 'RT')
+        .executeTakeFirstOrThrow()
+    ).access_policy_id as number;
+    // Nora may be given tickets in RT, but may not see it.
+    const grant = await database.db
+      .insertInto('access_grant')
+      .values({
+        workspace_id: 1,
+        policy_id: policy,
+        permission: 'assignable_user',
+        grantee: 'user',
+        user_id: users.nora.id,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    try {
+      // With the directory, as before: Nora by her address, saying she cannot see the track.
+      expect(await names('alice', 'track=RT&q=nora@&assignable=true')).toEqual([
+        { id: users.nora.id, name: 'nora', canView: false },
+      ]);
+      await database.db
+        .deleteFrom('global_grant')
+        .where('permission', '=', 'browse_users')
+        .execute();
+      try {
+        // Alice may give tickets to people in RT: she finds those who may be assigned, by name.
+        const alice = { id: users.alice.id, name: 'Alice Moreau', canView: true };
+        expect(await names('alice', 'track=RT&q=moreau&assignable=true')).toEqual([alice]);
+        expect(await names('alice', `ticket=${key}&q=@ali&assignable=true`)).toEqual([alice]);
+        // Not by address, not before a name is typed, and not those who may not see the ticket.
+        expect(await names('alice', 'track=RT&q=alice@&assignable=true')).toEqual([]);
+        expect(await names('alice', 'track=RT&q=&assignable=true')).toEqual([]);
+        expect(await names('alice', 'track=RT&q=nora&assignable=true')).toEqual([]);
+        // The plain search stays the directory's.
+        expect((await find('alice', 'track=RT&q=ali')).statusCode).toBe(403);
+        // Victor views the track but may not assign there; Nora does not see it.
+        expect((await find('victor', 'track=RT&q=ali&assignable=true')).statusCode).toBe(403);
+        expect((await find('victor', `ticket=${key}&q=ali&assignable=true`)).statusCode).toBe(403);
+        expect((await find('nora', 'track=RT&q=ali&assignable=true')).statusCode).toBe(404);
+      } finally {
+        await database.db
+          .insertInto('global_grant')
+          .values({ workspace_id: 1, permission: 'browse_users', grantee: 'any_user' })
+          .execute();
+      }
+    } finally {
+      await database.db.deleteFrom('access_grant').where('id', '=', grant.id).execute();
     }
   });
 });

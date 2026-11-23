@@ -1,8 +1,8 @@
 ---
 title: "List, calendar, timeline and outcomes"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/list/GroupSection.tsx, apps/web/src/shell/seededNames.ts, apps/web/src/shell/priorityName.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/tickets/tools/Progress.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/touch.ts, apps/web/src/styles/timeline.css, apps/web/src/styles/views.css, apps/web/src/timeline/dependencies.ts, apps/web/src/timeline/refusal.ts, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, docs/plan/page-review-findings.md, apps/web/src/shell/Popover.tsx, docs/plan/decisions.csv, apps/web/src/styles/dashboards.css, apps/web/src/tracks/outcomeManager.ts, apps/web/src/styles/surfaces.css, apps/server/src/routes/tickets.ts, apps/web/src/tickets/refusedFields.ts, apps/web/src/tickets/customFieldNames.ts
-accessed: 2026-11-14
+sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/list/GroupSection.tsx, apps/web/src/shell/seededNames.ts, apps/web/src/shell/priorityName.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/tickets/tools/Progress.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/touch.ts, apps/web/src/styles/timeline.css, apps/web/src/styles/views.css, apps/web/src/timeline/dependencies.ts, apps/web/src/timeline/refusal.ts, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, docs/plan/page-review-findings.md, apps/web/src/shell/Popover.tsx, docs/plan/decisions.csv, apps/web/src/styles/dashboards.css, apps/web/src/tracks/outcomeManager.ts, apps/web/src/styles/surfaces.css, apps/server/src/routes/tickets.ts, apps/web/src/tickets/refusedFields.ts, apps/web/src/tickets/customFieldNames.ts, apps/web/src/i18n/zone.ts, apps/web/src/timeline/client.ts, apps/web/src/list/order.ts, apps/web/src/list/SortMenu.tsx, apps/web/src/search/columns.ts
+accessed: 2026-11-23
 attestation: own-words
 ---
 # List, calendar, timeline and outcomes
@@ -44,8 +44,8 @@ the page says which filter is on. Each number still opens the search that finds 
 tickets, with your filter in it. Sprint widgets (burndown, sprint health, days remaining) read a
 whole sprint rather than a query, so they stay as they are, and the page says so.
 
-The filter is yours alone. It is kept in the page's address (`tracks/PAY?filter=...`), so it
-survives a reload and you can bookmark the filtered summary or send yourself the link; anyone who
+The filter changes only your view. It is kept in the page's address (`tracks/PAY?filter=...`),
+so it survives a reload and you can bookmark the filtered summary or share the link; anyone who
 opens that link sees the summary filtered the same way, as far as they may see. Nothing is saved
 on the server, and the summary the owner set up does not change. Pressing **Customise** shows the
 widgets unfiltered, as everyone will see them.
@@ -99,6 +99,18 @@ example **1/3**, with a small bar under them, so the key column stays narrow. Po
 words ("Subtickets: 1 of 3 closed"). The column the rows are sorted by carries an arrow in its
 heading.
 
+You can also sort by clicking a column's heading: the first click sorts by that column, a second
+click sorts it the other way. Each column starts its own way: dates in the past (created, updated,
+closed) newest first, start and due dates soonest first, priority and votes highest first, the key
+by ticket number (PAY-9 before PAY-10), and names, types, statuses and releases from the start of
+their order. Labels, the track and the parent cannot be sorted, so their headings are plain words.
+The heading is a button you can reach with the keyboard; on a touch screen it is a finger tall.
+On a phone, where there are no headings, use **Sort by**. The order stays in the page's address,
+so a link to the list opens in the same order; a link ordered by a custom field you cannot see, or
+one that was deleted, opens newest created first. While the rows are read again in a new order,
+the table stays where it is and the heading you used keeps the keyboard's focus, and a screen
+reader says the new order.
+
 On a phone the table becomes stacked rows: each ticket shows its key, with its subtickets in
 words beside it (**1/3 subtickets closed**), its summary, and then its status, assignee and
 priority. Open the ticket to change it.
@@ -106,7 +118,7 @@ priority. Open the ticket to change it.
 | Control | What it does |
 |---|---|
 | **Group by** | **Nothing**, **Status**, **Assignee**, **Priority**, **Type**, **Target release** or **Labels**. Each group shows its exact count. The types and priorities a site starts with are named in your language, as in search's filters |
-| **Sort by** | **Newest created first**, **Recently updated**, **Due date** or **Priority** |
+| **Sort by** | **Newest created first**, **Recently updated**, **Due date**, **Priority**, **Type** (by the type's name as it is stored, A to Z; the types a site starts with are stored with their English names, so in another language they are grouped by type but not in the alphabetical order of the names you see) or **Key** (by ticket number). When a heading sorted the list in an order the menu has none for, such as by summary or by key the other way, the menu shows that order first, for example **Summary, ascending** |
 | **Filter** | A condition in [the query language](search.md#the-query-language), such as `assignee = currentUser()`; press **Apply filter** |
 | **Columns** | A button that opens a panel over the page: choose, order and remove columns, as on the search page |
 | **Format rules** | A button that opens a panel over the page: colour the rows or cells of tickets that match a condition. The button is marked while rules apply |
@@ -141,8 +153,9 @@ titled by its section, with the track's name above; the tab bar leads back to th
 **What is Calendar for?** beside the title says what it shows.
 
 Start and due dates are calendar days, so "today" on the calendar and the timeline is the day on
-your own device's clock: in the evening in the Americas, when it is already tomorrow in UTC, the
-calendar still opens on your month and marks your day.
+[your clock](account.md#your-time-zone): the time zone saved in your account, else your device's.
+In the evening in the Americas, when it is already tomorrow in UTC, the calendar still opens on
+your month and marks your day.
 
 - Each ticket appears on its due day, and also on its start day when that is different (marked
   **Starts:**, which a screen reader reads first too).

@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ApiError } from '../../api/client';
 import { useT } from '../../i18n/I18nProvider';
 import { routeHref } from '../../routing/router';
+import { DangerAction } from '../../shell/DangerAction';
 import { EmptyState } from '../../shell/EmptyState';
 import type { TicketLink } from '../view/client';
 import {
@@ -36,11 +37,16 @@ function grouped(links: readonly TicketLink[]): { phrase: string; links: TicketL
   }));
 }
 
+/** The track key a ticket key starts with: `WEB` of `WEB-12`. */
+const trackOf = (key: string) => key.slice(0, key.lastIndexOf('-'));
+
 /**
  * A ticket's links on its page (CORE-031; M1-015): grouped under what they say from this side,
  * whichever side they were made from, and open to change. The form takes several in a row: a
  * category, then tickets of this track found by number or name. Links that reach another track
- * (imports, the API) show and can be removed like the others, and web links show as they were.
+ * (imports, the API) show and can be removed too, but the form cannot make them again, so
+ * removing one asks first (D13, T-267); a link inside the track goes at once. Web links show as
+ * they were.
  */
 export function LinksPanel({
   ticket,
@@ -146,6 +152,7 @@ export function LinksPanel({
     }
   };
 
+  /** Whether it went: a refusal says why in the panel. */
   const remove = async (link: TicketLink) => {
     setBusy(true);
     setProblem(null);
@@ -156,8 +163,10 @@ export function LinksPanel({
       onChanged?.();
       addButton.current?.focus();
       setRemovals((n) => n + 1);
+      return true;
     } catch (error) {
       setProblem(refusal(error));
+      return false;
     } finally {
       setBusy(false);
     }
@@ -205,20 +214,38 @@ export function LinksPanel({
                   </a>{' '}
                   {link.ticket.summary}
                 </span>
-                {mayLink && (
-                  <button
-                    type="button"
-                    className="button-secondary ticket-action"
-                    disabled={busy}
-                    aria-label={t('ticketTools.links.remove', {
-                      key: link.ticket.key,
-                      phrase: link.phrase,
-                    })}
-                    onClick={() => void remove(link)}
-                  >
-                    {t('ticketTools.remove')}
-                  </button>
-                )}
+                {mayLink &&
+                  (trackOf(link.ticket.key) !== ticket.track.key ? (
+                    <DangerAction
+                      label={t('ticketTools.remove')}
+                      name={t('ticketTools.links.remove', {
+                        key: link.ticket.key,
+                        phrase: link.phrase,
+                      })}
+                      outcome={t('ticketTools.links.removeOutcome', { key: link.ticket.key })}
+                      confirmLabel={t('ticketTools.links.remove', {
+                        key: link.ticket.key,
+                        phrase: link.phrase,
+                      })}
+                      busy={busy}
+                      onConfirm={async () => {
+                        if (!(await remove(link))) throw new Error('refused');
+                      }}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className="button-secondary ticket-action"
+                      disabled={busy}
+                      aria-label={t('ticketTools.links.remove', {
+                        key: link.ticket.key,
+                        phrase: link.phrase,
+                      })}
+                      onClick={() => void remove(link)}
+                    >
+                      {t('ticketTools.remove')}
+                    </button>
+                  ))}
               </li>
             ))}
           </ul>

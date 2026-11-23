@@ -229,6 +229,9 @@ importers:
       '@simplewebauthn/browser':
         specifier: ^14.0.0
         version: 14.0.0
+      '@taskmoor/formula':
+        specifier: workspace:*
+        version: link:../../packages/formula
       '@taskmoor/query':
         specifier: workspace:*
         version: link:../../packages/query

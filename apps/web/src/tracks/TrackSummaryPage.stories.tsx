@@ -235,6 +235,7 @@ export const AskingToGoBackOnAPhone: Story = {
 
 /** A finger reaches both answers (ADR-033). */
 export const AskingToGoBackOnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   args: RESETTABLE,
   play: async ({ canvasElement }) => {
@@ -259,6 +260,7 @@ export const PhoneCustomizing: Story = {
 
 /** A finger reaches every number, however few its digits (ADR-033). */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findAllByRole('listitem');
@@ -316,6 +318,7 @@ export const FilteredOnAPhone: Story = {
 
 /** A finger reaches the filter's field and each of its buttons (ADR-033). */
 export const FilterOnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: async () => {
     const touch = await onARealTouchScreen();
     const address = filtered('assignee = currentUser()')();

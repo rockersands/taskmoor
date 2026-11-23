@@ -797,16 +797,10 @@ details[open] > summary.admin-disclosure::after,
   }
 }
 
-/* People: every row lays out the same, its actions on a line of their own (AD-17). */
+/* People: every row lays out the same, its one action, Edit, at the row's end (AD-17, T-331). */
 .people-list-users .people-actions {
-  flex: 1 1 100%;
-  gap: var(--space-1);
-}
-
-/* Tighter buttons, so a person's five actions stay on one line beside Administration's list at
-   1280 px; 'Erase…' wrapped onto a line of its own. */
-.people-list-users .people-actions > button {
-  padding-inline: var(--space-3);
+  flex: 0 0 auto;
+  align-self: start;
 }
 
 /* Administration's form and list pages keep a reading width; the audit log and the usage tables
@@ -836,6 +830,17 @@ details[open] > summary.admin-disclosure::after,
     top: 50%;
     height: var(--hit-target-touch);
     transform: translateY(-50%);
+  }
+}
+
+/* A link alone on its line under a choice, such as the way from Which sets a track uses to the
+   page that makes those sets (T-320): no sentence to keep tight, so on a touch screen the link
+   itself is as tall as a finger. */
+@media (pointer: coarse) {
+  .admin-page .form-hint-link a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--hit-target-touch);
   }
 }
 

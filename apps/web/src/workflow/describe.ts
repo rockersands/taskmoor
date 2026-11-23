@@ -130,6 +130,8 @@ export const DEFINITION_PROBLEMS: Record<string, MessageId> = {
   unknown_close_reason: 'workflow.problem.unknown_close_reason',
   invalid_pattern: 'workflow.problem.invalid_pattern',
   guards_too_deep: 'workflow.problem.guards_too_deep',
+  // A publish or a file imported as a new workflow that could get no move at all (T-260).
+  no_moves: 'workflow.problem.no_moves',
 };
 
 /** Why the server refused a definition, from the `detail` of its 400 or 409 answer. */

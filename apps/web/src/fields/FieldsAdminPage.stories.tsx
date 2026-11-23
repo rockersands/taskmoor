@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
-import { ADMIN } from '../admin/fixtures';
-import { SessionProvider } from '../session/SessionProvider';
+import { ADMIN, TRACK_ADMIN } from '../admin/fixtures';
+import { type Session, SessionProvider } from '../session/SessionProvider';
 import { FieldsAdminPage } from './FieldsAdminPage';
 import { fakeFieldsClient } from './fixtures';
 
@@ -22,8 +22,8 @@ const meta = {
   component: FieldsAdminPage,
   args: { client: fakeFieldsClient() },
   decorators: [
-    (Story) => (
-      <SessionProvider session={ADMIN}>
+    (Story, context) => (
+      <SessionProvider session={(context.parameters.session as Session) ?? ADMIN}>
         <main style={{ padding: 24 }}>
           <Story />
         </main>
@@ -35,22 +35,76 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The fields, one choice list open with its options. */
+/** The fields, one choice list open with its contexts, defaults and options. */
 export const Fields: Story = {
+  args: { client: fakeFieldsClient() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Severity' }));
     await expect(await canvas.findByRole('button', { name: 'Rename Medium' })).toBeVisible();
+    await expect(canvas.getByText('Tracks: Payments; ticket types: Bug')).toBeVisible();
   },
 };
 
-/** An option on tickets is not deleted: the page says how many hold it. */
+/**
+ * An option on tickets is not deleted: the page says how many hold it. A plain option asks
+ * nothing first (D13, T-267), so the refusal comes at the first press.
+ */
 export const OptionInUse: Story = {
+  args: { client: fakeFieldsClient() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Severity' }));
     await userEvent.click(await canvas.findByRole('button', { name: 'Delete Medium' }));
     await expect(await canvas.findByRole('alert')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Delete Medium' })).toBeVisible();
+  },
+};
+
+/** A two-level list open: each option with its child options. */
+export const TwoLevelList: Story = {
+  args: { client: fakeFieldsClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Region' }));
+    await expect(
+      await canvas.findByRole('list', { name: 'Child options of Europe' }),
+    ).toBeVisible();
+  },
+};
+
+/** New field with a formula, its check saying what it reads. */
+export const NewFormula: Story = {
+  args: { client: fakeFieldsClient() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'New field' }));
+    const form = canvas.getByRole('form', { name: 'Add a field' });
+    await userEvent.type(within(form).getByLabelText('Field name'), 'Spend');
+    await userEvent.selectOptions(within(form).getByLabelText('Type'), 'formula');
+    await userEvent.type(within(form).getByLabelText('Expression'), '{{Cost} * 2');
+    await expect(
+      await within(form).findByText('It gives a number. It reads {Cost}.'),
+    ).toBeVisible();
+  },
+};
+
+/**
+ * Deleting an option that takes its child options and the default with it asks first, saying so
+ * (D13, T-267); at a phone's width nothing sticks out.
+ */
+export const DeletingAnOptionAsksAtPhoneWidth: Story = {
+  args: { client: fakeFieldsClient() },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Office' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Delete Madrid' }));
+    const question = canvas.getByRole('group', {
+      name: /^Delete Madrid and its 2 child options\? They leave this list for good\. New tickets/,
+    });
+    await expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await fitsPhoneWidth(canvas);
   },
 };
 
@@ -64,12 +118,54 @@ export const NoFieldsYet: Story = {
 };
 
 export const AtPhoneWidth: Story = {
+  args: { client: fakeFieldsClient() },
   decorators: [atPhoneWidth],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Severity' }));
-    await expect(await canvas.findByRole('button', { name: 'Rename Medium' })).toBeVisible();
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Region' }));
+    await expect(await canvas.findByRole('button', { name: 'Rename Madrid' })).toBeVisible();
     await expect(canvas.getByText(/^Add custom fields and keep/)).toBeVisible();
     await fitsPhoneWidth(canvas);
+  },
+};
+
+/**
+ * Someone who runs OPS, a track with its own configuration, on its own page (T-322): its own
+ * field open, whose context covers OPS alone.
+ */
+export const TrackAdministrator: Story = {
+  args: { client: fakeFieldsClient(), trackId: 4 },
+  parameters: { session: TRACK_ADMIN },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('OPS · Operations')).toBeVisible();
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage field Components' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Change context OPS' }));
+    await expect(
+      canvas.getByText('It covers Operations only: the field belongs to that track.'),
+    ).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Manage field Severity' })).toBeNull();
+  },
+};
+
+/** The same at a phone's width: nothing sticks out sideways. */
+export const TrackAdministratorAtPhoneWidth: Story = {
+  ...TrackAdministrator,
+  decorators: [atPhoneWidth],
+  play: async (context) => {
+    await TrackAdministrator.play?.(context);
+    await fitsPhoneWidth(within(context.canvasElement));
+  },
+};
+
+/** On the shared page, someone who runs tracks chooses one with its own configuration. */
+export const TracksToChoose: Story = {
+  args: { client: fakeFieldsClient() },
+  parameters: { session: TRACK_ADMIN },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('link', { name: 'Fields of OPS · Operations' }),
+    ).toBeVisible();
   },
 };

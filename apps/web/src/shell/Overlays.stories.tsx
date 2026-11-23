@@ -101,6 +101,7 @@ export const PaletteFromTheTopBar: Story = {
  * fits rather than "Search or j…", and keeps its whole name. The same top bar on every page.
  */
 export const TopBarOnASmallPhone: Story = {
+  tags: ['touch'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   beforeEach: onARealTouchScreen,
   render: (args) => (

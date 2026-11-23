@@ -123,6 +123,13 @@ Migration 0034 adds `ticket_text_original` and `ticket_text_state`. The editor i
 - **People to mention** (NTF-005): `GET /api/v1/people/mentionable?ticket=|track=&q=` needs
   "Browse users and groups"; it lists active people by name or email prefix with `canView`, those
   who can see the ticket first. The editor marks the others and says they will not be notified.
+  Answered on 2026-11-16 (T-269): with `assignable=true` (the assignee pickers of the create form
+  and a track's template form), it also answers a caller without "Browse users and groups" who
+  holds "Assign tickets" in the track, or on the ticket with `ticket=`. For such a caller it
+  matches names only (never an email prefix), lists no one until something is typed, and keeps
+  only people who may see the ticket (browse the track), so taking the permission away still
+  hides the site's directory. Holders of the permission get what they got before; the plain
+  search (mentions, the requester, custom person fields) still needs it.
 
 Not yet: a document lives in one process, so several realtime processes need routing by
 document until they relay updates (Redis-free, through Postgres, later); notifications for

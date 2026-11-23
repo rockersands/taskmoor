@@ -6,8 +6,9 @@ import { canonicalJson, isCalendarDay, SUMMARY_MAX } from '../tickets/model';
  * Ticket templates (CORE-029, CORE-030; ADR-113): what a template holds, and the values it
  * starts a ticket with. Pure: the routes read and write the rows and run the create route.
  *
- * - The summary is a pattern: `{date}` is today in the creator's time zone (UTC without one),
- *   `{track}` the track's key, `{user}` the creator's name. Any other text stays as written.
+ * - The summary is a pattern: `{date}` is today on the creator's own clock (the routes pass
+ *   `viewerDay`: their account's zone, else their device's, else UTC; T-280), `{track}` the
+ *   track's key, `{user}` the creator's name. Any other text stays as written.
  * - Dates are offsets in days from today, so a template made in March still means "in 7 days".
  * - Default values are named as the ticket create route names them (`priorityId`, `labels`,
  *   `assigneeId`, `areaIds`, `targetReleaseIds`, `foundInReleaseIds`, `fields`), so a template's

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, within } from 'storybook/test';
-import { ADMIN } from '../admin/fixtures';
-import { SessionProvider } from '../session/SessionProvider';
+import { ADMIN, CONFIG_ADMIN, TRACK_ADMIN } from '../admin/fixtures';
+import { type Session, SessionProvider } from '../session/SessionProvider';
 import { PermissionExplainerPage } from './PermissionExplainerPage';
 import { VisibilityPage } from './VisibilityPage';
 import { fakeExplainClient, fakeVisibilityClient } from './visibilityFixtures';
@@ -11,8 +11,8 @@ const meta = {
   component: VisibilityPage,
   args: { client: fakeVisibilityClient() },
   decorators: [
-    (Story) => (
-      <SessionProvider session={ADMIN}>
+    (Story, context) => (
+      <SessionProvider session={(context.parameters.session as Session) ?? ADMIN}>
         <main style={{ padding: 24 }}>
           <Story />
         </main>
@@ -43,6 +43,41 @@ export const LevelWithNoMembers: Story = {
 
 /** No policy yet: what one is for. */
 export const Empty: Story = { args: { client: fakeVisibilityClient([]) } };
+
+/** A configuration administrator manages the shared policies too (T-322). */
+export const ForAConfigurationAdministrator: Story = {
+  parameters: { session: CONFIG_ADMIN },
+  play: async ({ canvasElement }) => {
+    const page = within(canvasElement);
+    await expect(await page.findByRole('region', { name: 'Spare' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'New visibility policy' })).toBeVisible();
+  },
+};
+
+/** A local-mode track's own policies, for someone who runs it, with the one to use (T-322). */
+export const TrackOwnPolicies: Story = {
+  args: { client: fakeVisibilityClient(), trackId: 4 },
+  parameters: { session: TRACK_ADMIN },
+  play: async ({ canvasElement }) => {
+    const page = within(canvasElement);
+    const own = await page.findByRole('region', { name: 'Night desk' });
+    await expect(
+      within(own).getByRole('button', { name: 'Use this policy for OPS' }),
+    ).toBeVisible();
+    await expect(page.queryByRole('region', { name: 'Company levels' })).toBeNull();
+  },
+};
+
+/** Someone who runs tracks, on the shared page: the tracks of their own to choose from. */
+export const ChooseATrack: Story = {
+  parameters: { session: TRACK_ADMIN },
+  play: async ({ canvasElement }) => {
+    const page = within(canvasElement);
+    await expect(
+      await page.findByRole('link', { name: 'Visibility policies of OPS · Operations' }),
+    ).toBeVisible();
+  },
+};
 
 /** The explainer, asked about a ticket a level hides. */
 export const Explainer: Story = {

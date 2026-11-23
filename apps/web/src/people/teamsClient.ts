@@ -1,4 +1,5 @@
 import { api } from '../api/client';
+import { everyTeam } from '../api/teams';
 import type { User } from './client';
 
 /** A team as `GET /api/v1/teams` shows it (M1-123, CORE-027). */
@@ -35,12 +36,8 @@ export interface TeamsClient {
 }
 
 export const teamsClient: TeamsClient = {
-  teams: async (query) =>
-    (
-      await api<{ teams: TeamSummary[] }>(
-        `/teams${query ? `?query=${encodeURIComponent(query)}` : ''}`,
-      )
-    ).teams,
+  // Every page of the list, not only the first 100 (T-286).
+  teams: (query) => everyTeam<TeamSummary>(query),
   team: (id) => api<TeamDetail>(`/teams/${id}`),
   createTeam: async (body) =>
     (await api<{ team: TeamSummary }>('/teams', { method: 'POST', body })).team,

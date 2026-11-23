@@ -287,6 +287,31 @@
   color: var(--color-text);
 }
 
+/* A heading that orders the list (T-330): its own words as a button, the arrow beside them. */
+.search-sort-button {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-1);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.search-sort-button:hover {
+  color: var(--color-text);
+  text-decoration: underline;
+}
+
+.search-sort-button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
 .search-cell.has-problem {
   background: var(--color-danger-soft);
 }
@@ -370,7 +395,8 @@
   .search-export-link,
   .search-columns-button,
   .search-cell-button,
-  .search-cell-edit {
+  .search-cell-edit,
+  .search-sort-button {
     min-height: var(--hit-target-touch);
     min-width: var(--hit-target-touch);
   }

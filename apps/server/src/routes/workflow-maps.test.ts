@@ -503,6 +503,38 @@ describe('workflow maps (M1-028)', () => {
       ]),
       ticketCount: 2,
     });
+    // Each new workflow comes with the statuses its tickets may move to (T-320): what the web
+    // app's mapping step offers.
+    const targets = impact.json().impact.targetWorkflows as {
+      id: number;
+      name: string;
+      statuses: Named[];
+    }[];
+    expect(targets.map((w) => [w.id, w.name])).toEqual(
+      [
+        [flows.bug, 'Bug flow'],
+        [flows.chore, 'Chore flow'],
+      ].sort((a, b) => (a[0] as number) - (b[0] as number)),
+    );
+    const offeredBy = (id: number) =>
+      targets
+        .find((w) => w.id === id)
+        ?.statuses.map((s) => [s.id, s.name])
+        .sort();
+    expect(offeredBy(flows.bug)).toEqual(
+      [
+        [S('Open'), 'Open'],
+        [S('Active'), 'Active'],
+        [S('Closed'), 'Closed'],
+      ].sort(),
+    );
+    expect(offeredBy(flows.chore)).toEqual(
+      [
+        [S('Backlog'), 'Backlog'],
+        [S('Active'), 'Active'],
+        [S('Closed'), 'Closed'],
+      ].sort(),
+    );
 
     const refused = await patch('admin', `/api/v1/tracks/${tracks.SWT}`, {
       workflowMapId: maps.split,

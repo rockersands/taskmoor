@@ -8,8 +8,19 @@ import {
   useState,
 } from 'react';
 import { useT } from '../i18n/I18nProvider';
+import type { Attachment } from './client';
 
-/** What a ticket's attachments panel offers a drop anywhere on its ticket (T-162). */
+/** How files sent through the attachments panel went: those it added, and what went wrong. */
+export interface AttachResult {
+  added: Attachment[];
+  /** In the person's words: the size limit, a quota, a refusal. */
+  problems: string[];
+}
+
+/**
+ * What a ticket's attachments panel offers a drop anywhere on its ticket (T-162), and a file
+ * chosen in the ticket's text editor (T-120): one way in, so the panel's checks and list hold.
+ */
 export interface AttachTarget {
   /** Whether the person may attach files here now. */
   ready: boolean;
@@ -17,8 +28,12 @@ export interface AttachTarget {
   refusal: string | null;
   /** The largest file allowed, in words. */
   limit: string | null;
-  /** Takes the dropped files: checks each against the limit and sends it, as a chosen file. */
-  attach(files: File[]): void;
+  /**
+   * Takes the files: checks each against the limit and sends it, as a chosen file. `quiet` is for
+   * a sender that says how it went itself (the editor's file prompt): the panel then stays where it
+   * is on the page and only lists what arrived.
+   */
+  attach(files: File[], options?: { quiet?: boolean }): Promise<AttachResult>;
 }
 
 type Register = (target: AttachTarget | null) => void;
@@ -126,7 +141,7 @@ export function useTicketFileDrop(ticketKey: string | null) {
       if (!carriesFiles(event) || !here) return;
       event.preventDefault();
       leave();
-      if (here.ready) here.attach(Array.from(event.dataTransfer.files));
+      if (here.ready) void here.attach(Array.from(event.dataTransfer.files));
     },
   };
 
@@ -160,5 +175,8 @@ export function useTicketFileDrop(ticketKey: string | null) {
     </>
   );
 
-  return { register, areaProps, overlay, over: over !== null };
+  /** What the panel offers now, for the ticket's editors to send a file through it (T-120). */
+  const current = useCallback(() => target.current, []);
+
+  return { register, areaProps, overlay, over: over !== null, target: current };
 }

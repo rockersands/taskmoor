@@ -19,6 +19,7 @@ import {
   type ScenarioRow,
   type ScheduleCounts,
   type ScheduleEntry,
+  type ScheduleOverLeft,
   type ScheduleReadiness,
   type ScheduleRequest,
   type ScheduleRun,
@@ -34,8 +35,15 @@ import {
  *
  * The auto-scheduler (ADR-122 stage 7) runs over the plan's open level-0 tickets: SHOP-2 (5
  * points, Ana, in progress), SHOP-3 (8, Bo) and OPS-4 (3, Ana), both blocked by SHOP-2, and OPS-5
- * (no estimate, nobody assigned). Web has 20 points a period and Ops none. Its drafts have origin
- * `scheduler` until a person drafts the same ticket; a re-run replaces only its own.
+ * (no estimate, nobody assigned). Web has 20 points a period (`capacity`) and Ops none. Its drafts
+ * have origin `scheduler` until a person drafts the same ticket; a re-run replaces only its own.
+ *
+ * With `mode: 'even_out'` (ADR-122 stage 9) the run evens out Web's load instead: tickets count in
+ * the period of their end (due, else start) by their days now; in each period over capacity, the
+ * lowest-ranked ticket that may move (a higher id stands for a lower rank) goes later by the least
+ * shift that puts its end in the first later period with room, keeping its length. What it blocks
+ * is pushed after it; a push that reaches a kept ticket, or the run's last day, undoes the move.
+ * Every other ticket that may move stays where it is (`already`), so its earlier proposals go.
  */
 export interface FakeScenarioOptions {
   editable?: boolean;
@@ -65,6 +73,8 @@ export interface FakeScenarioOptions {
   };
   /** A run that never answers, to see it running. */
   holdSchedule?: boolean;
+  /** Web's capacity in points a period, 20 by default. */
+  capacity?: number;
 }
 
 const DAY = '2026-11-01T09:00:00Z';
@@ -110,6 +120,159 @@ const byPerson = (days: Days) =>
   (days.startDate !== undefined && days.startDate.origin !== 'scheduler') ||
   (days.dueDate !== undefined && days.dueDate.origin !== 'scheduler');
 
+/** A ticket of an even-out run: its days now, its points, and whether a keep rule holds it. */
+interface Bar {
+  start: string | null;
+  due: string | null;
+  points: number;
+  fixed: boolean;
+}
+
+/**
+ * The fake's even-out engine over Web's one cell a period: moves, pushes and refusals become
+ * entries, every ticket that may move gets a proposal (its days now when it stays), and the cells
+ * left over are answered.
+ */
+function evenOut(
+  bars: Map<number, Bar>,
+  periods: { start: string; end: string }[],
+  capacity: number,
+  items: PlanTimelineItem[],
+  entries: ScheduleEntry[],
+  proposals: Map<number, { start: string | null; due: string | null }>,
+): ScheduleOverLeft[] {
+  const first = new Map([...bars].map(([id, b]) => [id, { ...b }]));
+  const endOf = (b: { start: string | null; due: string | null }) => b.due ?? b.start;
+  const periodOf = (b: Bar) => {
+    const end = endOf(b);
+    return end === null ? -1 : periods.findIndex((p) => p.start <= end && end <= p.end);
+  };
+  const loadAt = (p: number) =>
+    [...bars.values()].reduce((sum, b) => sum + (periodOf(b) === p ? b.points : 0), 0);
+  const shifted = (d: string | null, by: number) => (d === null ? null : dayOf(numOf(d) + by));
+  const lastDay = periods.at(-1)?.end ?? '';
+  const moved = new Map<number, Pick<ScheduleEntry, 'reason' | 'args'>>();
+  const failed = new Map<number, Pick<ScheduleEntry, 'reason' | 'args'>>();
+  const totalShift = (id: number) => {
+    const was = endOf(first.get(id) as Bar);
+    const now = endOf(bars.get(id) as Bar);
+    return was === null || now === null ? 0 : numOf(now) - numOf(was);
+  };
+  periods.forEach((period, p) => {
+    const tried = new Set<number>();
+    while (loadAt(p) > capacity) {
+      const id = [...bars]
+        .filter(([j, b]) => !b.fixed && b.points > 0 && periodOf(b) === p && !tried.has(j))
+        .map(([j]) => j)
+        .sort((a, b) => b - a)[0];
+      if (id === undefined) break;
+      tried.add(id);
+      const b = bars.get(id) as Bar;
+      const over = loadAt(p) - capacity;
+      const q = periods.findIndex((_, n) => n > p && loadAt(n) + b.points <= capacity);
+      const to = periods[q];
+      const end = endOf(b);
+      if (!to || end === null) {
+        failed.set(id, { reason: 'still_over', args: { teamId: 3, until: lastDay } });
+        continue;
+      }
+      // The move and the pushes it needs, undone as a whole when one is refused.
+      const by = numOf(to.start) - numOf(end);
+      const next = new Map([[id, { start: shifted(b.start, by), due: shifted(b.due, by), by: 0 }]]);
+      const queue = [id];
+      let refusal: { ticketId: number; why: 'kept' | 'past_end' } | null = null;
+      while (queue.length > 0 && refusal === null) {
+        const from = queue.shift() as number;
+        const moving = next.get(from);
+        const fromEnd = moving ? endOf(moving) : null;
+        for (const [blocker, blocked] of BLOCKS) {
+          const t = bars.get(blocked);
+          if (blocker !== from || !t || fromEnd === null) continue;
+          const now = next.get(blocked) ?? t;
+          const start = now.start ?? now.due;
+          if (start === null || start > fromEnd) continue;
+          if (t.fixed) {
+            refusal = { ticketId: blocked, why: 'kept' };
+            break;
+          }
+          const push = numOf(fromEnd) + 1 - numOf(start);
+          const pushed = { start: shifted(now.start, push), due: shifted(now.due, push), by: from };
+          if ((endOf(pushed) ?? '') > lastDay) {
+            refusal = { ticketId: blocked, why: 'past_end' };
+            break;
+          }
+          next.set(blocked, pushed);
+          queue.push(blocked);
+        }
+      }
+      if (refusal) {
+        failed.set(id, { reason: 'would_make_late', args: { ...refusal, until: lastDay } });
+        continue;
+      }
+      for (const [j, n] of next) {
+        bars.set(j, { ...(bars.get(j) as Bar), start: n.start, due: n.due });
+        failed.delete(j);
+      }
+      const left = periods[periodOf(first.get(id) as Bar)] ?? period;
+      for (const [j, n] of next) {
+        moved.set(
+          j,
+          j === id
+            ? {
+                reason: 'moved_off_over',
+                args: {
+                  teamId: 3,
+                  fromPeriod: left.start,
+                  fromPeriodEnd: left.end,
+                  toPeriod: to.start,
+                  toPeriodEnd: to.end,
+                  days: totalShift(j),
+                  over,
+                },
+              }
+            : { reason: 'pushed_by_move', args: { blockerId: n.by, days: totalShift(j) } },
+        );
+      }
+    }
+    // A ticket that found no room stays still_over only while its period stays over.
+    if (loadAt(p) <= capacity) {
+      for (const [j, f] of failed) {
+        if (f.reason === 'still_over' && periodOf(bars.get(j) as Bar) === p) failed.delete(j);
+      }
+    }
+  });
+  for (const [id, b] of bars) {
+    if (b.fixed) continue;
+    const i = items.find((x) => x.id === id) as PlanTimelineItem;
+    const f = failed.get(id);
+    const m = moved.get(id);
+    entries.push({
+      id,
+      key: i.key,
+      summary: i.summary,
+      warnings: [],
+      ...(f
+        ? { outcome: 'not_placed', ...f }
+        : { outcome: 'placed', ...(m ?? { reason: 'already', args: {} }) }),
+    });
+    if (!f) proposals.set(id, { start: b.start, due: b.due });
+  }
+  return periods.flatMap((period, p) => {
+    const over = loadAt(p) - capacity;
+    if (over <= 0) return [];
+    const inIt = [...bars.values()].filter((b) => periodOf(b) === p && b.points > 0);
+    return [
+      {
+        teamId: 3,
+        periodStart: period.start,
+        periodEnd: period.end,
+        over,
+        onlyFixed: inIt.every((b) => b.fixed),
+      },
+    ];
+  });
+}
+
 interface Held {
   row: ScenarioRow;
   drafts: Map<number, Days>;
@@ -131,6 +294,7 @@ export function fakeScenarioClient(
   readinessAsked: { scenario?: number; from?: string; periods?: number }[];
 } {
   const editable = options.editable ?? true;
+  const capacity = options.capacity ?? 20;
   const held: Held[] = [];
   let nextId = 4;
   const applies: (number[] | 'all')[] = [];
@@ -431,7 +595,10 @@ export function fakeScenarioClient(
       notShown: 0,
     };
     const entries: ScheduleEntry[] = [];
-    const proposals = new Map<number, { start: string; due: string }>();
+    const proposals = new Map<number, { start: string | null; due: string | null }>();
+    const evening = body.mode === 'even_out';
+    /** Evening out's tickets by id: days now, points, and whether a keep rule holds them. */
+    const bars = new Map<number, Bar>();
     const ends = new Map<number, string | null>();
     const load = periods.map(() => ({ points: 0, tickets: 0 }));
     const items = plans
@@ -448,11 +615,18 @@ export function fakeScenarioClient(
       ends.set(i.id, now.due ?? now.start);
       const entry = (e: Pick<ScheduleEntry, 'outcome' | 'reason'> & Partial<ScheduleEntry>) =>
         entries.push({ id: i.id, key: i.key, summary: i.summary, args: {}, warnings: [], ...e });
+      const bar = (fixed: boolean) => {
+        if (evening) bars.set(i.id, { ...now, points: POINTS[i.key] ?? 0, fixed });
+      };
       if (i.level.rank !== 0) counts.leftOut.level++;
       else if (leftTypes.has(i.type)) counts.leftOut.type++;
-      else if (days && byPerson(days)) entry({ outcome: 'kept', reason: 'person_draft' });
-      else if ((body.keep?.inProgress ?? true) && i.status.stage === 'active')
+      else if (days && byPerson(days)) {
+        entry({ outcome: 'kept', reason: 'person_draft' });
+        bar(true);
+      } else if ((body.keep?.inProgress ?? true) && i.status.stage === 'active') {
         entry({ outcome: 'kept', reason: 'in_progress' });
+        bar(true);
+      } else if (evening) bar(false);
       else if (POINTS[i.key] === undefined) entry({ outcome: 'not_placed', reason: 'no_estimate' });
       else if (!i.assignee) entry({ outcome: 'not_placed', reason: 'no_assignee' });
       else {
@@ -470,7 +644,7 @@ export function fakeScenarioClient(
           }
         }
         const p = periods.findIndex(
-          (x, n) => x.end >= earliest && (load[n]?.points ?? 0) + estimate <= 20,
+          (x, n) => x.end >= earliest && (load[n]?.points ?? 0) + estimate <= capacity,
         );
         const cell = load[p];
         const period = periods[p];
@@ -494,8 +668,8 @@ export function fakeScenarioClient(
                     teamId: 3,
                     periodStart: period.start,
                     periodEnd: period.end,
-                    free: 20 - cell.points,
-                    capacity: 20,
+                    free: capacity - cell.points,
+                    capacity,
                     before: cell.tickets,
                   };
           const warnings =
@@ -525,7 +699,14 @@ export function fakeScenarioClient(
         }
       }
     }
+    const overLeft = evening ? evenOut(bars, periods, capacity, items, entries, proposals) : [];
+    if (evening) {
+      counts.moved = entries.filter(
+        (e) => e.reason === 'moved_off_over' || e.reason === 'pushed_by_move',
+      ).length;
+    }
     for (const e of entries) {
+      if (evening && e.reason === 'already') counts.already = (counts.already ?? 0) + 1;
       if (e.outcome === 'placed') counts.placed++;
       else if (e.outcome === 'kept') counts.kept[e.reason as keyof ScheduleCounts['kept']]++;
       else counts.notPlaced[e.reason as keyof ScheduleCounts['notPlaced']]++;
@@ -563,7 +744,13 @@ export function fakeScenarioClient(
       else s.drafts.set(id, days);
     }
     const rank = (e: ScheduleEntry) =>
-      e.outcome === 'not_placed' ? 0 : e.warnings.length > 0 ? 1 : e.outcome === 'kept' ? 2 : 3;
+      e.outcome === 'not_placed'
+        ? 0
+        : e.warnings.length > 0 || (evening && e.outcome === 'placed' && e.reason !== 'already')
+          ? 1
+          : e.outcome === 'kept'
+            ? 2
+            : 3;
     entries.sort((a, b) => rank(a) - rank(b) || a.id - b.id);
     return {
       ok: true,
@@ -587,6 +774,7 @@ export function fakeScenarioClient(
           releases: [{ id: 5, name: '2.1' }],
           tickets: [],
         },
+        ...(evening ? { mode: 'even_out' as const, overLeft } : {}),
       }),
     };
   };

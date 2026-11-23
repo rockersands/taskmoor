@@ -125,6 +125,13 @@ export const isAttachmentName = (v: unknown): v is string =>
   plainLine(v, MAX_ATTACHMENT_NAME) && (v as string).trim() !== '';
 
 /**
+ * The text colours a document may show and write back (NTF-014, T-318): a hexadecimal value or a
+ * plain colour name. Anything else could carry other rules into the style it is shown with.
+ */
+export const SAFE_COLOR = /^(#[0-9a-fA-F]{3,8}|[a-zA-Z]{3,20})$/;
+export const isSafeColor = (v: unknown): v is string => typeof v === 'string' && SAFE_COLOR.test(v);
+
+/**
  * What tells two files of one name apart (ADR-120, TT-4): the first hexadecimal digits of the
  * file's SHA-256. A clone and an import keep a file's bytes, so they keep it too; it is no id and
  * no address. The picker writes `DIGEST_LENGTH` digits; a longer one, up to the whole, reads too.
@@ -249,7 +256,8 @@ export function adfShapeProblem(root: unknown): string | null {
  * The same for a stored document (the editor's JSON): its nodes, plus the other format's
  * attributes it keeps (`adfAttrs`, the whole node of an `unknownBlock` or `unknownInline`, an
  * `unknownMark`'s attributes, an `attachmentRef`'s media node), which the writers read back.
- * Null when well formed.
+ * Null when well formed. A text colour that is not a safe value is no reason to refuse a
+ * document, which may have been stored before colours were checked: `withSafeColors` takes it off.
  */
 export function docShapeProblem(root: unknown): string | null {
   const stack: { node: unknown; depth: number }[] = [{ node: root, depth: 1 }];
@@ -312,4 +320,45 @@ export function docShapeProblem(root: unknown): string | null {
     }
   }
   return null;
+}
+
+/** A text colour mark whose colour a document may not hold (`isSafeColor`). */
+const unsafeColor = (mark: unknown): boolean =>
+  isPlainObject(mark) &&
+  mark.type === 'textColor' &&
+  !isSafeColor(isPlainObject(mark.attrs) ? mark.attrs.color : undefined);
+
+/** Every node of a stored document, without recursion; for one `docShapeProblem` passed. */
+function* storedNodes(root: unknown): Generator<Record<string, unknown>> {
+  const stack: unknown[] = [root];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (!isPlainObject(node)) continue;
+    yield node;
+    if (Array.isArray(node.content)) for (const child of node.content) stack.push(child);
+  }
+}
+
+/**
+ * A stored document with each text colour that is not a safe value taken off its text, the text
+ * kept (NTF-014, T-318). Saving goes through it rather than refusing such a document, so one
+ * stored before colours were checked still saves. The same document when it holds none; else a
+ * copy. For a document `docShapeProblem` passed.
+ */
+export function withSafeColors<T>(root: T): T {
+  const unsafe = (node: Record<string, unknown>) =>
+    Array.isArray(node.marks) && node.marks.some(unsafeColor);
+  let found = false;
+  for (const node of storedNodes(root)) {
+    if (unsafe(node)) {
+      found = true;
+      break;
+    }
+  }
+  if (!found) return root;
+  const copy = clone(root);
+  for (const node of storedNodes(copy)) {
+    if (unsafe(node)) node.marks = (node.marks as unknown[]).filter((m) => !unsafeColor(m));
+  }
+  return copy;
 }

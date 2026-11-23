@@ -1,6 +1,7 @@
 import { MAX_COLUMNS, type PmJson, shownColumnWidth } from '@taskmoor/richtext';
 import type { Editor } from '@tiptap/core';
 import type { EditorState } from '@tiptap/pm/state';
+import { isInTable, selectedRect } from '@tiptap/pm/tables';
 import type { MessageId } from '../i18n/messages.en';
 import type { EditorTools } from './EditorTools';
 import type { IconName } from './icons';
@@ -82,6 +83,28 @@ const columns = (count: 2 | 3, label: MessageId): SlashTool => ({
     if (caret !== null) e.commands.setTextSelection(caret);
   },
 });
+
+/**
+ * Whether the row or column the caret is in (every one a selection of cells spans) can go: not
+ * when that is all the table has, which would leave no table; Delete the table does that (T-120).
+ */
+export function tableLineDeletable(state: EditorState, line: 'row' | 'column'): boolean {
+  if (!isInTable(state)) return false;
+  const rect = selectedRect(state);
+  return line === 'row'
+    ? rect.top > 0 || rect.bottom < rect.map.height
+    : rect.left > 0 || rect.right < rect.map.width;
+}
+
+/** An edit of the table the caret is in, as the toolbar offers it there (T-120). */
+const tableEdit = (
+  id: string,
+  label: MessageId,
+  icon: IconName,
+  keywords: string,
+  run: (editor: Editor) => void,
+  available: (editor: Editor) => boolean = (e) => e.isActive('table'),
+): SlashTool => ({ id, label, icon, keywords: `table ${keywords}`, available, run });
 
 export const SLASH_TOOLS: readonly SlashTool[] = [
   {
@@ -165,6 +188,35 @@ export const SLASH_TOOLS: readonly SlashTool[] = [
     available: (e) => !e.isActive('table'),
     run: (e) => chain(e).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
   },
+  tableEdit('tableAddRow', 'richtext.table.addRow', 'addRow', 'row add insert below', (e) =>
+    chain(e).addRowAfter().run(),
+  ),
+  tableEdit(
+    'tableAddColumn',
+    'richtext.table.addColumn',
+    'addColumn',
+    'column add insert right',
+    (e) => chain(e).addColumnAfter().run(),
+  ),
+  tableEdit(
+    'tableDeleteRow',
+    'richtext.table.deleteRow',
+    'deleteRow',
+    'row delete remove',
+    (e) => chain(e).deleteRow().run(),
+    (e) => tableLineDeletable(e.state, 'row'),
+  ),
+  tableEdit(
+    'tableDeleteColumn',
+    'richtext.table.deleteColumn',
+    'deleteColumn',
+    'column delete remove',
+    (e) => chain(e).deleteColumn().run(),
+    (e) => tableLineDeletable(e.state, 'column'),
+  ),
+  tableEdit('tableDelete', 'richtext.table.delete', 'deleteTable', 'delete remove', (e) =>
+    chain(e).deleteTable().run(),
+  ),
   {
     id: 'rule',
     label: 'richtext.rule',

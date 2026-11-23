@@ -380,3 +380,63 @@ describe('Auto-schedule’s dialog (PLN-004)', () => {
     await waitFor(() => expect(onDone).toHaveBeenCalled());
   });
 });
+
+describe('Auto-schedule’s dialog: evening out load (PLN-011)', () => {
+  it('[PLN-011] offers Even out load beside rank order, says how many periods are over now, and sends the mode', async () => {
+    const user = userEvent.setup();
+    const { dialog, scenarios, onDone } = await renderDialog({ readiness: { overCells: 4 } });
+    await within(dialog).findByText(/^Web has capacity/);
+    const modes = within(dialog).getByRole('group', { name: 'What the run does' });
+    const fill = within(modes).getByRole('radio', { name: 'Place work in rank order' });
+    const even = within(modes).getByRole('radio', { name: 'Even out load' });
+    expect(fill).toBeChecked();
+    expect(even).toHaveAccessibleDescription(
+      'Moves only work that puts someone over capacity, later, by as little as it can, keeping each ticket’s length.',
+    );
+    expect(
+      within(dialog).getByText('4 periods of teams and people are over capacity now.'),
+    ).toBeVisible();
+    // The keep choices are headed as what never moves.
+    const kept = within(dialog).getByRole('group', {
+      name: 'Kept tickets never move (fixed dates)',
+    });
+    expect(within(kept).getByRole('checkbox', { name: 'Keep tickets in progress' })).toBeChecked();
+    await user.click(even);
+    expect(
+      within(dialog).getByText(
+        'A run that evens out load and one in rank order replace each other’s proposals; both start from the tickets’ days and people’s drafts.',
+      ),
+    ).toBeVisible();
+    await user.click(within(dialog).getByRole('button', { name: 'Run' }));
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
+    expect(scenarios.runs.at(-1)).toMatchObject({ mode: 'even_out' });
+    const [, asked] = onDone.mock.calls[0] ?? [];
+    expect(asked).toMatchObject({ mode: 'even_out' });
+    // Remembered here for next time.
+    expect(
+      JSON.parse(window.localStorage.getItem('taskmoor.autoSchedule.12') ?? '{}'),
+    ).toMatchObject({ mode: 'even_out' });
+  });
+
+  it('[PLN-011] says evening out would move nothing when no one is over capacity', async () => {
+    const user = userEvent.setup();
+    const { dialog } = await renderDialog({ readiness: { overCells: 0 } });
+    await within(dialog).findByText(/^Web has capacity/);
+    const nothing = 'No team or person is over capacity now, so evening out would move nothing.';
+    expect(within(dialog).queryByText(nothing)).toBeNull();
+    await user.click(within(dialog).getByRole('radio', { name: 'Even out load' }));
+    expect(within(dialog).getByText(nothing)).toBeVisible();
+  });
+
+  it('[PLN-011] starts from the mode last used for the plan, and a run in rank order sends none', async () => {
+    window.localStorage.setItem('taskmoor.autoSchedule.12', JSON.stringify({ mode: 'even_out' }));
+    const user = userEvent.setup();
+    const { dialog, scenarios, onDone } = await renderDialog();
+    await within(dialog).findByText(/^Web has capacity/);
+    expect(within(dialog).getByRole('radio', { name: 'Even out load' })).toBeChecked();
+    await user.click(within(dialog).getByRole('radio', { name: 'Place work in rank order' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Run' }));
+    await waitFor(() => expect(onDone).toHaveBeenCalledTimes(1));
+    expect(scenarios.runs.at(-1)).not.toHaveProperty('mode');
+  });
+});

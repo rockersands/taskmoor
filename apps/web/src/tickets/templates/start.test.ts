@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { setAccountTimeZone } from '../../i18n/zone';
+import { useTimeZone } from '../../test/timeZone';
 import type { TicketForm } from '../form';
 import { fillForm, labelOfKey, omitKeys } from './start';
 
@@ -151,6 +153,35 @@ describe('a template on the create form (CORE-030)', () => {
     expect(archived.picked).toEqual(['assigneeId']);
   });
 
+  it('[CORE-030] [IAM-009] keeps an assignee the template does not name out of the picker, as a checkbox (T-283)', () => {
+    const form: TicketForm = {
+      ...FORM,
+      layout: {
+        operation: 'create',
+        tabs: [
+          {
+            name: null,
+            sections: [
+              {
+                kind: 'main',
+                hideWhenEmpty: false,
+                fields: [field('summary'), field('assignee')],
+              },
+            ],
+          },
+        ],
+      },
+    };
+    // The API names no one the reader may not see, or who is gone: the id alone stays.
+    const fill = fillForm({ summary: 'Release', assigneeId: 21 }, form, {
+      keys: new Set(['assignee']),
+      assignee: null,
+    });
+    expect(fill.picks).toEqual({});
+    expect(fill.picked).toEqual([]);
+    expect(fill.extras).toEqual(['assigneeId']);
+  });
+
   it('[CORE-030] fills custom person, group, team, release and area pickers only with what it can name or offer (T-276)', () => {
     const custom = (id: number, type: string, multiple = false) => ({
       id,
@@ -253,5 +284,31 @@ describe('a template on the create form (CORE-030)', () => {
     expect(labelOfKey('fields.7', FORM)).toEqual({ name: 'Severity' });
     expect(labelOfKey('fields.12', FORM)).toEqual({ fieldId: '12' });
     expect(labelOfKey('fields.12', null)).toEqual({ fieldId: '12' });
+  });
+});
+
+describe('a template’s date and time on the create form (T-280)', () => {
+  useTimeZone('America/Mexico_City');
+  afterEach(() => setAccountTimeZone(null));
+  const form: TicketForm = {
+    layout: {
+      operation: 'create',
+      tabs: [
+        {
+          name: null,
+          sections: [{ kind: 'main', hideWhenEmpty: false, fields: [field('cf[20]')] }],
+        },
+      ],
+    },
+    customFields: [{ id: 20, name: 'Go live', description: '', type: 'datetime', multiple: false }],
+  };
+
+  it('[CORE-030] [IAM-008] fills the time on the person’s clock: the account’s zone, else the device’s', () => {
+    const start = { fields: { 20: '2026-11-16T19:00:00Z' } };
+    // On the device in Mexico City (UTC−6), 19:00 in UTC is 13:00.
+    expect(fillForm(start, form).values).toEqual({ 'cf[20]': '2026-11-16T13:00' });
+    // The account says New York (UTC−5): 14:00 there.
+    setAccountTimeZone('America/New_York');
+    expect(fillForm(start, form).values).toEqual({ 'cf[20]': '2026-11-16T14:00' });
   });
 });

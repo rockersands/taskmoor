@@ -1,11 +1,16 @@
 import { type ReactElement, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useAdminTrail } from '../admin/AdminLayout';
 import { ApiError } from '../api/client';
+import { ownMapHref } from '../configuration/WorkflowMapsPage';
+import { ownFieldsHref } from '../fields/FieldsAdminPage';
 import { useT } from '../i18n/I18nProvider';
+import { ownPoliciesHref } from '../notifications/NotificationPoliciesPage';
+import { ownVisibilityHref } from '../permissions/VisibilityPage';
 import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import { ownLayoutsHref, ownSetsHref } from '../sets/trackScope';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import { ChecklistNoticesBox } from './ChecklistNoticesBox';
@@ -150,18 +155,20 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
   };
   const refused = (row: Row, error: unknown) =>
     setAnswer({ ...row, text: refusal(error), refused: true });
+  /** Whether it went through: a refusal is said beside the row. */
   const run = async (row: Row, work: () => Promise<unknown>, text: string) => {
     setAnswer(null);
     try {
       await work();
     } catch (error) {
       refused(row, error);
-      return;
+      return false;
     }
     // Said once the page shows the change, so the answer lands where it stays: in the row, or
     // in its place when the change took the row away.
     await load();
     went(row, text);
+    return true;
   };
   /**
    * What the last action did, beside the row it was pressed on, where the person is looking on
@@ -274,6 +281,20 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
             </li>
             <li>
               <a href={routeHref(ownSetsHref(track.id))}>{t('trackPeople.setsLink')}</a>
+            </li>
+            <li>
+              <a href={routeHref(ownFieldsHref(track.id))}>{t('trackPeople.fieldsLink')}</a>
+            </li>
+            <li>
+              <a href={routeHref(ownPoliciesHref(track.id))}>
+                {t('trackPeople.notificationsLink')}
+              </a>
+            </li>
+            <li>
+              <a href={routeHref(ownMapHref(track.id))}>{t('trackPeople.workflowMapLink')}</a>
+            </li>
+            <li>
+              <a href={routeHref(ownVisibilityHref(track.id))}>{t('trackPeople.visibilityLink')}</a>
             </li>
           </ul>
         </section>
@@ -501,20 +522,26 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
                               {t('trackPeople.newLink')}
                             </button>
                           )}
-                          <button
-                            type="button"
-                            className="button-secondary people-action"
-                            aria-label={t('trackPeople.revokeFor', { who: invitation.email })}
-                            onClick={() =>
-                              void run(
+                          {/* The emailed link dies, and a role it gave goes with it: asked
+                              first (D13, T-267), in words that never tell whether the address
+                              has an account. */}
+                          <DangerAction
+                            label={t('trackPeople.revoke')}
+                            name={t('trackPeople.revokeFor', { who: invitation.email })}
+                            outcome={t('trackPeople.revokeOutcome', {
+                              who: invitation.email,
+                              role: invitation.role.name,
+                            })}
+                            confirmLabel={t('trackPeople.revokeFor', { who: invitation.email })}
+                            onConfirm={async () => {
+                              const ok = await run(
                                 row,
                                 () => client.revoke(track.id, invitation.id),
                                 t('trackPeople.revoked', { who: invitation.email }),
-                              )
-                            }
-                          >
-                            {t('trackPeople.revoke')}
-                          </button>
+                              );
+                              if (!ok) throw new Error('refused');
+                            }}
+                          />
                         </div>
                       )}
                       {answerBeside('invitations', row.key)}
@@ -557,6 +584,21 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
           onSaid={(text) => went(NOTICES, text)}
           onRefused={(error) => refused(NOTICES, error)}
         />
+      </section>
+
+      {/* Every track's areas: who owns each part of its work (CORE-015, T-320). */}
+      <section aria-labelledby={`${id}-areas`} className="glass-card people-card">
+        <h2 id={`${id}-areas`} className="facts-title">
+          {t('areas.manageTitle')}
+        </h2>
+        <p className="page-note">{t('areas.manageIntro', { key: track.key })}</p>
+        <ul className="link-list">
+          <li>
+            <a href={routeHref(`#/tracks/${encodeURIComponent(track.key)}/areas`)}>
+              {t('areas.manageLink')}
+            </a>
+          </li>
+        </ul>
       </section>
 
       <p role="status" className="visually-hidden">

@@ -152,11 +152,49 @@ describe('a track manager without site administration (IAM-030)', () => {
         name: 'Configuration sets: its ticket types and field rules',
       }),
     ).toHaveAttribute('href', '#/manage/tracks/4/configuration-sets');
+    // Its own fields too (T-322).
+    expect(
+      within(own).getByRole('link', { name: 'Fields: the custom fields it owns' }),
+    ).toHaveAttribute('href', '#/manage/tracks/4/fields');
     cleanup();
     // A track in shared mode owns none: its sets are the administrators'.
     show(3);
     expect(await screen.findByText('Kalo Reyes: Administrators')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Its own configuration' })).toBeNull();
+  });
+
+  it('[IAM-030] [WF-001] [IAM-011] leads to the track’s own workflow map and visibility policies (T-322)', async () => {
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={MEMBER}>
+          <main>
+            <TrackPeoplePage trackId={4} client={fakeTrackPeopleClient()} />
+          </main>
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    const own = await screen.findByRole('region', { name: 'Its own configuration' });
+    expect(
+      within(own).getByRole('link', {
+        name: 'Workflow map: which workflow each of its ticket types follows',
+      }),
+    ).toHaveAttribute('href', '#/manage/tracks/4/workflow-map');
+    expect(
+      within(own).getByRole('link', {
+        name: 'Visibility policies: which of its tickets only some people see',
+      }),
+    ).toHaveAttribute('href', '#/manage/tracks/4/visibility-policies');
+  });
+
+  it('[CORE-015] [IAM-030] leads to the track’s areas, whatever its configuration mode (T-320)', async () => {
+    renderPeople();
+    const areas = await screen.findByRole('region', { name: 'Its areas' });
+    expect(areas).toHaveTextContent(
+      'Who owns each part of SHOP’s work, and who gets its new tickets.',
+    );
+    expect(
+      within(areas).getByRole('link', { name: 'Areas: the parts of its work and who owns each' }),
+    ).toHaveAttribute('href', '#/tracks/SHOP/areas');
   });
 });
 
@@ -248,8 +286,20 @@ describe('the invite dialog (IAM-027)', () => {
     await user.click(screen.getByRole('button', { name: 'Make a new link for nia@example.com' }));
     const fresh = await screen.findByRole('textbox', { name: 'Link for nia@example.com' });
     expect((fresh as HTMLInputElement).value).toContain('again-21');
+    // Withdrawing kills the emailed link and may take a role back: asked first (D13, T-267), in
+    // words that do not tell whether the address has an account.
+    const withdraw = screen.getByRole('button', {
+      name: 'Withdraw the invitation to nia@example.com',
+    });
+    expect(withdraw).toHaveClass('button-danger-quiet');
+    await user.click(withdraw);
+    const question = screen.getByRole('group', {
+      name: 'The link sent to nia@example.com stops working. If this invitation already gave them the role Members, they lose it.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    expect(client.calls.map((c) => c.action)).toEqual(['resend', 'resend']);
     await user.click(
-      screen.getByRole('button', { name: 'Withdraw the invitation to nia@example.com' }),
+      within(question).getByRole('button', { name: 'Withdraw the invitation to nia@example.com' }),
     );
     expect(await screen.findByText('No invitations are waiting.')).toBeInTheDocument();
     expect(client.calls.map((c) => c.action)).toEqual(['resend', 'resend', 'revoke']);
@@ -524,6 +574,12 @@ describe('what an action did shows beside the row pressed (T-248)', () => {
     // Withdrawn, the first row gives its place to what was done; the second keeps its own.
     await user.click(
       screen.getByRole('button', { name: 'Withdraw the invitation to nia@example.com' }),
+    );
+    await user.click(
+      within(screen.getByRole('group', { name: /^The link sent to nia@example\.com/ })).getByRole(
+        'button',
+        { name: 'Withdraw the invitation to nia@example.com' },
+      ),
     );
     await seen('The invitation to nia@example.com was withdrawn.');
     expect(rowsOf(within(waiting).getByRole('list'))[0]).toBe(

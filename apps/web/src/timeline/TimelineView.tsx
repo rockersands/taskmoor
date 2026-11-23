@@ -26,6 +26,7 @@ import {
   type Timeline,
   type TimelineItem,
 } from './client';
+import { isCritical, type Slack, tightLink } from './critical';
 import { type Blocked, barOf, blockerCount, dependencyState } from './dependencies';
 import { drawnReleases, releaseMarkerText } from './markers';
 import { scheduleRefusal } from './refusal';
@@ -68,6 +69,13 @@ export interface TimelineViewProps {
    * back to their live ones.
    */
   draft?: { scenario: string; undo: (item: TimelineItem) => Promise<Rescheduled> };
+  /**
+   * The critical path (PLN-011; ADR-122 stage 9): a toggle among the tools. While it is on, the
+   * bar of each ticket with slack of 0 or less gets a heavy outline and a ▲, never colour alone,
+   * and its description says "On the critical path"; other bars with slack say how many days;
+   * tight links between tickets on the path are drawn heavier. `slack` is null while it is read.
+   */
+  critical?: { on: boolean; onToggle: (on: boolean) => void; slack: Slack | null };
 }
 
 export type Zoom = 'weeks' | 'months' | 'quarters';
@@ -127,6 +135,9 @@ const holdsExactly = (set: ReadonlySet<number>, ids: readonly number[]) =>
  * marked. Past `WINDOW_AFTER` rows, only the rows in view are drawn (every row is 44px), so a
  * plan's 10,000 tickets scroll as smoothly as a track's few.
  *
+ * The critical path (PLN-011), when the page gives it: a toggle, then a heavy outline and a ▲ on
+ * each bar on the path, slack in each bar's description and tight links drawn heavier.
+ *
  * Rescheduling: drag a bar to move it, or its ends to change its start or due day; Alt with
  * the left or right arrow moves a focused bar a day (with Shift, a week); choosing a bar opens a
  * side panel with both days, its dependencies and where its dates come from. Every change is
@@ -145,6 +156,7 @@ export function TimelineView({
   zoom: zoomKept,
   onZoom,
   draft,
+  critical,
 }: TimelineViewProps) {
   const t = useT();
   const intl = useIntl();
@@ -171,6 +183,8 @@ export function TimelineView({
 
   const today = dayNumber(localDay(now()));
   const px = SCALE[zoom];
+  /** Each listed ticket's slack while the critical path is on. */
+  const slack = critical?.on ? critical.slack : null;
 
   const rows = useMemo(
     () => timelineRows(data.items, groupOf, collapsed, closedGroups),
@@ -503,6 +517,10 @@ export function TimelineView({
     const progress = item.rollup;
     const blocked = dependencies?.get(item.id);
     const badgeId = blocked ? `${id}-dep-${item.id}` : undefined;
+    const onPath = isCritical(slack, item.id);
+    const slackDays = slack?.get(item.id);
+    const pathId = slackDays === undefined ? undefined : `${id}-cp-${item.id}`;
+    const described = [badgeId, pathId].filter(Boolean).join(' ');
     const badgeText = blocked
       ? blocked.sameSprint > 0
         ? t('timeline.badge.withSprint', {
@@ -575,9 +593,9 @@ export function TimelineView({
           {days && bar?.kind === 'own' ? (
             <button
               type="button"
-              className={`timeline-bar${item.dated === 'sprint' ? ' is-sprint' : ''}${live ? ' is-dragging' : ''}${item.draft ? ' is-draft' : ''}`}
+              className={`timeline-bar${item.dated === 'sprint' ? ' is-sprint' : ''}${live ? ' is-dragging' : ''}${item.draft ? ' is-draft' : ''}${onPath ? ' is-critical' : ''}`}
               style={{ left: x(days.start), width: (days.due - days.start + 1) * px }}
-              aria-describedby={badgeId ? `${id}-hint ${badgeId}` : `${id}-hint`}
+              aria-describedby={described ? `${id}-hint ${described}` : `${id}-hint`}
               aria-label={
                 item.draft && daysDrafted(item)
                   ? t(
@@ -621,13 +639,14 @@ export function TimelineView({
                   style={{ width: `${(progress.closed / progress.total) * 100}%` }}
                 />
               )}
+              {onPath && <span className="timeline-critical-mark" aria-hidden="true" />}
             </button>
           ) : days ? (
             <span
               role="img"
-              className="timeline-bar is-rollup"
+              className={`timeline-bar is-rollup${onPath ? ' is-critical' : ''}`}
               style={{ left: x(days.start), width: (days.due - days.start + 1) * px }}
-              aria-describedby={badgeId}
+              aria-describedby={described || undefined}
               aria-label={t('timeline.rollup', {
                 key: item.key,
                 start: dayText(days.start),
@@ -683,6 +702,11 @@ export function TimelineView({
             >
               {t(edge === 'before' ? 'timeline.edge.before' : 'timeline.edge.after')}
             </button>
+          )}
+          {pathId && (
+            <span id={pathId} className="visually-hidden">
+              {onPath ? t('critical.bar.on') : t('critical.bar.slack', { days: slackDays ?? 0 })}
+            </span>
           )}
           {blocked && (
             <span
@@ -755,6 +779,16 @@ export function TimelineView({
         <button type="button" className="button-secondary" onClick={scrollToToday}>
           {t('timeline.today')}
         </button>
+        {critical && (
+          <button
+            type="button"
+            className="filter-chip"
+            aria-pressed={critical.on}
+            onClick={() => critical.onToggle(!critical.on)}
+          >
+            {t('critical.toggle')}
+          </button>
+        )}
         {tools}
       </div>
       <p className="board-hint" id={`${id}-hint`}>
@@ -883,7 +917,7 @@ export function TimelineView({
                   return (
                     <path
                       key={`${l.from}-${l.to}`}
-                      className={`timeline-link${late ? ' is-late' : ''}${l.sameSprint ? ' is-same-sprint' : ''}`}
+                      className={`timeline-link${late ? ' is-late' : ''}${l.sameSprint ? ' is-same-sprint' : ''}${tightLink(slack, from, to) ? ' is-critical' : ''}`}
                       d={`M ${x1} ${y1} H ${x1 + 8} V ${y2} H ${Math.max(x2, x1 + 8)}`}
                     />
                   );
@@ -942,7 +976,10 @@ export function TimelineView({
           />
         )}
       </div>
-      <TimelineLegend data={data} />
+      <TimelineLegend
+        data={data}
+        critical={slack !== null && data.items.some((i) => isCritical(slack, i.id))}
+      />
       {data.truncated && <p className="board-hint">{truncatedText}</p>}
     </>
   );
@@ -954,9 +991,16 @@ export function TimelineView({
  * a ticket with no dates, today, releases and late dependencies. Worked out again only when the
  * timeline's data changes, not each time the timeline is drawn.
  */
-const TimelineLegend = memo(function TimelineLegend({ data }: { data: TimelineData }) {
+const TimelineLegend = memo(function TimelineLegend({
+  data,
+  critical,
+}: {
+  data: TimelineData;
+  /** The critical path is on and marks a bar (PLN-011). */
+  critical: boolean;
+}) {
   const t = useT();
-  const entries = useMemo(() => legendEntries(data), [data]);
+  const entries = useMemo(() => legendEntries(data, critical), [data, critical]);
   return (
     <ul className="timeline-legend" aria-label={t('timeline.legend')}>
       {entries.map((e) => (
@@ -970,7 +1014,7 @@ const TimelineLegend = memo(function TimelineLegend({ data }: { data: TimelineDa
 });
 
 /** The legend's entries: the bar styles a timeline's data draws. */
-function legendEntries(data: TimelineData): { key: string; label: MessageId }[] {
+function legendEntries(data: TimelineData, critical = false): { key: string; label: MessageId }[] {
   const bars = data.items.map((i) => ({ item: i, bar: barOf(i) }));
   const byId = new Map(data.items.map((i) => [i.id, i]));
   const late = data.links.some((l) => {
@@ -997,6 +1041,7 @@ function legendEntries(data: TimelineData): { key: string; label: MessageId }[] 
     [data.links.length > 0, 'link', 'timeline.legend.link'],
     [late, 'late', 'timeline.legend.late'],
     [data.items.some((i) => i.draft), 'draft', 'timeline.legend.draft'],
+    [critical, 'critical', 'critical.legend'],
   ];
   return shown.flatMap(([on, key, label]) => (on ? [{ key, label }] : []));
 }

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import { ApiError } from '../api/client';
 import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { fakeTrackClient } from '../tracks/fixtures';
@@ -115,6 +115,7 @@ export const NotFound: Story = {
 
 /** A finger reaches each ticket of the release (ADR-033). */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByRole('table');
@@ -126,11 +127,28 @@ export const OnATouchScreen: Story = {
 
 /** A finger reaches the release across tracks in its facts (ADR-033). */
 export const LinkedOnATouchScreen: Story = {
+  tags: ['touch'],
   args: { releaseId: 3, client: fakeReleaseClient({ linked: true }) },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByRole('link', { name: 'Spring launch' });
     await expect(tooSmallForAFinger(canvasElement, ['.release-facts a'])).toEqual([]);
+  },
+};
+
+/**
+ * Taking it out of its release across tracks asks first, naming it, its track and what follows
+ * (D13, T-267); at a phone's width nothing sticks out.
+ */
+export const RemovingFromACrossTrackReleaseAtPhoneWidth: Story = {
+  args: { releaseId: 3, client: fakeReleaseClient({ linked: true }) },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Remove from Spring launch' }));
+    const question = canvas.getByRole('group', { name: /^2\.1 of Checkout leaves Spring launch/ });
+    await expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await fitsPhoneWidth(canvas);
   },
 };
 

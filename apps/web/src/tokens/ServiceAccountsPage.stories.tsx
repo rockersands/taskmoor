@@ -66,6 +66,23 @@ export const ConfirmingDeactivate: Story = {
   },
 };
 
+/** Change opens the account's name and what it is for, under its row (IAM-007; T-320). */
+export const ChangingAnAccount: Story = {
+  render: () => <ServiceAccountsPage client={fakeServiceAccountsClient()} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', {
+        name: 'Change the name and description of Release robot',
+      }),
+    );
+    const form = await canvas.findByRole('form', {
+      name: 'Change the name and description of Release robot',
+    });
+    await expect(within(form).getByRole('textbox', { name: 'Name' })).toHaveValue('Release robot');
+  },
+};
+
 export const NoAccounts: Story = {
   args: { client: fakeServiceAccountsClient({}, { accounts: [], tokens: [] }) },
 };

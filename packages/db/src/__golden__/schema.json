@@ -1612,6 +1612,42 @@
       "CREATE UNIQUE INDEX plan_pkey ON public.plan USING btree (id)"
     ]
   },
+  "plan_baseline": {
+    "columns": [
+      "id integer not null default nextval('plan_baseline_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "plan_id integer not null",
+      "name text not null",
+      "source text not null",
+      "scenario_name text",
+      "tickets integer not null default 0",
+      "created_by integer not null",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "version integer not null default 1"
+    ],
+    "indexes": [
+      "CREATE INDEX plan_baseline_creator_idx ON public.plan_baseline USING btree (created_by)",
+      "CREATE UNIQUE INDEX plan_baseline_pkey ON public.plan_baseline USING btree (id)",
+      "CREATE UNIQUE INDEX plan_baseline_plan_idx ON public.plan_baseline USING btree (plan_id, id)"
+    ]
+  },
+  "plan_baseline_day": {
+    "columns": [
+      "workspace_id integer not null",
+      "plan_id integer not null",
+      "baseline_id integer not null",
+      "ticket_id integer not null",
+      "start_date date",
+      "due_date date",
+      "dated text",
+      "closed boolean not null"
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX plan_baseline_day_pkey ON public.plan_baseline_day USING btree (baseline_id, ticket_id)",
+      "CREATE INDEX plan_baseline_day_ticket_idx ON public.plan_baseline_day USING btree (ticket_id)"
+    ]
+  },
   "plan_capacity": {
     "columns": [
       "id integer not null default nextval('plan_capacity_id_seq'::regclass)",
@@ -1721,6 +1757,26 @@
       "CREATE INDEX plan_source_plan_idx ON public.plan_source USING btree (plan_id, \"position\")",
       "CREATE INDEX plan_source_saved_search_idx ON public.plan_source USING btree (saved_search_id) WHERE (saved_search_id IS NOT NULL)",
       "CREATE INDEX plan_source_track_idx ON public.plan_source USING btree (track_id) WHERE (track_id IS NOT NULL)"
+    ]
+  },
+  "plan_structure": {
+    "columns": [
+      "id integer not null default nextval('plan_structure_id_seq'::regclass)",
+      "workspace_id integer not null",
+      "plan_id integer not null",
+      "name text not null",
+      "spec jsonb not null",
+      "created_by integer not null",
+      "updated_by integer not null",
+      "created_at timestamp with time zone not null default now()",
+      "updated_at timestamp with time zone not null default now()",
+      "version integer not null default 1"
+    ],
+    "indexes": [
+      "CREATE INDEX plan_structure_creator_idx ON public.plan_structure USING btree (created_by)",
+      "CREATE UNIQUE INDEX plan_structure_name_idx ON public.plan_structure USING btree (plan_id, lower(name))",
+      "CREATE UNIQUE INDEX plan_structure_pkey ON public.plan_structure USING btree (id)",
+      "CREATE INDEX plan_structure_updater_idx ON public.plan_structure USING btree (updated_by)"
     ]
   },
   "plan_team": {
@@ -3128,7 +3184,8 @@
       "notify_own_changes boolean not null default false",
       "email_delivery text not null default 'instant'::text",
       "quiet_start smallint",
-      "quiet_end smallint"
+      "quiet_end smallint",
+      "csv_separator text"
     ],
     "indexes": [
       "CREATE UNIQUE INDEX user_preference_pkey ON public.user_preference USING btree (user_id)"

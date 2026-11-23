@@ -126,6 +126,7 @@ export const NotMain: Story = {
  * actions in a bar at the bottom, nothing sticking out sideways.
  */
 export const OnAPhone: Story = {
+  tags: ['touch'],
   args: { client: client(), phone: true },
   decorators: [atPhoneWidth],
   beforeEach: onARealTouchScreen,

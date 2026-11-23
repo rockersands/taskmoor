@@ -98,6 +98,7 @@ export const Missing: Story = {
 
 /** On a phone's touch screen: the select full width and a finger's height, nothing sideways. */
 export const OnAPhone: Story = {
+  tags: ['touch'],
   args: { active: FASTER },
   decorators: [atPhoneWidth],
   beforeEach: onARealTouchScreen,

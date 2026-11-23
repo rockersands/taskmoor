@@ -5,12 +5,17 @@ import type { MessageId } from './messages.en';
 
 export interface I18nProviderProps {
   locale: Locale;
+  /**
+   * The zone times are written in unless a call names another: the person's account zone
+   * (T-280). Without one, the device's.
+   */
+  timeZone?: string | null;
   children: ReactNode;
   /** Receives every missing or malformed message; tests fail the run on any. */
   onError?: (error: Error) => void;
 }
 
-export function I18nProvider({ locale, children, onError }: I18nProviderProps) {
+export function I18nProvider({ locale, timeZone, children, onError }: I18nProviderProps) {
   const messages = useMemo(() => messagesFor(locale), [locale]);
   // The page says its language and direction, for assistive technology and the mirrored layout.
   useEffect(() => {
@@ -21,6 +26,7 @@ export function I18nProvider({ locale, children, onError }: I18nProviderProps) {
   return (
     <IntlProvider
       locale={formatLocale(locale)}
+      {...(timeZone ? { timeZone } : {})}
       defaultLocale="en"
       messages={messages}
       onError={onError ?? defaultOnError}
