@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@taskmoor/webconfig": "workspace:*",
-    "zod": "^4.6.6"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@taskmoor/testkit": "workspace:*"
