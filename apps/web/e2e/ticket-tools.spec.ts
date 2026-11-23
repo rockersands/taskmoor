@@ -217,6 +217,15 @@ test('[CORE-033] lines its items up, and on a phone gives each two rows with Mor
     await expect(
       section.getByRole('button', { name: 'Move down Tried on an old phone' }),
     ).toBeVisible();
+    // The names share one width, and the middle item's six controls leave none of them a few
+    // letters wide: they go under the names where the column is narrow.
+    const names = await items.evaluateAll((rows) =>
+      rows.map((row) =>
+        Math.round(row.querySelector('.checklist-item-text')?.getBoundingClientRect().width ?? 0),
+      ),
+    );
+    expect(new Set(names).size).toBe(1);
+    expect(Math.min(...names)).toBeGreaterThanOrEqual(16 * 16);
     return;
   }
   // On a phone: the name, then grip, state and More on one row; the rest is in More.

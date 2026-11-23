@@ -39,7 +39,7 @@ describe('bulk operation progress (M1-021)', () => {
     expect(items.map((li) => li.textContent)).toEqual([
       'SHOP-12In status Approved, only the Approvers group can edit this ticket.',
       'SHOP-19You may not make this change to this ticket.',
-      'OLD-3Not found, or you may not see it.',
+      'OLD-3Not found, or you cannot see it.',
     ]);
     expect(within(failures).getByRole('link', { name: 'SHOP-12' })).toHaveAttribute(
       'href',

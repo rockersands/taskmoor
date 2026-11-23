@@ -4,6 +4,7 @@ import {
   type RefObject,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
@@ -667,6 +668,7 @@ function ChecklistBlock({
                   () => addInput.current?.focus(),
                 )
               }
+              focusWhenGone={addInput}
             />
           ))}
         </ul>
@@ -785,8 +787,9 @@ function ItemActions({
                 aria-disabled={busy || undefined}
                 onClick={() => {
                   if (busy) return;
-                  // Edit and the moves put the focus where it belongs; Remove, on the new item's field.
-                  close(action.key !== 'remove');
+                  // The focus waits on More: Edit and the moves put it where it belongs, a removal
+                  // on the Add-item field, and a refused one leaves it here, beside the reason.
+                  close(true);
                   action.run();
                 }}
               >
@@ -815,6 +818,7 @@ function ChecklistRow({
   onText,
   onMove,
   onRemove,
+  focusWhenGone,
 }: {
   item: ChecklistItem;
   canEdit: boolean;
@@ -834,10 +838,22 @@ function ChecklistRow({
   onText: (text: string) => Promise<boolean>;
   onMove: (step: -1 | 1) => void;
   onRemove: () => void;
+  /** Where the focus goes when the item goes while one of its controls has it: Add an item. */
+  focusWhenGone: RefObject<HTMLElement | null>;
 }) {
   const t = useT();
   const boxId = useId();
   const compact = useMediaQuery(CHECKLIST_COMPACT);
+  // An item that goes while it holds the focus, found gone when its removal was refused or
+  // removed by someone else meanwhile, hands the focus on rather than dropping it on the page. A
+  // layout effect's cleanup runs while the row is still on the page, so it can still tell.
+  const row = useRef<HTMLLIElement>(null);
+  useLayoutEffect(() => {
+    const node = row.current;
+    return () => {
+      if (node?.contains(document.activeElement)) focusWhenGone.current?.focus();
+    };
+  }, [focusWhenGone]);
   const [editing, setEditing] = useState(false);
   // Edit, or on a phone the menu that holds it: where the focus goes back once the form closes.
   const editButton = useRef<HTMLButtonElement>(null);
@@ -875,7 +891,7 @@ function ChecklistRow({
 
   if (editing) {
     return (
-      <li className="checklist-item">
+      <li ref={row} className="checklist-item">
         <NameForm
           label={t('ticketTools.checklists.itemText')}
           submit={t('ticketView.save')}
@@ -894,6 +910,7 @@ function ChecklistRow({
   }
   return (
     <li
+      ref={row}
       className="checklist-item"
       data-state={state}
       data-item={item.id}

@@ -426,7 +426,7 @@ export const messagesEs: Record<MessageId, string> = {
   'about.dashboard':
     'Cada widget resume los tickets que encuentra una búsqueda, y nunca muestra un ticket que tú no podrías encontrar. Su dueño lo edita y elige quién lo ve; Copiar crea uno tuyo para cambiarlo. Pantalla mural lo muestra a pantalla completa, para una pantalla que todos leen desde lejos.',
   'about.settings':
-    'Configuración guarda lo que es solo tuyo: tu cuenta, cómo se ve Taskmoor para ti y los tutoriales. Lo que vale para todo el sitio está en Administración, que los administradores del sitio ven en la barra lateral.',
+    'Configuración guarda lo que es solo tuyo: tu cuenta, cómo se ve Taskmoor para ti y los tutoriales. Lo que vale para todo el sitio está en Administración, que la barra lateral muestra a quienes pueden usarla.',
   'about.account':
     'Cada pestaña guarda una parte de tu cuenta. Perfil: tu nombre, zona horaria, idioma y aspecto. Notificaciones: qué te cuenta Taskmoor, y cómo. Seguridad: tu contraseña, el segundo factor y los dispositivos con sesión iniciada. Tokens de API: lo que usan tus scripts. Tus datos: una descarga de todo lo que se guarda sobre ti.',
   'about.boardReports':
@@ -802,7 +802,7 @@ export const messagesEs: Record<MessageId, string> = {
   'search.sorted':
     'Ordenado por {column}, {direction, select, ascending {ascendente} other {descendente}}',
   'search.sorted.date':
-    'Ordenado por {column}, {direction, select, ascending {más antiguo primero} other {más reciente primero}}',
+    'Ordenado por {column}, {direction, select, ascending {lo más temprano primero} other {lo más tardío primero}}',
   'search.table': 'Tabla de resultados',
   'search.columns': 'Columnas',
   'search.columns.keyFirst': 'La clave siempre va primero.',
@@ -6479,7 +6479,7 @@ export const messagesEs: Record<MessageId, string> = {
   'list.sort.key': 'Clave',
   'list.sort.current': '{column}, {direction, select, ascending {ascendente} other {descendente}}',
   'list.sort.current.date':
-    '{column}, {direction, select, ascending {más antiguo primero} other {más reciente primero}}',
+    '{column}, {direction, select, ascending {lo más temprano primero} other {lo más tardío primero}}',
   'list.sort.announce': 'Ordenado por {order}',
   'list.filter': 'Filtro',
   'list.filterPlaceholder': 'assignee = currentUser()',

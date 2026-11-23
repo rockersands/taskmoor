@@ -141,9 +141,37 @@ const lefts = (root: Element, selector: string) =>
   );
 
 /**
- * At a ticket's width on a desktop the items line up (S3-WK-2): the first has only Move down, the
- * last only Move up, the others both, yet every grip and every state starts at one line, and the
- * names share one width.
+ * Every item's grip and state start at one line, and the names share one width of at least 16rem,
+ * never the few letters a middle item's buttons would leave them (S3-WK-2). `beside` says whether
+ * each item's controls sit beside its name, or on a row of their own under it.
+ */
+async function itemsLineUp(canvasElement: HTMLElement, beside: boolean) {
+  const canvas = within(canvasElement);
+  await canvas.findByRole('button', { name: 'Move down Write the notes' });
+  // The first has only Move down, the last only Move up, the others both.
+  await expect(canvas.getAllByRole('button', { name: /^Move (up|down) / })).toHaveLength(8);
+  for (const selector of ['.checklist-grip', 'select']) {
+    const found = lefts(canvasElement, selector);
+    await expect(found).toHaveLength(5);
+    await expect(new Set(found).size, `${selector}: ${found.join()}`).toBe(1);
+  }
+  const rows = Array.from(canvasElement.querySelectorAll('.checklist-item'), (row) => ({
+    name: (row.querySelector('.checklist-item-text') as Element).getBoundingClientRect(),
+    controls: (row.querySelector('.checklist-item-controls') as Element).getBoundingClientRect(),
+  }));
+  const widths = rows.map(({ name }) => Math.round(name.width));
+  await expect(new Set(widths).size, widths.join()).toBe(1);
+  await expect(Math.min(...widths), widths.join()).toBeGreaterThanOrEqual(16 * 16);
+  for (const { name, controls } of rows) {
+    if (beside) await expect(controls.top).toBeLessThan(name.bottom);
+    else await expect(controls.top).toBeGreaterThanOrEqual(Math.floor(name.bottom));
+  }
+}
+
+/**
+ * At a ticket's width on a desktop the items line up (S3-WK-2), and each item's controls take a
+ * row under its name, which keeps the list's whole width: beside the names, a middle item's six
+ * controls would leave them a few letters wide.
  */
 export const ItemsInLine: Story = {
   decorators: [
@@ -154,17 +182,21 @@ export const ItemsInLine: Story = {
     ),
   ],
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await canvas.findByRole('button', { name: 'Move down Write the notes' });
-    for (const selector of ['.checklist-grip', 'select']) {
-      const found = lefts(canvasElement, selector);
-      await expect(found).toHaveLength(5);
-      await expect(new Set(found).size, `${selector}: ${found.join()}`).toBe(1);
-    }
-    const names = Array.from(canvasElement.querySelectorAll('.checklist-item-text'), (name) =>
-      Math.round(name.getBoundingClientRect().width),
-    );
-    await expect(new Set(names).size, names.join()).toBe(1);
+    await itemsLineUp(canvasElement, false);
+  },
+};
+
+/** Where the checklist is wide, the controls sit beside the names, still in line (S3-WK-2). */
+export const ItemsInLineWhenWide: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 960 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    await itemsLineUp(canvasElement, true);
   },
 };
 

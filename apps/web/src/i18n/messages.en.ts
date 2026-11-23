@@ -403,7 +403,7 @@ export const messagesEn = {
   'about.dashboard':
     'Each widget sums up the tickets a search finds, and never shows a ticket you could not find yourself. Its owner edits it and chooses who sees it; Copy makes one of your own to change. Wallboard shows it full screen, for a screen everyone can read from afar.',
   'about.settings':
-    'Settings keeps what is yours alone: your account, how Taskmoor looks for you and the tutorials. What applies to the whole site is in Administration, which site administrators see in the side bar.',
+    'Settings keeps what is yours alone: your account, how Taskmoor looks for you and the tutorials. What applies to the whole site is in Administration, which the side bar shows to those allowed to use it.',
   'about.account':
     'Each tab keeps one part of your account. Profile: your name, time zone, language and look. Notifications: what Taskmoor tells you, and how. Security: your password, second factor and signed-in devices. API tokens: what your scripts use. Your data: a download of everything kept about you.',
   'about.boardReports':
@@ -4609,7 +4609,7 @@ export const messagesEn = {
   'bulk.moreChanged': 'Show more',
   'bulk.backToSearch': 'Back to the search',
   'bulk.toSearch': 'Go to Search',
-  'bulk.reason.notFound': 'Not found, or you may not see it.',
+  'bulk.reason.notFound': 'Not found, or you cannot see it.',
   'bulk.reason.forbidden': 'You may not make this change to this ticket.',
   'bulk.reason.invalidFields': 'Some of the values do not fit this ticket.',
   'bulk.reason.transitionUnavailable':

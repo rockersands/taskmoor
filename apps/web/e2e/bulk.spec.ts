@@ -47,7 +47,7 @@ test('[CORE-024] follows a bulk edit to the end and lists the ticket it could no
   const failures = page.getByRole('region', { name: 'Tickets that were not changed' });
   await expect(failures.getByRole('listitem')).toHaveCount(1);
   await expect(failures.getByText('ATT-999999')).toBeVisible();
-  await expect(failures.getByText('Not found, or you may not see it.')).toBeVisible();
+  await expect(failures.getByText('Not found, or you cannot see it.')).toBeVisible();
 
   // The help mark beside the title, as on every page (S3-WK-1).
   await expect(
