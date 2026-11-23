@@ -165,6 +165,7 @@ export const TrackAdministratorOnAPhone: Story = {
  * below it, as on Track people (T-226).
  */
 export const TrackLinksOnATouchPhone: Story = {
+  tags: ['touch'],
   ...TrackAdministrator,
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   beforeEach: onARealTouchScreen,
@@ -191,6 +192,7 @@ export const TrackLinksOnATouchPhone: Story = {
  * tab's grip is a finger's size (T-231).
  */
 export const GripsOnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
@@ -200,6 +202,7 @@ export const GripsOnATouchScreen: Story = {
 
 /** The same on a phone. */
 export const GripsOnATouchPhone: Story = {
+  tags: ['touch'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {

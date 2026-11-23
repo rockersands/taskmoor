@@ -36,7 +36,11 @@ versioned workflows, which tickets, boards, history, reports and the editor all 
   removed column's status go to the first column, or where `statusMapping` says.
 - **One event.** A mutation emits one event (M1-005): `board.updated` carries a `workflow`
   object with the workflow, its new version, the statuses made and dropped, and the tickets
-  moved, instead of separate status, workflow and map events.
+  moved, instead of separate status, workflow and map events. A close reason Completed made
+  because the workspace had none to close with is the exception (T-325, 2026-11-17): it joins the
+  site's list of close reasons, outside the track, so it records its own `close_reason.created`
+  beside the board's event, in the same transaction, as every path that makes a reason does
+  (`createCloseReason`).
 - **Turning it off** leaves the workflow as it was, now an ordinary workflow of the track.
 
 ## Options considered

@@ -25,6 +25,9 @@ const PATHS = {
   redo: 'M11 3l3 3-3 3M14 6H6.5a3.75 3.75 0 0 0 0 7.5H9',
   addRow: 'M1.5 2.5h13v6h-13zM1.5 5.5h13M8 10.5v4M6 12.5h4',
   addColumn: 'M1.5 2.5h7v11h-7zM5 2.5v11M12.5 6v4M10.5 8h4',
+  // The row and column of the two above, with a cross where those have a plus.
+  deleteRow: 'M1.5 2.5h13v6h-13zM1.5 5.5h13M6.5 11l3 3M9.5 11l-3 3',
+  deleteColumn: 'M1.5 2.5h7v11h-7zM5 2.5v11M11 6.5l3 3M14 6.5l-3 3',
   deleteTable: 'M2.5 4h11M6 4V2.5h4V4M3.75 4l.75 9.5h7l.75-9.5',
 } as const;
 

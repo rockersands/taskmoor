@@ -60,7 +60,12 @@ export function lockedOut(audience: Audience, allowed: readonly Holder[] | null 
 
 /** A workflow's per-status lists, keyed by status id (published versions never change). */
 type StatusTable = ReadonlyMap<number, Partial<Record<LockAction, Holder[]>>>;
-const tables = new Map<string, StatusTable>();
+/**
+ * The tables read so far, per database handle: one process may serve several databases (the e2e
+ * API server does), and their workflow ids and versions repeat, so a table is only ever reused
+ * for the database it was read from.
+ */
+const tablesByDb = new WeakMap<Db, Map<string, StatusTable>>();
 
 function tableOf(definition: Awaited<ReturnType<typeof loadDefinition>>): StatusTable {
   const out = new Map<number, Partial<Record<LockAction, Holder[]>>>();
@@ -94,6 +99,11 @@ async function statusTable(
     .select('published_version')
     .where('id', '=', workflowId)
     .executeTakeFirstOrThrow();
+  let tables = tablesByDb.get(db);
+  if (!tables) {
+    tables = new Map();
+    tablesByDb.set(db, tables);
+  }
   const key = `${workflowId}:${row.published_version}`;
   let table = tables.get(key);
   if (!table) {

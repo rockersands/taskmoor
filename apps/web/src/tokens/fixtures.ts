@@ -309,6 +309,10 @@ export function fakeServiceAccountsClient(
       accounts = [...accounts, account];
       return account;
     },
+    update: async (id, change) => {
+      accounts = accounts.map((a) => (a.id === id ? { ...a, ...change } : a));
+      return accounts.find((a) => a.id === id) as ServiceAccount;
+    },
     tokens: async (id) => tokens.filter((t) => t.owner.id === id),
     setActive: async (id, active) => {
       accounts = accounts.map((a) =>

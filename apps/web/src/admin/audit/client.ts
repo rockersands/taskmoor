@@ -1,3 +1,4 @@
+import type { CsvSeparator } from '@taskmoor/webconfig';
 import { API_BASE, api } from '../../api/client';
 
 /** One audit record, as `GET /api/v1/audit` answers (M1-003; IAM-013). */
@@ -45,8 +46,11 @@ export interface AuditClient {
     filter: AuditFilter,
     cursor?: string,
   ) => Promise<{ records: AuditRecord[]; nextCursor: string | null }>;
-  /** The address of the export download for the filter. */
-  exportUrl: (filter: AuditFilter, format: 'csv' | 'jsonl') => string;
+  /**
+   * The address of the export download for the filter; a CSV file in the person's style, the
+   * semicolon one named (T-263).
+   */
+  exportUrl: (filter: AuditFilter, format: 'csv' | 'jsonl', separator?: CsvSeparator) => string;
   verify: () => Promise<ChainStatus>;
   retention: () => Promise<number>;
   setRetention: (months: number) => Promise<number>;
@@ -75,9 +79,10 @@ export const auditClient: AuditClient = {
     if (cursor) params.set('cursor', cursor);
     return api(`/audit?${params}`);
   },
-  exportUrl: (filter, format) => {
+  exportUrl: (filter, format, separator = 'comma') => {
     const params = filterParams(filter);
     params.set('format', format);
+    if (format === 'csv' && separator === 'semicolon') params.set('separator', separator);
     return `${API_BASE}/audit/export?${params}`;
   },
   verify: () => api('/audit/verify'),

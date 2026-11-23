@@ -110,6 +110,7 @@ export const ReadOnly: Story = {
 
 /** On a phone's touch screen: cards per scenario, per measure and per team, nothing sideways. */
 export const OnAPhone: Story = {
+  tags: ['touch'],
   args: { phone: true },
   decorators: [atPhoneWidth],
   beforeEach: onARealTouchScreen,

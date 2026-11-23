@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
 import { expectWithinBudget } from '@taskmoor/testkit/budget';
-import { CSV_BOM } from '@taskmoor/webconfig';
+import { CSV_BOM, detectDelimiter } from '@taskmoor/webconfig';
 import type { FastifyInstance, InjectOptions } from 'fastify';
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -1124,7 +1124,7 @@ describe('Multi-track plans (PLN-001, PLN-012)', () => {
     // A filter that does not read answers as it does on the views; bad input is refused.
     expect((await exported('ana', plan.id, { track: 'PLC' })).statusCode).toBe(400);
     expect((await exported('ana', plan.id, { format: 'xml' })).statusCode).toBe(400);
-    expect((await exported('ana', plan.id, { sort: 'summary' })).statusCode).toBe(400);
+    expect((await exported('ana', plan.id, { sort: 'labels' })).statusCode).toBe(400);
     expect((await exported('ana', plan.id, { other: '1' })).statusCode).toBe(400);
     const signedOut = await app.inject({
       method: 'GET',
@@ -1132,6 +1132,61 @@ describe('Multi-track plans (PLN-001, PLN-012)', () => {
       remoteAddress: nextAddress(),
     });
     expect(signedOut.statusCode).toBe(401);
+  });
+
+  it("[PLN-014] [PLN-012] the List's file follows the List's order, a column and a way (T-330)", async () => {
+    const plan = await shared('Ordered file');
+    const { plan: seen } = await get('admin', `/api/v1/plans/${plan.id}`);
+    for (const [asked, order] of [
+      [{ sort: 'key', order: 'asc' }, 'key ASC'],
+      [{ sort: 'key', order: 'desc' }, 'key DESC'],
+      [{ sort: 'type' }, 'type ASC'],
+      [{ sort: 'type', order: 'desc' }, 'type DESC'],
+      [{ sort: 'summary', order: 'asc' }, 'summary ASC'],
+      // An address made before the List had a way (sort=priority) keeps its order.
+      [{ sort: 'priority' }, 'priority DESC'],
+      [{ sort: 'due' }, 'due ASC'],
+    ] as const) {
+      const res = await exported('admin', plan.id, { columns: 'summary', ...asked });
+      expect(res.statusCode, res.body.slice(0, 200)).toBe(200);
+      const keysInFile = rowsOf(res.body)
+        .slice(1)
+        .map((r) => r[0]);
+      expect(keysInFile.length).toBeGreaterThan(1);
+      expect(keysInFile, order).toEqual(
+        await searchKeys('admin', `${seen.query} ORDER BY ${order}`),
+      );
+    }
+    // Only fields the List can order by, and only the two ways.
+    for (const bad of [
+      { sort: 'labels' },
+      { sort: 'track' },
+      { sort: 'toString' },
+      { sort: 'created DESC' },
+      { sort: 'cf[x]' },
+      { sort: 'key', order: 'up' },
+    ]) {
+      expect((await exported('admin', plan.id, bad)).statusCode, JSON.stringify(bad)).toBe(400);
+    }
+  });
+
+  it("[PLN-014] [NFR-006] writes the List's file with semicolons when asked, the mark still first and once (T-263)", async () => {
+    const plan = await shared('Punto y coma');
+    const query = { columns: 'summary,status', sort: 'created' };
+    const semicolons = await exported('admin', plan.id, { ...query, separator: 'semicolon' });
+    expect(semicolons.statusCode, semicolons.body.slice(0, 200)).toBe(200);
+    expect([...semicolons.rawPayload.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+    expect(semicolons.rawPayload.indexOf(Buffer.from(CSV_BOM), 3)).toBe(-1);
+    expect(semicolons.body.slice(1).split('\r\n')[0]).toBe('key;summary;status');
+    // The same rows as the comma file, each read back with the separator the importer finds.
+    const commas = await exported('admin', plan.id, { ...query, separator: 'comma' });
+    expect(commas.body).toBe((await exported('admin', plan.id, query)).body);
+    const read = (bytes: Buffer) =>
+      [...records(bytes, detectDelimiter(bytes))].map((r) => r.fields.map(cellText));
+    expect(detectDelimiter(semicolons.rawPayload)).toBe(';');
+    expect(read(semicolons.rawPayload)).toEqual(read(commas.rawPayload));
+    expect(read(semicolons.rawPayload).length).toBeGreaterThan(1);
+    expect((await exported('admin', plan.id, { separator: 'tab' })).statusCode).toBe(400);
   });
 
   it('[PLN-014] no file holds a hidden column, a formula that would run, or anything from nothing', async () => {

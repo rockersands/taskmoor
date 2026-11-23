@@ -490,7 +490,9 @@ describe('identity provider administration (M1-080)', () => {
       expect(within(item).getByText(text)).toBeVisible();
     }
     expect(
-      within(item).getByRole('link', { name: 'Taskmoor metadata for Contractors' }),
+      within(item).getByRole('link', {
+        name: `${CONTRACTORS.serviceProvider.metadataUrl} (Taskmoor metadata for Contractors)`,
+      }),
     ).toHaveAttribute('href', CONTRACTORS.serviceProvider.metadataUrl);
     // OpenID Connect providers keep their own details.
     expect(within(await providerItem('Staff accounts')).queryByText('SAML 2.0')).toBeNull();

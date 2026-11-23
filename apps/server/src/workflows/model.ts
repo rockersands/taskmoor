@@ -297,7 +297,12 @@ export type DefinitionProblem =
   | { problem: 'invalid_value'; transitionId: number | null; field: string }
   | { problem: 'unknown_close_reason'; transitionId: number | null; reasonId: number }
   | { problem: 'invalid_pattern'; transitionId: number; pattern: string }
-  | { problem: 'guards_too_deep'; transitionId: number };
+  | { problem: 'guards_too_deep'; transitionId: number }
+  /**
+   * A publish, or a file imported as a new workflow, with no transitions that free moves can give
+   * no move at all: every status closes, with no reason to close with (T-260; `noMovesPossible`).
+   */
+  | { problem: 'no_moves' };
 
 const depth = (node: GuardNode): number =>
   'all' in node

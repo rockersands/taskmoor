@@ -1201,6 +1201,67 @@ export interface PlanDraftTable {
   refused_at: Date | null;
 }
 
+/** Where a baseline's days came from: the tickets as they were, or a scenario's drafts. */
+export type PlanBaselineSource = 'live' | 'scenario';
+
+/**
+ * A baseline of a plan (PLN-011; ADR-122 stage 9): a named, frozen copy of the days of the plan's
+ * tickets its capturer was shown, from Live or a scenario (whose name is copied at capture).
+ */
+export interface PlanBaselineTable {
+  id: Generated<number>;
+  workspace_id: number;
+  plan_id: number;
+  name: string;
+  source: PlanBaselineSource;
+  /** The scenario's name at capture; null exactly when `source` is `live`. */
+  scenario_name: string | null;
+  /** How many rows it holds. */
+  tickets: Generated<number>;
+  created_by: number;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+  version: Generated<number>;
+}
+
+/** Whether a baseline's days were the ticket's own or its sprint's. */
+export type PlanBaselineDated = 'own' | 'sprint';
+
+/**
+ * One ticket in a baseline (PLN-011; ADR-122 stage 9): its own days, or else its sprint's, as
+ * days (`YYYY-MM-DD` when read as text), and whether it was closed. Never a key or a roll-up.
+ */
+export interface PlanBaselineDayTable {
+  workspace_id: number;
+  plan_id: number;
+  baseline_id: number;
+  ticket_id: number;
+  start_date: DateText;
+  due_date: DateText;
+  /** Null exactly when both days are. */
+  dated: PlanBaselineDated | null;
+  closed: boolean;
+}
+
+/**
+ * A structure of a plan's Grid (PLN-010; ADR-122 stage 10): a saved, named recipe for the plan's
+ * tree, its steps and columns, checked by the server's `structureSpec` on every write. It holds no
+ * tickets; the rows are built for each viewer when read.
+ */
+export interface PlanStructureTable {
+  id: Generated<number>;
+  workspace_id: number;
+  plan_id: number;
+  /** 1 to 100 characters, unique in its plan ignoring case. */
+  name: string;
+  spec: Json;
+  created_by: number;
+  updated_by: number;
+  created_at: DefaultTimestamp;
+  updated_at: DefaultTimestamp;
+  version: Generated<number>;
+}
+
 export type PlanCapacityUnit = 'points' | 'hours';
 export type PlanPeriodKind = 'weeks' | 'month';
 
@@ -1349,6 +1410,11 @@ export interface UserPreferenceTable {
   quiet_start: number | null;
   quiet_end: number | null;
   updated_at: DefaultTimestamp;
+  /**
+   * How their CSV files are written: `comma` (numbers as 1.5) or `semicolon` (numbers as 1,5);
+   * null is automatic, from the decimal mark of their region (T-263).
+   */
+  csv_separator: 'comma' | 'semicolon' | null;
 }
 
 /** The workspace's time tracking settings (M1-019, TIM-001). */
@@ -2992,6 +3058,9 @@ export interface Database {
   plan_dependency_type: PlanDependencyTypeTable;
   plan_scenario: PlanScenarioTable;
   plan_draft: PlanDraftTable;
+  plan_baseline: PlanBaselineTable;
+  plan_baseline_day: PlanBaselineDayTable;
+  plan_structure: PlanStructureTable;
   cross_track_release: CrossTrackReleaseTable;
   cross_track_release_member: CrossTrackReleaseMemberTable;
   saved_search_star: SavedSearchStarTable;

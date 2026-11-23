@@ -1,17 +1,19 @@
 ---
 title: "Plans"
 audience: users
-sources: apps/web/src/plans/client.ts, apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/styles/plans.css, apps/web/src/styles/releases.css, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/useCandidates.ts, apps/server/src/search/bind.ts, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md, packages/webconfig/src/csv.ts, apps/web/src/plans/download.ts, apps/server/src/privacy/erase.ts, apps/server/src/audit/query.ts, apps/web/src/plans/ProgramBoardsPage.tsx, apps/web/src/plans/ProgramBoardPage.tsx, apps/web/src/plans/programBoardClient.ts, apps/server/src/routes/program-boards.ts, apps/server/src/plans/dependencies.ts, apps/web/src/shell/DangerAction.tsx, apps/web/src/shell/moreSides.ts, apps/web/src/plans/ScenarioBar.tsx, apps/web/src/plans/ScenarioDialogs.tsx, apps/web/src/plans/PlanChangesPage.tsx, apps/web/src/plans/PlanScenariosPage.tsx, apps/web/src/plans/ScenarioCompare.tsx, apps/web/src/plans/changeWords.ts, apps/web/src/plans/drafting.ts, apps/web/src/plans/scenarioClient.ts, apps/server/src/routes/plan-scenarios.ts, apps/server/src/plans/drafts.ts, apps/server/src/privacy/export.ts, apps/server/src/reports/zone.ts, apps/web/src/plans/AutoScheduleDialog.tsx, apps/web/src/plans/ScheduleResult.tsx, apps/web/src/plans/scheduleWords.ts, apps/server/src/routes/plan-schedule.ts, apps/server/src/plans/scheduler.ts, apps/server/src/plans/scheduleInputs.ts, apps/server/src/plans/capacity.ts, apps/server/src/plans/sprints.ts
-accessed: 2026-11-14
+sources: apps/web/src/plans/client.ts, apps/web/src/App.tsx, apps/web/src/plans/PlansPage.tsx, apps/web/src/plans/PlanPage.tsx, apps/web/src/plans/PlanSummaryPage.tsx, apps/web/src/plans/PlanTimelinePage.tsx, apps/web/src/plans/PlanListPage.tsx, apps/web/src/plans/PlanCalendarPage.tsx, apps/web/src/plans/PlanCapacityPage.tsx, apps/web/src/plans/CapacityDialog.tsx, apps/web/src/plans/PlanSettingsPage.tsx, apps/web/src/plans/SourcePicker.tsx, apps/web/src/plans/TeamPicker.tsx, apps/web/src/plans/address.ts, apps/web/src/plans/PlanShareActions.tsx, apps/web/src/plans/DuplicatePlanDialog.tsx, apps/web/src/plans/DownloadMenu.tsx, apps/web/src/plans/planExport.ts, apps/web/src/plans/planImage.ts, apps/server/src/routes/search-export.ts, apps/web/src/timeline/TimelineView.tsx, apps/web/src/styles/plans.css, apps/web/src/styles/releases.css, apps/web/src/timeline/DependencyList.tsx, apps/web/src/timeline/dependencies.ts, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/refusal.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/plans.ts, apps/server/src/routes/plan-views.ts, apps/server/src/routes/plan-capacity.ts, apps/server/src/plans/query.ts, apps/server/src/plans/model.ts, apps/server/src/plans/periods.ts, apps/server/src/plans/cross-track.ts, apps/server/src/routes/cross-track-releases.ts, apps/server/src/search/cross-track.ts, apps/web/src/plans/PlanReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasesPage.tsx, apps/web/src/releases/CrossTrackReleasePage.tsx, apps/web/src/releases/MoveDateDialog.tsx, apps/web/src/releases/NewCrossTrackDialog.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/useCandidates.ts, apps/server/src/search/bind.ts, apps/web/src/timeline/markers.ts, docs/adr/0122-multi-track.md, docs/specs/03-planning-time-discovery-and-quality.md, docs/adr/0114-glass-interface-and-clear-sections.md, packages/webconfig/src/csv.ts, apps/web/src/plans/download.ts, apps/server/src/privacy/erase.ts, apps/server/src/audit/query.ts, apps/server/src/audit/subscriber.ts, apps/web/src/plans/ProgramBoardsPage.tsx, apps/web/src/plans/ProgramBoardPage.tsx, apps/web/src/plans/programBoardClient.ts, apps/server/src/routes/program-boards.ts, apps/server/src/plans/dependencies.ts, apps/web/src/shell/DangerAction.tsx, apps/web/src/shell/moreSides.ts, apps/web/src/plans/ScenarioBar.tsx, apps/web/src/plans/ScenarioDialogs.tsx, apps/web/src/plans/PlanChangesPage.tsx, apps/web/src/plans/PlanScenariosPage.tsx, apps/web/src/plans/ScenarioCompare.tsx, apps/web/src/plans/changeWords.ts, apps/web/src/plans/drafting.ts, apps/web/src/plans/scenarioClient.ts, apps/server/src/routes/plan-scenarios.ts, apps/server/src/plans/drafts.ts, apps/server/src/privacy/export.ts, apps/server/src/reports/zone.ts, apps/web/src/plans/AutoScheduleDialog.tsx, apps/web/src/plans/ScheduleResult.tsx, apps/web/src/plans/scheduleWords.ts, apps/server/src/routes/plan-schedule.ts, apps/server/src/plans/scheduler.ts, apps/server/src/plans/scheduleInputs.ts, apps/server/src/plans/capacity.ts, apps/server/src/plans/sprints.ts, apps/web/src/plans/PlanBaselinesPage.tsx, apps/web/src/plans/BaselineCompare.tsx, apps/web/src/plans/baselineClient.ts, apps/web/src/plans/baselineExport.ts, apps/server/src/routes/plan-baselines.ts, apps/web/src/timeline/CriticalPathList.tsx, apps/web/src/timeline/critical.ts, apps/server/src/plans/criticalPath.ts, apps/server/src/plans/evenOut.ts, apps/web/src/plans/PlanGridPage.tsx, apps/web/src/plans/StructureDialog.tsx, apps/web/src/plans/MoveUnderDialog.tsx, apps/web/src/plans/grid/client.ts, apps/web/src/plans/grid/compute.ts, apps/web/src/plans/grid/tree.ts, apps/web/src/plans/grid/rowWindow.ts, apps/web/src/plans/grid/words.ts, apps/web/src/styles/grid.css, apps/server/src/routes/plan-structures.ts, apps/server/src/plans/structures.ts, apps/server/src/plans/structureTree.ts, apps/server/src/routes/ticket-types.ts, apps/web/src/account/csvStyle.tsx, apps/web/src/list/order.ts, apps/web/src/list/SortMenu.tsx
+accessed: 2026-11-17
 attestation: own-words
 ---
 # Plans
 
 Plans bring the work of several tracks together in one place, without changing how those
 tracks work. Each **plan** gathers the tickets of the tracks and saved searches you choose, and
-shows them as a **Summary**, a **Timeline**, a **List**, a **Calendar**, its teams'
+shows them as a **Summary**, a **Timeline**, a **List**, a **Grid**, a **Calendar**, its teams'
 **Capacity**, its tracks' **Releases** and its **Program boards**, and holds **scenarios** of draft
-changes to try before they change anything. Open **Plans** in the sidebar, under **Plan and track**.
+changes to try before they change anything and **baselines** of its days to compare with later.
+Open **Plans** in the sidebar, under **Plan and track**. The help mark beside a plan's name says
+in a few lines what each tab is for.
 
 A plan never gives anyone access. Everyone who opens it sees only the tickets they may see
 anyway, exactly as a search would show them.
@@ -46,10 +48,11 @@ The **Plans** page lists **Your plans** and those **Shared with you**.
 ## The views
 
 Every view shows at most the first 10,000 tickets of the plan and says so when there are more:
-filter the plan to see the rest.
+filter the plan to see the rest. The Grid stops at 100,000 rows instead.
 
-On a phone, the tab bar scrolls sideways and starts with the open tab in view. Where more tabs
-wait past an edge of the bar, that edge fades out.
+On a wide screen, tabs that do not fit on one line, as can happen in Spanish, go on to a second
+line, so none is ever hidden. On a phone, the tab bar scrolls sideways and starts with the open
+tab in view. Where more tabs wait past an edge of the bar, that edge fades out.
 
 - **Summary**: how many tickets the plan holds, how many are **Open**, **Overdue**, **Due within 7
   days**, **Open without dates** and **Closed in the last 7 days**, then the tickets by stage, by
@@ -61,11 +64,16 @@ wait past an edge of the bar, that edge fades out.
   even those outside the plan. Lines join a ticket to the ones it blocks, across tracks too: see
   [Dependencies](#dependencies).
 - **List**: the plan's tickets as a search, in your columns (**Columns** opens a panel over the
-  page, as on search), sorted newest created first, by recent update, due date or priority. You
-  edit cells in place, as in search results; on a phone each ticket is a stacked row of its key,
-  summary, status, assignee and priority. It stops at 10,000 rows.
+  page, as on search), sorted newest created first, by recent update, due date, priority, type or
+  key, or by clicking a column's heading (again for the other way), as on a track's
+  [list](views.md#the-list-view). The download follows the same order. You edit cells in place,
+  as in search results; on a phone each ticket is a stacked row of its key, summary, status,
+  assignee and priority. It stops at 10,000 rows.
+- **Grid**: the plan's tickets as a tree, with their children and linked tickets below them and
+  columns that add up the rows below: see [The Grid](#the-grid).
 - **Calendar**: a month of the tickets on their due and start days. A day shows six tickets and a
-  button for the rest.
+  button for the rest. A sprint named after its track puts what tells it apart first and its
+  track after, so "Mobile apps Sprint 2" reads **Sprint 2 · Mobile apps**.
 
 ## Dependencies
 
@@ -111,6 +119,48 @@ sprint now (one that has not been completed): its line on the Timeline is dotted
 the list and the program board's cards say **Same sprint** in words. Only dependencies between
 tickets you may see are marked, and the sprint is never named. A copy of the plan takes these
 options with it.
+
+## The critical path
+
+The **critical path** is the chain of work that decides when the plan ends: the tickets that
+cannot end any later without the plan ending later, or without a ticket they hold up having to
+start on or before the day they end. Each other ticket has **slack**: how many days its end can
+move later before either happens.
+
+Turn it on with **Critical path**, beside the Timeline's zoom buttons; the page's link keeps it on.
+
+- **On the bars:** a ticket on the path gets a heavy outline and a ▲, so it never depends on colour
+  alone, and a screen reader hears "On the critical path" with the bar. Other bars say, for
+  example, "5 days of slack". A dependency between two tickets of the path with no day to spare
+  between them is drawn heavier, and the legend explains both marks.
+- **In words:** **Critical path in words** takes you to the list below the Timeline. It says how
+  many tickets are on the path and when the plan ends, then gives each chain from its first ticket
+  to its last, for example "SPA-3 starts Dec 1, ends Dec 4, then SPA-7 starts Dec 5, ends Feb 12,
+  the plan's end." A ticket whose slack is below 0 says a dependency before it is already late,
+  and by how many days: the plan cannot end on time as things stand. The list names at most 500
+  tickets and counts the rest.
+- **In the files:** while it is on, the Timeline's CSV gains the columns **Slack (days)** and
+  **Critical**, and its image draws the same outlines, marks and heavier lines, with a line of
+  legend.
+
+**What it covers:** the plan's open tickets that you may see, at every level, each by its own
+days or else its sprint's, read in the scenario you chose. It goes through **Blocks** links and
+the link types the plan's [dependency options](#dependency-options) count. Closed tickets are left
+out and hold nothing up. A parent with no days of its own, whose bar is only its children's span,
+is not on the path; its children are. Some things are only counted, never named:
+
+- tickets in a circle of dependencies, which have no slack;
+- work outside the plan or not shown to you that a ticket waits for. The tickets waiting are
+  counted ("1 ticket waits for work outside this plan…") and stay on the path, named where they
+  are on it, but the work they wait for is never named and holds nothing in their slack, so
+  their slack can be shorter than it looks;
+- open tickets without dates, which are left out.
+
+**It is yours:** the path runs over the whole plan as it shows it to you, whatever the filters,
+so a filter changes which bars you see marked, never the path or the plan's end. Two people who
+may see different tickets can get a different path, a different end and different slack. Slack
+and delays are in calendar days. Turning the path on changes nothing on any ticket. A plan with
+more than 50,000 open tickets is too large for it: the list then says the path could not be read.
 
 ## Teams and capacity
 
@@ -176,8 +226,11 @@ a field empty for none. A note goes with a capacity: a note typed where no capac
 not saved, and the dialog says so at that capacity. Emptying a capacity removes it with its note.
 **Save capacity** saves only what changed. Each change is kept in the plan's history with its
 note, so a note should say what planning needs ("Leave"), not why. When a person is erased, their
-capacity goes, and the notes about them are emptied in that history too; the amounts stay. If someone changes the plan's
-unit or periods while you type, nothing is saved and the dialog asks you to reload the page.
+capacity goes, and the notes about them are emptied in that history too; the amounts stay. The
+audit log records who changed whose capacity and the amounts, not the notes' words; only records
+written by an earlier version of Taskmoor still hold them, shown empty for an erased person. If
+someone changes the plan's unit or periods while you type, nothing is saved and the dialog asks
+you to reload the page.
 
 ## Filtering and grouping
 
@@ -216,7 +269,9 @@ no access. [Auto-scheduling](#auto-scheduling) can fill a scenario with proposed
 
 Every tab but Settings has a **Scenario** select below the plan's name. **Live**, the first choice
 and where a plan opens, is the tickets as they are: a change you make there changes the ticket at
-once, and the sentence under the select says so. Choose a scenario to read the plan with its drafts.
+once, and the sentence under the select says so. On a phone the label sits beside the select, and
+under Live that sentence is read out only by a screen reader with the select, so the plan's work
+starts higher. Choose a scenario to read the plan with its drafts.
 The sentence then says how many changes it holds and that nothing changes until you apply them, and
 **Review** opens its change list. The scenario you chose is in the page's address, so a link opens
 the same one. A link to a scenario that was deleted opens the plan live, and says so.
@@ -338,13 +393,15 @@ each team is a card. The numbers are of the tickets you see, so two people can s
 
 Drafts do not appear in a ticket's history and send no notifications until they are applied. The
 scenarios you made and the drafts you last changed are in your data download; a copy of a plan
-takes no scenarios.
+takes no scenarios. To keep a schedule as it stands and see later what moved, capture a
+[baseline](#baselines).
 
 ## Auto-scheduling
 
 **Auto-schedule** proposes start and due days for a plan's open tickets: it takes them in rank
-order, blockers first, and fills the plan's periods within the capacity set on the Capacity tab. It
-changes no ticket. What it proposes are draft changes in a scenario, marked as the auto-scheduler's,
+order, blockers first, and fills the plan's periods within the capacity set on the Capacity tab.
+Or, when you choose **Even out load**, it moves only the work that puts a team or person over
+capacity, later (see [Evening out load](#evening-out-load)). It changes no ticket. What it proposes are draft changes in a scenario, marked as the auto-scheduler's,
 which you review, compare, apply or discard as you would your own (see
 [Scenarios and draft changes](#scenarios-and-draft-changes)). It follows fixed rules, described
 below, and says for each ticket why it went where it did, why it stayed, or why it could not be
@@ -363,7 +420,9 @@ tickets the plan shows you:
   the plan counts points and no Points field exists, nothing can be sized;
 - how many open tickets the plan shows you, how many people in its teams have capacity of their
   own, and how many tickets will not be placed for want of an estimate, an assignee, or an assignee
-  in one of the plan's teams.
+  in one of the plan's teams;
+- how many periods of its teams and people are over capacity now, when any are, from the tickets'
+  days and the drafts people made in the scenario, leaving out the auto-scheduler's own proposals.
 
 **Run** is off, with the reason beside it, when the plan has no teams, no team has capacity, tickets
 cannot be sized, or there is nowhere to write the result. It is also off while the dialog checks the
@@ -371,14 +430,16 @@ plan again for choices you changed, so a run never starts on what was said for o
 
 Then you choose:
 
+- **What the run does:** **Place work in rank order** (the default), described here, or **Even
+  out load**, described under [Evening out load](#evening-out-load).
 - **Where the result goes:** **A new scenario** (the default), named "Auto-schedule" and today's
   date unless you rename it, with **Start from** empty or a copy of one of the plan's scenarios (the
   one open is chosen first); if the plan has no scenario yet, the new one becomes its main
   scenario. Or **This scenario: Faster**, when a scenario is open. A plan already holding 20
   scenarios cannot take a new one, and a scenario being applied cannot take a run; the dialog says
   so.
-- **What it may move:** **Keep tickets in progress** and **Keep tickets in an active sprint** (both
-  ticked at first), **Also keep tickets matching** a query, **Leave out ticket types** and **Leave
+- **What it may move:** under **Kept tickets never move (fixed dates)**, **Keep tickets in
+  progress** and **Keep tickets in an active sprint** (both ticked at first), **Also keep tickets matching** a query, **Leave out ticket types** and **Leave
   out releases** (up to 20 of each), and **Also leave out tickets matching** a query. The types
   offered are those of the open tickets the plan shows you; the releases, those they target that
   are neither shipped nor archived, in tracks you can browse. The queries are written as in
@@ -387,8 +448,8 @@ Then you choose:
 - **When:** **Schedule from**, today at first, and **Look ahead**, 1 to 12 of the plan's periods
   (6 at first). The dialog names the span, for example "6 periods of 2 weeks: Nov 17 to Feb 8."
 
-The dialog remembers your choices for this plan in this browser, apart from the first day and where
-the result goes; a type or release the plan no longer offers is forgotten. When you run again into a scenario that already holds proposals, it says how many
+The dialog remembers your choices for this plan in this browser, what the run does among them,
+apart from the first day and where the result goes; a type or release the plan no longer offers is forgotten. When you run again into a scenario that already holds proposals, it says how many
 the run will replace and how many drafts people made there, which stay. While the run works,
 **Run** reads "Scheduling…", a line says how many tickets it is scheduling, and the dialog stays
 open until the run has answered.
@@ -496,6 +557,329 @@ A run stops before writing anything when it would move more than 10,000 tickets 
 run again), when the plan has more than 50,000 open tickets, or when the scenario would end up with
 drafts on more than 10,000 tickets.
 
+### Evening out load
+
+Choose **Even out load** under **What the run does** when the plan's work is roughly where you want
+it, but some teams or people have more due in a period than their capacity. Instead of placing
+everything again, the run moves as little as it can: only work that puts someone over capacity,
+only later, and each ticket by the fewest days, keeping its length. Its proposals are draft changes
+in a scenario, as for any run.
+
+- **Where it starts:** each period of the run as the Capacity tab counts it for the scenario: the
+  tickets' days and the drafts people made there, closed work due then and each person's work
+  elsewhere. A team or person is **over** in a period when a capacity is set there and the work due
+  is more than it.
+- **What can move:** the same tickets a run in rank order may move, at the lowest level, open,
+  neither kept nor left out, and only those with a due day and an estimate, since only they count
+  in a period. **Kept tickets never move**: those a person drafted, those you may not schedule,
+  those in progress or in an active sprint when those boxes are ticked, and those matching the
+  keep query are the plan's fixed dates. Nor do tickets in a circle of dependencies or waiting on a
+  ticket the plan does not show you.
+- **Which ticket moves first:** the periods are taken earliest first, teams before people. In each,
+  the lowest-ranked ticket of that team or person due there moves first, then the next, until the
+  period is within capacity.
+- **How far:** to the first later period of the run where every team and person it counts for has
+  room for it. Its start and due days move by the same number of days, the fewest that put its due
+  day in that period, so it keeps its length.
+- **What it blocks:** a ticket it blocks that would now start on or before its new end moves too,
+  to start the day after it, keeping its length, and so on along the chain. When that would move a
+  ticket that may not move (a kept or left-out one, one above the lowest level, one dated only by
+  its sprint, one in a circle, one waiting on a ticket the plan does not show you) or take a ticket
+  past the run's last day, the whole move is undone, the ticket stays, and the next one is tried.
+  So the run makes no dependency late between the tickets it reads.
+- **No room:** when no later period has room, the ticket stays. If the period is still over at the
+  end, its tickets that could not move say "Still over" and the period is reported; if another
+  ticket's move made it fit, they are simply left where they are.
+
+The result, on the scenario's **Changes** tab, is titled **Even out load** and counts what moved,
+for example "2 tickets moved later, 14 kept, 1 not moved, 3 earlier proposals removed."
+**Moved**, **Not moved** and **Kept** list their tickets with the reason in words; the tickets
+left where they were are not listed. The reasons read, for example:
+
+- "Moved 2 weeks later, from Dec 1–Dec 14 to Dec 15–Dec 28: Atlas was 6 points over."
+- "Moved 3 days later after SPA-10, which was moved."
+- "Not moved: moving it would make kept SPA-4 late.", "Not moved: moving it would push SPA-9 past
+  Feb 8, the run's last day." or "Still over: no room for Atlas up to Feb 8."
+
+**Still over capacity** then lists every period of a team or person that is over after the run,
+by how much and why: only tickets that do not move are there, or no later period of the run has
+room. When none is, it says every team and person is within capacity in the run's periods. Work a
+move pushes later can fill a later period in turn; the run works on that period when it gets there,
+and lists it here if it stays over.
+
+A run that evens out load and one in rank order **replace each other's proposals** in the same
+scenario, and both start from the tickets' days and the drafts people made, never from an earlier
+run's result; the dialog says so. Work moves by the plan's periods, counted in calendar days, never
+earlier and never by part of a period's room. What a run sees is the same as above: moving a
+ticket later never makes the link to its own blockers late, but a ticket hidden from you that it
+blocks may start too early without you being told.
+
+## Baselines
+
+A **baseline** keeps the days of a plan's tickets as they are at one moment, so that later you can
+see what moved. For each ticket the plan shows the person who captures it, at every level, open or
+closed, with or without dates, it keeps the ticket's own start and due days, or its sprint's days
+when it has none of its own, and which of the two. It keeps no keys, summaries or parents' spans,
+and capturing one changes nothing on the tickets.
+
+### Capturing one
+
+The plan's owner and site administrators see **Capture baseline…** on the plan's **Baselines** tab,
+after **Scenarios**. The dialog, a sheet on a phone, has the name ready, such as "Baseline 14 Nov",
+and says where the days come from: **What the Timeline shows now: Live**, or the scenario open on
+the page, drafts included. Names need not be unique. A plan holds up to 10 baselines: then the
+button is off and the page says to delete one first. A plan of more than 50,000 tickets is too
+large to capture.
+
+The tab lists the plan's baselines, newest first, each with **From Live** or **From Faster** (the
+scenario's name as it was, even after it is renamed or deleted), how many tickets it holds, and who
+captured it when. Its editors can **Rename** and **Delete** each; deleting asks first, in the page,
+and changes no ticket. Everyone else who sees the plan reads and compares them, and the page says
+who may change them.
+
+### Comparing with a baseline
+
+**Compare** opens a baseline against the days now under the list; the page's address keeps it. The
+days now are Live, or the scenario open on the page, and the plan's filters apply. First comes a
+sentence, for example "12 tickets end later than in Kick-off, by up to 14 days; 3 earlier; 40 the
+same. The plan ends 9 days later (Feb 21, was Feb 12).", then how many tickets are not in the
+baseline, had no days then or have none now.
+
+- **Delay** is a ticket's end now less its end in the baseline, in calendar days. A ticket's end is
+  its due day, else its start day, else its sprint's end. Closed tickets count the same way and
+  say "(closed)".
+- **The plan's end**, then and now, is the latest end of the tickets that have days in both.
+- **Later**, **Earlier**, **Not in the baseline** and **All** choose the list, each with its
+  count. Each ticket shows its key and summary, a link, with its delay in words: "9 days later: due
+  Feb 21, was Feb 12". The list shows 200 tickets at a time, by delay, largest first; **Show more**
+  brings the next ones. On a phone it stays a list.
+- **Download CSV** gives every ticket of the chosen list, with its start and due days then and now,
+  where each came from, its delay and how many days its start moved.
+
+**Who sees what:** a baseline holds what its capturer was shown, and you see its days only on the
+tickets the plan shows you now. Its other tickets, hidden from you or gone from the plan, are one
+number, "4 tickets in this baseline are not shown to you.", which never says which. Tickets the
+filters leave out are not compared. So two people can read different numbers from one baseline.
+A ticket the plan shows you that has no row in the baseline is listed as **Not in the baseline**:
+it was added to the plan since, or its capturer was not shown it (when you see more than they did,
+for example as a site administrator). The page cannot tell which, so it never says "added".
+
+A copy of a plan takes no baselines, and deleting a plan deletes them. The baselines you captured
+are in your data download by name, plan, source and time, without their days. Capturing, renaming
+and deleting one are kept in the audit log.
+
+## The Grid
+
+The **Grid** tab, after **List**, shows the plan's tickets as a tree, with columns that edit tickets
+in place and columns that add up the rows below each row. What it shows comes from a
+**structure**: a named recipe of **steps**, which decide the rows, and **columns**. A structure holds
+no tickets. Its rows are built for each person when they open it, from what that person may see,
+so two people can read different rows from the same structure.
+
+### Structures
+
+A plan with no saved structure shows the **Default structure**, unsaved: the plan's tickets with
+their children below them, and the columns key, summary, status and assignee, a count of the rows
+below and their progress.
+
+The plan's owner and site administrators, its editors, see **New structure…**, **Edit
+structure…** and **Delete structure**; on the default, **Save as a structure…** saves it under a
+name. Everyone else who sees the plan uses its structures as they are, and the page says that the
+plan's editors can save others.
+
+- **Structure** chooses among the saved ones, listed by name. The address keeps the choice, so a
+  copied link opens the same structure. Once a plan has a saved structure, the default is no
+  longer offered. If the structure a link names was deleted since, the page says so and shows the
+  plan's first.
+- A plan holds up to 20 structures. A name has 1 to 100 characters and is unique in the plan,
+  whatever its capitals.
+- **Delete structure** asks first, in the page, and deletes it for everyone who sees the plan; its
+  tickets stay as they are.
+- If someone changed a structure while you were editing it, saving says so and changes nothing:
+  close it and open it again.
+
+### Steps
+
+The dialog lists the steps in the order they apply, whatever order you pick them in:
+
+1. **Add tickets**: the plan's tickets, as the page's filters leave them. A query in the search
+   language, up to 2,000 characters, narrows them further; it never brings tickets from outside the
+   plan. Leave it empty to start from every ticket of the plan. A ticket whose parent is also added
+   sits under it. A query that does not read is refused on save. When it names something you may
+   not search, the structure adds nothing for you and says why, while the others who see the plan
+   still get their rows.
+2. **Group by** and **Then group by**: up to two fields, the second nesting inside the first.
+   They take track, assignee, status, type and priority, or a custom select, person, team or
+   release field that holds one value, so no ticket falls in two groups. Groups come in the order of
+   their names, **No value** last. A group row reads, for example, "Status: Active", with how many
+   rows it holds. Grouping applies to the top rows, and their rows below go with them.
+3. **Add children, down every level**: under each row, its children, then theirs, down to the
+   lowest level of the hierarchy, whether they are in the plan or not.
+4. **Add linked tickets**: up to two steps, each a link type and its direction (tickets this one
+   blocks, say, or tickets that block this one), and **How far**: one link away, or up to two or
+   three. A ticket already on the way stops it, so links that go round never repeat.
+
+Rows below a parent are in rank order, and in the order they were created where ranks are equal.
+
+- **A ticket appears once,** where the steps first reach it. A row that reaches it again says so:
+  "Also reached once more, shown elsewhere".
+- **Not in this plan** marks a child or linked ticket from outside the plan.
+- **Placed by a link** marks a row that an Add linked tickets step put there.
+- **The Grid stops at 100,000 rows** and then says "Shows the first 100,000 rows."
+- **A field or link type deleted since** breaks only the step or column that names it, which says
+  why; the rest of the structure still works, and the picker marks the structure "(partly
+  broken)".
+
+The page's filters narrow only the Add tickets step: children and linked tickets are added
+whatever the filters say. The plan's own grouping is not used here; Group by steps take its place.
+
+### Columns
+
+A structure has up to 30 columns, of which up to 10 totals and 5 formulas; the dialog counts them.
+Each column in the dialog says in words what it does, and **Up**, **Down** and **Remove** order
+them. **Add a column** adds one of three kinds:
+
+- **Ticket column**: any column search results offer, or a custom field. Its cells edit in place
+  as in search results, through the ticket's own checks; a field search results do not edit is
+  only shown. The parent is never edited in a cell: move the row instead. The key always goes in
+  the first column, **Ticket**, as a link to the ticket.
+- **Total of rows below**: **Sum**, **Lowest**, **Highest**, **Count of rows below** or
+  **Progress by closed tickets**. Sum takes the original and remaining estimates, time spent,
+  number fields and formula fields that give a number, an amount, a percentage or a duration.
+  Lowest and Highest also take the start and due dates, date fields and formula fields that give a
+  date, and then read **Earliest** and **Latest**. Count and Progress take no field.
+- **Formula**: a column name, an expression in the language of
+  [formula fields](../admin/fields.md#formula-fields), what it gives and its decimals (0 to 3). It
+  is checked when you leave the expression or choose **Check formula**, and again on save: a
+  formula that does not check says where and why, and is not saved. Fields go in braces by name and
+  must be fields every track shares. Once saved, the dialog shows them by id, such as `{cf[41]}`,
+  so renaming a field never breaks the column. A new formula column starts as `count(children)`,
+  named **Child rows**, ready to change.
+
+### Totals and formulas
+
+A total at a row adds up its **child rows**, not the row's own value. Sum adds the child rows'
+totals, Lowest and Highest take theirs, and a row with nothing below gives its own value. So on
+every row, a sum is the sum of the rows directly below it. The row's own value stays in its ticket
+column beside the total, which is why the column's header says **Total of rows below**.
+
+- **Count** is every ticket row below, at any depth.
+- **Progress** is how many of those are in a status of the closed stage, out of how many: "3 of 8
+  closed", with a bar, never a percentage.
+- **Empty values** are skipped, and the total says so: "5 of 8 have a value".
+- **A group row** totals its rows, and the last row, **All rows**, totals the top rows.
+- Durations read in hours ("12 h") and dates as dates.
+
+A **formula column** computes a value for each ticket row, as a formula field would, except that
+`children` means the row's child rows in the Grid, whichever step put them there:
+`sum(children.{Points})` adds their own values and `count(children)` counts them. `today` is your
+day, on [your clock](account.md#your-time-zone), and working days follow the time tracking setting. Group rows and the last
+row show nothing in a formula column. `sum(children.{Points})` equals the Sum total of Points only
+where no child row has rows of its own: the formula reads each child's own value, the total each
+child's total.
+
+Totals and formula columns are computed in your browser from the rows shown, and never stored, so
+they cannot be searched or sorted. An edit changes the totals above it at once.
+
+**A stored formula field can differ from a total over the same rows.** Shown as a ticket column, a
+formula field keeps the value stored on the ticket, which counts every child of the ticket that is
+not deleted, whether you may see it or not, and nothing else. A total counts only the rows the Grid
+shows you, linked tickets included.
+
+### Reading and editing
+
+On a wide screen the Grid is a table whose rows open and close; the header row, the **Ticket**
+column and the **All rows** row stay in view as you scroll. Every row opens expanded. **Expand
+all** and **Collapse all** do every row at once, and the rows you closed are remembered in this
+browser for each structure. Cells load as their rows come into view: a row not loaded yet shows
+its key and a quiet line. If some cells cannot be read, the page says so, and **Try again** asks
+for them again. **Refresh** reads the structure again, with other people's changes: the
+Grid does not update by itself.
+
+After you edit a cell, the totals above it change at once, and the rows above are read again,
+since a formula field stored on them may have changed. A refusal shows on the cell, as in search
+results.
+
+**Keyboard:** the Grid is one stop for Tab. Up and Down move between rows. With a whole row in
+focus, rather than one of its cells, Right opens it and Left closes it; Left on a closed row goes to
+its parent, Right on an open row goes into its **Ticket** cell, and Enter opens or closes it. In a
+cell, Right and Left move between cells, and Left from the **Ticket** cell goes back to the row.
+Enter edits a cell and Escape cancels. Home and End go to the ends of a row, and Control
+with Home or End to the first and last rows. Page Up and Page Down move ten rows. Shift and F10,
+or the menu key, open a row's menu. If closing rows hides the row you were on, the Grid's stop for
+Tab moves to the row shown above it.
+
+**On a row:**
+
+- "+4 not shown": tickets below the row that you may not see. They are counted, never named and
+  never in a total.
+- **Not in this plan**, **Placed by a link** and "shown elsewhere", as above.
+
+If reading a structure takes too long, the page says so and shows nothing rather than part of it:
+narrow it with the filters or a query, or choose **Try again**.
+
+### Moving a row
+
+A row moves under another parent with everything below it, one row at a time.
+
+- **Drag** it by its grip, at the start of its row, onto the new parent. A label beside the pointer
+  says "Move ABC-12 under DEF-3", or why it cannot go there, and the row under the pointer is
+  outlined. Escape cancels. On a touch screen, rest a finger on the grip a moment, or move it
+  sideways, to start dragging; a quick flick up or down scrolls.
+- **Move under…**, in the row's menu (the grip, Shift and F10, or the menu key), lists the Grid's
+  ticket rows that can be its parent, at most 50 with how many more match, and **Find the new
+  parent by key or summary** narrows them. Once you type, the rows that cannot be its parent are listed too, each saying why.
+- **Remove from parent**, in the same menu, takes its parent away.
+
+Every move asks first: "Move ABC-12 under DEF-3? Its parent changes from GHI-1 to DEF-3. 6 rows
+move with it." Nothing changes until you choose **Move**. The move is the ticket's own change,
+with every check a change of parent has anywhere: you need permission to edit the moved ticket and
+must see the new parent; the parent is a ticket exactly one level up, named by your administrators'
+names for levels; a subticket stays in its parent's track and always needs a parent; and a status
+that locks the ticket keeps it where it is. A refusal says why, and nothing moves. If someone
+changed the ticket since the Grid read it, nothing moves either: it is read again, and you can
+check and move it again. A parent you may not see is called "a ticket you may not see", never
+named.
+
+These never move: a group row, which is also never a parent ("A group is not a parent"); a row
+placed by a link, whose place comes from the link; and any row in a scenario.
+
+After a move the row and its rows go under the new parent at once, the totals above both places
+follow, the new parent opens and the page reads the structure again. Until then, the moved row is
+last among its new parent's rows.
+
+### The Grid on a phone
+
+The Grid is a list of cards, each with a 44-pixel button to open and close it. Cards step in a
+little for each level, up to four, and deeper cards say their level's name instead. Each shows its
+key, summary and the first two columns, with their names, and its marks, such as "+1 not shown";
+when a card needs more room for them, or for larger text, every card grows to fit. Tapping a card opens a sheet with every
+column, where cells edit, and **Move under…** and **Remove from parent**. There is no dragging on a
+phone, and nothing scrolls sideways.
+
+### In a scenario
+
+With a scenario open, the Grid shows the tickets as they are, not their drafts, and its cells and
+rows cannot be changed: the page says so. Its editors can still change the structures, which
+belong to the plan.
+
+### Who sees what in the Grid
+
+- **Rows are only tickets you may see**: the Add tickets step through the plan, like every view,
+  and the other steps through your own access to tickets, across tracks.
+- **A parent you may not see breaks the path**: its children you may see become top rows.
+- **Hidden tickets below a row** are only counted, as "+N not shown": children under the rows an
+  Add children step opened, and linked tickets of the steps' link types. They are never keyed,
+  valued or added into a total.
+- **Group names** come only from the rows shown.
+- **Formula fields** stored on tickets keep their stored value, which may count children you may
+  not see, as anywhere else.
+
+Making, changing and deleting a structure are kept in the audit log, by its name. Edits and moves
+are the tickets' own changes, in their history. A copy of a plan takes its structures, as made by
+whoever copies it, and deleting a plan deletes them. The structures you made are in your data
+download by plan and name, without their steps or columns; if your account is erased, they stay.
+
 ## Changing and sharing a plan
 
 The plan's owner and site administrators see **Settings**: its name, description, sources and
@@ -522,7 +906,9 @@ one per increment, say, each read only when opened.
   no team** for work whose team is empty or a team the plan does not plan with; a card there says
   its team.
 - **A card's team** is its value in the board's **Team field**. A site administrator adds that
-  field (a shared field of the type Team) once; each board says which one it reads.
+  field (a shared field of the type Team) once; each board says which one it reads. Until one
+  exists, the tab says so: to site and configuration administrators it says where fields are
+  added, with an **Open Fields** link, and to everyone else to ask a site administrator.
 - **Columns** are the plan's own periods, the same ones Capacity counts by, starting from the one
   that holds the board's first day, after **Not scheduled** for open work with no due date. The
   period holding today says **Now**.
@@ -612,7 +998,7 @@ everyone: **No releases**, **Upcoming**, **Ready to ship** (it has tickets and n
 **Overdue** (its date has passed and not all have shipped) or **Shipped** (all have). An archived
 release, or a release of an archived track, stops counting towards it, and a track in the trash
 drops out for everyone until it is restored. Its date, and each linked release's, has passed once
-it has gone by on your device's clock: it turns overdue at your own midnight, on its page, in the
+it has gone by on [your clock](account.md#your-time-zone): it turns overdue at your own midnight, on its page, in the
 list and on a plan's **Releases** tab, as a track's own releases do.
 
 **Nothing ships by itself.** **Ready to ship** is an announcement: each track's administrators still
@@ -629,7 +1015,11 @@ of a track's or a release's name in the filter and the rest can be found too.
 
 Linking moves no date. A release on another day reads as **Out of step** until someone moves it.
 Its track's administrators, its owner and administrators can **Remove** it, which changes no date
-either. Nobody removes a release they may not see. A release merged into another or deleted leaves
+either. **Remove**, in the danger colour, asks first, in the table, on the card or on the release's
+own page (**Remove from** and the name): it names the release and its track, and says that its
+tickets stop counting here, that its date no longer moves with this one, and that only that
+track's administrators can link it again, while it is neither shipped nor archived. **Cancel**, which
+has the focus, or Escape keeps it. Nobody removes a release they may not see. A release merged into another or deleted leaves
 by itself.
 
 ### Changing or deleting it
@@ -691,8 +1081,8 @@ hear of the release across tracks itself, and a full export leaves it out; a bac
 Anyone who sees a plan may copy it, and the copy is theirs alone. Choose **Duplicate plan** at the top
 of any of its tabs and give the copy a name.
 
-- **What comes:** the description, the sources you may see, in their order, the unit, the periods and
-  the teams. Saved searches come by reference, so the copy changes when they do. Sources that are
+- **What comes:** the description, the sources you may see, in their order, the unit, the periods,
+  the teams and the Grid's structures. Saved searches come by reference, so the copy changes when they do. Sources that are
   archived or no longer run come too, and say so as usual.
 - **What does not:** sources hidden from you, which are only counted ("2 sources you may not see
   were left out"), never named; who it is shared with, since a copy should not reach anyone by
@@ -703,7 +1093,8 @@ of any of its tabs and give the copy a name.
 
 Choose **Copy link** at the top of any tab. The link holds the view as it stands: the tab, the
 filters, the grouping, and where the view is, which means the Timeline's zoom, the Calendar's month,
-the first period of Capacity and the order of the List. Columns stay yours, in this browser.
+the first period of Capacity, the order of the List and the Grid's structure. The rows you closed in
+the Grid stay yours, in this browser. Columns stay yours, in this browser.
 
 A link gives no access. It is only an address:
 
@@ -724,21 +1115,24 @@ hidden from you, and a cell that a spreadsheet would run as a formula starts wit
 | View | File | What it holds |
 |---|---|---|
 | **Summary** | CSV | Each number, what it counts and the search that finds those tickets |
-| **Timeline** | CSV | The first 10,000 tickets, as the view lists them, with their days, where the days come from, their children's span and their blockers. Blockers the view does not list stay two numbers |
+| **Timeline** | CSV | The first 10,000 tickets, as the view lists them, with their days, where the days come from, their children's span and their blockers. Blockers the view does not list stay two numbers. While the critical path is on, also each ticket's slack and whether it is on the path |
 | **Timeline** | Image (PNG) | The picture of up to 400 rows, group headings among them. It says how many it holds of how many, and late dependencies are dashed and say "late" in words |
 | **List** | CSV | **Every** ticket of the plan you may see, however many, in your columns and order. Grouping does not change it |
 | **Calendar** | CSV | The tickets of the month shown, at most 10,000 |
 | **Capacity** | CSV | One line per team or person and period, and one for open work with no due date. Other work due then stays a count and an amount, counted by whole weeks. Notes stay on the page |
 | **Releases** | CSV | The tab's releases, each release across tracks before those linked to it. What is hidden stays two numbers |
+| **Baselines** | CSV | **Download CSV** in a comparison: the tickets of the list chosen, with their days then and now and their delay. Tickets in the baseline not shown to you stay one number |
 
-Past 400 rows, filter the plan to fit the image: the page says so beside the button. If your browser
+The Grid has no download yet. Past 400 rows, filter the plan to fit the image: the page says so beside the button. If your browser
 cannot draw it, the page says that too and no file comes. Headers are in your language, and the image
 is drawn in light colours whatever your skin.
 
 Every CSV file is UTF-8 and starts with a byte-order mark, so Excel on Windows shows accented
-headers such as "Versión" properly when you open the file with a double-click. Cells are separated
-by commas: if your spreadsheet expects semicolons, as it may with Spanish settings, open the file
-through its import from text and choose the comma.
+headers such as "Versión" properly when you open the file with a double-click. Its cells are
+separated as your spreadsheet expects: by semicolons, with numbers as 1,5, where your language and
+region write a decimal comma, as with Spanish settings, and by commas, with numbers as 1.5,
+elsewhere. **Spreadsheet files (CSV)** on your [profile](account.md#profile) chooses one for every
+file instead.
 
 Downloading the Timeline, the Calendar or the List counts as a bulk export for your administrators'
 security alerts. Keep in mind that a saved file leaves Taskmoor's permissions: whoever
@@ -760,8 +1154,25 @@ Releases across tracks cannot yet be shipped together, have no combined notes, b
 date, gather no approvals in one place and send no notifications.
 
 Auto-scheduling fills the plan's periods, not sprints, with the capacity set for them, not velocity
-from past sprints. It proposes days only, never a sprint, a Team value or an assignee. It does not
-go back to fill room an earlier ticket left, split a ticket across periods, keep a ticket's own
-length, or skip weekends and holidays. A release's date is a note, not a limit. A run's choices and
-its result are not saved with the plan, and it never runs by itself, for example when capacity
-changes. No single action discards only the auto-scheduler's drafts.
+from past sprints. It proposes days only, never a sprint, a Team value or an assignee. A run in
+rank order does not go back to fill room an earlier ticket left or keep a ticket's own length, and
+no run splits a ticket across periods or skips weekends and holidays. A release's date is a note,
+not a limit. A run's choices and its result are not saved with the plan, and it never runs by
+itself, for example when capacity changes. No single action discards only the auto-scheduler's
+drafts. Evening out load moves work only later and by the plan's periods, never by day, never
+above the lowest level and never a ticket dated by its sprint; it does not prefer the tickets with
+the most slack, and a ticket's fixed dates come only from the run's keep choices, not from a mark
+kept on the ticket.
+
+Baselines are captured by hand, never by themselves when a scenario is made main or applied, and
+keep start and due days only, not estimates, Team values, sprints or releases, nor parents' spans.
+The Timeline does not draw a baseline's bars under today's, and the Scenarios comparison cannot
+take a baseline as one of its sides. Delays, slack and the critical path count calendar days, not
+working days, and the critical path does not count capacity or go through parents' spans.
+
+The Grid moves one row at a time, never several at once, and never by dropping a row on a group to
+set its field; it cannot draft changes in a scenario, sort rows by a column, show other people's
+changes without **Refresh**, or be downloaded, and a total does not link to the search of its
+rows. Grouping takes only fields with one value, never labels; linked tickets go at most three
+links away; progress counts closed tickets, never a percentage or a weight of their estimates; and
+a structure belongs to its plan, with no filters of its own beyond the plan's and its query.

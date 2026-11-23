@@ -2,7 +2,7 @@ import type { Database, StatusStage } from '@taskmoor/db';
 import { type Kysely, sql, type Transaction } from 'kysely';
 import type { Column } from '../boards/model';
 import { lockList } from '../tickets/fields';
-import { defaultClosingReason } from './close-reasons';
+import { createCloseReason, defaultClosingReason } from './close-reasons';
 import { freeTransition } from './free-moving';
 import { loadMap, trackMapId } from './maps';
 import { runningMigration } from './migration';
@@ -345,7 +345,11 @@ export async function closingReasonId(trx: Trx, workspaceId: number): Promise<nu
   );
 }
 
-/** The reason a closing status that moves freely sets, with Completed made when there is none. */
+/**
+ * The reason a closing status that moves freely sets, with Completed made when there is none. Made
+ * here, it records `close_reason.created` in the caller's transaction, beside the caller's own
+ * event (T-325); found, by this call or after waiting for another that made it, it records nothing.
+ */
 export async function completedReasonId(trx: Trx, by: Actor): Promise<number> {
   const found = await closingReasonId(trx, by.workspaceId);
   if (found !== null) return found;
@@ -353,21 +357,7 @@ export async function completedReasonId(trx: Trx, by: Actor): Promise<number> {
   // Someone else may have made it while this waited for the list.
   const made = await reasonNamedCompleted(trx, by.workspaceId);
   if (made !== null) return made;
-  const last = await trx
-    .selectFrom('close_reason')
-    .select(sql<number>`coalesce(max(sort_order), 0)`.as('n'))
-    .where('workspace_id', '=', by.workspaceId)
-    .executeTakeFirstOrThrow();
-  const created = await trx
-    .insertInto('close_reason')
-    .values({
-      workspace_id: by.workspaceId,
-      name: 'Completed',
-      sort_order: Number(last.n) + 1,
-    })
-    .returning('id')
-    .executeTakeFirstOrThrow();
-  return created.id;
+  return (await createCloseReason(trx, by, { name: 'Completed' })).id;
 }
 
 /** The column that closes tickets, or -1. A choice that no longer exists falls to the default. */

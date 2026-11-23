@@ -1,5 +1,7 @@
+import type { CsvSeparator } from '@taskmoor/webconfig';
 import { API_BASE, api } from '../api/client';
 import { everyTrack } from '../api/tracks';
+import type { NumberSettings } from '../fields/numberFormat';
 import { loadSubticketProgress, type SubticketProgress } from '../tickets/tools/client';
 import type { ChoiceField } from './basic';
 
@@ -57,6 +59,8 @@ export interface SearchField {
   name: string;
   type: string;
   multiple?: boolean;
+  /** Its type settings: how a number shows (T-320). */
+  config?: NumberSettings;
 }
 
 /** A track the person sees. */
@@ -164,6 +168,7 @@ export const searchClient: SearchClient = {
       name: f.name,
       type: f.type,
       multiple: f.multiple ?? false,
+      ...(f.config ? { config: f.config } : {}),
     })),
   edit: async (id, change) =>
     (await api<{ ticket: SearchTicket }>(`/tickets/${id}`, { method: 'PATCH', body: change }))
@@ -173,8 +178,18 @@ export const searchClient: SearchClient = {
       .priorities,
 };
 
-/** The address of an export of a query's results in the given columns (QRY-015). */
-export function exportUrl(q: string, format: 'csv' | 'json', columns: readonly string[]): string {
+/**
+ * The address of an export of a query's results in the given columns (QRY-015). A CSV file in
+ * the semicolon style says so; the comma is the server's default, so its address is as before
+ * (T-263).
+ */
+export function exportUrl(
+  q: string,
+  format: 'csv' | 'json',
+  columns: readonly string[],
+  separator: CsvSeparator = 'comma',
+): string {
   const params = new URLSearchParams({ q, format, columns: ['key', ...columns].join(',') });
+  if (format === 'csv' && separator === 'semicolon') params.set('separator', separator);
   return `${API_BASE}/search/export?${params}`;
 }

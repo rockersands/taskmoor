@@ -6,6 +6,13 @@ import { z } from 'zod';
 import { requireGlobal, requireSiteAdmin, revokeUserSessions } from '../auth';
 import { dropLapsedCreateTracks, lapsedPayload } from '../authz/create-tracks';
 import {
+  ROLE_FILTERS,
+  roleCondition,
+  rolesOf,
+  tracksRunBy,
+  tracksRunByOne,
+} from '../authz/person-roles';
+import {
   activeAdminCount,
   canonicalTimeZone,
   createPasswordLink,
@@ -23,10 +30,13 @@ import {
   directoryManaged,
   readOnly,
 } from '../ldap/gateway';
+import { hasSecondFactor, twoFactorStatus } from '../two-factor';
 
 const listQuery = z.object({
   query: z.string().trim().max(200).optional(),
   status: z.enum(['active', 'deactivated', 'all']).default('active'),
+  /** T-331: holders of an administrator role, people who run a track, or neither (`member`). */
+  role: z.enum(ROLE_FILTERS).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),
 });
@@ -59,6 +69,9 @@ const updateBody = z
   })
   .strict();
 
+/** Tracks a person's page lists by name; the count says how many there are in all. */
+const TRACKS_SHOWN = 100;
+
 const idParams = z.object({ id: z.coerce.number().int().positive() });
 
 /** Postgres unique_violation: the email is taken in this workspace. */
@@ -81,7 +94,7 @@ export function registerUserRoutes(
     if (!(await requireSiteAdmin(request, reply))) return reply;
     const parsed = listQuery.safeParse(request.query);
     if (!parsed.success) return reply.code(400).send({ error: 'invalid_request' });
-    const { query, status, limit, offset } = parsed.data;
+    const { query, status, role, limit, offset } = parsed.data;
     let base = db
       .selectFrom('app_user')
       .where('workspace_id', '=', request.workspaceId)
@@ -95,6 +108,7 @@ export function registerUserRoutes(
         eb.or([eb(sql`lower(name)`, 'like', like), eb(sql`lower(email)`, 'like', like)]),
       );
     }
+    if (role) base = base.where(roleCondition(request.workspaceId, role));
     const [rows, total] = await Promise.all([
       base
         .select([...USER_COLUMNS])
@@ -105,7 +119,21 @@ export function registerUserRoutes(
         .execute(),
       base.select((eb) => eb.fn.countAll<string>().as('n')).executeTakeFirstOrThrow(),
     ]);
-    return { users: rows.map(toUserView), total: Number(total.n) };
+    // T-331: each person's administrator roles and the tracks they run, two statements for the
+    // whole page, however long.
+    const ids = rows.map((r) => r.id);
+    const [roles, tracks] = await Promise.all([
+      rolesOf(db, request.workspaceId, ids),
+      tracksRunBy(db, request.workspaceId, ids),
+    ]);
+    return {
+      users: rows.map((row) => ({
+        ...toUserView(row),
+        roles: (roles.get(row.id) ?? []).map((r) => r.role),
+        tracksRun: tracks.get(row.id) ?? 0,
+      })),
+      total: Number(total.n),
+    };
   });
 
   // Finding someone to give a track's role to (ADR-114): a name and an id, nothing else, for those
@@ -241,8 +269,23 @@ export function registerUserRoutes(
       .execute();
     const effective = await effectiveGroupIds(db, request.workspaceId, row.id);
     const managed = await options.directories.account(request.workspaceId, row.id);
+    // T-331: the person's roles with where each comes from, the tracks they run (the first
+    // TRACKS_SHOWN by key, and how many in all) and whether they have a second factor to reset.
+    const [roles, counts, tracks, factors] = await Promise.all([
+      rolesOf(db, request.workspaceId, [row.id]),
+      tracksRunBy(db, request.workspaceId, [row.id]),
+      tracksRunByOne(db, request.workspaceId, row.id, TRACKS_SHOWN),
+      twoFactorStatus(db, row.id),
+    ]);
     return {
-      user: toUserView(row),
+      user: {
+        ...toUserView(row),
+        roles: (roles.get(row.id) ?? []).map((r) => r.role),
+        tracksRun: counts.get(row.id) ?? 0,
+      },
+      roles: roles.get(row.id) ?? [],
+      tracks,
+      hasSecondFactor: hasSecondFactor(factors),
       groups: direct,
       effectiveGroupIds: effective,
       // M1-082: the directory that manages the account, if one does.
@@ -427,8 +470,9 @@ export function registerUserRoutes(
         .where('used_at', 'is', null)
         .execute();
       if (current.deactivated_at === null) {
-        // A deactivated person runs no track: a permission to create tracks that came with a
-        // role goes (T-087b; IAM-033).
+        // Deactivation keeps the person's roles, and with them a permission to create tracks
+        // that came with a role (T-259): unusable while deactivated, theirs again on
+        // reactivation. One whose roles are already gone still goes (T-087b; IAM-033).
         const lapsed = await dropLapsedCreateTracks(trx, request.workspaceId, [current.id]);
         await emit(
           trx,

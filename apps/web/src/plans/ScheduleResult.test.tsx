@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../i18n/I18nProvider';
 import { type HeldRun, ScheduleResult } from './ScheduleResult';
-import { scheduleRunFixture } from './scheduleResultFixture';
+import { evenOutRunFixture, scheduleRunFixture } from './scheduleResultFixture';
 import { scheduleLookup } from './scheduleWords';
 
 function show(run: HeldRun = scheduleRunFixture(), onRunAgain?: () => void) {
@@ -146,5 +146,99 @@ describe('the result of an auto-schedule run (PLN-004)', () => {
     expect(
       screen.getByText('Into Auto-schedule 14 Nov, a new scenario. 1 ticket was left out.'),
     ).toBeVisible();
+  });
+});
+
+describe('the result of a run that evened out load (PLN-011)', () => {
+  it('[PLN-011] says what moved later in words, and lists only what moved, did not move or was kept', async () => {
+    const user = userEvent.setup();
+    show(evenOutRunFixture());
+    expect(screen.getByRole('heading', { name: 'Even out load' })).toHaveFocus();
+    expect(
+      screen.getByText('2 tickets moved later, 1 kept, 2 not moved, 0 earlier proposals removed.'),
+    ).toBeVisible();
+    // Not moved first: they need a person.
+    let list = screen.getByRole('list', { name: 'Tickets Not moved (2)' });
+    expect(
+      within(list).getByText('Not moved: moving it would make kept OPS-4 late.'),
+    ).toBeVisible();
+    expect(within(list).getByText('Still over: no room for Atlas up to Dec 20.')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Moved (2)' }));
+    list = screen.getByRole('list', { name: 'Tickets Moved (2)' });
+    expect(
+      within(list).getByText(
+        'Moved 2 weeks later, from Nov 9–Nov 22 to Nov 23–Dec 6: Atlas was 6 points over.',
+      ),
+    ).toBeVisible();
+    expect(
+      within(list).getByText('Moved 3 days later after SHOP-3, which was moved.'),
+    ).toBeVisible();
+    // A ticket left where it is is not listed.
+    expect(screen.queryByRole('link', { name: 'SHOP-6 Loyalty points' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Kept (1)' }));
+    expect(screen.getByText('Kept: it is in progress.')).toBeVisible();
+  });
+
+  it('[PLN-011] lists every cell still over capacity, with why', () => {
+    show(evenOutRunFixture());
+    const over = screen.getByRole('region', { name: 'Still over capacity' });
+    const items = within(over).getAllByRole('listitem');
+    expect(items.map((x) => x.textContent)).toEqual([
+      'Atlas is 2 points over in Nov 9–Nov 22: no later period of the run has room.',
+      'Atlas is 4 points over in Dec 7–Dec 20: only tickets that do not move are there.',
+    ]);
+  });
+
+  it('[PLN-011] counts what moved from the run’s counts when the list is cut before the moved tickets', () => {
+    const run = evenOutRunFixture();
+    const cut = run.result.tickets.filter((x) => x.outcome !== 'placed');
+    show(
+      evenOutRunFixture({
+        tickets: cut,
+        more: 2300,
+        counts: { ...run.result.counts, placed: 301, moved: 300 },
+      }),
+    );
+    expect(
+      screen.getByText(
+        '300 tickets moved later, 1 kept, 2 not moved, 0 earlier proposals removed.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Moved (300)' })).toBeVisible();
+  });
+
+  it('[PLN-011] [NFR-006] agrees in Spanish with a count of one', () => {
+    const run = evenOutRunFixture();
+    render(
+      <I18nProvider locale="es">
+        <ScheduleResult
+          run={run}
+          unit="points"
+          names={scheduleLookup(run.result)}
+          compareHref="#/plans/12/scenarios?scenario=2&a=1&b=2"
+          compareWith="main"
+        />
+      </I18nProvider>,
+    );
+    expect(
+      screen.getByText(
+        '2 tickets movidos más tarde, 1 mantenido, 2 sin mover, 0 propuestas anteriores eliminadas.',
+      ),
+    ).toBeVisible();
+  });
+
+  it('[PLN-011] says when every team and person is within capacity after the run', () => {
+    show(evenOutRunFixture({ overLeft: [] }));
+    const over = screen.getByRole('region', { name: 'Still over capacity' });
+    expect(within(over).queryByRole('list')).toBeNull();
+    expect(
+      within(over).getByText('Every team and person is within capacity in the run’s periods now.'),
+    ).toBeVisible();
+  });
+
+  it('[PLN-004] [PLN-011] says nothing of cells over capacity after a run in rank order', () => {
+    show();
+    expect(screen.queryByRole('region', { name: 'Still over capacity' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Placed (2)' })).toBeVisible();
   });
 });

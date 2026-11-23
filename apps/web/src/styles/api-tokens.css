@@ -50,6 +50,12 @@
   box-shadow: var(--glass-highlight-flat);
 }
 
+/* An account's name and what it is for, changed under its row (T-320). */
+.service-account-details {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--glass-edge);
+}
+
 .token-main {
   flex: 1 1 18rem;
   min-width: 0;
@@ -143,25 +149,6 @@
 
 .tokens-filter {
   max-width: 20rem;
-}
-
-.token-confirm {
-  display: grid;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border-radius: var(--radius-1);
-  background: var(--color-danger-soft);
-  color: var(--color-danger);
-}
-
-.token-confirm p {
-  margin: 0;
-}
-
-.token-confirm-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
 }
 
 .service-account-tokens {

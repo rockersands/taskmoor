@@ -1,6 +1,12 @@
+import * as a11yAddonAnnotations from '@storybook/addon-a11y/preview';
+// axe itself, loaded with each story file, not inside its first story (T-327). The addon imports
+// axe when its first check runs, in the afterEach of the first story of a file, and that story
+// then waited inside its 15 s for the 1.4 MB bundle from the project's Vite server: up to 3.3 s
+// in a full run. The addon finds the same module, already evaluated. This alone did not stop the
+// gate's timeouts (the story report below did, ADR-024).
+import 'axe-core';
 import { setProjectAnnotations } from '@storybook/react-vite';
-import { afterAll, beforeAll } from 'vitest';
-import { cdp } from 'vitest/browser';
+import { beforeAll } from 'vitest';
 import * as previewAnnotations from './preview';
 
 // The skin this run of the story tests renders in (ADR-036); the preview's decorator paints it.
@@ -8,28 +14,24 @@ import * as previewAnnotations from './preview';
 (globalThis as { taskmoorStorySkin?: string }).taskmoorStorySkin =
   import.meta.env.STORY_SKIN ?? 'light';
 
-// A real touch screen for a story that asks for one (`onARealTouchScreen` in src/test/touch.ts):
-// Chromium's touch emulation makes `(pointer: coarse)` true for the whole page, so the style
-// sheets' touch rules apply in their own places in the cascade, as on a phone (T-255).
-let touchScreen = false;
-const switchTouchScreen = async (on: boolean) => {
-  await cdp().send(
-    'Emulation.setTouchEmulationEnabled',
-    on ? { enabled: true, maxTouchPoints: 5 } : { enabled: false },
-  );
-  touchScreen = on;
-};
-(globalThis as { taskmoorTouchScreen?: (on: boolean) => Promise<void> }).taskmoorTouchScreen =
-  switchTouchScreen;
+// A story test, not Storybook's own page: `onARealTouchScreen` (src/test/touch.ts) then expects
+// the browser to be a touch screen already, as the touch projects' browsers are (T-328).
+(globalThis as { taskmoorStoryTest?: boolean }).taskmoorStoryTest = true;
 
-// Storybook runs a story's `beforeEach` cleanup only when the next story of the file starts, so
-// the file's last story would leave the emulation on. It belongs to the browser page, not the
-// file, and the page runs the worker's next story file: a desktop story then measured touch
-// sizes (Shell/Checks saw 20 and 28 px boxes side by side). Each file ends with a mouse again.
-afterAll(async () => {
-  if (touchScreen) await switchTouchScreen(false);
-});
-
-const project = setProjectAnnotations([previewAnnotations]);
+// Every story is an accessibility test (ADR-024): the a11y addon's annotations bring the axe
+// check that runs after each story. A setup file that calls `setProjectAnnotations` turns off the
+// Storybook plugin's own provisioning, so it must list the addons' annotations itself, before the
+// preview's, whose `a11y.test: 'error'` then wins over the addon's 'todo'. Without them no story
+// ran axe (T-327); `src/test/storyAxe.test.tsx` fails if they go missing again.
+//
+// The axe report a story test keeps is its violations, whole, and nothing else (T-327). The
+// addon puts axe's result in the test's meta, which the page sends to Vitest's main process; with
+// every passing, incomplete and inapplicable rule and its elements that was about 1 MB for a
+// ticket page. In a full run the main process spent seconds at a stretch parsing those messages,
+// and a story waiting on its Vite server then timed out (ADR-024). `no-passes` is axe's own
+// reporter for this: every rule still runs on every element, a violation still fails the story,
+// listed with its elements, and Storybook's own page keeps the whole result.
+const storyTestReport = { parameters: { a11y: { options: { reporter: 'no-passes' } } } };
+const project = setProjectAnnotations([a11yAddonAnnotations, previewAnnotations, storyTestReport]);
 
 beforeAll(project.beforeAll);

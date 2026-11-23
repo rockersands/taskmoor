@@ -1,7 +1,7 @@
 import type { PmJson } from '@taskmoor/richtext';
 import { ApiError } from '../../api/client';
 import type { MessageId } from '../../i18n/messages.en';
-import { errorMessage, splitLabels } from '../form';
+import { errorMessage, splitLabels, trackThingOf } from '../form';
 import type {
   FieldChoice,
   FieldRule,
@@ -113,6 +113,10 @@ export interface TemplateDraft {
   labels: string;
   startInDays: string;
   dueInDays: string;
+  /**
+   * Who it assigns; with no name when the reader may not see them named, or they are gone
+   * (T-283).
+   */
   assignee: Named | null;
   areaIds: number[];
   targetReleaseIds: number[];
@@ -197,7 +201,10 @@ export function draftOf(
     labels: (defaults.labels ?? []).join(' '),
     startInDays: asText(defaults.startInDays),
     dueInDays: asText(defaults.dueInDays),
-    assignee: saved?.assignee ?? null,
+    // An assignee the API does not name keeps its id, so a save never drops it (T-283).
+    assignee:
+      saved?.assignee ??
+      (defaults.assigneeId === undefined ? null : { id: defaults.assigneeId, name: '' }),
     areaIds: defaults.areaIds ?? [],
     targetReleaseIds: defaults.targetReleaseIds ?? [],
     foundInReleaseIds: defaults.foundInReleaseIds ?? [],
@@ -358,14 +365,22 @@ function spotOf(path: string, draft: TemplateDraft): ProblemSpot | null {
   return key === undefined ? null : (SPOTS[key] ?? null);
 }
 
+/** A field's id and type, for the words of its refusal. */
+type TypedField = Pick<FieldChoice, 'id' | 'type'>;
+
 /**
  * A problem's message. The create route's codes read as they do on the create form (T-291):
- * an archived release or area, one the track does not offer, a value that is gone.
+ * an archived release or area, one the track does not offer, a value that is gone. A release or
+ * area the track does not have says which it is (T-286): the system lists by their path, a custom
+ * field by its type in `fields`.
  */
-function problemMessage(path: string, code: string): MessageId {
+function problemMessage(path: string, code: string, fields: readonly TypedField[]): MessageId {
   if (path === 'name' && code === 'taken') return 'tickets.templates.problem.nameTaken';
   if (code === 'track_only') return 'tickets.templates.problem.trackOnly';
-  return errorMessage(code);
+  const custom = /^defaults\.fields\.(\d+)(\.|$)/.exec(path);
+  const type = custom ? fields.find((f) => f.id === Number(custom[1]))?.type : undefined;
+  const system = /^defaults\.(\w+)/.exec(path)?.[1] ?? '';
+  return errorMessage(code, trackThingOf(custom ? '' : system, type));
 }
 
 /** A refusal from the API as one message: a delete's, or a save's line for the whole form. */
@@ -384,9 +399,14 @@ export function refusalOf(error: unknown): MessageId {
 /**
  * A refused save (T-291): a refused value's reason next to the control it belongs to, with a
  * line for the form that says to look there. A problem the form has no spot for, such as a value
- * it does not show, keeps the general line.
+ * it does not show, keeps the general line. `fieldTypes` gives custom fields' types, so a release or
+ * area field's refusal names what it holds (T-286).
  */
-export function saveRefusalOf(error: unknown, draft: TemplateDraft): Refusal {
+export function saveRefusalOf(
+  error: unknown,
+  draft: TemplateDraft,
+  fieldTypes: readonly TypedField[] = [],
+): Refusal {
   const body = error instanceof ApiError && error.status === 400 ? error.body : null;
   const fields = (body as { fields?: Record<string, string> } | null)?.fields;
   if (!fields) return { message: refusalOf(error), at: {} };
@@ -395,7 +415,7 @@ export function saveRefusalOf(error: unknown, draft: TemplateDraft): Refusal {
   for (const [path, code] of Object.entries(fields)) {
     const spot = spotOf(path, draft);
     if (spot === null) unplaced = true;
-    else at[spot] ??= problemMessage(path, code);
+    else at[spot] ??= problemMessage(path, code, fieldTypes);
   }
   const placed = Object.keys(at).length;
   if (placed === 1 && at.name === 'tickets.templates.problem.nameTaken' && !unplaced) {

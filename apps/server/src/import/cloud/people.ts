@@ -1,3 +1,4 @@
+import { detectDelimiter } from '@taskmoor/webconfig';
 import { z } from 'zod';
 import { CsvFormatError, records } from '../csv';
 
@@ -47,13 +48,16 @@ export const peopleSettings = z.discriminatedUnion('mode', [
 ]);
 export type PeopleSettings = z.infer<typeof peopleSettings>;
 
-/** The people CSV as the route takes it; a header row is optional. */
+/**
+ * The people CSV as the route takes it; a header row is optional. Its separator is found from the
+ * first row, as the CSV import finds it (T-263): a semicolon file from a Spanish Excel reads too.
+ */
 export function parsePeopleCsv(text: string): { source: string; target: string }[] {
   const out: { source: string; target: string }[] = [];
   const seen = new Set<string>();
   const buf = Buffer.from(text, 'utf8');
   let first = true;
-  for (const record of records(buf, ',')) {
+  for (const record of records(buf, detectDelimiter(buf))) {
     const [rawSource = '', rawTarget = ''] = record.fields.map((f) => f.trim());
     const header = first && !rawTarget.includes('@');
     first = false;

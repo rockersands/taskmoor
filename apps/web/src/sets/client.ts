@@ -1,9 +1,38 @@
 import { api } from '../api/client';
+import {
+  type Level,
+  type NewTicketType,
+  type TicketType,
+  type TicketTypeChange,
+  ticketTypesClient,
+} from '../tickettypes/client';
 import { type TrackScopeClient, trackScopeClient } from './trackScope';
 
 export interface Named {
   id: number;
   name: string;
+}
+
+/** A ticket type a set may hold, with the level it sits at: a dropped type maps within it. */
+export interface TypeChoice extends Named {
+  level: { id: number; name: string };
+}
+
+/** The kinds of track, each of which has a default type set (`defaultFor`). */
+export const TRACK_KINDS = ['software', 'business', 'service', 'discovery'] as const;
+export type TrackKind = (typeof TRACK_KINDS)[number];
+
+/** What saving a type set may change (`PATCH /api/v1/type-sets/:id`). */
+export interface TypeSetChange {
+  name?: string;
+  /** In the set's order. */
+  ticketTypeIds?: number[];
+  /** The preselected type; null for none (the create form then takes the first). */
+  defaultTypeId?: number | null;
+  /** Only for a shared set: a local-mode track's own set is never a default. */
+  defaultFor?: string[];
+  /** Each dropped type's id to the kept type its tickets take, at the same level (CORE-005 (2)). */
+  ticketTypeMapping?: Record<string, number>;
 }
 
 /** The system fields rules govern, in form order (spec 01a section 1.5). */
@@ -64,18 +93,20 @@ export interface RuleSet extends RuleSetSummary {
 /** The endpoints the configuration sets page uses. Stories and tests pass their own. */
 export interface SetsClient extends TrackScopeClient {
   /** Null: the shared ticket types. A track: the shared ones and the track's own. */
-  ticketTypes: (trackId: number | null) => Promise<Named[]>;
+  ticketTypes: (trackId: number | null) => Promise<TypeChoice[]>;
   /** Null: the shared custom fields. A track: the fields that reach it, its own included. */
   customFields: (trackId: number | null) => Promise<Named[]>;
   /** Every shared type set, for site and configuration administrators. */
   typeSets: () => Promise<TypeSet[]>;
   /** One type set: how a local-mode track's administrators read the one it owns. */
   typeSet: (id: number) => Promise<TypeSet>;
-  createTypeSet: (body: { name: string; ticketTypeIds: number[] }) => Promise<TypeSet>;
-  updateTypeSet: (
-    id: number,
-    change: { name?: string; ticketTypeIds?: number[] },
-  ) => Promise<TypeSet>;
+  createTypeSet: (body: {
+    name: string;
+    ticketTypeIds: number[];
+    defaultTypeId?: number;
+    defaultFor?: string[];
+  }) => Promise<TypeSet>;
+  updateTypeSet: (id: number, change: TypeSetChange) => Promise<TypeSet>;
   deleteTypeSet: (id: number) => Promise<void>;
   /** Null: the shared field rule sets. A track: the sets that track owns. */
   ruleSets: (trackId: number | null) => Promise<RuleSetSummary[]>;
@@ -86,18 +117,26 @@ export interface SetsClient extends TrackScopeClient {
   deleteRuleSet: (id: number) => Promise<void>;
   /** Makes a track use one of its own rule sets (`PATCH /api/v1/tracks/:id`). */
   assignRuleSet: (trackId: number, setId: number) => Promise<void>;
+  /** Every hierarchy level: where a local-mode track's own type sits (T-322). */
+  levels: () => Promise<Level[]>;
+  /** The ticket types a local-mode track owns, top level first (T-322). */
+  ownTypes: (trackId: number) => Promise<TicketType[]>;
+  /** A type the track owns; its administrators change it as administrators change shared ones. */
+  createType: (body: NewTicketType & { trackId: number }) => Promise<TicketType>;
+  updateType: (id: number, change: TicketTypeChange) => Promise<TicketType>;
+  deleteType: (id: number) => Promise<void>;
 }
 
 export const setsClient: SetsClient = {
   ...trackScopeClient,
   ticketTypes: async (trackId) =>
     (
-      await api<{ ticketTypes: (Named & { trackId?: number | null })[] }>(
+      await api<{ ticketTypes: (TypeChoice & { trackId?: number | null })[] }>(
         trackId === null ? '/ticket-types' : `/ticket-types?trackId=${trackId}`,
       )
     ).ticketTypes
       .filter((t) => trackId !== null || (t.trackId ?? null) === null)
-      .map((t) => ({ id: t.id, name: t.name })),
+      .map((t) => ({ id: t.id, name: t.name, level: { id: t.level.id, name: t.level.name } })),
   customFields: async (trackId) =>
     (
       await api<{ fields: (Named & { trackId: number | null })[] }>(
@@ -141,4 +180,12 @@ export const setsClient: SetsClient = {
   assignRuleSet: async (trackId, setId) => {
     await api<unknown>(`/tracks/${trackId}`, { method: 'PATCH', body: { fieldRuleSetId: setId } });
   },
+  levels: ticketTypesClient.levels,
+  ownTypes: async (trackId) =>
+    (
+      await api<{ ticketTypes: TicketType[] }>(`/ticket-types?trackId=${trackId}`)
+    ).ticketTypes.filter((type) => type.trackId === trackId),
+  createType: ticketTypesClient.createType,
+  updateType: ticketTypesClient.updateType,
+  deleteType: ticketTypesClient.deleteType,
 };

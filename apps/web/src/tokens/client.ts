@@ -152,6 +152,8 @@ export interface ServiceAccount {
 export interface ServiceAccountsClient {
   list: () => Promise<ServiceAccount[]>;
   create: (account: { name: string; description: string }) => Promise<ServiceAccount>;
+  /** Renames the account or changes what it is for (IAM-007; T-320). */
+  update: (id: number, change: { name: string; description: string }) => Promise<ServiceAccount>;
   tokens: (id: number) => Promise<ApiToken[]>;
   setActive: (id: number, active: boolean) => Promise<ServiceAccount>;
   issue: (id: number, token: NewToken) => Promise<CreatedToken>;
@@ -169,6 +171,13 @@ export const serviceAccountsClient: ServiceAccountsClient = {
       await api<{ serviceAccount: ServiceAccount }>('/service-accounts', {
         method: 'POST',
         body: account,
+      })
+    ).serviceAccount,
+  update: async (id, change) =>
+    (
+      await api<{ serviceAccount: ServiceAccount }>(`/service-accounts/${id}`, {
+        method: 'PATCH',
+        body: change,
       })
     ).serviceAccount,
   tokens: async (id) => (await api<{ tokens: ApiToken[] }>(`/service-accounts/${id}`)).tokens,

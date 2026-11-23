@@ -233,6 +233,7 @@ export const KeysInAColumn: Story = {
  * statistics' filter among them, with the label around each the finger's 44 px target.
  */
 export const SelectionBoxesOnATouchScreen: Story = {
+  tags: ['touch'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
@@ -264,6 +265,7 @@ const SPRINT_ROW_GRIP = '.sprint-ticket-grip .move-grip-handle';
  * finger's size (T-290): a finger drags a row only by it.
  */
 export const GripsOnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
@@ -273,6 +275,7 @@ export const GripsOnATouchScreen: Story = {
 
 /** The same on a phone, with nothing sideways. */
 export const GripsOnATouchPhone: Story = {
+  tags: ['touch'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {

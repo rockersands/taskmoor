@@ -23,9 +23,15 @@ function chromiumInstalled(): boolean {
   }
 }
 
-// Stories run once per skin (ADR-036): light, then dark.
+// Stories run once per skin (ADR-036): light, then dark. The stories tagged `touch` run on a
+// browser that is a touch screen, in projects of their own (T-328).
 const storiesProject = chromiumInstalled()
-  ? ['apps/web/vitest.stories.config.ts', 'apps/web/vitest.stories-dark.config.ts']
+  ? [
+      'apps/web/vitest.stories.config.ts',
+      'apps/web/vitest.stories-dark.config.ts',
+      'apps/web/vitest.stories-touch.config.ts',
+      'apps/web/vitest.stories-dark-touch.config.ts',
+    ]
   : [];
 if (storiesProject.length === 0) {
   console.warn(

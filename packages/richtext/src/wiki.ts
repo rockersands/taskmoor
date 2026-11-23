@@ -4,11 +4,12 @@ import {
   layoutSpan,
   MAX_COLUMNS,
   MAX_TITLE_LENGTH,
+  SAFE_COLOR,
   shownColumnWidth,
   TICKET_KEY,
 } from './adf';
 import type { PmJson } from './convert';
-import { dayOf, isSafeHref, readableBlocks, SAFE_COLOR } from './markdown';
+import { dayOf, isSafeHref, readableBlocks } from './markdown';
 import { schema } from './schema';
 
 /**

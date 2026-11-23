@@ -7,6 +7,7 @@ import { requireUser } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import type { TrackPermission } from '../authz/permissions';
 import { diff, emit } from '../events/bus';
+import { fieldReaderOf } from '../fields/access';
 import type { FieldCatalogs } from '../fields/catalog';
 import { refreshFormulas } from '../fields/formulas';
 import {
@@ -975,9 +976,18 @@ export function ticketRoutes(
     const page = rows.slice(0, q.limit);
     // A comment's row names it by id only, and only for those who may read it (M1-018).
     const hidden = await unreadableComments(request, found.row, page);
-    // A custom field's row says its name and how its values read (T-277).
+    // A custom field's row says its name and how its values read (T-277): named when the field
+    // applies to the ticket or the reader may read its definition (T-283).
     const catalog = page.some((c) => c.field.startsWith('cf['))
       ? await catalogs.get(request.workspaceId)
+      : null;
+    const reader = catalog
+      ? await fieldReaderOf(
+          request.authz,
+          request.user !== null,
+          catalog,
+          page.map((c) => c.field),
+        )
       : null;
     const at = { trackId: found.row.track_id, ticketTypeId: found.row.ticket_type_id };
     return {
@@ -989,7 +999,7 @@ export function ticketRoutes(
           at: c.at.toISOString(),
           actor: c.actor_id === null ? null : { id: c.actor_id, name: c.actor_name ?? '' },
           field: c.field,
-          ...(catalog ? historyFieldOf(catalog, at, c.field) : null),
+          ...(catalog && reader ? historyFieldOf(catalog, at, c.field, reader) : null),
           from: { value: c.from_value, display: c.from_display },
           to: { value: c.to_value, display: c.to_display },
           transitionId: c.transition_id,

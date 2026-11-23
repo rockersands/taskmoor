@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { CSV_BOM } from '@taskmoor/webconfig';
+import { CSV_BOM, type CsvSeparator } from '@taskmoor/webconfig';
 import { renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
@@ -31,7 +31,7 @@ const translate = (locale: 'en' | 'es' = 'en') =>
  * A file's rows, read as RFC 4180 reads them, after its byte-order mark: every file starts with
  * exactly one (T-252), as the importer expects and takes off.
  */
-function parse(file: string): string[][] {
+function parse(file: string, separator: ',' | ';' = ','): string[][] {
   expect(file.startsWith(CSV_BOM)).toBe(true);
   const text = file.slice(1);
   expect(text.startsWith(CSV_BOM)).toBe(false);
@@ -48,7 +48,7 @@ function parse(file: string): string[][] {
       } else if (c === '"') quoted = false;
       else cell += c;
     } else if (c === '"') quoted = true;
-    else if (c === ',') {
+    else if (c === separator) {
       row.push(cell);
       cell = '';
     } else if (c === '\r' && text[i + 1] === '\n') {
@@ -253,6 +253,44 @@ describe('the files of a plan', () => {
     matchesGolden(releasesCsv(translate(), data), 'plan-releases.csv');
   });
 
+  it('[PLN-014] [NFR-006] writes every view’s file in the semicolon style when the person’s is, numbers as 1,5 and the mark once (T-263)', async () => {
+    const t = translate('es');
+    const client = fakePlanClient();
+    const timeline = await client.timeline(12, {});
+    const files = {
+      timeline: (s: CsvSeparator) => timelineCsv(t, timeline, undefined, undefined, s),
+      calendar: async (s: CsvSeparator) =>
+        calendarCsv(t, await client.calendar(12, {}, '2026-11-01', '2026-11-30'), s),
+      summary: async (s: CsvSeparator) => summaryCsv(t, await client.summary(12, {}), s),
+      capacity: async (s: CsvSeparator) => {
+        const data = await client.capacity(12, {}, '2026-11-04', 3);
+        // Half a day of capacity, so the file holds a fraction.
+        const period = data.teams[0]?.capacity.periods[0];
+        if (period) period.amount = 12.5;
+        return capacityCsv(t, data, s);
+      },
+      releases: async (s: CsvSeparator) => releasesCsv(t, await client.releases(12), s),
+    };
+    let decimals = 0;
+    for (const [view, make] of Object.entries(files)) {
+      const commas = await make('comma');
+      const semicolons = await make('semicolon');
+      // The mark first, exactly once (parse checks), then the same cells between semicolons.
+      expect(semicolons.startsWith(CSV_BOM), view).toBe(true);
+      const read = parse(semicolons, ';');
+      expect(read[0]?.length, view).toBe(parse(commas)[0]?.length);
+      const asPoints = read.map((r) =>
+        r.map((c) => {
+          if (/^-?\d+,\d+$/.test(c)) decimals += 1;
+          return c.replace(/^(-?\d+),(\d+)$/, '$1.$2');
+        }),
+      );
+      expect(asPoints, view).toEqual(parse(commas));
+    }
+    // Numbers with a fraction are written with a decimal comma in this style.
+    expect(decimals).toBeGreaterThan(0);
+  });
+
   it('[PLN-014] heads a file in the language of the person', async () => {
     const data = await fakePlanClient().timeline(12, {});
     expect(parse(timelineCsv(translate('es'), data))[0]?.slice(0, 3)).toEqual([
@@ -355,5 +393,67 @@ describe("the image of a plan's Timeline", () => {
     data.items[0] = { ...(data.items[0] as PlanTimelineItem), summary: text };
     const doc = parsed((await imageOf({ data })).svg);
     expect(doc.querySelector('script')).toBeNull();
+  });
+});
+
+/** The critical path in the Timeline's files (PLN-011; ADR-122 stage 9): the two stay in step. */
+describe('the critical path in a plan’s Timeline files (PLN-011)', () => {
+  const slack = new Map([
+    [2, -2],
+    [3, 0],
+    [4, 2],
+  ]);
+
+  it('[PLN-011] [PLN-014] the Timeline file gains each ticket’s slack and whether it is on the path, while it is on', async () => {
+    const data = await fakePlanClient().timeline(12, {});
+    const rows = parse(timelineCsv(translate(), data, undefined, slack));
+    expect(rows[0]?.slice(-2)).toEqual(['Slack (days)', 'Critical']);
+    const line = (key: string) => (rows.find((r) => r[0] === key) as string[]).slice(-2);
+    expect(line('SHOP-2')).toEqual(['-2', 'Yes']);
+    expect(line('SHOP-3')).toEqual(['0', 'Yes']);
+    expect(line('OPS-4')).toEqual(['2', 'No']);
+    // Not judged: a parent with a roll-up only, a ticket without dates.
+    expect(line('SHOP-1')).toEqual(['', '']);
+    expect(line('OPS-5')).toEqual(['', '']);
+    expect(parse(timelineCsv(translate('es'), data, undefined, slack))[0]?.slice(-2)).toEqual([
+      'Holgura (días)',
+      'Crítico',
+    ]);
+    // Off, the file is as it was.
+    expect(parse(timelineCsv(translate(), data))[0]).toHaveLength(16);
+  });
+
+  it('[PLN-011] [PLN-014] the image outlines the bars on the path, marks them with ▲ and says so', async () => {
+    const t = translate();
+    const data = await fakePlanClient().timeline(12, {});
+    const draw = (critical?: Map<number, number>) =>
+      new DOMParser().parseFromString(
+        timelineSvg({
+          t,
+          plan: 'Spring launch',
+          view: [],
+          madeOn: 'Made on 2026-11-04',
+          today: TODAY,
+          data,
+          dependencies: dependenciesOf(data.items, data.links, data.blockersElsewhere),
+          hiddenSources: 0,
+          monthText: (day) => new Date(day * 86_400_000).toISOString().slice(0, 7),
+          ...(critical ? { critical } : {}),
+        }).svg,
+        'image/svg+xml',
+      );
+    const on = draw(slack);
+    expect(on.querySelector('parsererror')).toBeNull();
+    expect(on.querySelectorAll('rect[stroke-width="2.5"]')).toHaveLength(2);
+    expect(on.querySelectorAll('path[d$="l4 -8l4 8z"]')).toHaveLength(2);
+    // SHOP-2 to SHOP-3 is tight (and late, so still dashed); SHOP-2 to OPS-4 is not.
+    expect(on.querySelectorAll('path[stroke-width="2.5"][stroke-dasharray]')).toHaveLength(1);
+    const words = [...on.querySelectorAll('text')].map((x) => x.textContent).join('\n');
+    expect(words).toContain('Heavy outline and ▲: on the critical path.');
+    const off = draw();
+    expect(off.querySelectorAll('[stroke-width="2.5"]')).toHaveLength(0);
+    expect([...off.querySelectorAll('text')].map((x) => x.textContent).join('\n')).not.toContain(
+      'critical path',
+    );
   });
 });

@@ -26,10 +26,14 @@ import {
   planViewKey,
   readView,
 } from './address';
+import { type BaselineClient, baselineClient } from './baselineClient';
 import { type Plan, type PlanChoices, type PlanClient, planClient } from './client';
+import { type GridClient, gridClient } from './grid/client';
+import { PlanBaselinesPage } from './PlanBaselinesPage';
 import { PlanCalendarPage } from './PlanCalendarPage';
 import { PlanCapacityPage } from './PlanCapacityPage';
 import { PlanChangesPage } from './PlanChangesPage';
+import { PlanGridPage } from './PlanGridPage';
 import { PlanListPage } from './PlanListPage';
 import { PlanReleasesPage } from './PlanReleasesPage';
 import { PlanScenariosPage } from './PlanScenariosPage';
@@ -62,6 +66,10 @@ export interface PlanPageProps {
   boards?: ProgramBoardClient;
   /** Scenarios and draft changes (ADR-122 stage 6); the real client by default. */
   scenarios?: ScenarioClient;
+  /** Baselines (ADR-122 stage 9); the real client by default. */
+  baselines?: BaselineClient;
+  /** The Grid's structures and rows (ADR-122 stage 10); the real client by default. */
+  grid?: GridClient;
   search?: SearchClient;
   list?: ListClient;
   /** Today, for the Timeline and the Calendar. */
@@ -109,6 +117,8 @@ export function PlanPage({
   client = planClient,
   boards,
   scenarios = scenarioClient,
+  baselines = baselineClient,
+  grid = gridClient,
   search = searchClient,
   list = listClient,
   now = () => new Date(),
@@ -247,6 +257,7 @@ export function PlanPage({
   const wide =
     section === 'timeline' ||
     section === 'capacity' ||
+    section === 'grid' ||
     (section === 'boards' && boardId !== undefined);
   const onPosition = (change: PlanPosition) =>
     redirectRoute(here({ ...view, position: { ...view.position, ...change } }));
@@ -307,6 +318,7 @@ export function PlanPage({
         title={plan.name}
         eyebrow={t('plans.meta', { owner: plan.owner.name })}
         purpose={t('purpose.plan')}
+        about={t('about.plan')}
         actions={<PlanShareActions plan={plan} client={client} />}
       />
       {plan.description && <p className="plan-description">{plan.description}</p>}
@@ -416,6 +428,15 @@ export function PlanPage({
           {problem !== 'failed' && section === 'list' && (
             <PlanListPage {...viewProps} group={view.group} search={search} list={list} />
           )}
+          {problem !== 'failed' && section === 'grid' && (
+            <PlanGridPage
+              planId={id}
+              view={view}
+              scenario={active ? { id: active.id, name: active.name } : null}
+              client={grid}
+              search={search}
+            />
+          )}
           {problem !== 'failed' && section === 'calendar' && <PlanCalendarPage {...viewProps} />}
           {problem !== 'failed' && section === 'capacity' && <PlanCapacityPage {...viewProps} />}
           {problem !== 'failed' && section === 'releases' && <PlanReleasesPage {...viewProps} />}
@@ -479,6 +500,16 @@ export function PlanPage({
               onChanged={scenariosChanged}
               onCompare={(compare) => redirectRoute(here({ ...view, compare }))}
               onAutoSchedule={() => setScheduling(true)}
+            />
+          )}
+          {problem !== 'failed' && section === 'baselines' && (
+            <PlanBaselinesPage
+              planId={id}
+              planName={plan.name}
+              client={baselines}
+              view={view}
+              scenario={active ? { id: active.id, name: active.name } : null}
+              now={now}
             />
           )}
         </div>

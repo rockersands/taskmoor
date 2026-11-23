@@ -1,4 +1,5 @@
-import { API_BASE, ApiError, api, browserTimeZone } from '../api/client';
+import { API_BASE, ApiError, api } from '../api/client';
+import { personTimeZone } from '../i18n/zone';
 import { routeHref } from '../routing/router';
 
 export interface Approver {
@@ -116,7 +117,11 @@ export interface ReleaseClient {
   create(trackId: number, release: NewRelease): Promise<Outcome>;
   get(releaseId: number): Promise<Release>;
   overview(releaseId: number): Promise<ReleaseOverview>;
-  notes(releaseId: number): Promise<ReleaseNotes>;
+  /**
+   * The notes, their Markdown written in `locale` (the page's language, T-283): its fixed
+   * sentences, days and seeded type names; without one the account's language, else English.
+   */
+  notes(releaseId: number, locale?: string): Promise<ReleaseNotes>;
   /** Ships; with open tickets, `moveOpenTo` says where they go (null: they stay). */
   ship(
     releaseId: number,
@@ -155,7 +160,10 @@ export const releaseClient: ReleaseClient = {
     outcome(() => api(`/tracks/${trackId}/releases`, { method: 'POST', body: release })),
   get: async (releaseId) => (await api<{ release: Release }>(`/releases/${releaseId}`)).release,
   overview: (releaseId) => api<ReleaseOverview>(`/releases/${releaseId}/overview`),
-  notes: (releaseId) => api<ReleaseNotes>(`/releases/${releaseId}/notes`),
+  notes: (releaseId, locale) =>
+    api<ReleaseNotes>(
+      `/releases/${releaseId}/notes${locale ? `?${new URLSearchParams({ locale }).toString()}` : ''}`,
+    ),
   ship: (releaseId, options) =>
     outcome(() => api(`/releases/${releaseId}/ship`, { method: 'POST', body: options })),
   setDate: (releaseId, releaseDate) =>
@@ -175,12 +183,17 @@ export const searchHref = (query: string) =>
 
 /**
  * The notes as a file, straight from the server. A download sends no headers of ours, so the link
- * names the browser's zone itself: the file then says the day the release shipped as its page does
- * (T-277). It goes to the configured backend like every other call, which is another site's when
- * the frontend is hosted apart from it (T-282).
+ * names the person's zone itself (the account's, else the device's: T-277, T-280), and the file
+ * says the day the release shipped as its page does; and the page's language (T-283), so the file
+ * reads as the page does. It goes to the configured backend like every other call, which is
+ * another site's when the frontend is hosted apart from it (T-282).
  */
-export function notesFileHref(releaseId: number): string {
-  const zone = browserTimeZone();
-  const query = new URLSearchParams({ format: 'markdown', ...(zone ? { timeZone: zone } : {}) });
+export function notesFileHref(releaseId: number, locale?: string): string {
+  const zone = personTimeZone();
+  const query = new URLSearchParams({
+    format: 'markdown',
+    ...(zone ? { timeZone: zone } : {}),
+    ...(locale ? { locale } : {}),
+  });
   return `${API_BASE}/releases/${releaseId}/notes?${query.toString()}`;
 }

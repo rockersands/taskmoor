@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
+import { useAdminAccess } from '../admin/access';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { DangerAction } from '../shell/DangerAction';
@@ -32,7 +33,7 @@ const MAX_PERIODS = 12;
  * A plan's program boards (T-089d; PLN-008; ADR-122 stage 5): active ones first, each with its
  * Team field and periods. The plan's editors make, change, archive and delete them; a plan holds
  * any number. A board places cards by a Team field, so without one the page says to ask a site
- * administrator for it.
+ * administrator for it; to someone who may add fields, it says where, with a link (S3-PL-8).
  */
 export function ProgramBoardsPage({
   planId,
@@ -50,6 +51,9 @@ export function ProgramBoardsPage({
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  // A site or configuration administrator adds fields (the setup pages); they are not sent to ask.
+  const access = useAdminAccess();
+  const addsFields = access === 'site' || access === 'setup';
 
   const load = useCallback(
     () =>
@@ -138,7 +142,13 @@ export function ProgramBoardsPage({
         )}
       </div>
       <p className="board-hint">{t('programBoards.about')}</p>
-      {noField && <p className="plan-notices">{t('programBoards.noField')}</p>}
+      {noField && !addsFields && <p className="plan-notices">{t('programBoards.noField')}</p>}
+      {noField && addsFields && (
+        <p className="plan-notices">
+          {t('programBoards.noFieldAdmin')}{' '}
+          <a href={routeHref('#/admin/fields')}>{t('programBoards.openFields')}</a>
+        </p>
+      )}
       <p className="board-hint" role="status">
         {status}
       </p>

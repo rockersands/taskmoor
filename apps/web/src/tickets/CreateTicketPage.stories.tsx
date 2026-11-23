@@ -288,6 +288,7 @@ export const WithMorePickers: Story = {
 
 /** The same on a phone's touch screen: every picker a finger's size, nothing sideways. */
 export const WithMorePickersOnAPhone: Story = {
+  tags: ['touch'],
   args: { client: morePickersClient() },
   decorators: [atPhoneWidth],
   beforeEach: onARealTouchScreen,
@@ -369,6 +370,7 @@ export const FromATemplate: Story = {
 
 /** The same on a phone's touch screen: the filled pickers a finger's size, nothing sideways. */
 export const FromATemplateOnAPhone: Story = {
+  tags: ['touch'],
   args: { client: templateClient() },
   decorators: [atPhoneWidth],
   beforeEach: onARealTouchScreen,

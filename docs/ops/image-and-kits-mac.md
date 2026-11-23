@@ -191,8 +191,9 @@ and the script was run again.
   step comes before it), it took 3,060 s, nearly all of it waiting: nothing for about 950 s after
   connection resets at 10 s, then about 35 minutes at 807 of 820 packages, broken once by socket
   time-outs and resets at 1,968 s, before pnpm's own retries finished. Each quiet stretch lasted
-  16 to 18 minutes. The step now stops after 30 minutes (`PNPM_INSTALL_TIMEOUT`) and says what to
-  change, and a build run again takes what the stopped one downloaded from pnpm's store in the
+  16 to 18 minutes. The step now stops after 60 minutes (`PNPM_INSTALL_TIMEOUT`; T-247 set 30,
+  and T-279 raised it on 2026-11-16 so that a run as slow as this one, 51 minutes, still finishes)
+  and says what to change, and a build run again takes what the stopped one downloaded from pnpm's store in the
   build cache (see [After T-247](#after-t-247-the-dependency-install-bounded)). Not yet seen on
   a slow link: whether the settings shorten such a run, or whether it now stops at the limit and
   finishes on the next build.

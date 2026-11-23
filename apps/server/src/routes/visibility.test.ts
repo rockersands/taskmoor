@@ -451,6 +451,18 @@ describe('visibility levels (M1-020)', () => {
     expect(still.json().ticket.track.key).toBe('VIT');
   });
 
+  it('[IAM-011] a field member names a field that exists, an id above the integer range included', async () => {
+    for (const fieldKey of ['cf[999999]', 'cf[2147483648]']) {
+      const refused = await as('admin', {
+        method: 'POST',
+        url: `/api/v1/visibility-policies/${policyId}/levels`,
+        payload: { name: 'By a field', members: [{ grantee: 'user_field', fieldKey }] },
+      });
+      expect(refused.statusCode, refused.body).toBe(400);
+      expect(refused.json()).toEqual({ error: 'invalid_request', detail: 'members: fieldKey' });
+    }
+  });
+
   it('[IAM-011] a level in use is deleted only with a replacement; a policy in use not at all', async () => {
     const level = await as('admin', {
       method: 'POST',

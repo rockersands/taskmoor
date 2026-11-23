@@ -1,4 +1,5 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
@@ -13,7 +14,7 @@ import { ALLOWED, OFFENDERS, type Ratchet } from './design-offenders';
  * or a place with a named reason; menus, pop-overs, the command palette and dialogs on the one
  * opaque overlay fill with no blur (D3); links in the accent; a finger's height on touch wherever a
  * mouse's is set, and for every target given a fixed height under a finger's (T-294); every grip,
- * in a stylesheet or styled in a script, known to the touch checks (T-290, T-294); radii, font sizes and font weights only from the tokens; one level-one heading, from PageHeader;
+ * in a stylesheet or styled in a script, known to the touch checks (T-290, T-294); radii, font sizes and font weights only from the tokens (an `@font-face` names its file's weight); one level-one heading, from PageHeader;
  * a PageHeader, with a purpose line, on every route page, on its failures too, and in an element of
  * class `page`; no unstyled button or table; no fieldset whose class has no rule; no bare "none
  * yet" sentence where an EmptyState goes, under whatever class; no glass card inside a glass card;
@@ -174,7 +175,7 @@ export function cssProblems(source: string): Record<Kind, string[]> {
     fontSizes: [],
     fontWeights: [],
   };
-  for (const { selector, property, value } of cssDeclarations(source)) {
+  for (const { selector, property, value, atRules } of cssDeclarations(source)) {
     const text = `${selector} { ${property}: ${value.replace(/\s+/g, ' ')} }`;
     if (!isMask(property) && RAW_COLOUR.test(withoutUrls(value))) problems.rawColours.push(text);
     if (FILLS.test(property) && OPAQUE_SURFACE.test(value)) {
@@ -187,7 +188,12 @@ export function cssProblems(source: string): Record<Kind, string[]> {
     }
     if (property === 'font-size' && fontSizeProblem(value)) problems.fontSizes.push(text);
     if (property === 'font' && fontShorthandProblem(value)) problems.fontSizes.push(text);
-    if (property === 'font-weight' && fontWeightProblem(value)) problems.fontWeights.push(text);
+    // In @font-face, font-weight says which weight a font file is (T-262), and var() is not
+    // allowed there: it is the file's fact, not a choice of weight.
+    const face = atRules.includes('@font-face');
+    if (property === 'font-weight' && !face && fontWeightProblem(value)) {
+      problems.fontWeights.push(text);
+    }
   }
   return problems;
 }
@@ -897,7 +903,8 @@ export function unlistedInlineGrips(found: InlineGrip[], listed: readonly string
 /**
  * What is wrong with `checkedBy` (`file#Story`, the file under `root`) as the story that checks a
  * dragged-whole element's finger's size (T-290): no such file, no such story exported from it, or a
- * story that does not run on a real touch screen. Undefined when it is that story.
+ * story that does not run on a real touch screen: one that does not ask for it, or one without the
+ * `touch` tag that runs it on one (T-328). Undefined when it is that story.
  */
 export function touchStoryProblem(root: string, checkedBy: string): string | undefined {
   const [file, story] = checkedBy.split('#');
@@ -911,6 +918,9 @@ export function touchStoryProblem(root: string, checkedBy: string): string | und
   const body = next < 0 ? source.slice(start) : source.slice(start, start + 1 + next);
   if (!/beforeEach:\s*onARealTouchScreen\b/.test(body)) {
     return `${checkedBy} does not run on a real touch screen`;
+  }
+  if (!/\btags:\s*\[[^\]]*'touch'/.test(body)) {
+    return `${checkedBy} has no tags: ['touch'], so it runs with a mouse`;
   }
   return undefined;
 }
@@ -2411,6 +2421,8 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
     expect(on('a { font: inherit; }').fontSizes).toEqual([]);
     expect(on('a { font-weight: 650; }').fontWeights).toHaveLength(1);
     expect(on('a { font-weight: var(--font-weight-strong); }').fontWeights).toEqual([]);
+    expect(on('@font-face { font-family: "A"; font-weight: 500; }').fontWeights).toEqual([]);
+    expect(on('@media print { a { font-weight: 500; } }').fontWeights).toHaveLength(1);
     expect(on('a { border-radius: calc(var(--radius-4) * 1.5); }').radii).toEqual([]);
   });
 
@@ -3191,6 +3203,19 @@ describe('the design guard finds what it looks for (ADR-114)', () => {
       'is not a story file',
     );
     expect(touchStoryProblem(SRC, 'the side panel')).toContain('is not file#Story');
+    // A story that asks for a touch screen but lacks the tag that runs it on one (T-328).
+    const untagged = mkdtempSync(join(tmpdir(), 'touch-story-'));
+    try {
+      writeFileSync(
+        join(untagged, 'Grip.stories.tsx'),
+        'export const OnATouchScreen: Story = {\n  beforeEach: onARealTouchScreen,\n};\n',
+      );
+      expect(touchStoryProblem(untagged, 'Grip.stories.tsx#OnATouchScreen')).toContain(
+        "has no tags: ['touch']",
+      );
+    } finally {
+      rmSync(untagged, { recursive: true, force: true });
+    }
   });
 
   it('[NFR-005] holds a list to what is there, in both directions', () => {

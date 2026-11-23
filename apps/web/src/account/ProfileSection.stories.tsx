@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { ApiError } from '../api/client';
 import { SessionProvider } from '../session/SessionProvider';
 import { fakeAccountClient, KALO, SIGNED_IN } from './fixtures';
@@ -50,5 +50,23 @@ export const Refused: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Save profile' }));
     await expect(await canvas.findByRole('alert')).toBeVisible();
+  },
+};
+
+/**
+ * How downloaded CSV files are written (T-263): saved as semicolons, changed to commas and saved
+ * with the profile.
+ */
+export const SpreadsheetFiles: Story = {
+  args: {
+    client: fakeAccountClient({}, { preferences: { autoFollow: true, csvSeparator: 'semicolon' } }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const select = canvas.getByLabelText('Spreadsheet files (CSV)');
+    await waitFor(() => expect(select).toHaveValue('semicolon'));
+    await userEvent.selectOptions(select, 'comma');
+    await userEvent.click(canvas.getByRole('button', { name: 'Save profile' }));
+    await expect(await canvas.findByText('Profile saved.')).toBeVisible();
   },
 };

@@ -1,23 +1,29 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { ADMIN, CONFIG_ADMIN } from '../admin/fixtures';
+import { ADMIN, CONFIG_ADMIN, MEMBER, TRACK_ADMIN } from '../admin/fixtures';
+import { ApiError } from '../api/client';
 import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
 import { type Session, SessionProvider } from '../session/SessionProvider';
+import type { ScopeTrack } from '../sets/trackScope';
 import { visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
 import { PermissionExplainerPage } from './PermissionExplainerPage';
 import { VisibilityPage } from './VisibilityPage';
 import { fakeExplainClient, fakeVisibilityClient, REFUSED } from './visibilityFixtures';
 
-function renderPage(session: Session = ADMIN, locale: Locale = 'en') {
-  const client = fakeVisibilityClient();
+function renderPage(
+  session: Session = ADMIN,
+  locale: Locale = 'en',
+  trackId: number | null = null,
+  client: ReturnType<typeof fakeVisibilityClient> = fakeVisibilityClient(),
+) {
   render(
     <I18nProvider locale={locale}>
       <SessionProvider session={session}>
         <main>
-          <VisibilityPage client={client} />
+          <VisibilityPage client={client} trackId={trackId} />
         </main>
       </SessionProvider>
     </I18nProvider>,
@@ -151,9 +157,28 @@ describe('visibility policies (UI-T17)', () => {
     expect(screen.getByRole('group', { name: /^Delete Company levels/ })).toBeVisible();
   });
 
-  it('[IAM-009] is for site administrators', () => {
-    renderPage(CONFIG_ADMIN);
-    expect(screen.getByText(/Only site administrators/)).toBeVisible();
+  it('[IAM-009] [IAM-011] lets a configuration administrator manage the shared policies, as the server does (T-322)', async () => {
+    const user = userEvent.setup();
+    const client = renderPage(CONFIG_ADMIN);
+    const spare = await screen.findByRole('region', { name: 'Spare' });
+    expect(screen.queryByText(/^Only site/)).toBeNull();
+    // A track's own policy belongs on that track's page.
+    expect(screen.queryByRole('region', { name: 'Night desk' })).toBeNull();
+    const add = within(spare).getByRole('form', { name: 'Add a level to Spare' });
+    await user.type(within(add).getByLabelText('Level name'), 'Counsel');
+    await user.click(within(add).getByRole('button', { name: 'Add a level' }));
+    expect(await screen.findByText('Level Counsel was added.')).toBeInTheDocument();
+    expect(client.calls.at(-1)).toEqual({ action: 'addLevel', args: [2, { name: 'Counsel' }] });
+  });
+
+  it('[IAM-009] refuses anyone who neither administers nor runs a track (T-322)', async () => {
+    renderPage(MEMBER);
+    expect(
+      await screen.findByText(
+        'Only site and configuration administrators, and the people who run a track with its own configuration, manage visibility policies.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'New visibility policy' })).toBeNull();
   });
 
   it('fits a small phone', async () => {
@@ -233,5 +258,156 @@ describe('the permission explainer (UI-T17)', () => {
   it('[IAM-009] is for site administrators', () => {
     renderExplainer(fakeExplainClient(), CONFIG_ADMIN);
     expect(screen.getByText(/Only site administrators/)).toBeVisible();
+  });
+});
+
+describe('a local-mode track’s own visibility policies (T-322, T-163a’s pattern)', () => {
+  it('[IAM-011] [IAM-030] shows only the policies OPS owns, and says it uses none yet', async () => {
+    renderPage(TRACK_ADMIN, 'en', 4);
+    const own = await screen.findByRole('region', { name: 'Night desk' });
+    expect(screen.getByText('OPS · Operations')).toBeVisible();
+    expect(screen.queryByRole('region', { name: 'Company levels' })).toBeNull();
+    expect(screen.getByText(/^The visibility policies this track owns/)).toBeVisible();
+    expect(
+      screen.getByText(
+        'OPS uses no visibility policy now, so everyone who sees it sees all its tickets. Use one of its own to give its tickets levels.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Back to managing OPS.' })).toHaveAttribute(
+      'href',
+      '#/manage/tracks/4',
+    );
+    expect(within(own).getByText('Responders', { selector: 'p' })).toBeVisible();
+  });
+
+  it('[IAM-011] [IAM-030] adds a policy of its own, names its own field and people, and uses it for OPS', async () => {
+    const user = userEvent.setup();
+    const client = renderPage(TRACK_ADMIN, 'en', 4);
+    await user.click(await screen.findByRole('button', { name: 'New visibility policy' }));
+    const add = screen.getByRole('form', { name: 'Add a visibility policy' });
+    await user.type(within(add).getByLabelText('Policy name'), 'Incidents');
+    await user.click(within(add).getByRole('button', { name: 'Add a visibility policy' }));
+    const policy = await screen.findByRole('region', { name: 'Incidents' });
+    expect(client.calls.at(-1)).toEqual({
+      action: 'createPolicy',
+      args: [{ name: 'Incidents', trackId: 4 }],
+    });
+    const level = within(policy).getByRole('form', { name: 'Add a level to Incidents' });
+    await user.type(within(level).getByLabelText('Level name'), 'Major');
+    await user.click(within(level).getByRole('button', { name: 'Add a level' }));
+    const member = await within(policy).findByRole('form', { name: 'Add a member to Major' });
+
+    // The track's own user field is offered beside the shared one; another track's is not.
+    await user.selectOptions(within(member).getByLabelText('Who'), 'People in a user field');
+    const fields = within(member).getByLabelText('User field');
+    expect(
+      within(fields)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['Reviewer', 'On call']);
+    await user.selectOptions(fields, 'On call');
+    await user.click(within(member).getByRole('button', { name: 'Add' }));
+    expect(await screen.findByText('People in field On call joined Major.')).toBeInTheDocument();
+
+    // People are found among those who may be named in OPS.
+    const again = within(policy).getByRole('form', { name: 'Add a member to Major' });
+    await user.selectOptions(within(again).getByLabelText('Who'), 'A person');
+    await user.type(within(again).getByLabelText('Find a person'), 'ola');
+    expect(await within(again).findByRole('option', { name: 'Ola Night' })).toBeVisible();
+
+    const use = within(policy).getByRole('button', { name: 'Use this policy for OPS' });
+    expect(use).toHaveAccessibleDescription(/^Tickets at a level this policy lacks take/);
+    await user.click(use);
+    expect(await screen.findByText('OPS now uses Incidents.')).toBeInTheDocument();
+    expect(client.calls.at(-1)).toEqual({ action: 'chooseFor', args: [4, 200] });
+    await waitFor(() =>
+      expect(within(policy).queryByRole('button', { name: 'Use this policy for OPS' })).toBeNull(),
+    );
+    expect(screen.getByText('OPS uses Incidents.')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Incidents' })).toHaveFocus();
+    expect(within(policy).getByText('Used by OPS')).toBeVisible();
+  });
+
+  it('[IAM-011] never asks for the groups for someone who may not read them, nor offers one', async () => {
+    const user = userEvent.setup();
+    const base = fakeVisibilityClient();
+    let asked = 0;
+    const client = {
+      ...base,
+      groups: async () => {
+        asked += 1;
+        return base.groups();
+      },
+    };
+    renderPage(TRACK_ADMIN, 'en', 4, client);
+    const form = await screen.findByRole('form', { name: 'Add a member to Responders' });
+    const kinds = within(within(form).getByLabelText('Who')).getAllByRole('option');
+    expect(kinds.map((o) => o.textContent)).not.toContain('A group');
+    expect(kinds[0]).toHaveTextContent('A role');
+    // A change reads the page again, still without the administrators' list of groups.
+    await user.selectOptions(within(form).getByLabelText('Who'), 'The assignee');
+    await user.click(within(form).getByRole('button', { name: 'Add' }));
+    expect(await screen.findByText('The assignee joined Responders.')).toBeInTheDocument();
+    expect(asked).toBe(0);
+  });
+
+  it('[IAM-009] [IAM-011] a configuration administrator finds roles, groups and people among the site’s', async () => {
+    const user = userEvent.setup();
+    const base = fakeVisibilityClient();
+    // As the server answers someone who administers OPS but holds no role in it: the track's own
+    // lists of roles and of people need more than administering it.
+    const refused = () => new ApiError(404, { error: 'not_found' });
+    const client = {
+      ...base,
+      roles: async (track: ScopeTrack | null) => {
+        if (track !== null) throw refused();
+        return base.roles(null);
+      },
+      findPeople: async (query: string, track: ScopeTrack | null) => {
+        if (track !== null) throw refused();
+        return base.findPeople(query, null);
+      },
+    };
+    renderPage(CONFIG_ADMIN, 'en', 4, client);
+    const form = await screen.findByRole('form', { name: 'Add a member to Responders' });
+    const kinds = within(within(form).getByLabelText('Who')).getAllByRole('option');
+    expect(kinds.slice(0, 3).map((o) => o.textContent)).toEqual(['A role', 'A group', 'A person']);
+    await user.selectOptions(within(form).getByLabelText('Who'), 'A person');
+    await user.type(within(form).getByLabelText('Find a person'), 'sam');
+    expect(await within(form).findByRole('option', { name: 'Sam Rivera' })).toBeInTheDocument();
+    await user.click(within(form).getByRole('button', { name: 'Add' }));
+    expect(await screen.findByText('Sam Rivera joined Responders.')).toBeInTheDocument();
+    expect(base.calls.find((c) => c.action === 'addMember')?.args[2]).toEqual({
+      grantee: 'user',
+      userId: 7,
+    });
+  });
+
+  it('[IAM-030] someone who runs tracks chooses one with its own configuration', async () => {
+    renderPage(TRACK_ADMIN);
+    expect(
+      await screen.findByRole('link', { name: 'Visibility policies of OPS · Operations' }),
+    ).toHaveAttribute('href', '#/manage/tracks/4/visibility-policies');
+    expect(screen.queryByRole('link', { name: /of SHOP/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'New visibility policy' })).toBeNull();
+  });
+
+  it('[IAM-030] a shared-mode track has no policies of its own', async () => {
+    renderPage(ADMIN, 'en', 3);
+    expect(
+      await screen.findByText(
+        'SHOP uses shared configuration, so it uses a shared visibility policy, or none, which site and configuration administrators choose.',
+      ),
+    ).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'New visibility policy' })).toBeNull();
+  });
+
+  it('passes the track’s own page through the pseudo-locale', async () => {
+    renderPage(TRACK_ADMIN, 'en-XA', 4);
+    const main = screen.getByRole('main');
+    await within(main).findByText('Responders', { selector: 'p' });
+    const fixed = ['Night desk', 'Responders', 'Administrators', 'Members', 'OPS · Operations'];
+    const texts = visibleTexts(main).filter((t) => /^[A-Za-z .,·]+$/.test(t) && !fixed.includes(t));
+    expect(texts).toEqual([]);
   });
 });

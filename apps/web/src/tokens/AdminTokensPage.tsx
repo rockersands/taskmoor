@@ -2,6 +2,7 @@ import { type FormEvent, useCallback, useEffect, useId, useRef, useState } from 
 import { ApiError } from '../api/client';
 import { pageAfter } from '../api/pages';
 import { useT } from '../i18n/I18nProvider';
+import { instantOfLocalText } from '../i18n/zone';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import { DangerAction } from '../shell/DangerAction';
@@ -465,8 +466,10 @@ function BulkSection({
   const criteria = (): BulkCriteria | null => {
     if (mode === 'all') return { all: true };
     if (mode === 'owner') return ownerId ? { ownerId: Number(ownerId) } : null;
-    // The start of the chosen day in the reader's own time zone.
-    return before ? { createdBefore: new Date(`${before}T00:00:00`).toISOString() } : null;
+    // The start of the chosen day on the person's clock: the account's zone, else the device's
+    // (T-280).
+    const start = before ? instantOfLocalText(`${before}T00:00`) : null;
+    return start ? { createdBefore: start.toISOString() } : null;
   };
 
   const preview = async (event: FormEvent) => {

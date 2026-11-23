@@ -4,6 +4,7 @@ import type { NamedField } from '../customFieldNames';
 import type {
   ActivityEntry,
   HistoryEntry,
+  NumberField,
   Priority,
   TicketClient,
   TicketDetails,
@@ -160,6 +161,8 @@ export function fakeTicketClient(
      * promise holds the answer until the test settles it.
      */
     fields?: NamedField[] | Error | Promise<NamedField[]>;
+    /** The number fields on the details; Points by default. */
+    numberFields?: NumberField[];
   } = {},
 ): FakeTicketClient {
   const { mayEdit, editableFields, ...stored } = structuredClone(start.ticket ?? SHOP_41);
@@ -295,7 +298,8 @@ export function fakeTicketClient(
     }),
     info: async () => structuredClone(INFO),
     priorities: async () => structuredClone(PRIORITIES),
-    numberFields: async () => [{ id: 31, name: 'Points', locked: false }],
+    numberFields: async () =>
+      structuredClone(start.numberFields ?? [{ id: 31, name: 'Points', locked: false }]),
     fieldNames: async (trackId) => {
       calls.push({ action: 'fieldNames', args: [trackId] });
       const fields = await (start.fields ?? SHOP_FIELDS);

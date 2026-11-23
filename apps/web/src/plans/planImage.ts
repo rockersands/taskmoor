@@ -1,6 +1,7 @@
 import type { useT } from '../i18n/I18nProvider';
 import { typeName } from '../shell/seededNames';
 import { dayNumber } from '../timeline/client';
+import { isCritical, type Slack, tightLink } from '../timeline/critical';
 import { type Blocked, barOf, blockerCount, dependencyState } from '../timeline/dependencies';
 import { drawnReleases, releaseMarkerText } from '../timeline/markers';
 import { type TimelineGroup, type TimelineRow, timelineRows } from '../timeline/rows';
@@ -113,6 +114,11 @@ export interface TimelineImageInput {
   hiddenSources: number;
   /** A day's month, in words: "Nov 2026". */
   monthText: (day: number) => string;
+  /**
+   * With the critical path on (PLN-011): each listed ticket's slack. Bars on the path get the
+   * page's heavy outline and a ▲, tight links on it a heavier line, and the legend says so.
+   */
+  critical?: Slack;
 }
 
 export interface TimelineImage {
@@ -147,6 +153,7 @@ function nextMonth(day: number): number {
 /** A timeline as an SVG text. */
 export function timelineSvg(input: TimelineImageInput): TimelineImage {
   const { t, data, today, dependencies } = input;
+  const slack = input.critical ?? null;
   const { rows, total } = imageRows(data, input.groupOf);
   const released = drawnReleases(data.markers.releases);
 
@@ -283,11 +290,16 @@ export function timelineSvg(input: TimelineImageInput): TimelineImage {
     if (bar) {
       const x = dayX(bar.start);
       const width = Math.max(3, (bar.due - bar.start + 1) * perDay);
+      const onPath = isCritical(slack, item.id);
       out.push(
         `<rect x="${x.toFixed(1)}" y="${top + 5}" width="${width.toFixed(1)}" height="${ROW - 10}" rx="3" fill="${
           bar.kind === 'rollup' ? COLOURS.rollup : COLOURS.bar
-        }"/>`,
+        }"${onPath ? ` stroke="${COLOURS.ink}" stroke-width="2.5"` : ''}/>`,
       );
+      // A ▲ just before the bar: the path is never told by an outline alone.
+      if (onPath) {
+        out.push(`<path d="M${(x - 9).toFixed(1)} ${top + 16}l4 -8l4 8z" fill="${COLOURS.ink}"/>`);
+      }
       const blocked = dependencies.get(item.id);
       if (blocked) {
         const words =
@@ -317,6 +329,7 @@ export function timelineSvg(input: TimelineImageInput): TimelineImage {
     const end = barOf(held);
     if (!start || !end) continue;
     const late = dependencyState(blocker, held) === 'late';
+    const tight = tightLink(slack, blocker, held);
     const x1 = dayX(start.due + 1);
     const x2 = dayX(end.start);
     const y1 = barY(a) + (ROW - 10) / 2;
@@ -324,8 +337,8 @@ export function timelineSvg(input: TimelineImageInput): TimelineImage {
     const middle = Math.max(x1, x2 - 6).toFixed(1);
     out.push(
       `<path d="M${x1.toFixed(1)} ${y1}H${middle}V${y2}H${x2.toFixed(1)}" fill="none" stroke="${
-        late ? COLOURS.late : COLOURS.muted
-      }"${late ? ' stroke-dasharray="5 3"' : ''}/>`,
+        late ? COLOURS.late : tight ? COLOURS.ink : COLOURS.muted
+      }"${late ? ' stroke-dasharray="5 3"' : ''}${tight ? ' stroke-width="2.5"' : ''}/>`,
     );
   }
 
@@ -341,6 +354,11 @@ export function timelineSvg(input: TimelineImageInput): TimelineImage {
   let height = bottom + 24;
   if (data.links.length > 0) {
     text(PAD, height, t('plans.image.legend'), { size: 11, fill: COLOURS.muted });
+    height += 8;
+  }
+  if (slack && rows.some((r) => r.kind === 'item' && isCritical(slack, r.item.id))) {
+    if (data.links.length > 0) height += 8;
+    text(PAD, height, t('critical.image.legend'), { size: 11, fill: COLOURS.muted });
     height += 8;
   }
   height += PAD;

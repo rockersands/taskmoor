@@ -32,12 +32,14 @@ machines on every change, which is how this project verifies work.
 - Target: WCAG 2.1 AA. Semantic HTML first; roles and names are what tests query, so an element
   without an accessible name fails a test before it fails a user.
 - Every story in Storybook runs as a browser test through the Vitest addon with the a11y
-  addon's axe checks; a serious or critical violation fails `pnpm verify`. New components must
-  come with stories.
+  addon's axe checks; any violation, whatever its impact, fails `pnpm verify` (T-327, below).
+  New components must come with stories.
 - Keyboard: every control reachable and operable with the keyboard, visible focus, focus traps
   only in modal dialogs with Escape to close and focus restored afterwards (the shell's drawer
   is the pattern).
 - Touch targets of at least 44px on coarse pointers; desktop stays the primary layout (ADR-033).
+  A story that measures them carries `tags: ['touch']` and runs in the `stories-touch` projects,
+  whose browser is a touch screen (ADR-030, T-328).
 
 ## The WCAG 2.1 AA pass (M1-115)
 
@@ -58,6 +60,85 @@ machines on every change, which is how this project verifies work.
 - **Fixed by the pass**: links whose accessible name did not contain their visible text now
   start with it (2.5.3): track summary counts, release stages, the timeline's "No dates". The
   MCP connection snippet wraps instead of scrolling, which would need focus.
+
+## Story tests run axe again (T-327)
+
+- **What was wrong**: `apps/web/.storybook/vitest.setup.ts` called `setProjectAnnotations` with
+  the preview's annotations alone. A setup file that calls it turns off the Storybook plugin's
+  own provisioning, so the a11y addon's annotations were never loaded and no story ran axe,
+  although the preview asked for `a11y.test: 'error'`. The setup now lists the addon's
+  annotations before the preview's, `@storybook/addon-a11y/preview` is among the dependencies
+  Vite optimises before a run, and `apps/web/src/test/storyAxe.test.tsx` fails if a story with a
+  nameless button, an image without `alt` and an unlabelled input passes again.
+- **Any impact fails a story**: the addon's `'error'` mode does not filter by impact, so a
+  moderate or minor violation fails a story too. The page pass in Playwright (above) still
+  counts serious and critical ones.
+- **Why full gates timed out stories, measured**: with axe on, the gate's story tests timed out
+  at 15 s stories that pass alone in about a second, mostly the first story of a file (TicketPage's
+  All In Pages, the touch projects' first file). Probes in the setup file and in Vitest's main
+  process, over the gate's own lint, types and tests (`pnpm verify`), found why. Two runs each
+  timed out All In Pages in both touch projects, and one other story (SignInPage's Google For A
+  Gmail Address, TrackPeople's Manager). Each had started its render or play and then waited
+  with its page idle (no long task, its timers on time) for a request to its Vite server: a
+  module the first render imports (react-dom's client, through Storybook's renderer), or an
+  image. The main Vitest process, which serves every project's pages, ran no event loop for
+  12.3 s then 6.1 s in one run and 9.6, 6.7 and 3.0 s in the other, 24 to 44 s into it. A CPU
+  profile of that window: 16.0 of 20 s in the browser connection's message handler, 15.5 s of it
+  parsing the task updates the story pages send. Each carries the test's meta, where the a11y
+  addon puts axe's whole result, every passing, incomplete and inapplicable rule with its
+  elements: 0.78 to 1.07 MB for a ticket page story, 25 MB for the 64 tests of three files.
+  Early in a run the mouse projects finish stories in many pages at once.
+- **The fix: story tests report violations only**: the setup file gives axe its own `no-passes`
+  reporter, for story tests only. Every rule still runs on every element, a violation still
+  fails the story and is reported with all its elements; the passing, incomplete and inapplicable
+  lists are left out, and Storybook's own page keeps the whole result. The 64 tests now send
+  0.12 MB; All In Pages' report is 766 bytes. `storyAxe.test.tsx` fails if the lists come back
+  or a violation loses an element. One element per rule (axe's `resultTypes: ['violations']`)
+  still sent 4.6 MB: that run passed, but with a 7.8 s pause and All In Pages at 13.6 s.
+- **With the fix, under the gate's load**: tests passed (10,398, none failed). All In Pages took
+  2.2 s and 1.2 s, and the slowest of the run's 2,790 story tests 9.7 s. The main process still
+  paused once for 6.4 s, 24 s in, with the machine's 16 threads at 100 % and little of it
+  running: a CPU profile shows no single cause, so it is the machine's share, not a fix to make
+  here. The 191 story tests that ran across that pause took at most 7.5 s. Alone, All In Pages
+  takes 0.73 to 1.1 s, and Timeline's On A Touch Screen and Board's Grips On A Touch Screen
+  0.18 to 0.21 s.
+- **What stays inside a story's 15 s**: the first story of each file still imports the renderer's
+  part of react-dom from the Vite server (Storybook imports it on the first render; it does not
+  resolve from the web app, so the setup file cannot load it first). It waited up to 6 s during
+  the remaining pause. The setup file does load axe-core with each file, so the first story no
+  longer fetches it inside its 15 s (that wait reached 3.3 s in a full run). On its own that did
+  not help: a run with it and the whole reports timed out as before.
+- **Not shown**: earlier gates also timed out TimelinePage's On A Touch Screen and BoardPage's
+  Grips On A Touch Screen. Those runs left no log. In the probed runs neither ran at the stall,
+  and both took 0.4 to 1.1 s; that they waited on the stalled server is likely but not proven.
+- No story has a longer timeout and no axe rule is off.
+- **Fixed by the product, not the rules** (44 stories in 15 files had failed, the same in both
+  skins):
+  - Names that did not contain the visible words (2.5.3, `label-content-name-mismatch`) now
+    start with them: a directory's Sync now, Full sync, Move up, Move down and Sync and remove;
+    a SAML provider's metadata link, named with the address it shows; a workflow version's
+    Restore as draft; a service account's Hide tokens; a priority set's Make this the default
+    set; a webhook delivery's Send again.
+  - Landmarks of one kind with one name (`landmark-unique`): a grouped list names each group's
+    result table after its group, and AI usage names its tables' scrollers apart from the cards
+    around them.
+  - The advanced search's query box is a textarea, which may not take the combobox role
+    (`aria-allowed-role`); it is a text box with `aria-autocomplete="list"`.
+  - A webhook's deliveries panel is titled with an h2 under the page's h1 (`heading-order`).
+  - Two story files built a page the app never draws: a story that wrapped the Administration
+    layout inside the file's own, and invitation pages inside the main the file's decorator
+    gives the track pages. The stories now draw what the app draws.
+- **Harness exceptions**: an axe rule is turned off only for a violation that Storybook's
+  harness makes and the app cannot, in the narrowest place, with a comment saying why, and is
+  listed here:
+  - `apps/web/src/shell/StandaloneFrame.stories.tsx` draws the sign-in page's frame beside a link
+    page's to compare their header rows, so its canvas holds two banners and two mains. The file
+    turns off `landmark-no-duplicate-banner`, `landmark-no-duplicate-main` and
+    `landmark-unique`; every other rule checks both pages, and the pages that use the frame
+    check those rules in their own stories.
+  - The two render-budget stories, `PlanPage.stories.tsx` (10,000 tickets on a plan's Timeline)
+    and `TimelinePage.stories.tsx` (2,000 dated tickets), set `a11y.test: 'off'`: axe's run
+    would sit inside the time they measure. Their components' other stories run axe.
 
 ## Completeness, right to left and a second language (M1-116)
 

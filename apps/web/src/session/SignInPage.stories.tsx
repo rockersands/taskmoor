@@ -107,10 +107,20 @@ export const GoogleForAGmailAddress: Story = {
     await userEvent.tab();
     await expect(await canvas.findByText('This address signs in with Google.')).toBeVisible();
     await expect(canvas.getByLabelText('Password')).toBeVisible();
-    // Google's own button, with its G (T-061).
+    // Google's own button, with its G (T-061, T-262): Google's file as an image, drawn.
     const google = canvas.getByRole('button', { name: 'Sign in with Google' });
     await expect(google).toHaveClass('google-sign-in');
-    await expect(google.querySelector('svg')).not.toBeNull();
+    const mark = google.querySelector('img.google-sign-in-mark') as HTMLImageElement;
+    await expect(mark).not.toBeNull();
+    // Under Vitest the G is not a data URL as in the build: the story's Vite server serves the
+    // file, which the image fetches when the page first draws. Under a full gate's load that
+    // fetch outlasted the 1 s of Testing Library's `waitFor` (T-327). `decode()` resolves once
+    // the file is fetched and decoded, however long that takes within the story's time, and
+    // rejects if it fails to load or decode.
+    await mark.decode().catch((cause: unknown) => {
+      throw new Error(`Google's G did not load or decode: ${mark.currentSrc}`, { cause });
+    });
+    await expect(mark.naturalWidth).toBeGreaterThan(0);
   },
 };
 

@@ -8,6 +8,7 @@ import { emit } from '../events/bus';
 import { zipSink } from '../export/sinks';
 import { exportWorkspace } from '../export/write';
 import type { FieldCatalogs } from '../fields/catalog';
+import { viewerDay } from '../reports/zone';
 import { countBulkExport } from '../security/alerts';
 
 /**
@@ -66,7 +67,8 @@ export function registerExportRoutes(
     );
     await countBulkExport(db, ws, user.id);
     const sink = zipSink();
-    const day = new Date().toISOString().slice(0, 10);
+    // The file is named after the day it is on the person's own clock (T-280).
+    const day = viewerDay(request);
     // Written while the client reads; a failure part way ends the download short (the
     // manifest, written last, is then missing, and an import refuses the archive).
     exportWorkspace(db, { workspaceId: ws, sink, stores, catalogs, tracks })
