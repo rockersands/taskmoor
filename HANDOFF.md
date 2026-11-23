@@ -22,7 +22,245 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: the auto-scheduler (2026-11-14, Windows)
+### Latest: resume plan after the token pause (2026-11-23 03:55, Windows)
+
+The user said on 2026-11-22 "you take all decisions but finish all version 1 tickets" (decisions.csv rows
+of 2026-11-22 and 2026-11-23), then "don't do the language reviews" (T-171 Later) and "don't worry about the
+mobile app at all" (T-180 to T-182 Later). Tokens run out tonight and renew at 08:00; a session wake-up at
+about 08:07 resumes this list.
+
+**In flight (Windows, nothing new on `main` since `7b289504`):**
+- T-359 (the Mac's six third-sweep branches, taken over): worktrees `G:/tm-w30-admin2`, `-statistics`,
+  `-states`, `-work`, `-track` and `-admin1` on `wave30/t359-*`, then integration in `G:/tm-w30` on
+  `wave30/t359`. Workflow run `wf_a4be309e-8b7` (script `wave30-t359-takeover-wf_a4be309e-8b7.js` in the
+  session's workflows folder).
+- T-333 (`pnpm ai:live`, the live AI checks from one command): `G:/tm-w31` on `wave31/t333-ai-live`, run
+  `wf_26b0dfb7-8bc`.
+- On resume: `git status` in each worktree; commit any half-done work as "WIP: ... stopped before its tests
+  ran"; resume each workflow from its run id. Then gate them one at a time on a quiet machine, merging the
+  coordinator branch into the wave branch first, so the docs from 2026-11-14 onwards reach `main`.
+
+**Next, in order:**
+1. Going public (T-005, T-031, T-035), the user's choice of 2026-11-22: rewrite `main` with git-filter-repo
+   (installed; the rules and `rewrite.py` are in the session scratchpad's `public/` folder; the trial passed:
+   clean, final tree unchanged, 13 docs' hashes mapped), gate the rewritten clone, rename this repository to
+   an archive name (it stays private), create a fresh public `Rockersands/taskmoor`, push, turn on private
+   vulnerability reporting, point this PC at the new history and tell the Mac in COORDINATION to clone again.
+2. T-321, T-323, T-324, T-326, T-332, T-334, T-335, T-357 and T-288 (decisions in decisions.csv).
+3. After the last merge: the fuzz stages (T-019, T-197) with the 1M import (T-013b), then `pnpm bench:check`
+   (T-242).
+4. Release 1.0 (T-020, T-021 signing with the key from Drive, T-040, T-022); the user runs `pnpm ai:live`
+   once (T-333); images on ghcr.io (T-036) after the user's two logins; the user's acceptance (T-024).
+
+### Earlier: every person's roles and one page per person (2026-11-17, Windows)
+
+On `main` at `7b289504` after a full gate (10,491 tests, 317 e2e). No migration (the next is 0114).
+
+- T-331: `apps/server/src/authz/person-roles.ts` (`rolesOf`, `tracksRunBy`, `roleCondition`: a constant number of
+  statements per page, tested at 3,000 people); `GET /users` takes `role=` and returns `roles` and `tracksRun`;
+  `GET /users/:id` returns role sources, tracks and `hasSecondFactor`. Web: `people/UsersPage.tsx` (badges,
+  one Edit link, role filter) and the new `people/PersonPage.tsx` with every action; `keepPageAddress()` in
+  AdminLayout brings the breadcrumb back to the list's filters. It adopts the Mac's S3-AC-10 meta line, so
+  t359-admin2 merges with two keep-both conflicts (PeoplePages.stories.tsx, people.css).
+- Known: `e2e/people.spec.ts` run alone with several workers can fail its "Your data" step, because the
+  desktop and mobile copies ask for Ada's data at once (the second gets "in progress"). The gate runs them
+  one after the other; it predates T-331.
+
+### Earlier: lists ordered by type, key or a heading (2026-11-17, Windows)
+
+On `main` at `dde9fb74` after a full gate (10,434 tests, 317 e2e). No migration (the next is 0114).
+
+- T-330: `apps/web/src/list/order.ts` (one order model: column plus direction; `nextSort`, `usableSort`),
+  `list/SortMenu.tsx`, ResultTable's opt-in `onSort` (Search does not pass it), `GroupSection` keeps its table
+  while a new order loads. Plan files take `sort` (any orderable field or `cf[N]`) and `order`
+  (`plans/model.ts` `exportOrder`). A track's List keeps its order in the address. ADR-065 As built (T-330).
+
+### Earlier: close_reason.created on every path (2026-11-17, Windows)
+
+On `main` at `05d682b0` after a full gate (10,404 tests, 315 e2e). No migration (the next is 0114).
+
+- T-325: `apps/server/src/workflows/close-reasons.ts` `createCloseReason` takes the list lock, inserts and
+  emits `close_reason.created`; the close reasons route and `completedReasonId` (workflows, the
+  completed-reason route, board-managed workflows and track templates) use it. Tests in
+  `routes/close-reason-created.test.ts`. ADR-079 records the exception to "one event per board mutation";
+  ADR-116 and the manual's fields page say who records it.
+- Building: T-330 (lists ordered by type or key, and by column headers; wave28) and T-331 (each person's
+  roles, a role filter and one Edit view per person with T-323's person controls; wave29). T-323 keeps
+  your own token and releases, after the Mac's T-359.
+
+### Earlier: story tests run axe again (2026-11-16, Windows)
+
+On `main` at `d6200bf7` after a full gate (10,398 tests, 315 e2e). No migration (the next is 0114).
+
+- T-327: `.storybook/vitest.setup.ts` passes `@storybook/addon-a11y/preview` to `setProjectAnnotations`
+  (it had been missing since 2026-10-12, so no story ran axe). Any violation fails a story, whatever its
+  impact (ADR-024 has a section on it). `src/test/storyAxe.test.tsx` guards it; `tsconfig.json` now
+  typechecks `.storybook/*.ts(x)`.
+- Names changed to start with their visible words (WCAG 2.5.3): directory Sync, Full sync, Move and
+  "Sync and remove what left" (the manual's ldap page too), a SAML provider's metadata link, a workflow
+  version's Restore, Make this the default set, Hide tokens, Send again. Webhook deliveries' title is an h2.
+- The advanced query box is a text box (no combobox role) with a polite "N suggestions" status and the
+  hint in its description; e2e and the fresh-install spec look for `textbox` "Query".
+- Grouped result tables are named after their group; AI usage's table scrollers have their own names.
+- Story decorators: AdminSection reads `parameters.session`; invitation stories (`parameters.ownFrame`)
+  skip the track pages' main. StandaloneFrame's side-by-side stories are the one harness exception.
+- The first gate failed on two stories, both found and fixed: (1) the Gmail story waited 1 s for
+  Google's G (story tests keep Testing Library's 1 s default); it now awaits `decode()`. (2) Touch
+  story timeouts: with axe on, each story test sent axe's whole result (about 1 MB for a ticket page)
+  to Vitest's main process, which stalled for up to 12 s parsing them. Story tests now use axe's
+  `no-passes` reporter (every rule runs, violations fail with their elements), and axe-core loads
+  with the setup file. ADR-024 has the measurements and the one 6 s pause that remains under load.
+- For the Mac's T-359 branches: new stories must pass axe; renamed buttons above may need their locators.
+
+### Earlier: touch stories in their own projects (2026-11-16, Windows)
+
+On `main` at `98dfd0f5` after a full gate (10,396 tests, 315 e2e).
+
+- T-328: stories that need a touch screen carry a literal tags: ['touch'] and run in stories-touch and
+  stories-dark-touch (Playwright context with hasTouch; one page each). The mid-story CDP toggle that stalled
+  under load is gone. Run all four story projects to cover both skins and both pointers.
+- Next: T-327 (story tests never ran axe) on wave26.
+
+### Earlier: Google's button as Google draws it (2026-11-16, Windows)
+
+On `main` at `083f806a` after a full gate (10,389 tests, 315 e2e). No migration (the next is 0114).
+
+- T-262 (with T-317, the user's OK to download): `apps/web/src/assets/google/google-g.svg` is the G from Google's
+  signin-assets.zip, cropped, shown by `GoogleMark` as an image; `apps/web/src/fonts/` holds Google Sans 500
+  (latin, latin-ext) with OFL.txt (emitted as `assets/OFL-<hash>.txt`); `sso.css` has the @font-face rules.
+- The single-file frontend kit (`builder-core/src/frontend.ts`) now inlines every file its stylesheet names.
+- `THIRD_PARTY_NOTICES` at the root; ADR-029, ADR-036 and ADR-119 updated; clean-room.md names the one exception
+  (another company's logo on its owner's terms, with an ADR).
+- Running: T-328 (touch stories in their own projects) on wave25; then T-327 (axe in stories).
+
+### Earlier: Administration controls beyond the UI-T21 list (2026-11-16, Windows)
+
+On `main` at `f0239053` after a full gate (10,380 tests, 315 e2e). No migration (the next is 0114).
+
+- T-322 (T-155): `configuration/DeleteTrack.tsx` (Delete track, a DangerAction, to the trash; refusals
+  re-read the list); Which sets a track uses chooses a shared-mode track's access policy and type set
+  (`TypeMapping` from `sets/TypeSetForm.tsx` asks where tickets go); `WorkflowMapsPage` and
+  `VisibilityPage` take a `trackId` for a local-mode track's own map and policies
+  (`trackVisibilityClient` reads only what the viewer may read); `sets/OwnTypesSection.tsx` and the Fields
+  page in track scope; `labels/LabelsPage.tsx` with the new `GET /api/v1/labels/usage` (site and
+  configuration administrators; counts include trashed tickets).
+- `fields/client.ts`: `findGroups` searches the site's groups for administrators; people who only run a
+  track use `GET /fields/:id/groups`.
+- Still API-only: a local-mode track's own access policy (the page says so). T-323 (people, second
+  factors, own token, releases) and T-321 (sharing, the backup schedule) wait for the Mac's T-359.
+- Next for Windows: T-327 (story tests never ran axe; about 35 stories fail with it on), then T-325.
+
+### Earlier: Administration pages for what was API-only, wave 1 (2026-11-16, Windows)
+
+On `main` at `fa27710c` after a full gate (10,234 tests, 300 e2e). No migration of its own (wave 21 used 0113; the next is 0114).
+
+- T-320 (UI-T21 wave 1, T-155): new pages `#/admin/priorities` (`apps/web/src/priorities/`: priorities,
+  priority sets, close reasons), `#/admin/ticket-types` (`apps/web/src/tickettypes/`: levels and types;
+  type sets gain their settings and the mapping question), `#/admin/notification-policies` and
+  `#/admin/email` (System), and `#/tracks/KEY/areas` (`AreasPage.tsx`, rendered with `section={null}`
+  until the Mac's `within` prop merges). The Fields page gains formula fields, contexts with scopes and
+  person limits, defaults (the create form fills them), child options, type settings and number formats.
+  Workflow maps gain the status mapping step; groups can be renamed and hold service accounts; People
+  in field and Groups in field are grantees on access policies.
+- Server: `fieldIdOf` refuses an id above the integer range (400, not 500); the field-grantee check is new.
+  `workflows/locks.ts` caches lock lists per database, not per process (the gate's e2e found two sites
+  sharing one list; ADR-042 updated).
+- The first gate failed on 11 e2e tests: a new spec's track sorted before ATT, two Delete buttons'
+  visible words were not in their names (WCAG 2.5.3), and the lock cache above. All fixed before this gate.
+- Wave 21 was merged in before this gate; the field option Delete follows the user's T-267 rule (asks
+  only with second-level options or a default).
+- Priorities, Ticket types and Fields refuse someone who only runs tracks (site and configuration
+  administrators only).
+- Left: T-321 (sharing, the backup schedule; after the Mac's T-359), T-322 (the gaps beyond the list),
+  and `docs/manual/use/boards.md` naming Areas among the pages that keep the tab bar (after T-359).
+- The server still keeps a notification rule naming a deleted field; the page leaves it out on the next change.
+
+### Earlier: the user's answers of 2026-11-16, built (2026-11-16, Windows)
+
+On `main` at `50f67f02` after a full gate (9,864 tests, 276 e2e). Migration 0113 (`user_preference.csv_style`, T-263); the next is 0114.
+
+- Done: T-259, T-260, T-263, T-264, T-267, T-269, T-278, T-279, T-280, T-283, T-284, T-286, T-120, T-318
+  (tickets.md has what each became). T-268 waits for the Mac's t359-work.
+- T-263: `apps/server/src/csv` writes semicolons and decimal commas by the person's style; the importer
+  detects the separator and reads Windows-1252. **The csv fuzz stage must run again before the M1 gate.**
+  Known gap: Swiss German Excel (decimal point with semicolons); a one-column semicolon file reads as commas.
+- T-280: one clock per person. The web app reads the account's zone, else the device's
+  (`instantOfLocalText`, `viewerDay` on the server); a few things stay on UTC on purpose (audit and
+  personal-data file names, AI usage days, worker keys). The rule is a section at the end of ADR-010;
+  it may deserve its own ADR (Windows has 130 to 139).
+- T-267: DangerAction's rule is in ADR-114 D13 and the DangerAction doc comment.
+- T-269/T-278/T-283/T-284: `fields/values.ts` `offeredPeople`, `fields/access.ts` (`readsFieldsOf`,
+  `fieldReaderOf`); ADR-113 has the naming rules.
+- T-259: the LDAP sync's closing transaction removes the create-tracks grant from people it took out of
+  their last group running a track (`directory.synced` carries `createTracksGrantsRemoved`); single
+  sign-on group changes still do not.
+- New tickets: T-323 (people, second factors, own token, releases; after T-359), T-324 (site name), T-327 (bug: story tests never run axe),
+  T-325 (bug: no `close_reason.created` event when a workflow is created), T-326 (Assignee picker on the
+  ticket page).
+- For the Mac's T-359 merge: wave 21 touched `use/tickets.md`, `admin/fields.md` front matter, the
+  checklist and link rows (T-267 asks first), and `AccountPage` (CSV style, time zone).
+- Web tests: `apps/web/src/test/setup.ts` sets Testing Library's `asyncUtilTimeout` to 5 s (was 1 s).
+  Three tests (BoardCell's 2,000-card drop, the AI controls' similar ticket, the plan's Releases tab)
+  failed full runs under load tonight and passed alone; two gates were rerun for them.
+
+### Earlier: the hierarchy grid (2026-11-15, Windows)
+
+On `main` at `152f666b` after a full gate (9,718 tests, 271 e2e). Migration 0112; the next is 0113.
+
+- ADR-122 stage 10 (T-089a, PLN-010): a plan's Grid section. A structure (`plan_structure`, up to
+  20 a plan) holds steps and columns, never tickets; the tree is built per viewer
+  (`plans/structureTree.ts`, pure; `routes/plan-structures.ts`: CRUD with versions, the skeleton,
+  `POST /plans/:id/grid/tickets` for the cells in view). Hidden children and linked tickets are
+  counted, never named. Up to 100,000 rows; a read that runs too long answers 503 `query_timeout`.
+- Totals, progress and formula columns are computed in the browser (`apps/web/src/plans/grid/
+  compute.ts`, `tree.ts`; the web app now depends on `@taskmoor/formula`).
+- The page: `PlanGridPage.tsx`, `grid/rowWindow.ts`, `StructureDialog.tsx`, `MoveUnderDialog.tsx`
+  (drag, the row menu and Shift+F10). Reads are ordered by the page's own read number; the
+  server's `generation` is no longer compared.
+- The grid's test trees live in `apps/web/src/test/gridTrees.ts` (the boundary rules).
+- Deferred while benchmarking is paused: the budgets of stages 9 and 10.
+- T-089a is done; every multi-track stage of ADR-122 is on `main`.
+
+### Earlier: baselines, the critical path and evening out load (2026-11-15, Windows)
+
+On `main` at `9201af30` after a full gate (9,575 tests, 270 e2e). Migration 0111; the next is 0112 (claimed for stage 10).
+
+- ADR-122 stage 9 (T-089a, PLN-011): a plan's Baselines section captures up to 10 baselines from Live
+  or a scenario (`routes/plan-baselines.ts`, tables `plan_baseline` and `plan_baseline_day`) and
+  compares one with today's days: slipped, earlier, not in the baseline, the plan's end then and now.
+  The answer names the old days `was` (Biome refuses a `then` property).
+- The critical path: `plans/criticalPath.ts` (slack per ticket, chains, circles) and
+  `GET /plans/:id/critical-path`; the Timeline's toggle (`critical=1`) and a list in words.
+  Tarjan and the heap moved to `plans/graph.ts`; `classify` is exported from `scheduler.ts`.
+- Even out load: `plans/evenOut.ts`, the auto-schedule run's `mode: 'even_out'`, writing drafts like
+  a fill run; answers carry `overLeft` and `counts.moved`.
+- `plans/access.ts` holds `planEditable` for every plan route.
+- T-316: ten of the third sweep's eleven Plans faults; S3-PL-9 stays with the Mac's T-359.
+- The user took Claude's recommendation for every question of T-306, T-312, T-314 and T-315.
+- Deferred while benchmarking is paused: the stage's budgets in `plans.large.test.ts`.
+- Next on Windows: stage 10, the hierarchy grid (T-089a, PLN-010).
+
+### Earlier: wrapping up for the day; T-359 half-done on six branches (2026-11-14, the Mac)
+
+The Mac's last push to `main` was `c10ea330` (T-355 and T-356, full gate: 9,257 tests, 266 e2e);
+Windows has pushed since (`91a354b0`). The main lock is free and nothing of the Mac's is running.
+
+- T-358, the third page sweep, is done: `docs/plan/page-review-third-sweep.md` (166 routes, 1,219
+  pictures; of the second sweep's open faults 86 fixed, 29 still there or changed; 66 new faults,
+  9 medium, none high; 11 in Plans, passed to Windows in COORDINATION.md).
+- T-359, fixing those faults outside Plans, was stopped mid-wave at the user's request. Six
+  branches are pushed (`wave26m/t359-*`), none merged or gated. One (`admin2`) is reviewed and
+  ready; two are built but not reviewed; one build was stopped while testing; two stopped in
+  their fix round with an untested work-in-progress commit. Each branch's state, what is left and
+  the reviewers' notes: `docs/plan/t359-handover.md`.
+- Waiting on the user: T-354 (restricted person fields in a template for every track), T-278
+  (picker permissions, which T-284 needs), the You rows listed in tickets.md, and the M1 gate's
+  three items (8-hour fuzz runs after all merges, ASVS 1.14.2 with the release signing decision,
+  the prompt-injection corpus against a live model).
+- Next on the Mac: finish T-359 from the hand-over file, then T-357 (low priority). No
+  benchmarking until the user lifts it.
+
+### Earlier: the auto-scheduler (2026-11-14, Windows)
 
 On `main` at `91a354b0` after a full gate (9,404 tests, 268 e2e). No migration; the next is 0111.
 

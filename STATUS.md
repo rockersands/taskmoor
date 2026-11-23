@@ -1,6 +1,6 @@
 # Status
 
-Updated 2026-11-07. The task list lives in [docs/plan/backlog.csv](docs/plan/backlog.csv).
+Updated 2026-11-16. The task list lives in [docs/plan/backlog.csv](docs/plan/backlog.csv).
 
 ## Milestones
 
@@ -199,7 +199,7 @@ Updated 2026-11-07. The task list lives in [docs/plan/backlog.csv](docs/plan/bac
 | M1-138 Google sign-in | Done | Built on claude/google-signin at 65ae7cc, based on invitations. Not yet tried with real Google: the user will do that test before the release. |
 | M1-139 Glass interface, shared styles, every page consistent, phones and accessibility pass | In progress | On claude/ui-overhaul, tracked in its task file. Deep glass and the Soft canvas are in; the page-by-page pass continues. |
 | M1-140 One place per track with its sections, exactly one board per track, a column is its status, seamless moves by default | In progress | On claude/ui-overhaul, migrations 0088 to 0090. Summary customizing and the rest of Statistics are left, and e2e specs need updating. |
-| M1-141 Administration panel | In progress | First version on claude/ui-overhaul: section, overview and four new pages. e2e not run; UI-T21 waits for the user. |
+| M1-141 Administration panel | In progress | On `main`: the section, overview, breadcrumbs and pages through UI-T20, UI-T21 wave 1 (T-320) and the gaps beyond the list (T-322) at `f0239053`. Left: T-321 (sharing, the backup schedule) and T-323 (people, second factors, own token, releases), after the Mac's T-359. |
 | M1-142 Guided tutorial | In progress | Progress on the server (migration 0084), picker and help menu built; the steps are not. |
 | M1-143 Ticket tools | Done | Links with categories and a same-track picker, subtickets with completion on the ticket, cards and lists, checklists whose items are open, in progress, done or rejected, and a `/` menu in descriptions and comments with new blocks (sections, columns, status, dates, emoji, files, ticket references), all kept through the Jira-compatible, Markdown and wiki formats (ADR-120, migration 0096) |
 | M1-144 The test suite runs on native Windows, and new jobs use the database clock | Done | On main at 3ad14a3; job clock fix included. The gate passed with one e2e test (AI settings, Strict mode) needing its retry; that test is still to look at. |

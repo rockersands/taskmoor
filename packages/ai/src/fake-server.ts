@@ -45,9 +45,10 @@ const textOf = (content: unknown): string => {
 
 /**
  * Accepts the keys it is told to (`x-api-key`), answers `GET /v1/models` with the recorded model
- * list and `POST /v1/messages` with the recorded summary. Any other key gets the API's
- * authentication error, whose message quotes the key it was sent, as some providers do, so tests
- * can show that the message reaches the administrator scrubbed.
+ * list, `POST /v1/messages` with the recorded summary and `POST /v1/messages/count_tokens` with
+ * an estimate from the body's length (an agent run counts before each step, T-333). Any other key
+ * gets the API's authentication error, whose message quotes the key it was sent, as some
+ * providers do, so tests can show that the message reaches the administrator scrubbed.
  *
  * For the AI features (M1-079), `answer` may write the answer's text for a request (a scripted
  * model); it is sent as a message, or as server-sent events in small pieces `chunkDelayMs`
@@ -98,6 +99,10 @@ export class FakeProviderServer {
       });
     }
     if (req.method === 'GET' && path === '/v1/models') return send(200, MODELS);
+    if (req.method === 'POST' && path === '/v1/messages/count_tokens') {
+      // About four characters a token: enough for a caller that sizes its next call.
+      return send(200, { input_tokens: Math.max(1, Math.ceil(Buffer.concat(chunks).length / 4)) });
+    }
     if (req.method === 'POST' && path === '/v1/messages') {
       let body: Record<string, unknown> = {};
       try {

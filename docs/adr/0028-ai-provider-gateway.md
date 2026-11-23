@@ -61,8 +61,9 @@ about the provider reaches the frontend bundle; the Builder (ADR-031) bakes no A
 Each adapter has contract tests that replay recorded fixtures: the request on the wire (URL,
 auth header, model spelling, exact body) is compared with the recording, and the recorded answer
 is fed back. They need no key and no network, so they run in `pnpm verify` and CI. A live smoke
-test runs when `TASKMOOR_AI_TEST_KEY` is set. Real-provider evals (quality, prompt-injection
-corpus) are nightly jobs from M1 and need the user's key with a spend cap.
+test runs under `pnpm ai:live` only (T-333; ADR-108), never from a key left in the environment.
+Real-provider evals (quality, prompt-injection corpus) run from the same command, once, with the
+user's key and a spend cap.
 
 ## Options considered
 
@@ -150,7 +151,7 @@ corpus) are nightly jobs from M1 and need the user's key with a spend cap.
   `FakeAdapter` scripts answers for gateway tests and for packages that use the gateway. Policy
   tests include property tests (no generated request ever carries a forced tool choice; tool
   order never changes the prefix). `live.test.ts` covers the Anthropic API end to end, including
-  a repeated call that must read the cache, and is skipped without `TASKMOOR_AI_TEST_KEY`.
+  a repeated call that must read the cache, and runs only under `pnpm ai:live` (T-333).
 
 Decisions made while building:
 
@@ -186,3 +187,17 @@ API has no embeddings endpoint. Bulk jobs on providers without batches go throug
   stores them as `openai-compatible` at those addresses (no new provider id, no migration); the
   live eval candidate takes `TASKMOOR_AI_EVAL_PROVIDER=openai|gemini`. Tested against recorded
   request shapes only: no OpenAI or Gemini key was available.
+- 2026-11-22 (T-333), the model ids checked against the current Claude models (the claude-api
+  skill) before the first live run: every default is current and nothing changed. Every feature,
+  the live eval candidate and the live tests use `claude-opus-5-5`; `claude-sonnet-5-5` and
+  `claude-haiku-5-5` are the current Sonnet and Haiku; requests follow the current rules
+  (adaptive thinking, explicit effort, strict tools with automatic choice, `fallbacks: "default"`
+  under `server-side-fallback-2026-07-01`). The one choice with a successor is
+  `claude-fable-5-1`, which an administrator may pick: `claude-fable-5-2` replaces it at $8 and
+  $40 per million tokens (cache reads $0.20). Offering it takes a price row, the fallback and
+  task-budget model sets and the manual, and is left to a ticket of its own; settings that name
+  `claude-fable-5-1` keep working, as the API still serves it.
+- 2026-11-23 (T-333 review), the list price of `claude-sonnet-5-5` corrected: cache reads cost
+  $0.10 per million tokens, half of Claude Sonnet 5's, not $0.20 (`spend.ts` and spec 02c
+  section 1.3, checked against the claude-api skill). Price rows an administrator saved are
+  theirs and are not changed.

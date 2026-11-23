@@ -62,6 +62,28 @@ describe('the summary judge (M1-079)', () => {
     expect(lenient.disagreements.map((d) => d.example)).toEqual(judgedFlaws.map((g) => g.id));
   });
 
+  it('[AI-013] a judge call that fails costs that verdict, not the run (T-333)', async () => {
+    const overloaded = async () => {
+      throw new Error('anthropic: 529 overloaded');
+    };
+    expect(await judgeSummary(overloaded, c, 'x')).toBeNull();
+    // The third call fails: calibration goes on, and that example counts as a disagreement.
+    let calls = 0;
+    const flaky = await calibrateJudge(async (prompt) => {
+      calls += 1;
+      if (calls === 3) throw new Error('anthropic: 529 overloaded');
+      const text = SUMMARY_CASES.flatMap((x) => x.graded).find((g) => prompt.includes(g.text));
+      return verdicts(text?.fails ?? []);
+    });
+    expect(calls).toBe(flaky.examples);
+    expect(flaky.disagreements).toEqual([
+      expect.objectContaining({
+        example: SUMMARY_CASES.flatMap((x) => x.graded)[2]?.id,
+        judged: null,
+      }),
+    ]);
+  });
+
   it('[AI-014] the live candidate without a key says it cannot run instead of scoring', async () => {
     if (process.env.TASKMOOR_AI_EVAL_KEY || process.env.TASKMOOR_AI_TEST_KEY) return;
     const { candidate } = await import('./candidates/live');

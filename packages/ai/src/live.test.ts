@@ -1,14 +1,18 @@
-// Live smoke test against the Anthropic API. Skipped unless TASKMOOR_AI_TEST_KEY holds a key
-// (use a key with a spend limit). The key comes from the environment only; it is never written
-// anywhere, and the gateway scrubs it from errors.
+// Live smoke test against the Anthropic API (M1-073) and the cache read of M1-074. It runs only
+// under `pnpm ai:live` (T-333), which hands it the key it asked for and reports what each test
+// measured; anywhere else, `pnpm verify` included, it is skipped, a key in the environment or not
+// (`liveTestKey`). The key is never written anywhere, and the gateway scrubs it from errors.
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { providerConfigSchema } from './config';
+import { DEFAULT_MODEL, providerConfigSchema } from './config';
 import { createProviderAdapter } from './factory';
 import { AiGateway } from './gateway';
 import { InMemorySecretStore } from './secrets';
+import { liveTestKey, recordLiveResult } from './testing';
 
-const key = process.env.TASKMOOR_AI_TEST_KEY;
+const key = liveTestKey();
+/** Another address for the API, such as the fake provider in `pnpm ai:live`'s own test. */
+const baseUrl = process.env.TASKMOOR_AI_TEST_BASE_URL;
 
 // A stable prefix well above the minimum cacheable length, with nothing that changes per call.
 const RULES = Array.from(
@@ -17,6 +21,7 @@ const RULES = Array.from(
     `Rule ${i + 1}: a summary names the ticket key, states the problem in one sentence, says who is working on it and what the next step is, and adds nothing the ticket does not say.`,
 ).join('\n');
 
+// The features' own output limit (16,000 tokens): adaptive thinking counts against it.
 const summary = {
   feature: 'summarize' as const,
   system: `You summarise work tickets for a project team.\n${RULES}`,
@@ -27,13 +32,16 @@ const summary = {
         'Summarise WEB-42. Description: sign-in fails after a password reset. Comments: Sam is investigating.',
     },
   ],
-  maxOutputTokens: 2_000,
 };
 
-describe.skipIf(!key)('live Anthropic API (TASKMOOR_AI_TEST_KEY)', () => {
+describe.skipIf(!key)('live Anthropic API (pnpm ai:live)', () => {
   async function gateway() {
     const adapter = await createProviderAdapter(
-      providerConfigSchema.parse({ provider: 'anthropic', apiKey: { secretId: 'live' } }),
+      providerConfigSchema.parse({
+        provider: 'anthropic',
+        apiKey: { secretId: 'live' },
+        ...(baseUrl ? { baseUrl } : {}),
+      }),
       new InMemorySecretStore({ live: key ?? '' }),
       { timeoutMs: 120_000 },
     );
@@ -46,15 +54,27 @@ describe.skipIf(!key)('live Anthropic API (TASKMOOR_AI_TEST_KEY)', () => {
     });
   }
 
-  it('[AI-003] [AI-008] answers, and a repeat call with the same prefix reads the cache', {
+  it('[AI-003] answers a summary through the gateway', { timeout: 180_000 }, async () => {
+    const ai = await gateway();
+    const first = await ai.generate(summary);
+    recordLiveResult('smoke', { test: 'answers', model: first.model, refused: first.refused });
+    expect(first.refused).toBe(false);
+    expect(first.text).toContain('WEB-42');
+  });
+
+  it('[AI-008] a repeat call with the same prefix reads the cache', {
     timeout: 180_000,
   }, async () => {
     const ai = await gateway();
     const first = await ai.generate(summary);
-    expect(first.refused).toBe(false);
-    expect(first.text).toContain('WEB-42');
-    expect(first.usage.cacheWriteTokens + first.usage.cacheReadTokens).toBeGreaterThan(0);
     const second = await ai.generate(summary);
+    recordLiveResult('cache-read', {
+      model: second.model,
+      firstCacheWriteTokens: first.usage.cacheWriteTokens,
+      firstCacheReadTokens: first.usage.cacheReadTokens,
+      cacheReadTokens: second.usage.cacheReadTokens,
+    });
+    expect(first.usage.cacheWriteTokens + first.usage.cacheReadTokens).toBeGreaterThan(0);
     expect(second.usage.cacheReadTokens).toBeGreaterThan(0);
   });
 
@@ -74,7 +94,6 @@ describe.skipIf(!key)('live Anthropic API (TASKMOOR_AI_TEST_KEY)', () => {
         'Turn a question about tickets into a query. Fields: assignee, type, status, updated.',
       messages: [{ role: 'user', content: 'my open bugs updated this week' }],
       schema: z.object({ query: z.string().min(1), explanation: z.string() }),
-      maxOutputTokens: 2_000,
     });
     expect(query.parsed?.query).toBeTruthy();
 
@@ -91,7 +110,13 @@ describe.skipIf(!key)('live Anthropic API (TASKMOOR_AI_TEST_KEY)', () => {
           input: z.object({ query: z.string() }),
         },
       ],
-      maxOutputTokens: 2_000,
+    });
+    recordLiveResult('smoke', {
+      test: 'stream-structured-tool',
+      model: drafted.model,
+      repaired: query.repaired,
+      stopReason: drafted.stopReason,
+      toolCalls: drafted.toolCalls.length,
     });
     expect(drafted.stopReason === 'tool_use' || drafted.stopReason === 'end_turn').toBe(true);
     for (const call of drafted.toolCalls) expect(call.name).toBe('find_tickets');
@@ -99,8 +124,15 @@ describe.skipIf(!key)('live Anthropic API (TASKMOOR_AI_TEST_KEY)', () => {
 
   it('[AI-001] [AI-002] counts tokens and lists models live', { timeout: 60_000 }, async () => {
     const ai = await gateway();
-    expect(await ai.countTokens(summary)).toBeGreaterThan(500);
+    const counted = await ai.countTokens(summary);
     const models = await ai.listModels();
-    expect(models.map((m) => m.id)).toContain('claude-opus-5-5');
+    recordLiveResult('smoke', {
+      test: 'count-and-list',
+      inputTokens: counted,
+      models: models.length,
+      defaultModelListed: models.some((m) => m.id === DEFAULT_MODEL),
+    });
+    expect(counted).toBeGreaterThan(500);
+    expect(models.map((m) => m.id)).toContain(DEFAULT_MODEL);
   });
 });

@@ -151,7 +151,9 @@ export function m1SecurityChecks(input: GateInputs): GateCheck[] {
   checks.push({
     name: 'Prompt-injection corpus green against a live model (M1-079)',
     state: live ? 'ok' : 'waiting',
-    detail: live ? 'M1-079 done' : 'M1-079 runs packages/ai/src/injection against a live model',
+    detail: live
+      ? 'M1-079 done'
+      : 'the user runs `pnpm ai:live` once (T-333): packages/ai/src/injection against a live model, then M1-079 is recorded done',
   });
   return checks;
 }

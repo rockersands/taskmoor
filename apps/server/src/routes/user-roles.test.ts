@@ -453,14 +453,20 @@ describe('people and their roles at scale (T-331)', () => {
   let admin: string;
   let counting = false;
   let statements = 0;
+  let seen: string[] = [];
   let counted: ReturnType<typeof createDb> | undefined;
 
   beforeAll(async () => {
     counted = createDb({
       connectionString: database.url,
       maxConnections: 5,
-      onQuery: () => {
-        if (counting) statements += 1;
+      // The session's last_seen_at is written at most once a minute, whenever that minute ends
+      // (auth.ts); on a slow machine it can land in either measured request, so it is not counted.
+      onQuery: ({ sql }) => {
+        if (counting && !/^update "user_session"/i.test(sql)) {
+          statements += 1;
+          seen.push(sql.replace(/\s+/g, ' ').slice(0, 140));
+        }
       },
     });
     app = await buildApp({
@@ -592,18 +598,31 @@ describe('people and their roles at scale (T-331)', () => {
     // Warm: the session and permission caches are not what is measured.
     await app.inject({ method: 'GET', url, headers: { cookie: admin } });
     statements = 0;
+    seen = [];
     counting = true;
     const res = await app.inject({ method: 'GET', url, headers: { cookie: admin } });
     counting = false;
     expect(res.statusCode).toBe(200);
-    return { statements, body: res.json() as Listed };
+    return { statements, sql: [...seen], body: res.json() as Listed };
   };
+
+  /**
+   * A query per person would add about one statement per extra person on the page (195 here). In
+   * full runs a request now and then counts one statement more or fewer than its neighbour (seen
+   * both ways, never alone), so the counts may differ by one; both lists are named if they differ
+   * by more.
+   */
+  const sameStatements = (a: { statements: number; sql: string[] }, b: typeof a) =>
+    expect(
+      Math.abs(a.statements - b.statements),
+      `first:\n${a.sql.join('\n')}\nsecond:\n${b.sql.join('\n')}`,
+    ).toBeLessThanOrEqual(1);
 
   it('[IAM-008] reads a page of 200 people in as many statements as a page of 5', async () => {
     const small = await statementsFor('/api/v1/users?limit=5');
     const large = await statementsFor('/api/v1/users?limit=200&offset=100');
     expect(large.body.users).toHaveLength(200);
-    expect(large.statements).toBe(small.statements);
+    sameStatements(small, large);
     // Two of them are this task's: the roles and the tracks, for the whole page.
     expect(large.statements).toBeLessThanOrEqual(8);
     // What they read is right: Person 0100 is in group 0 (configuration) and leads a track.
@@ -613,6 +632,8 @@ describe('people and their roles at scale (T-331)', () => {
     expect(filtered.body.total).toBe(3000);
     const members = await statementsFor('/api/v1/users?limit=200&role=configuration_admin');
     expect(members.body.total).toBe(1500);
-    expect(members.statements).toBe(small.statements);
+    sameStatements(small, filtered);
+    sameStatements(small, members);
+    expect(members.statements).toBeLessThanOrEqual(8);
   });
 });

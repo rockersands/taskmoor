@@ -78,8 +78,20 @@ export async function runEvals(options: {
   candidate?: EvalCandidate;
   /** The seeded dataset, made on first use (query and summary need it). */
   world: () => Promise<EvalWorld>;
+  /**
+   * Told as the run goes when each feature starts and how long it took: with a model the run
+   * takes an hour or more, and one that is stopped shows how far it got (the CLI's stderr).
+   */
+  progress?: (line: string) => void;
 }): Promise<EvalRun> {
   const { candidate } = options;
+  const progress = options.progress ?? (() => {});
+  const start = (feature: Feature) => {
+    progress(`${feature} started`);
+    return Date.now();
+  };
+  const done = (feature: Feature, since: number) =>
+    progress(`${feature} done in ${Math.round((Date.now() - since) / 1000)} s`);
   const run: EvalRun = {
     query: [],
     summary: [],
@@ -90,6 +102,7 @@ export async function runEvals(options: {
     broken: [],
   };
   if (options.features.includes('query')) {
+    const since = start('query');
     const world = await options.world();
     if (candidate?.query) {
       run.query.push(await runQueryEval(world, candidate.query, candidate.name));
@@ -106,8 +119,10 @@ export async function runEvals(options: {
         await runQueryEval(world, textSearchBaseline, 'baseline: the prompt as a text search'),
       );
     }
+    done('query', since);
   }
   if (options.features.includes('summary')) {
+    const since = start('summary');
     const world = await options.world();
     const summarise = candidate?.summary;
     const report = summarise
@@ -124,14 +139,17 @@ export async function runEvals(options: {
     }
     const judge = candidate?.judge;
     if (judge && summarise) {
+      progress('judge calibrating on the graded examples, then judging the summaries');
       run.judge = await calibrateJudge(judge);
       await judged(options.world, report, judge);
     } else {
       run.pending.push('summary: the judged criteria (judge-prompt.md) wait for a model (M1-079)');
     }
     run.summary.push(report);
+    done('summary', since);
   }
   if (options.features.includes('duplicates')) {
+    const since = start('duplicates');
     if (candidate?.embed) {
       run.duplicates.push(
         await runDuplicateEval(
@@ -144,9 +162,11 @@ export async function runEvals(options: {
       run.duplicates.push(await runDuplicateEval(bagOfWordsEmbed, 'stand-in: bag of words'));
       run.pending.push('duplicates: the bundled model’s score waits for its runtime (M1-078)');
     }
+    done('duplicates', since);
   }
   // Last: it adds tickets to the dataset, which the other runs must not see.
   if (options.features.includes('injection')) {
+    const since = start('injection');
     if (candidate?.featureApp) {
       const world = await options.world();
       const app = await candidate.featureApp(world);
@@ -156,6 +176,7 @@ export async function runEvals(options: {
         'injection: the run through the AI features waits for a candidate with a model (M1-079)',
       );
     }
+    done('injection', since);
   }
   return run;
 }
@@ -247,7 +268,11 @@ export function formatRun(run: EvalRun, failures = 10, candidate?: string): stri
   }
   for (const r of run.injection) {
     out.push(
-      `injection   ${r.candidate}: ${r.passed}/${r.total} cases hold through every feature, ${pct(r.score)}${meets(r.score, THRESHOLDS.injection)}`,
+      `injection   ${r.candidate}: ${r.passed}/${r.total} cases hold through every feature, ${pct(r.score)}${meets(r.score, THRESHOLDS.injection)}; the model answered ${r.answered} of ${r.asked} requests (${Object.entries(
+        r.byFeature,
+      )
+        .map(([feature, n]) => `${feature} ${n}/${r.total}`)
+        .join(', ')})`,
     );
     for (const f of r.failures.slice(0, failures)) out.push(`  ${f.id}: ${f.problems.join('; ')}`);
   }

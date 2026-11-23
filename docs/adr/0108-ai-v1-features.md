@@ -131,3 +131,54 @@ summary passing both graders, duplicates recall@3 80%, injection 100%) are measu
   events, so end-to-end tests run every feature with no network (`e2e/ai-features-fake.spec.ts`).
 - Images in drafts (AI-015 "or images") need image content parts in the gateway first.
 - Triage suggestions (AI-017) and natural-language automation rules (AI-018) are M2.
+
+## The live run (T-333, 2026-11-22)
+
+The checks that need a real model run from one command the user runs once in their own
+terminal: `pnpm ai:live` (`apps/server/src/ai/evals/live/`; how to run it: `docs/ai/README.md`).
+In order, each whatever the one before did: M1-073's smoke test and M1-074's cache read
+(`packages/ai/src/live.test.ts`, the cache read now a test of its own); the injection corpus
+against the live model (`packages/ai/src/injection/live.test.ts`: the offline test's agent run
+and its definition of holding, `harness.ts`, with the obedient fake replaced by the model, and a
+case holding only once the model has answered); then `pnpm eval all` with `candidates/live.ts`.
+
+- **The key** comes from `TASKMOOR_AI_KEY` (or the older `TASKMOOR_AI_TEST_KEY` and
+  `TASKMOOR_AI_EVAL_KEY`), or from a terminal question that shows nothing, so it never reaches
+  the screen or the shell's history. It stays in the command's memory and reaches each child only
+  through that child's environment; every line printed, logged or written is scrubbed of it
+  (`[key]`), and a line holding 16 characters of it is left out. Printing, writing, reading a
+  child's files back and running a child all go through one object (`live/io.ts`) with one
+  scrubber, so no path can skip it. Where the input is not a terminal the command does not ask;
+  in Git Bash's MinTTY window, which cannot hide input from it, it says so and points to
+  PowerShell, Windows Terminal or `read -rs`, never to typing the key into a command.
+- **Only `pnpm ai:live` runs the live tests** (review of 2026-11-23): both live files run when
+  `TASKMOOR_AI_TEST_KEY` and `TASKMOOR_AI_LIVE_RESULTS` are set, which only the command does for
+  its children (`liveTestKey`). A key left in the environment no longer makes `pnpm verify` call
+  the API, which would skip the free key check, the estimate and the question.
+- **Ctrl+C** at any point ends with exit code 2 and the status in `.verify/ai-live.json`; before
+  the steps, nothing has been spent.
+- **Before spending:** a free model-list call checks the key and the model; then the plan with a
+  rough cost from the corpora's sizes at the price table's list price, and a y/N question
+  (`--yes` skips it).
+- **After:** `.verify/ai-live.json` and `docs/ai/live-checks.md` (date, model, each check with
+  its threshold, measured value and result, and which of M1-073, M1-074 and M1-079 it closes;
+  no key, header, prompt, answer or error text: a failure is named by its kind and HTTP status,
+  since a provider's message can carry the organization's id and an assertion's can quote the
+  answer), the coordinator's lines at the end, exit code 0, 1 when a check fails, 2 when it could
+  not run. The steps' full output stays in `.verify/ai-live/*.log`, which git ignores, each line
+  written the moment it arrives; the eval run prints its progress on stderr (`eval: query
+  started`, `eval: query done in 840 s`), which the command shows and keeps, and a step stopped
+  with Ctrl+C ends its log by saying so. Before (T-333, 2026-11-23), `pnpm eval --json` printed
+  nothing until its end, so a stopped eval step left an empty log: the command's own test, which
+  stopped it after 150 s while the step took 127 of them inside a full test run, found just that.
+- **What the injection run counts:** a feature that fails holds too, so `injection-eval.ts`
+  records which features the model answered for each case (`answeredBy`, `byFeature`; a refusal
+  counts as an answer), and the live check fails unless every feature got an answer for every
+  case: otherwise the corpus never reached the model through that feature (drafts and breakdown
+  have no other live eval). Duplicates have no such count: where the re-ranking fails, the
+  embedding order stands, so recall@3 measures the feature as people get it.
+- **The judge is trusted only once calibrated:** the summary check counts the judge's verdicts
+  only when it agrees with every graded example (`judge-prompt.md`, "Calibrating the judge");
+  otherwise it is "not measured" and names the disagreements to review, so a lenient judge
+  cannot close M1-079. A judge call that fails is an unreadable verdict, not the end of the eval
+  run, so the measurements already paid for are kept.

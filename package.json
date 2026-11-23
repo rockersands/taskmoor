@@ -37,6 +37,7 @@
     "gate": "tsx packages/devtools/src/cli/gate.ts",
     "conformance": "tsx packages/devtools/src/cli/conformance.ts",
     "eval": "tsx apps/server/src/ai/evals/cli.ts",
+    "ai:live": "tsx apps/server/src/ai/evals/live/cli.ts",
     "fuzz": "tsx packages/devtools/src/cli/fuzz.ts",
     "build": "pnpm --filter @taskmoor/web build && pnpm --filter @taskmoor/web build:builder && node tools/build/server.mjs",
     "build:server": "node tools/build/server.mjs",

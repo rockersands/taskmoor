@@ -7,6 +7,9 @@
 // is dropped afterwards. With --candidate, the module's default export (or `candidate`) is
 // scored: `{ name, query?, summary?, embed?, rerank? }` (runner.ts). Without one, the references,
 // the baselines and the grader self-check run, and the exit code is 1 if any of them is off.
+// Progress goes to stderr as the run goes (`eval: query started`, `eval: query done in 12 s`),
+// with --json too, whose stdout holds only the JSON: with a model the run takes an hour or more,
+// and one that is stopped shows in its output how far it got.
 //
 // Eval tooling: the server never imports it. It calls no model and needs no key.
 import { resolve } from 'node:path';
@@ -36,6 +39,7 @@ if (which !== 'all' && !FEATURES.includes(which as Feature)) {
   process.exit(2);
 }
 const features: Feature[] = which === 'all' ? [...FEATURES] : [which as Feature];
+const progress = (line: string) => process.stderr.write(`eval: ${line}\n`);
 
 let candidate: EvalCandidate | undefined;
 if (values.candidate) {
@@ -70,15 +74,22 @@ const getWorld = async () => {
   cleanup.unshift(() => created.drop());
   const db = createDb({ connectionString: created.url, maxConnections: 5 });
   cleanup.unshift(() => db.destroy());
-  if (!values.json) process.stderr.write('Seeding the eval dataset (about 30 s)...\n');
+  const seeding = Date.now();
+  progress('seeding the eval dataset (about 30 s)');
   world = await seedEvalDataset(db);
+  progress(`seeded in ${Math.round((Date.now() - seeding) / 1000)} s`);
   const seeded = world;
   cleanup.unshift(() => seeded.close());
   return world;
 };
 
 try {
-  const run = await runEvals({ features, ...(candidate ? { candidate } : {}), world: getWorld });
+  const run = await runEvals({
+    features,
+    ...(candidate ? { candidate } : {}),
+    world: getWorld,
+    progress,
+  });
   process.stdout.write(
     values.json
       ? `${JSON.stringify(run, null, 2)}\n`
