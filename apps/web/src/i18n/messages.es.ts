@@ -802,7 +802,7 @@ export const messagesEs: Record<MessageId, string> = {
   'search.sorted':
     'Ordenado por {column}, {direction, select, ascending {ascendente} other {descendente}}',
   'search.sorted.date':
-    'Ordenado por {column}, {direction, select, ascending {primero la fecha más temprana} other {primero la fecha más tardía}}',
+    'Ordenado por {column}, {direction, select, ascending {más antiguo primero} other {más reciente primero}}',
   'search.table': 'Tabla de resultados',
   'search.columns': 'Columnas',
   'search.columns.keyFirst': 'La clave siempre va primero.',
@@ -6479,7 +6479,7 @@ export const messagesEs: Record<MessageId, string> = {
   'list.sort.key': 'Clave',
   'list.sort.current': '{column}, {direction, select, ascending {ascendente} other {descendente}}',
   'list.sort.current.date':
-    '{column}, {direction, select, ascending {primero la fecha más temprana} other {primero la fecha más tardía}}',
+    '{column}, {direction, select, ascending {más antiguo primero} other {más reciente primero}}',
   'list.sort.announce': 'Ordenado por {order}',
   'list.filter': 'Filtro',
   'list.filterPlaceholder': 'assignee = currentUser()',
