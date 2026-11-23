@@ -176,7 +176,7 @@
 /* The mark of the current place: it swells into place where the person just went. */
 .motion-bulge,
 .nav-link[aria-current="page"],
-.track-tabs a[aria-current="page"],
+.track-tabs a[aria-current],
 .ticket-tab[aria-selected="true"] {
   animation: motion-bulge var(--motion-slow) var(--ease-swell);
 }

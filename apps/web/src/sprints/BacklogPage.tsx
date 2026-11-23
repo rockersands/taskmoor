@@ -1027,9 +1027,11 @@ function SprintPanel({
             onChange={setTarget}
             futures={futures}
           />
+          {/* Quiet, as on the board's header: a sprint is completed once, from either tab, and the
+              same action looks the same on both (S3-TR-11). */}
           <button
             type="button"
-            className="button-primary"
+            className="button-quiet"
             disabled={busy}
             onClick={() => onComplete(targetOf(target))}
           >

@@ -61,6 +61,23 @@ describe('a track is one place with its sections (ADR-116)', () => {
     );
   });
 
+  it('[CORE-001] marks the tab a page lies within, as the Summary for its ticket templates (TR-27)', async () => {
+    inEnglish(
+      <TrackLayout trackKey="SHOP" section="summary" within client={fakeTrackClient()}>
+        <p>templates</p>
+      </TrackLayout>,
+    );
+    const bar = screen.getByRole('navigation', { name: 'Sections of SHOP' });
+    const summary = await within(bar).findByRole('link', { name: 'Summary' });
+    // Where the person is, not the page itself: the Summary tab is still a way back to it.
+    expect(summary).toHaveAttribute('aria-current', 'true');
+    expect(
+      within(bar)
+        .getAllByRole('link')
+        .filter((l) => l.hasAttribute('aria-current')),
+    ).toEqual([summary]);
+  });
+
   it('[CORE-001] brings the current tab into view on a phone by scrolling the bar alone, and fades the edge with more tabs (TR-4)', async () => {
     setViewportWidth(375);
     const scrollIntoView = vi.fn();

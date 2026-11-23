@@ -443,8 +443,9 @@
   padding: 0;
 }
 
-/* A track's Summary (second sweep): each card of its grid ends at its content, never stretched to
-   its row neighbour's height, as a plan's Summary does (PL-37). */
+/* A track's Summary (second sweep): each card ends at its content, never stretched to its
+   neighbour's height, as a plan's Summary does (PL-37); wide, they stack in two columns
+   (dashboards.css, third sweep). */
 .track-summary .summary-sections {
   align-items: start;
 }

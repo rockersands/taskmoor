@@ -201,16 +201,18 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
   };
   const answerIn = (list: Row['list']) => answer?.list === list;
 
+  // Titled like the track's other own pages, its Layout sets and Configuration sets: the track
+  // above the title (S3-TR-9).
   const titled = (
     <PageHeader
       titleId={titleId}
-      title={
-        state.status === 'loaded'
-          ? t('trackPeople.title', { key: state.track.key, name: state.track.name })
-          : t('trackPeople.titleLoading')
-      }
+      title={t('trackPeople.titleLoading')}
       {...(state.status === 'loaded'
-        ? { purpose: t('purpose.trackPeople'), about: t('trackPeople.about') }
+        ? {
+            eyebrow: t('ownSets.trackName', { key: state.track.key, name: state.track.name }),
+            purpose: t('purpose.trackPeople'),
+            about: t('trackPeople.about'),
+          }
         : {})}
     />
   );
@@ -265,10 +267,8 @@ export function TrackPeoplePage({ trackId, client = trackPeopleClient }: TrackPe
 
   return (
     <section aria-labelledby={titleId} className="page admin-page people-page">
+      {/* The breadcrumb leads back to the tracks you run; no second link says the same (S3-TR-9). */}
       {titled}
-      <p className="page-note">
-        <a href={routeHref('#/manage/tracks')}>{t('trackPeople.backToList')}</a>
-      </p>
       {track.mode === 'local' && (
         <section aria-labelledby={`${id}-own`} className="glass-card people-card">
           <h2 id={`${id}-own`} className="facts-title">

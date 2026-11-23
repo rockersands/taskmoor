@@ -90,7 +90,11 @@ describe('the backlog with sprint sections (M1-044)', () => {
       section('Checkout Sprint 1').getByRole('combobox', { name: 'Move unfinished tickets to' }),
       'Checkout Sprint 2',
     );
-    await user.click(section('Checkout Sprint 1').getByRole('button', { name: 'Complete sprint' }));
+    const complete = section('Checkout Sprint 1').getByRole('button', { name: 'Complete sprint' });
+    // Quiet, as the board's own Complete sprint is (S3-TR-11).
+    expect(complete).toHaveClass('button-quiet');
+    expect(complete).not.toHaveClass('button-primary');
+    await user.click(complete);
     await waitFor(() =>
       expect(screen.queryByRole('heading', { name: 'Checkout Sprint 1' })).toBeNull(),
     );

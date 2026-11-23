@@ -1,8 +1,8 @@
 ---
 title: "List, calendar, timeline and outcomes"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/list/GroupSection.tsx, apps/web/src/shell/seededNames.ts, apps/web/src/shell/priorityName.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/touch.ts, apps/web/src/styles/timeline.css, apps/web/src/styles/views.css, apps/web/src/timeline/dependencies.ts, apps/web/src/timeline/refusal.ts, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, docs/plan/page-review-findings.md, apps/web/src/shell/Popover.tsx, docs/plan/decisions.csv, apps/web/src/styles/dashboards.css, apps/web/src/tracks/outcomeManager.ts, apps/web/src/styles/surfaces.css, apps/server/src/routes/tickets.ts, apps/web/src/tickets/refusedFields.ts, apps/web/src/tickets/customFieldNames.ts, apps/web/src/i18n/zone.ts, apps/web/src/timeline/client.ts, apps/web/src/list/order.ts, apps/web/src/list/SortMenu.tsx, apps/web/src/search/columns.ts, apps/web/src/i18n/days.ts
-accessed: 2026-11-17
+sources: apps/web/src/App.tsx, apps/web/src/tracks/TrackOutcomesPage.tsx, apps/server/src/routes/track-outcomes.ts, apps/server/src/tickets/progress.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/tracks/TrackNumbers.tsx, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/list/ListPage.tsx, apps/web/src/list/GroupSection.tsx, apps/web/src/shell/seededNames.ts, apps/web/src/shell/priorityName.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/ResultTable.tsx, apps/web/src/tickets/tools/Progress.tsx, apps/web/src/calendar/CalendarPage.tsx, apps/web/src/timeline/TimelinePage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0060-dashboards.md, docs/adr/0064-timeline.md, docs/adr/0065-list-and-calendar-views.md, docs/specs/01b-core-work-tracking.md, apps/web/src/calendar/CalendarView.tsx, apps/web/src/timeline/TimelineView.tsx, apps/web/src/timeline/touch.ts, apps/web/src/styles/timeline.css, apps/web/src/styles/views.css, apps/web/src/timeline/dependencies.ts, apps/web/src/timeline/refusal.ts, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, docs/plan/page-review-findings.md, apps/web/src/shell/Popover.tsx, docs/plan/decisions.csv, apps/web/src/styles/dashboards.css, apps/web/src/tracks/outcomeManager.ts, apps/web/src/styles/surfaces.css, apps/server/src/routes/tickets.ts, apps/web/src/tickets/refusedFields.ts, apps/web/src/tickets/customFieldNames.ts, apps/web/src/i18n/zone.ts, apps/web/src/timeline/client.ts, apps/web/src/list/order.ts, apps/web/src/list/SortMenu.tsx, apps/web/src/search/columns.ts, apps/web/src/i18n/days.ts
+accessed: 2026-11-23
 attestation: own-words
 ---
 # List, calendar, timeline and outcomes
@@ -89,14 +89,17 @@ A customized summary is not a dashboard: it belongs to the track, and it does no
 
 ## The list view
 
-**List** is titled **List**, with the track's name above it, and its help mark explains the page.
-It shows the track's tickets in a table, fifty at a time; **Show more** adds the next fifty. It
-is the search results table, so cells such as the summary, assignee, priority, labels and dates
-can be edited in place (see [search results](search.md#search-results)). The summary takes the
-width the other columns leave, and short values and dates stay on one line; **Created**,
-**Updated** and **Closed** show the day, with the time in the cell's tooltip. A ticket with
-subtickets shows how many are closed under its key, for example **1/3 subtickets closed**, with a
-small bar. The column the rows are sorted by carries an arrow in its heading.
+**List** is titled **List**, with the track's name above it, and its help mark explains the page. It
+shows the track's tickets in a table, fifty at a time; **Show more** adds the next fifty. It is the
+search results table, so cells such as the summary, assignee, priority, labels and dates can be
+edited in place (see [search results](search.md#search-results)). The summary takes the width the
+other columns leave, and short values and dates stay on one line. **Updated** (and **Created** or
+**Closed**, if you add them) shows the day only, on your own clock, so the summary keeps the room;
+point at it for the time, which a screen reader also reads. A date-and-time field you add as a
+column keeps its time, since someone chose it. A ticket with subtickets shows how many are closed
+under its key: the subticket icon and the numbers, for example **1/3**, with a small bar under
+them, so the key column stays narrow. Point at it for the words ("Subtickets: 1 of 3 closed"). The
+column the rows are sorted by carries an arrow in its heading.
 
 You can also sort by clicking a column's heading: the first click sorts by that column, a second
 click sorts it the other way. Each column starts its own way: dates in the past (created, updated,
@@ -110,8 +113,9 @@ one that was deleted, opens newest created first. While the rows are read again 
 the table stays where it is and the heading you used keeps the keyboard's focus, and a screen
 reader says the new order.
 
-On a phone the table becomes stacked rows: each ticket shows its key, its summary, and then its
-status, assignee and priority. Open the ticket to change it.
+On a phone the table becomes stacked rows: each ticket shows its key, with its subtickets in
+words beside it (**1/3 subtickets closed**), its summary, and then its status, assignee and
+priority. Open the ticket to change it.
 
 | Control | What it does |
 |---|---|

@@ -161,6 +161,24 @@
   font-weight: var(--font-weight-normal);
 }
 
+.tool-progress-count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-half);
+}
+
+/* In a table's key cell (S3-TR-3): the icon and numbers on one line, the bar under them, so the
+   column stays as narrow as the key and the row as tall as its neighbours. */
+.tool-progress-mini.tool-progress-stacked {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-half);
+}
+
+.tool-progress-stacked .tool-progress-bar-small {
+  inline-size: 2rem;
+}
+
 /* What sits under a ticket: key, summary and status in a row that wraps on a phone. */
 .ticket-child-list {
   display: grid;

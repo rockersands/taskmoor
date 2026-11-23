@@ -132,7 +132,11 @@ test('[CORE-013] [IAM-030] someone who runs a track arranges its own forms and r
   // The person signs in. Their track's Manage page leads to its own layout sets.
   await signInAs(api, email, PASSWORD);
   await visit(page, `#/manage/tracks/${mine}`);
-  await expect(page.getByRole('heading', { level: 1, name: new RegExp(keys.mine) })).toBeVisible();
+  await expect(page.getByText(new RegExp(`^${keys.mine} · `))).toBeVisible();
+  // Titled like its Layout sets, the track above the title, and no link that repeats the
+  // breadcrumb (S3-TR-9).
+  await expect(page.getByRole('heading', { level: 1, name: 'People of the track' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'All the tracks you run' })).toHaveCount(0);
   const own = page.getByRole('region', { name: 'Its own configuration' });
   await own.getByRole('link', { name: 'Layout sets: where fields appear on its forms' }).click();
   await expect(page).toHaveURL(new RegExp(`/manage/tracks/${mine}/layouts$`));

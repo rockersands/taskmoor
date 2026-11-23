@@ -480,8 +480,10 @@ export const PersonFilterAtPhoneWidth: Story = {
 };
 
 /**
- * A Kanban board on a phone (NFR-007; the second sweep's long Closed column): each column ends at
- * its last card, so a short one is not a screen and more of empty frame beside a long one.
+ * A Kanban board on a phone (NFR-007; the second and third sweeps' long Closed column): each
+ * column ends at its last card, so a short one is not a screen and more of empty frame beside a
+ * long one, and a long one scrolls inside itself, no taller than the screen, so the page ends
+ * with the board instead of running on for the length of the longest column.
  */
 export const ShortColumnBesideALongOneOnAPhone: Story = {
   args: { client: fakeBoardClient({ cards: longColumn(16, 2), lanes: ONE_LANE }) },
@@ -496,16 +498,26 @@ export const ShortColumnBesideALongOneOnAPhone: Story = {
     const last = cards[cards.length - 1]?.getBoundingClientRect().bottom ?? 0;
     // The cell's own padding below its last card, and no more.
     await expect(doing.getBoundingClientRect().bottom - last).toBeLessThan(24);
-    await expect(todo.getBoundingClientRect().height).toBeGreaterThan(
-      doing.getBoundingClientRect().height * 3,
+    // The long column: no taller than the screen, its cards scrolling inside it.
+    await expect(todo.getBoundingClientRect().height).toBeLessThanOrEqual(window.innerHeight);
+    await expect(todo.scrollHeight).toBeGreaterThan(todo.clientHeight * 2);
+    // The page is shorter than that column's cards: it ends with the board.
+    await expect(document.documentElement.scrollHeight).toBeLessThan(todo.scrollHeight);
+    // At the page's end the long column's last card is reached by scrolling the column.
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    todo.scrollTop = todo.scrollHeight;
+    const lastTodo = within(todo).getAllByRole('listitem').at(-1)?.getBoundingClientRect();
+    await expect(lastTodo?.bottom ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(
+      window.innerHeight,
     );
+    window.scrollTo(0, 0);
   },
 };
 
 /**
  * The same phone board, a card dragged by its grip from deep in the long column sideways into the
- * short one, far below its last card (M1-046, NFR-007; T-162b): Doing is the place under the
- * finger, and the card lands at its end.
+ * short one, below its last card (M1-046, NFR-007; T-162b): Doing is the place under the finger,
+ * and the card lands at its end.
  */
 export const DropBelowAShortColumnOnAPhone: Story = {
   args: { client: fakeBoardClient({ cards: longColumn(16, 2), lanes: ONE_LANE }) },
@@ -520,15 +532,15 @@ export const DropBelowAShortColumnOnAPhone: Story = {
     const a = { x: from.left + from.width / 2, y: from.top + from.height / 2 };
     grip.dispatchEvent(pointer('pointerdown', a));
     window.dispatchEvent(pointer('pointermove', { x: a.x, y: a.y + 12 }));
-    // The columns scroll sideways, the page stays: Doing is beside the finger, its cards far above.
+    // The columns scroll sideways, the page stays: Doing is beside the finger, which goes below
+    // its last card, into the room the cell holds while a card is in hand.
     const scroller = doing.closest('.board-scroll') as HTMLElement;
     scroller.scrollLeft += doing.getBoundingClientRect().left - 40;
-    const box = doing.getBoundingClientRect();
-    const b = { x: box.left + box.width / 2, y: a.y + 12 };
     const cards = within(doing).getAllByRole('listitem');
-    await expect(cards[cards.length - 1]?.getBoundingClientRect().bottom ?? 0).toBeLessThan(
-      b.y - 200,
-    );
+    const lastBottom = cards[cards.length - 1]?.getBoundingClientRect().bottom ?? 0;
+    const box = doing.getBoundingClientRect();
+    const b = { x: box.left + box.width / 2, y: lastBottom + 48 };
+    await expect(b.y).toBeLessThan(box.bottom);
     window.dispatchEvent(pointer('pointermove', b));
     await waitFor(() => expect(doing).toHaveClass('is-drop-target'));
     window.dispatchEvent(pointer('pointerup', b));
@@ -545,6 +557,105 @@ export const DropBelowAShortColumnOnAPhone: Story = {
     // Once the card is down, the short column ends at its last card again.
     const last = within(doing).getAllByRole('listitem').at(-1)?.getBoundingClientRect().bottom;
     await expect(doing.getBoundingClientRect().bottom - (last ?? 0)).toBeLessThan(24);
+    window.scrollTo(0, 0);
+  },
+};
+
+/**
+ * A phone board whose long column is Doing, a card carried into it from the short To do (M1-046,
+ * NFR-007; T-359): held near that column's foot, the finger scrolls the column, not the page, and
+ * the card lands deep in it, where the finger let go.
+ */
+export const CarriedDeepIntoALongColumnOnAPhone: Story = {
+  args: { client: fakeBoardClient({ cards: longColumn(16, 14), lanes: ONE_LANE }) },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const doing = await canvas.findByRole('list', { name: 'Doing' });
+    await waitFor(() => expect(doing.scrollHeight).toBeGreaterThan(doing.clientHeight * 2));
+    const grip = canvas.getByRole('button', { name: 'Move SHOP-16' });
+    grip.scrollIntoView({ block: 'center', inline: 'nearest' });
+    const from = grip.getBoundingClientRect();
+    const a = { x: from.left + from.width / 2, y: from.top + from.height / 2 };
+    grip.dispatchEvent(pointer('pointerdown', a));
+    window.dispatchEvent(pointer('pointermove', { x: a.x, y: a.y + 12 }));
+    // The columns scroll sideways to Doing; the finger rests near its foot.
+    const scroller = doing.closest('.board-scroll') as HTMLElement;
+    scroller.scrollLeft += doing.getBoundingClientRect().left - 40;
+    const box = doing.getBoundingClientRect();
+    const b = { x: box.left + box.width / 2, y: Math.min(box.bottom, window.innerHeight) - 12 };
+    const page = window.scrollY;
+    window.dispatchEvent(pointer('pointermove', b));
+    await waitFor(() => expect(doing.scrollTop).toBeGreaterThan(200), { timeout: 5000 });
+    await expect(window.scrollY).toBe(page);
+    await expect(doing).toHaveClass('is-drop-target');
+    window.dispatchEvent(pointer('pointerup', b));
+    await waitFor(() =>
+      expect(args.client).toHaveProperty('moves', [expect.objectContaining({ ticket: 116 })]),
+    );
+    // It lands among the cards the column scrolled to, not at the top.
+    await waitFor(() =>
+      expect(
+        within(doing)
+          .getAllByRole('link')
+          .map((link) => link.textContent?.split(' ')[0])
+          .indexOf('SHOP-16'),
+      ).toBeGreaterThan(3),
+    );
+    window.scrollTo(0, 0);
+  },
+};
+
+/**
+ * The same phone board with the page scrolled only so far that the long To do's head is half way
+ * down the screen and its foot below the screen's, as near the page's top, a card pressed in it
+ * and carried to that foot (M1-046, NFR-007; T-359): the column scrolls to its last card, then
+ * the page scrolls on, so the column's lower part and what lies below it come under the finger.
+ */
+export const PressedDeepInALongColumnOnAPhone: Story = {
+  args: { client: fakeBoardClient({ cards: longColumn(16, 2), lanes: ONE_LANE }) },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    window.scrollTo(0, 0);
+    const todo = await canvas.findByRole('list', { name: 'To do' });
+    await waitFor(() => expect(todo.scrollHeight).toBeGreaterThan(todo.clientHeight * 2));
+    window.scrollTo(0, Math.max(0, todo.getBoundingClientRect().top - window.innerHeight / 2));
+    // The column's foot lies below the screen's.
+    await expect(todo.getBoundingClientRect().bottom).toBeGreaterThan(window.innerHeight);
+    const page = window.scrollY;
+    const grip = within(todo)
+      .getAllByRole('button', { name: /^Move SHOP-/ })
+      .find((button) => {
+        const box = button.getBoundingClientRect();
+        return box.top >= 0 && box.bottom <= window.innerHeight;
+      });
+    if (!grip) throw new Error('No grip of To do on the screen');
+    const from = grip.getBoundingClientRect();
+    const a = { x: from.left + from.width / 2, y: from.top + from.height / 2 };
+    grip.dispatchEvent(pointer('pointerdown', a));
+    window.dispatchEvent(pointer('pointermove', { x: a.x, y: a.y + 12 }));
+    // The finger at the screen's foot, over the column's middle, clear of its sides.
+    const box = todo.getBoundingClientRect();
+    const middle = Math.min(Math.max(box.left + box.width / 2, 80), window.innerWidth - 80);
+    window.dispatchEvent(pointer('pointermove', { x: middle, y: window.innerHeight - 8 }));
+    await waitFor(
+      () =>
+        expect(todo.scrollTop + todo.clientHeight).toBeGreaterThanOrEqual(todo.scrollHeight - 1),
+      { timeout: 10000 },
+    );
+    // The column has no more to give: the page scrolls on until its last card is on the screen.
+    const last = within(todo).getAllByRole('listitem').at(-1);
+    if (!last) throw new Error('No last card');
+    await waitFor(
+      () => expect(last.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight),
+      { timeout: 10000 },
+    );
+    await expect(window.scrollY).toBeGreaterThan(page);
+    // Taken back: nothing moves.
+    window.dispatchEvent(pointer('pointercancel', { x: middle, y: window.innerHeight - 8 }));
+    await expect(args.client).toHaveProperty('moves', []);
+    todo.scrollTop = 0;
     window.scrollTo(0, 0);
   },
 };

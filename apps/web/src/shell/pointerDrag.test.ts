@@ -182,6 +182,134 @@ describe('a press that may become a drag (T-162)', () => {
     expect(calls.at(-2)).toBe(`drop ${window.innerWidth - 2},300`);
   });
 
+  it('[NFR-007] carried over a column that scrolls inside the page, near its foot, scrolls that column while it can (T-359)', () => {
+    // A phone board's long column (y 100 to 500), 400 px of 2,000 px of cards; the press began
+    // in a short column beside it, on the page.
+    const column = document.createElement('ul');
+    column.style.overflowY = 'auto';
+    let top = 0;
+    Object.defineProperties(column, {
+      scrollHeight: { value: 2000 },
+      clientHeight: { value: 400 },
+      scrollTop: { get: () => top },
+    });
+    column.getBoundingClientRect = () => new DOMRect(0, 100, 300, 400);
+    column.scrollBy = ((options: ScrollToOptions) => {
+      top = Math.min(1600, Math.max(0, top + (options.top ?? 0)));
+    }) as Element['scrollBy'];
+    const card = document.createElement('li');
+    column.append(card);
+    document.body.append(column);
+    const under = vi.fn((x: number, _y: number) => (x < 300 ? card : null));
+    Object.defineProperty(document, 'elementFromPoint', { value: under, configurable: true });
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (run: FrameRequestCallback) => frames.push(run));
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+    try {
+      const { calls, at, stop } = press('touch');
+      // Near the column's foot, well above the screen's: the column scrolls, and the place under
+      // the still finger is asked again.
+      fireEvent.pointerMove(window, at(150, 490));
+      frames.shift()?.(0);
+      expect(top).toBeGreaterThan(0);
+      expect(calls.slice(-2)).toEqual(['move 150,490', 'move 150,490']);
+      // At its last card it has no more to give, and the page, with the finger far from the
+      // screen's foot, has nothing to do.
+      top = 1600;
+      frames.length = 0;
+      fireEvent.pointerMove(window, at(150, 495));
+      expect(frames).toHaveLength(0);
+      // In the column's middle nothing scrolls.
+      top = 800;
+      fireEvent.pointerMove(window, at(150, 300));
+      expect(frames).toHaveLength(0);
+      stop();
+    } finally {
+      Reflect.deleteProperty(document, 'elementFromPoint');
+    }
+  });
+
+  it('[NFR-007] pressed deep in a column that scrolls inside the page, scrolls that column to its end, then the page on (T-359)', () => {
+    // The page, 500 px of room below the screen, at its top.
+    const page = document.createElement('div');
+    let pageTop = 0;
+    Object.defineProperty(page, 'scrollTop', { get: () => pageTop });
+    page.scrollBy = ((options: ScrollToOptions) => {
+      pageTop = Math.min(500, Math.max(0, pageTop + (options.top ?? 0)));
+    }) as Element['scrollBy'];
+    // A phone board's long column, 800 px of 2,000 px of cards, from y 100 on the page to below
+    // the screen's foot (768 px); the press is on a card's grip inside it.
+    const column = document.createElement('ul');
+    column.style.overflowY = 'auto';
+    let top = 0;
+    Object.defineProperties(column, {
+      scrollHeight: { value: 2000 },
+      clientHeight: { value: 800 },
+      scrollTop: { get: () => top },
+    });
+    column.getBoundingClientRect = () => new DOMRect(0, 100 - pageTop, 300, 800);
+    column.scrollBy = ((options: ScrollToOptions) => {
+      top = Math.min(1200, Math.max(0, top + (options.top ?? 0)));
+    }) as Element['scrollBy'];
+    const card = document.createElement('li');
+    const grip = document.createElement('button');
+    card.append(grip);
+    column.append(card);
+    document.body.append(column);
+    // A short column to its right, which does not scroll: the page is under the pointer there.
+    const under = vi.fn((x: number, _y: number) => (x < 300 ? card : null));
+    Object.defineProperty(document, 'elementFromPoint', { value: under, configurable: true });
+    Object.defineProperty(document, 'scrollingElement', { value: page, configurable: true });
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (run: FrameRequestCallback) => frames.push(run));
+    vi.stubGlobal('cancelAnimationFrame', () => {});
+    try {
+      const down = new PointerEvent('pointerdown', { clientX: 150, clientY: 300, pointerId: 7 });
+      Object.defineProperty(down, 'target', { value: grip });
+      Object.defineProperty(down, 'pointerType', { value: 'touch' });
+      const calls: string[] = [];
+      const stop = followPointerDrag(down, {
+        start: () => calls.push('start'),
+        move: (x, y) => calls.push(`move ${x},${y}`),
+        drop: () => calls.push('drop'),
+        cancel: () => calls.push('cancel'),
+      });
+      const at = (x: number, y: number) => ({ clientX: x, clientY: y, pointerId: 7, buttons: 1 });
+      // At the screen's foot: the column scrolls first, the page stays.
+      fireEvent.pointerMove(window, at(150, 760));
+      frames.shift()?.(0);
+      expect(top).toBeGreaterThan(0);
+      expect(pageTop).toBe(0);
+      // At its last card it has no more to give: the page scrolls on, and the place under the
+      // still finger is asked again.
+      top = 1200;
+      frames.shift()?.(16);
+      expect(top).toBe(1200);
+      expect(pageTop).toBeGreaterThan(0);
+      expect(calls.at(-1)).toBe('move 150,760');
+      // Beside it, over the short column, the page scrolls, not the column off to the side.
+      top = 600;
+      const scrolled = pageTop;
+      fireEvent.pointerMove(window, at(350, 760));
+      frames.shift()?.(32);
+      expect(top).toBe(600);
+      expect(pageTop).toBeGreaterThan(scrolled);
+      // Back over it near the screen's top: the column scrolls up first, then the page.
+      const back = pageTop;
+      fireEvent.pointerMove(window, at(150, 20));
+      frames.shift()?.(48);
+      expect(top).toBeLessThan(600);
+      expect(pageTop).toBe(back);
+      top = 0;
+      frames.shift()?.(64);
+      expect(pageTop).toBeLessThan(back);
+      stop();
+    } finally {
+      Reflect.deleteProperty(document, 'elementFromPoint');
+      Reflect.deleteProperty(document, 'scrollingElement');
+    }
+  });
+
   it('[NFR-005] a mouse that let go unheard, in another window, cancels on its next move and drops nothing', () => {
     const { calls, at } = press();
     fireEvent.pointerMove(window, at(40, 40));

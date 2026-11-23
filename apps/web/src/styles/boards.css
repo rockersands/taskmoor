@@ -579,12 +579,13 @@
   padding-inline: 0;
 }
 
+/* In its section's grid, whose gap spaces it like any other field (S3-TR-6). */
 .board-settings-fields {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2) var(--space-4);
   min-width: 0;
-  margin: var(--space-3) 0;
+  margin: 0;
   padding: 0;
   border: 0;
 }
@@ -613,11 +614,12 @@
   }
 }
 
-/* Sprint settings (M1-044, M1-045): a checkbox with its hint; a long time zone shrinks on phones. */
+/* Sprint settings (M1-044, M1-045): a checkbox with its hint; a long time zone shrinks on phones.
+   The section's gap alone spaces it from its neighbours, as it does every field (S3-TR-6). */
 .sprint-settings-option {
   display: grid;
   gap: var(--space-1);
-  margin: var(--space-3) 0;
+  margin: 0;
 }
 
 .sprint-settings-zone {
@@ -645,9 +647,20 @@
     align-items: start;
   }
 
-  /* While a card is in hand the cells reach the row's full height again: a finger deep in a long
-     column that moves sideways is still over the short column beside it, and the card lands at
-     its end. The drag's styles last until the drop has read what is under the finger. */
+  /* A long column scrolls inside itself, no taller than the screen under the bar and the column's
+     head, so the page ends with the board: below a short column there is no window of empty
+     canvas the length of the longest one (second and third sweeps; Claude's decision of
+     2026-11-22). Past its last card the scroll carries on to the page. A card carried near the
+     foot or the top of such a column scrolls it (followPointerDrag). */
+  .board-row:not(.board-heads) > .board-cell {
+    max-height: calc(100dvh - var(--topbar-height) - 2 * var(--shell-gap) - 7rem);
+    overflow-y: auto;
+  }
+
+  /* While a card is in hand the cells reach the row's height, a long column's window: a finger
+     low in a long column that moves sideways is still over the short column beside it, and the
+     card lands at its end. The drag's styles last until the drop has read what is under the
+     finger. */
   body.is-pointer-dragging .board-row:not(.board-heads) {
     align-items: stretch;
   }
@@ -778,7 +791,9 @@
 
 /* A sprint report's tickets (TR-11, TR-22): a column each for key, summary, status and estimate,
    so keys and summaries line up and the estimate has its heading. In a narrow card each row folds
-   into two lines, key and summary first, then status and estimate together. */
+   into two lines, key and summary first, then status and estimate together; the rows share the
+   table's columns, so every summary starts where the longest key ends and the heading lines up
+   with them over one unbroken band (S3-TR-4). */
 .sprint-report-group {
   container: sprint-report / inline-size;
 }
@@ -816,25 +831,36 @@
 }
 
 @container sprint-report (max-width: 34rem) {
-  .sprint-report-table,
-  .sprint-report-table :is(thead, tbody) {
-    display: block;
+  .sprint-report-table {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr) max-content;
+    column-gap: var(--space-3);
+  }
+
+  .sprint-report-table :is(thead, tbody),
+  .sprint-report-table tr {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
   }
 
   .sprint-report-table tr {
-    display: grid;
-    grid-template-columns: max-content minmax(0, 1fr) max-content;
     grid-template-areas:
       "key summary summary"
       ". status estimate";
-    column-gap: var(--space-3);
     border-top: 1px solid var(--glass-edge);
     padding-block: var(--space-2);
+  }
+
+  .sprint-report-table thead tr {
+    border-top: 0;
+    background: var(--glass-surface-sunken);
   }
 
   .data-table.sprint-report-table :is(th, td) {
     padding: 0;
     border: 0;
+    background: none;
   }
 
   .sprint-report-table .sprint-report-key {

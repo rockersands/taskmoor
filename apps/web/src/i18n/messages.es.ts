@@ -3419,12 +3419,10 @@ export const messagesEs: Record<MessageId, string> = {
   'trackPeople.listEmpty': 'No administras ningún track.',
   'trackPeople.manage': 'Gestionar',
   'trackPeople.manageOf': 'Gestionar el track {key}',
-  'trackPeople.title': 'Personas de {key} · {name}',
   'trackPeople.titleLoading': 'Personas del track',
   'trackPeople.loading': 'Leyendo el track…',
   'trackPeople.forbidden': 'Solo quienes administran este track pueden gestionarlo.',
   'trackPeople.failed': 'No se pudo leer el track. Inténtalo de nuevo en un momento.',
-  'trackPeople.backToList': 'Todos los tracks que administras',
   'trackPeople.ownConfig': 'Su configuración propia',
   'trackPeople.ownConfigIntro': '{key} tiene configuración propia, y puedes cambiarla aquí:',
   'trackPeople.layoutsLink': 'Conjuntos de diseños: dónde aparecen los campos en sus formularios',
@@ -3682,8 +3680,9 @@ export const messagesEs: Record<MessageId, string> = {
     'El conjunto de tipos y los conjuntos de reglas de campos propios de este track. Los compartidos son cosa de los administradores del sitio y de la configuración.',
   'admin.sets.trackTypeSet':
     'Un track con configuración propia tiene un único conjunto de tipos propio: elige aquí sus tipos de ticket.',
-  'admin.sets.trackNoRuleSets':
-    '{key} aún no tiene un conjunto de reglas de campos propio, así que sus campos siguen uno compartido. Añade aquí un conjunto y luego úsalo para {key}.',
+  'admin.sets.noOwnRuleSet': '{key} aún no tiene un conjunto de reglas de campos propio',
+  'admin.sets.noOwnRuleSetBody':
+    'Sus campos siguen uno compartido. Añade aquí un conjunto y luego úsalo para {key}.',
   'admin.sets.useFor': 'Usar este conjunto para {key}',
   'admin.sets.usedFor': '{key} usa ahora {name}.',
   'admin.sets.layoutsLinkTrack': 'Organiza los formularios de {key} en sus conjuntos de diseños.',
@@ -5426,7 +5425,8 @@ export const messagesEs: Record<MessageId, string> = {
   'inbox.alert.address': 'Desde {address}',
   'boards.title': 'Tablero',
   'boards.loading': 'Cargando el tablero…',
-  'boards.failed': 'No se pudo cargar este tablero. Puede que no exista, o que no puedas verlo.',
+  'boards.failed': 'No se pudo cargar este tablero. Inténtalo de nuevo en un momento.',
+  'boards.notFound': 'Ningún tablero tiene el número {id}, o no puedes verlo.',
   'boards.kind.scrum': 'Tablero Scrum',
   'boards.kind.kanban': 'Tablero Kanban',
   'boards.meta': '{kind} · {location}',
@@ -5516,7 +5516,7 @@ export const messagesEs: Record<MessageId, string> = {
   'boards.settings.closing.rightmost': 'La columna de más a la derecha, ahora {column}',
   'boards.settings.closing.none': 'Ninguna columna cierra los tickets',
   'boards.settings.closing.hint':
-    'Al llegar a esta columna, el ticket se cierra como Completed; al salir, se reabre. Si la dejas en la de más a la derecha, sigue a esa columna cuando las reordenas. Los tickets ya cerrados conservan su motivo de cierre y su historial cuando cambias esto.',
+    'Al llegar a esta columna, el ticket se cierra{named, select, yes { como {reason}} other {}}; al salir, se reabre. Si la dejas en la de más a la derecha, sigue a esa columna cuando las reordenas. Los tickets ya cerrados conservan su motivo de cierre y su historial cuando cambias esto.',
   'boards.settings.remove.ask':
     '{column} tiene {count, plural, one {# ticket} other {# tickets}}. ¿Adónde deben ir?',
   'boards.settings.remove.to': 'Moverlos a',
@@ -5585,9 +5585,9 @@ export const messagesEs: Record<MessageId, string> = {
   'boards.settings.max': 'Máximo en {column}',
   'boards.settings.managed': 'Las columnas de este tablero son los estados de su track',
   'boards.settings.managedHint':
-    'Para un track en modo local: cada columna pasa a ser un estado, cualquier tarjeta puede ir a cualquier columna y la columna de la derecha cierra los tickets como Completed.',
+    'Para un track en modo local: cada columna pasa a ser un estado, cualquier tarjeta puede ir a cualquier columna y la columna de la derecha cierra los tickets{named, select, yes { como {reason}} other {}}.',
   'boards.settings.managedOnHint':
-    'Cada columna es un estado. Una columna nueva recibe su propio estado al guardar; los tickets de una columna quitada van a la primera columna. La columna de la derecha cierra los tickets como Completed.',
+    'Cada columna es un estado. Una columna nueva recibe su propio estado al guardar; los tickets de una columna quitada van a la primera columna. La columna de la derecha cierra los tickets{named, select, yes { como {reason}} other {}}.',
   'boards.settings.managedFailed': 'No se pudo cambiar el flujo de trabajo. Inténtalo de nuevo.',
   'boards.settings.managed.sharedMode':
     'Solo un tablero de un track en modo local puede gestionar su flujo de trabajo.',
@@ -6843,7 +6843,7 @@ export const messagesEs: Record<MessageId, string> = {
   'sprints.settings.notANumberField': 'Este campo no es numérico, o ya no existe. Elige otro.',
   'sprints.settings.timeTracking': 'Registro de tiempo',
   'sprints.settings.timeTracking.none': 'Ninguno',
-  'sprints.settings.timeTracking.remainingEstimate': 'Estimación restante y tiempo dedicado',
+  'sprints.settings.timeTracking.remainingEstimate': 'Estimación restante y tiempo',
   'sprints.settings.parallel': 'Permitir varios sprints activos a la vez',
   'sprints.settings.cycle': 'Encadenar los sprints automáticamente',
   'sprints.settings.cycleHint':
@@ -8016,8 +8016,9 @@ export const messagesEs: Record<MessageId, string> = {
     'Las reglas de campos de {key} están en sus conjuntos de configuración.',
   'layouts.trackIntro':
     'Los conjuntos de diseños propios de este track. Los compartidos son cosa de los administradores del sitio y de la configuración.',
-  'layouts.trackNoSets':
-    '{key} aún no tiene un conjunto de diseños propio, así que sus formularios siguen uno compartido. Añade aquí un conjunto y luego úsalo para {key}.',
+  'layouts.noOwnSet': '{key} aún no tiene un conjunto de diseños propio',
+  'layouts.noOwnSetBody':
+    'Sus formularios siguen uno compartido. Añade aquí un conjunto y luego úsalo para {key}.',
   'layouts.useFor': 'Usar este conjunto para {key}',
   'layouts.usedFor': '{key} usa ahora {name}.',
   'layouts.choose.intro':

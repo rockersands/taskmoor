@@ -63,9 +63,9 @@ under its title.
   header (D11); Delete is a DangerAction (D13) and, for an area tickets are in (409 `in_use`),
   then asks where they go: another area that is not archived, or none. It needs no server change:
   whether the reader may change the areas comes from the releases list's `mayManage`, which the
-  same rule decides (`mayManage` in `routes/releases.ts`). The route passes `section={null}` for
-  now; once `wave26m/t359-track` merges, it should pass `section="summary"` with that branch's
-  `within`, as Ticket templates then do. Not an Administration page, so `admin/sections.ts` and
+  same rule decides (`mayManage` in `routes/releases.ts`). The route passes `section="summary"`
+  with `within`, as Ticket templates do (TR-27, T-359): Summary, which leads there, is marked
+  `aria-current="true"`. Not an Administration page, so `admin/sections.ts` and
   `forbiddenPages.test.tsx` do not list it: someone who cannot see the track gets Track not found.
 - **Settings** is personal: Account, Appearance and Tutorials.
 - **Administration** is a section of its own, separate from Settings, with its own navigation (the

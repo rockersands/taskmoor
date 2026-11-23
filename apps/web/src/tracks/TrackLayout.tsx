@@ -30,8 +30,14 @@ export const trackHref = (key: string, section: TrackSection = 'summary') =>
 
 interface TrackLayoutProps {
   trackKey: string;
-  /** The tab to mark; null on a page of the track with no tab of its own (its Templates). */
+  /** The tab to mark; null on a page of the track that belongs to no tab. */
   section: TrackSection | null;
+  /**
+   * The page is not the section itself but lies within it, as the track's Ticket templates lie
+   * within its Summary, which leads there (TR-27): the tab is marked as where the person is
+   * (`aria-current="true"`), not as this page.
+   */
+  within?: boolean;
   children: ReactNode;
   client?: TrackClient;
   /**
@@ -57,6 +63,7 @@ export function TrackLayout({
   children,
   client = trackClient,
   pageStands = false,
+  within = false,
 }: TrackLayoutProps) {
   const t = useT();
   const loaded = useLoadedTrackSections(trackKey, client, section ?? 'other');
@@ -74,7 +81,7 @@ export function TrackLayout({
   // biome-ignore lint/correctness/useExhaustiveDependencies: the tabs move when Backlog comes or goes
   useLayoutEffect(() => {
     const scroller = bar.current;
-    const current = scroller?.querySelector<HTMLElement>('[aria-current="page"]');
+    const current = scroller?.querySelector<HTMLElement>('[aria-current]');
     if (!scroller || !current) return;
     // Only the bar scrolls, never the page: the current tab to its middle, a neighbour each side.
     const tab = current.getBoundingClientRect();
@@ -106,7 +113,7 @@ export function TrackLayout({
                 <a
                   href={routeHref(trackHref(trackKey, s.id))}
                   data-tutorial={`track-tab-${s.id}`}
-                  aria-current={s.id === section ? 'page' : undefined}
+                  aria-current={s.id === section ? (within ? 'true' : 'page') : undefined}
                 >
                   {t(s.labelId)}
                 </a>

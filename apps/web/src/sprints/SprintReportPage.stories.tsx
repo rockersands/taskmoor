@@ -68,6 +68,55 @@ export const RowsFoldInANarrowCard: Story = {
   },
 };
 
+/** A key much longer than the one above it, as a long-lived track has (S3-TR-4). */
+const longKeys = (() => {
+  const client = fakeSprintClient();
+  return {
+    ...client,
+    report: async (sprintId: number) => {
+      const report = await client.report(sprintId);
+      return {
+        ...report,
+        notCompleted: report.notCompleted.map((ticket, at) =>
+          at === 1 ? { ...ticket, key: 'CHK-10666' } : ticket,
+        ),
+      };
+    },
+  };
+})();
+
+/**
+ * S3-TR-4: folded in a phone-wide card, the rows still share the table's columns, so every
+ * summary starts at the same place whatever its key's length, and the heading's "Summary" over
+ * them; the heading is one band, with no notch where a cell's background stops.
+ */
+export const SummariesLineUpInANarrowCard: Story = {
+  args: { client: longKeys },
+  decorators: [
+    (Story) => (
+      <div style={{ width: 340 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const open = await canvas.findByRole('region', { name: 'Tickets not completed' });
+    await within(open).findByText('CHK-10666');
+    const lefts = Array.from(open.querySelectorAll<HTMLElement>('.sprint-report-summary'), (cell) =>
+      Math.round(cell.getBoundingClientRect().left),
+    );
+    await expect(lefts).toHaveLength(3);
+    await expect(new Set(lefts).size).toBe(1);
+    const head = open.querySelector('thead tr');
+    if (!head) throw new Error('the table has its heading');
+    await expect(getComputedStyle(head).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+    for (const cell of head.querySelectorAll('th')) {
+      await expect(getComputedStyle(cell).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+    }
+  },
+};
+
 export const Phone: Story = {
   globals: { viewport: { value: 'mobile1', isRotated: false } },
 };

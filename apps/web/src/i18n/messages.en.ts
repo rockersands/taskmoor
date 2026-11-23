@@ -3331,12 +3331,10 @@ export const messagesEn = {
   'trackPeople.listEmpty': 'You do not run any track.',
   'trackPeople.manage': 'Manage',
   'trackPeople.manageOf': 'Manage track {key}',
-  'trackPeople.title': 'People of {key} · {name}',
   'trackPeople.titleLoading': 'People of the track',
   'trackPeople.loading': 'Reading the track…',
   'trackPeople.forbidden': 'Only people who run this track can manage it.',
   'trackPeople.failed': 'The track could not be read. Try again in a moment.',
-  'trackPeople.backToList': 'All the tracks you run',
   'trackPeople.ownConfig': 'Its own configuration',
   'trackPeople.ownConfigIntro': '{key} has its own configuration, and you can change it here:',
   'trackPeople.layoutsLink': 'Layout sets: where fields appear on its forms',
@@ -3587,8 +3585,9 @@ export const messagesEn = {
     'The type set and the field rule sets this track owns. Shared sets are for site and configuration administrators.',
   'admin.sets.trackTypeSet':
     'A track with its own configuration keeps one type set of its own: choose its ticket types here.',
-  'admin.sets.trackNoRuleSets':
-    '{key} has no field rule set of its own yet, so its fields follow a shared one. Add a set here, then use it for {key}.',
+  'admin.sets.noOwnRuleSet': '{key} has no field rule set of its own yet',
+  'admin.sets.noOwnRuleSetBody':
+    'Its fields follow a shared one. Add a set here, then use it for {key}.',
   'admin.sets.useFor': 'Use this set for {key}',
   'admin.sets.usedFor': '{key} now uses {name}.',
   'admin.sets.layoutsLinkTrack': 'Arrange the forms of {key} on its layout sets.',
@@ -5302,7 +5301,8 @@ export const messagesEn = {
   'inbox.alert.address': 'From {address}',
   'boards.title': 'Board',
   'boards.loading': 'Loading the board…',
-  'boards.failed': 'This board could not be loaded. It may not exist, or you may not see it.',
+  'boards.failed': 'This board could not be loaded. Try again in a moment.',
+  'boards.notFound': 'No board has the number {id}, or you cannot see it.',
   'boards.kind.scrum': 'Scrum board',
   'boards.kind.kanban': 'Kanban board',
   'boards.meta': '{kind} · {location}',
@@ -5436,9 +5436,9 @@ export const messagesEn = {
   'boards.settings.max': 'Maximum in {column}',
   'boards.settings.managed': 'This board’s columns are its track’s statuses',
   'boards.settings.managedHint':
-    'For a local-mode track: each column becomes one status, any card can move to any column, and the rightmost column closes tickets as Completed.',
+    'For a local-mode track: each column becomes one status, any card can move to any column, and the rightmost column closes tickets{named, select, yes { as {reason}} other {}}.',
   'boards.settings.managedOnHint':
-    'Each column is one status. A new column gets a status of its own when you save; the tickets of a removed column go to the first column. The rightmost column closes tickets as Completed.',
+    'Each column is one status. A new column gets a status of its own when you save; the tickets of a removed column go to the first column. The rightmost column closes tickets{named, select, yes { as {reason}} other {}}.',
   'boards.settings.managedFailed': 'The workflow could not be changed. Try again.',
   'boards.settings.managed.sharedMode':
     'Only a board of a local-mode track can manage its workflow.',
@@ -5455,7 +5455,7 @@ export const messagesEn = {
   'boards.settings.closing.rightmost': 'The rightmost column, now {column}',
   'boards.settings.closing.none': 'No column closes tickets',
   'boards.settings.closing.hint':
-    'Reaching this column closes a ticket as Completed; leaving it reopens the ticket. If you leave it on the rightmost, it follows that column as you reorder them. Tickets already closed keep their close reason and history when you change this.',
+    'Reaching this column closes a ticket{named, select, yes { as {reason}} other {}}; leaving it reopens the ticket. If you leave it on the rightmost, it follows that column as you reorder them. Tickets already closed keep their close reason and history when you change this.',
   'boards.settings.remove.ask':
     '{column} holds {count, plural, one {# ticket} other {# tickets}}. Where should they go?',
   'boards.settings.remove.to': 'Move them to',
@@ -7848,8 +7848,8 @@ export const messagesEn = {
   'layouts.fieldRulesLinkTrack': 'The field rules of {key} are on its configuration sets.',
   'layouts.trackIntro':
     'The layout sets this track owns. Shared sets are for site and configuration administrators.',
-  'layouts.trackNoSets':
-    '{key} has no layout set of its own yet, so its forms follow a shared one. Add a set here, then use it for {key}.',
+  'layouts.noOwnSet': '{key} has no layout set of its own yet',
+  'layouts.noOwnSetBody': 'Its forms follow a shared one. Add a set here, then use it for {key}.',
   'layouts.useFor': 'Use this set for {key}',
   'layouts.usedFor': '{key} now uses {name}.',
   'layouts.choose.intro':

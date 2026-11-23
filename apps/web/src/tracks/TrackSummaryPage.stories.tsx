@@ -40,9 +40,21 @@ const rows = (boxes: Element[]) => {
   return [...byTop.values()];
 };
 
+/** Where each of a column's boxes sits, column by column: their tops and bottoms, left to right. */
+const columnsOf = (boxes: Element[]) => {
+  const byLeft = new Map<number, DOMRect[]>();
+  for (const box of boxes) {
+    const rect = box.getBoundingClientRect();
+    byLeft.set(Math.round(rect.left), [...(byLeft.get(Math.round(rect.left)) ?? []), rect]);
+  }
+  return [...byLeft.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([, column]) => column.sort((a, b) => a.top - b.top));
+};
+
 /**
  * The numbers line up (TR-30): every tile's number on one line, however its label wraps, and the
- * sections fill their rows, never three and a lone fourth, at a laptop's width and a phone's.
+ * sections fill both columns, never three beside a lone fourth's empty half, at a laptop's width.
  */
 export const RowsThatFill: Story = {
   decorators: [
@@ -59,8 +71,46 @@ export const RowsThatFill: Story = {
     await expect(
       new Set(numbers.map((n) => Math.round(n.getBoundingClientRect().bottom))).size,
     ).toBe(1);
-    const sections = rows(Array.from(canvasElement.querySelectorAll('.summary-section')));
-    await expect(sections.map((row) => row.length)).toEqual([2, 2]);
+    const columns = columnsOf(Array.from(canvasElement.querySelectorAll('.summary-section')));
+    await expect(columns).toHaveLength(2);
+    await expect(columns.every((column) => column.length > 0)).toBe(true);
+  },
+};
+
+/**
+ * The third sweep: a short section has the next one right under it in its column, the cards' own
+ * gap apart, never a hole as tall as its neighbour's longer list.
+ */
+export const NoHoleUnderAShortSection: Story = {
+  args: {
+    // Six priorities beside three stages: the priority list runs far longer.
+    client: fakeTrackClient({
+      ...SHOP_SUMMARY,
+      priorities: ['Urgent', 'High', 'Medium', 'Low', 'Lowest', 'Someday'].map((name, at) => ({
+        id: name,
+        name,
+        query: `track = SHOP AND priority = "${name}"`,
+        count: at + 1,
+        exact: true,
+      })),
+    }),
+  },
+  decorators: [
+    (Story) => (
+      <div style={{ width: 960 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('region', { name: 'Open by assignee' });
+    const columns = columnsOf(Array.from(canvasElement.querySelectorAll('.summary-section')));
+    const gaps = columns.flatMap((column) =>
+      column.slice(1).map((box, at) => Math.round(box.top - (column[at] as DOMRect).bottom)),
+    );
+    await expect(gaps.length).toBeGreaterThan(0);
+    await expect(gaps).toEqual(gaps.map(() => 16));
   },
 };
 

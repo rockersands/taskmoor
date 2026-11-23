@@ -188,6 +188,39 @@ describe('board settings (M1-043)', () => {
     expect(screen.queryByRole('table', { name: 'Which column shows each status' })).toBeNull();
   });
 
+  it('[WF-010] names the close reason the closing column sets, in the person’s language (S3-TR-7)', async () => {
+    const client = fakeBoardClient();
+    client.closeReasons = async () => [
+      { id: 1, name: 'Completed' },
+      { id: 2, name: 'Duplicate' },
+    ];
+    render(
+      <I18nProvider locale="es">
+        <BoardSettingsPage boardId={7} client={client} />
+      </I18nProvider>,
+    );
+    const managed = await screen.findByRole('checkbox', {
+      name: messagesEs['boards.settings.managed'],
+    });
+    await waitFor(() =>
+      expect(managed).toHaveAccessibleDescription(/cierra los tickets como Completado\.$/),
+    );
+    expect(managed).not.toHaveAccessibleDescription(/Completed/);
+  });
+
+  it('[WF-010] leaves the reason unnamed when the site has none called Completed (S3-TR-7)', async () => {
+    const client = fakeBoardClient();
+    client.closeReasons = async () => [{ id: 1, name: 'Done and dusted' }];
+    renderSettings(client);
+    await ready();
+    const managed = screen.getByRole('checkbox', {
+      name: 'This board’s columns are its track’s statuses',
+    });
+    await waitFor(() =>
+      expect(managed).toHaveAccessibleDescription(/the rightmost column closes tickets\.$/),
+    );
+  });
+
   it('[WF-010] explains why a board cannot manage its workflow', async () => {
     const user = userEvent.setup();
     const client = fakeBoardClient();

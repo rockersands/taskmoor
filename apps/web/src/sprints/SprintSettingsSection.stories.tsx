@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
+import { I18nProvider } from '../i18n/I18nProvider';
 import type { NumberField, SprintSettings } from './client';
 import { SprintSettingsSection, sprintDraftOf } from './SprintSettingsSection';
 
@@ -96,5 +97,55 @@ export const Refused: Story = {
     await expect(
       canvas.getByRole('checkbox', { name: 'Roll sprints over automatically' }),
     ).toBeInvalid();
+  },
+};
+
+/** How wide a select's chosen words are, in its own font. */
+function wordsWidth(select: HTMLSelectElement): number {
+  const pen = document.createElement('canvas').getContext('2d');
+  if (!pen) throw new Error('no canvas to measure with');
+  const style = getComputedStyle(select);
+  pen.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  return pen.measureText(select.selectedOptions[0]?.textContent ?? '').width;
+}
+
+/**
+ * In Spanish at a phone's width (S3-TR-5, S3-TR-6): the time tracking choice reads whole, clear of
+ * the select's arrow, and the check boxes sit the section's own gap from the fields around them,
+ * with no empty band.
+ */
+export const SpanishOnAPhone: Story = {
+  render: (args) => (
+    <I18nProvider locale="es">
+      <div style={{ width: 375 }}>
+        <Section {...args} />
+      </div>
+    </I18nProvider>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const tracking = canvas.getByRole<HTMLSelectElement>('combobox', {
+      name: 'Registro de tiempo',
+    });
+    const style = getComputedStyle(tracking);
+    // The arrow takes about a line's height at the end of the field.
+    const room =
+      tracking.clientWidth -
+      Number.parseFloat(style.paddingLeft) -
+      Number.parseFloat(style.paddingRight) -
+      Number.parseFloat(style.fontSize) * 1.5;
+    await expect(wordsWidth(tracking)).toBeLessThanOrEqual(room);
+    const section = canvasElement.querySelector('fieldset');
+    if (!section) throw new Error('the section is drawn');
+    const gap = Number.parseFloat(getComputedStyle(section).rowGap);
+    const field = tracking.closest('.form-field')?.getBoundingClientRect();
+    const options = Array.from(
+      canvasElement.querySelectorAll('.sprint-settings-option'),
+      (option) => option.getBoundingClientRect(),
+    );
+    const [parallel, cycle] = options;
+    if (!field || !parallel || !cycle) throw new Error('the options are drawn');
+    await expect(Math.round(parallel.top - field.bottom)).toBe(Math.round(gap));
+    await expect(Math.round(cycle.top - parallel.bottom)).toBe(Math.round(gap));
   },
 };

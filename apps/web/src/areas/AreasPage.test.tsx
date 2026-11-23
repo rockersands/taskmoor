@@ -28,7 +28,7 @@ const rowOf = (name: string) =>
   screen.getByText(name, { selector: '.people-name' }).closest('li') as HTMLElement;
 
 describe('a track’s areas (CORE-015)', () => {
-  it('[CORE-015] opens at its address under the track’s tab bar, with no tab of its own', async () => {
+  it('[CORE-015] opens at its address under the track’s tab bar, within the Summary that leads there (TR-27)', async () => {
     const calls = stubBackend({
       'GET /tracks/SHOP': () =>
         jsonResponse(200, {
@@ -42,7 +42,13 @@ describe('a track’s areas (CORE-015)', () => {
     render(<App session={MEMBER} />);
     expect(await screen.findByRole('heading', { level: 1, name: 'Areas' })).toBeVisible();
     const bar = await screen.findByRole('navigation', { name: 'Sections of SHOP' });
-    expect(bar.querySelector('[aria-current]')).toBeNull();
+    // No tab of its own: Summary, which leads here, is marked as where the person is, not as
+    // this page.
+    expect(within(bar).getByRole('link', { name: 'Summary' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(bar.querySelectorAll('[aria-current]')).toHaveLength(1);
     expect(await screen.findByText('Owner: Sam Rivera')).toBeVisible();
     // Read by a member: what they may do comes from the releases list, the same rule.
     expect(

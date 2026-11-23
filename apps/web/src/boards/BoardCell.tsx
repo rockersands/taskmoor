@@ -156,7 +156,8 @@ export function BoardCell({
       return () => setMeasured((m) => m + 1);
     }
     const screen = window.innerHeight || 800;
-    const top = -el.getBoundingClientRect().top - pad;
+    // A cell that scrolls inside itself (a phone's column) adds how far it has scrolled.
+    const top = el.scrollTop - el.getBoundingClientRect().top - pad;
     const around = (margin: number): [number, number] => {
       const from = Math.max(0, firstAtLeast(at, top - margin) - 1);
       const to = firstAtLeast(at, top + screen + margin);

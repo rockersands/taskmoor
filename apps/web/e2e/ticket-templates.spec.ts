@@ -151,6 +151,12 @@ test('[CORE-029] [CORE-030] a template kept on its page starts a ticket and its 
 
   // It shows in the track's list, read-only there.
   await page.goto(`${BASE}/#/tracks/${key}/templates`);
+  // Within the track's Summary, which leads there, so its tab is marked (TR-27).
+  await expect(
+    page
+      .getByRole('navigation', { name: `Sections of ${key}` })
+      .getByRole('link', { name: 'Summary' }),
+  ).toHaveAttribute('aria-current', 'true');
   const row = page.getByRole('listitem').filter({ hasText: shared });
   await expect(row.getByText('Every track', { exact: true })).toBeVisible();
   await expect(row.getByRole('button')).toHaveCount(0);

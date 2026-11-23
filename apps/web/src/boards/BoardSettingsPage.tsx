@@ -4,6 +4,7 @@ import type { MessageId } from '../i18n/messages.en';
 import { routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { PageHeader } from '../shell/PageHeader';
+import { closeReasonName } from '../shell/seededNames';
 import type { NumberField } from '../sprints/client';
 import {
   type SprintDraft,
@@ -325,6 +326,7 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
   const [board, setBoard] = useState<Board | null>(null);
   const [numberFields, setNumberFields] = useState<NumberField[]>([]);
   const [teams, setTeams] = useState<{ id: number; name: string }[]>([]);
+  const [closeReasons, setCloseReasons] = useState<{ id: number; name: string }[]>([]);
   const [statuses, setStatuses] = useState<BoardStatus[]>([]);
   const [reach, setReach] = useState<BoardReach | null>(null);
   const [removing, setRemoving] = useState<Removing | null>(null);
@@ -357,7 +359,16 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
     client.numberFields().then(setNumberFields, () => setNumberFields([]));
     // Likewise the board's own team stays choosable without the list.
     client.teams().then(setTeams, () => setTeams([]));
+    // Names the reason the closing column sets; without the list the hints leave it unnamed.
+    client.closeReasons().then(setCloseReasons, () => setCloseReasons([]));
   }, [client]);
+  // A column that closes tickets on a managed board sets the reason named Completed, whatever
+  // the site calls it in the person's language (`completedReasonId` on the server). With none of
+  // that name the server takes another reason, so the hints say only that it closes (S3-TR-7).
+  const completed = closeReasons.find((r) => r.name.toLowerCase() === 'completed');
+  const closesAs = completed
+    ? { named: 'yes', reason: closeReasonName(t, completed.name) }
+    : { named: 'no', reason: '' };
 
   useEffect(() => {
     if (notice) noticeRef.current?.focus();
@@ -698,6 +709,7 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
                   board.managesWorkflow
                     ? 'boards.settings.managedOnHint'
                     : 'boards.settings.managedHint',
+                  closesAs,
                 )}
               </p>
               {manageProblem && (
@@ -839,7 +851,7 @@ export function BoardSettingsPage({ boardId, client = boardClient }: BoardSettin
                 <option value="none">{t('boards.settings.closing.none')}</option>
               </select>
               <p id={`${id}-closing-hint`} className="form-hint">
-                {t('boards.settings.closing.hint')}
+                {t('boards.settings.closing.hint', closesAs)}
               </p>
             </div>
           )}

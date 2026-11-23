@@ -441,6 +441,31 @@ describe('date cells in the person’s locale (T-240)', () => {
     expect(cutOver.querySelector('.search-cell-value')).toHaveTextContent('Oct 13, 2026, 2:00 AM');
     expect(cutOver.querySelector('time')).toBeNull();
   });
+
+  it('[AGL-016] [QRY-014] names a list’s Updated cell by the whole moment while a date-and-time field keeps the time someone chose (TR-8)', () => {
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={MEMBER}>
+          <ResultGrid
+            tickets={dated()}
+            columns={['summary', 'updatedAt', 'cf[51]']}
+            fields={[{ id: 51, name: 'Cut-over', type: 'datetime' }]}
+            client={fakeSearchClient()}
+            onSaved={() => {}}
+          />
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    const [, updated, cutOver] = within(row('SHOP-41')).getAllByRole('cell');
+    if (!updated || !cutOver) throw new Error('No Updated or Cut-over cell');
+    // 08:00 UTC on Oct 29 is 1:00 AM in Los Angeles: the day shows, the time is in its name.
+    expect(within(updated).getByText('Oct 29, 2026')).toHaveAttribute('aria-hidden', 'true');
+    expect(updated).toHaveAccessibleName(/^Oct 29, 2026, 1:00\sAM$/);
+    expect(cutOver.querySelector('.search-cell-value')).toHaveTextContent(
+      /^Oct 13, 2026, 2:00\sAM$/,
+    );
+    expect(cutOver.querySelector('.search-cell-value')).not.toHaveAttribute('title');
+  });
 });
 
 describe('result columns (M1-042)', () => {

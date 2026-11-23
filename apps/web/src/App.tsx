@@ -984,9 +984,9 @@ function Pages() {
     active = 'tracks';
     guarded = true;
     const key = TRACK_TEMPLATES.exec(hash)?.[1] ?? '';
-    // Under the track's tab bar, with no tab of its own (T-215).
+    // Under the track's tab bar, within its Summary, which leads there (T-215, TR-27).
     content = (
-      <TrackLayout trackKey={key} section={null}>
+      <TrackLayout trackKey={key} section="summary" within>
         <TicketTemplatesPage key={key} trackKey={key} />
       </TrackLayout>
     );
@@ -1026,10 +1026,10 @@ function Pages() {
     active = 'tracks';
     guarded = true;
     const key = TRACK_AREAS.exec(hash)?.[1] ?? '';
-    // Under the track's tab bar with no tab of its own, as its Ticket templates (T-320). Once
-    // TrackLayout has `within` (wave26m/t359-track), it lies within the Summary, which leads here.
+    // Under the track's tab bar, within its Summary, which leads there, as its Ticket templates
+    // (T-320; TR-27, T-359).
     content = (
-      <TrackLayout trackKey={key} section={null}>
+      <TrackLayout trackKey={key} section="summary" within>
         <AreasPage key={key} trackKey={key} />
       </TrackLayout>
     );

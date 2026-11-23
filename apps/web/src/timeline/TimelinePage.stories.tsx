@@ -223,6 +223,35 @@ export const KeyPressAreaOnAPhone: Story = {
   },
 };
 
+/**
+ * S3-TR-2: on a phone's touch screen a parent's toggle is a finger wide, and a row without one
+ * holds the same place, so a child's key starts right of its parent's, as the indent says.
+ */
+export const ChildrenIndentedOnAPhone: Story = {
+  tags: ['touch'],
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  args: { client: fakeTimelineClient({ data: crowded }) },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    await expect(window.innerWidth).toBeLessThan(768);
+    await within(canvasElement).findAllByRole('link', { name: /^LCH-\d+$/ });
+    const labels = Array.from(canvasElement.querySelectorAll<HTMLElement>('.timeline-label'));
+    const indent = (label: HTMLElement) => Number.parseFloat(getComputedStyle(label).paddingLeft);
+    const keyLeft = (label: HTMLElement) =>
+      label.querySelector('.timeline-key')?.getBoundingClientRect().left ?? Number.NaN;
+    const pairs = labels.flatMap((label, at) => {
+      const next = labels[at + 1];
+      return label.querySelector('.timeline-toggle') && next && indent(next) > indent(label)
+        ? [[label, next] as const]
+        : [];
+    });
+    await expect(pairs.length).toBeGreaterThan(0);
+    for (const [parent, child] of pairs) {
+      await expect(keyLeft(child)).toBeGreaterThan(keyLeft(parent));
+    }
+  },
+};
+
 /** TR-9: a long summary is cut, never the key, which reads whole in its column. */
 export const KeysNeverCut: Story = {
   args: { client: fakeTimelineClient({ data: crowded }) },

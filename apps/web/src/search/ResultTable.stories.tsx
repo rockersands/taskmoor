@@ -134,7 +134,7 @@ const LONG: SearchTicket[] = [
   updatedAt: updatedAt as string,
 }));
 
-/** One subticket under MOB-2, so its key cell carries '0/1 subtickets closed' (PL-31). */
+/** One subticket under MOB-2, so its key cell carries its progress (PL-31, S3-TR-3). */
 const withProgress = {
   ...fakeSearchClient(),
   subticketProgress: async () => ({ '1': { total: 1, closed: 0 } }),
@@ -164,7 +164,7 @@ export const FitsTheCardAt1280: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const region = canvas.getByRole('region', { name: 'Result table' });
-    await canvas.findByText('0/1 subtickets closed');
+    await canvas.findByText('Subtickets: 0 of 1 closed (0%)');
     await expect(region.scrollWidth).toBeLessThanOrEqual(region.clientWidth);
     await expect(region).toHaveAttribute('data-more', 'none');
     const table = canvas.getByRole('table');
@@ -172,6 +172,17 @@ export const FitsTheCardAt1280: Story = {
     const [summary] = cellsOf(table, 'summary');
     if (!key || !summary) throw new Error('No first row');
     await expect(key.getBoundingClientRect().width).toBeLessThan(150);
+    // The progress under the key: its icon and numbers on one line, no wider than the key, so the
+    // column keeps the key's width and the row its neighbours' height (S3-TR-3, S3-PL-9).
+    const count = key.querySelector('.tool-progress-count');
+    const link = key.querySelector('a');
+    if (!count || !link) throw new Error('No progress under the key');
+    await expect(count).toHaveTextContent('0/1');
+    await expect(count.querySelector('svg')).not.toBeNull();
+    await expect(oneLine(count)).toBe(true);
+    await expect(count.getBoundingClientRect().width).toBeLessThanOrEqual(
+      link.getBoundingClientRect().width,
+    );
     await expect(summary.getBoundingClientRect().width).toBeGreaterThan(
       2 * key.getBoundingClientRect().width,
     );
@@ -215,6 +226,37 @@ export const FitsTheCardAt1280: Story = {
         ).toBeLessThanOrEqual(12);
       }
     }
+  },
+};
+
+/**
+ * A track's list at 1280 px (TR-8): every Updated shows the day alone, on one line, the whole
+ * moment its name and tooltip, so the summary takes the width the time took and the table fits.
+ */
+export const TrackListDatesAt1280: Story = {
+  args: { tickets: LONG, columns: DEFAULT_COLUMNS },
+  render: (args) => (
+    <div style={{ width: 955 }}>
+      <ResultGrid {...args} label="Track list" />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const list = canvas.getByRole('region', { name: 'Track list' });
+    for (const cell of cellsOf(list, 'updatedAt')) {
+      const value = cell.querySelector('.search-cell-value');
+      const moment = value?.querySelector('time');
+      if (!value || !moment) throw new Error('No Updated value');
+      const shown = moment.querySelector('[aria-hidden="true"]');
+      await expect(shown?.textContent).toMatch(/^[A-Z][a-z]{2} \d{1,2}, 2026$/);
+      // The time is in the cell's name and tooltip.
+      await expect(moment.getAttribute('title')).toMatch(/^[A-Z][a-z]{2} \d{1,2}, 2026, \d/);
+      await expect(moment.querySelector('.visually-hidden')?.textContent).toBe(
+        moment.getAttribute('title'),
+      );
+      await expect(oneLine(value)).toBe(true);
+    }
+    await expect(list.scrollWidth).toBeLessThanOrEqual(list.clientWidth);
   },
 };
 

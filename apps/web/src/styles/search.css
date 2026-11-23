@@ -249,8 +249,8 @@
   );
 }
 
-/* The key takes its own width (TR-8): the key stays whole, and the subtickets' count under it
-   wraps between words instead of widening the column. */
+/* The key takes its own width (TR-8): the key stays whole, and the subtickets' count under it is
+   the icon and the numbers on one line, the bar under them, no wider than the key (S3-TR-3). */
 .search-key {
   width: 1%;
   font-weight: var(--font-weight-strong);
@@ -258,12 +258,6 @@
 
 .search-key > a {
   white-space: nowrap;
-}
-
-.search-key .tool-progress-mini {
-  flex-wrap: wrap;
-  max-inline-size: 7rem;
-  white-space: normal;
 }
 
 /*

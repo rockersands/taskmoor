@@ -16,6 +16,7 @@ import {
   useTrackPageTrail,
 } from '../sets/trackScope';
 import { DangerAction } from '../shell/DangerAction';
+import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import { DraftDialog } from '../tickets/view/drafts';
 import {
@@ -260,7 +261,9 @@ function LayoutSets({
       {state.status === 'loaded' && (
         <>
           {track && state.sets.length === 0 && (
-            <p className="page-note">{t('layouts.trackNoSets', { key: track.key })}</p>
+            <EmptyState title={t('layouts.noOwnSet', { key: track.key })}>
+              {t('layouts.noOwnSetBody', { key: track.key })}
+            </EmptyState>
           )}
           <div className="layout-set-bar">
             {state.sets.length > 0 && (
