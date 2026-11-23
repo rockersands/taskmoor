@@ -7,7 +7,7 @@ import {
   withBom,
 } from '@taskmoor/webconfig';
 import type { FastifyInstance } from 'fastify';
-import { type Kysely, sql } from 'kysely';
+import { type Kysely, type RawBuilder, sql } from 'kysely';
 import { z } from 'zod';
 import { appendAudit, verifyChain } from '../audit/chain';
 import {
@@ -67,9 +67,11 @@ type FilterQuery = z.infer<typeof filterQuery>;
 
 /**
  * The tables that name a record's subject, by its type (AD-2): each has an id, the workspace and
- * a name. A subject of another type keeps its id alone.
+ * a name (or the column `NAME_COLUMNS` gives). Every audited subject whose table has a name is
+ * here; `audit.test.ts` holds the list to that. A ticket is named by its key instead (below); a
+ * subject with no name, such as a bulk change, keeps its id alone.
  */
-const NAMED_SUBJECTS = {
+export const NAMED_SUBJECTS = {
   track: 'track',
   user: 'app_user',
   group: 'user_group',
@@ -85,38 +87,129 @@ const NAMED_SUBJECTS = {
   ticket_template: 'ticket_template',
   layout_set: 'layout_set',
   field_rule_set: 'field_rule_set',
+  track_group: 'track_group',
+  plan: 'plan',
+  saved_search: 'saved_search',
+  sprint: 'sprint',
+  area: 'area',
+  api_token: 'api_token',
+  attachment: 'attachment',
+  close_reason: 'close_reason',
+  cross_track_release: 'cross_track_release',
+  directory: 'ldap_directory',
+  field_context: 'field_context',
+  field_option: 'field_option',
+  frontend_origin: 'frontend_origin',
+  hierarchy_level: 'hierarchy_level',
+  identity_provider: 'identity_provider',
+  import_run: 'import_run',
+  link_type: 'link_type',
+  notification_policy: 'notification_policy',
+  oauth_client: 'oauth_client',
+  priority: 'priority',
+  priority_set: 'priority_set',
+  ticket_type: 'ticket_type',
+  track_category: 'track_category',
+  type_set: 'type_set',
+  visibility_level: 'visibility_level',
+  visibility_policy: 'visibility_policy',
+  webhook: 'webhook',
+  workflow_map: 'workflow_map',
 } as const satisfies Record<string, keyof Database>;
 
-type NamedSubject = keyof typeof NAMED_SUBJECTS;
-const isNamed = (type: string): type is NamedSubject => Object.hasOwn(NAMED_SUBJECTS, type);
+type NamedType = keyof typeof NAMED_SUBJECTS;
+const isNamed = (type: string): type is NamedType => Object.hasOwn(NAMED_SUBJECTS, type);
+
+/**
+ * The subjects whose name is in another column than `name`: a field option by its value, a
+ * frontend by its label, or by its address when it has none.
+ */
+const NAME_COLUMNS: Partial<Record<NamedType, RawBuilder<string>>> = {
+  field_option: sql<string>`value`,
+  frontend_origin: sql<string>`coalesce(nullif(label, ''), origin)`,
+};
+
+/** The subjects whose ids are text, not numbers: an app connection's client id (`tmc_...`). */
+const TEXT_IDS: ReadonlySet<string> = new Set<NamedType>(['oauth_client']);
+
+/** Whether a record's subject id can name a row of its type's table. */
+const nameableId = (type: string, id: string): boolean =>
+  TEXT_IDS.has(type) ? id.length <= 100 : /^[0-9]{1,9}$/.test(id);
+
+/**
+ * The actions whose details point at a role and the person or group it was given to or taken
+ * from (S3-AD-4): the log says which role and to whom, not only that a role moved.
+ */
+const ROLE_ACTIONS: ReadonlySet<string> = new Set([
+  'track_role.actor_added',
+  'track_role.actor_removed',
+]);
+
+/** What a record's details point at, named as it is now (S3-AD-4). */
+export interface AuditAbout {
+  role?: string;
+  person?: string;
+  group?: string;
+}
+
+const numericId = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : null;
 
 /**
  * The records with their subject's name as it is now, read in one query per type (AD-2): 'Track
- * Shop' rather than 'Track 1'. An erased person is not named, nor is a subject since deleted.
- * The stored records are unchanged.
+ * Shop' rather than 'Track 1', a ticket by its key. A record about a role given or taken also
+ * names the role and the person or group (`about`, S3-AD-4). An erased person is not named, nor
+ * is anything since deleted. The stored records are unchanged.
  */
 async function withSubjectNames(
   db: Kysely<Database>,
   workspaceId: number,
   records: AuditView[],
-): Promise<(AuditView & { subject: { name?: string } | null })[]> {
-  const wanted = new Map<NamedSubject, Set<number>>();
+): Promise<(AuditView & { subject: { name?: string } | null; about?: AuditAbout })[]> {
+  const wanted = new Map<NamedType | 'ticket', Set<number | string>>();
+  const want = (type: NamedType | 'ticket', id: number | string) => {
+    const ids = wanted.get(type) ?? new Set<number | string>();
+    ids.add(id);
+    wanted.set(type, ids);
+  };
   for (const record of records) {
     const subject = record.subject;
-    if (!subject?.id || !isNamed(subject.type) || !/^[0-9]{1,9}$/.test(subject.id)) continue;
-    const ids = wanted.get(subject.type) ?? new Set<number>();
-    ids.add(Number(subject.id));
-    wanted.set(subject.type, ids);
+    if (subject?.id && nameableId(subject.type, subject.id)) {
+      if (isNamed(subject.type) || subject.type === 'ticket') {
+        want(subject.type, TEXT_IDS.has(subject.type) ? subject.id : Number(subject.id));
+      }
+    }
+    if (ROLE_ACTIONS.has(record.action) && !record.masked) {
+      const details = (record.details ?? {}) as Record<string, unknown>;
+      const role = numericId(details.roleId);
+      const user = numericId(details.userId);
+      const group = numericId(details.groupId);
+      if (role !== null) want('role', role);
+      if (user !== null) want('user', user);
+      if (group !== null) want('group', group);
+    }
   }
   const names = new Map<string, string>();
   for (const [type, ids] of wanted) {
-    // Every table here has the same id, workspace and name columns as track.
+    if (type === 'ticket') {
+      const rows = await db
+        .selectFrom('ticket as k')
+        .innerJoin('track as t', 't.id', 'k.track_id')
+        .select(['k.id', 't.key', 'k.number'])
+        .where('k.workspace_id', '=', workspaceId)
+        .where('k.id', 'in', [...ids].map(Number))
+        .execute();
+      for (const row of rows) names.set(`ticket:${row.id}`, `${row.key}-${row.number}`);
+      continue;
+    }
+    // Every table here has an id and workspace column as track has, and its name in `name` or
+    // the column NAME_COLUMNS gives; an app connection's id is text.
     const table = NAMED_SUBJECTS[type] as 'track';
     let query = db
       .selectFrom(table)
-      .select(['id', 'name'])
+      .select(['id', (NAME_COLUMNS[type] ?? sql<string>`name`).as('name')])
       .where('workspace_id', '=', workspaceId)
-      .where('id', 'in', [...ids]);
+      .where('id', 'in', [...ids] as number[]);
     if (type === 'user') {
       query = query.where(sql<boolean>`erased_at IS NULL`);
     }
@@ -126,9 +219,22 @@ async function withSubjectNames(
     const name = record.subject
       ? names.get(`${record.subject.type}:${record.subject.id}`)
       : undefined;
-    return name === undefined || !record.subject
-      ? record
-      : { ...record, subject: { ...record.subject, name } };
+    let named: AuditView & { subject: { name?: string } | null; about?: AuditAbout } =
+      name === undefined || !record.subject
+        ? record
+        : { ...record, subject: { ...record.subject, name } };
+    if (ROLE_ACTIONS.has(record.action) && !record.masked) {
+      const details = (record.details ?? {}) as Record<string, unknown>;
+      const about: AuditAbout = {};
+      const role = names.get(`role:${numericId(details.roleId)}`);
+      const person = names.get(`user:${numericId(details.userId)}`);
+      const group = names.get(`group:${numericId(details.groupId)}`);
+      if (role !== undefined) about.role = role;
+      if (person !== undefined) about.person = person;
+      if (group !== undefined) about.group = group;
+      if (Object.keys(about).length > 0) named = { ...named, about };
+    }
+    return named;
   });
 }
 

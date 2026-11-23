@@ -47,7 +47,17 @@ export interface Preview {
   };
   /** Fields the layout places that the form leaves out, and why. */
   leftOut: { field: string; reason: 'hidden' | 'not_applicable' | 'computed' }[];
-  customFields: Named[];
+  /** The custom fields the form names, with their type (`release`, `area`, `text`, ...). */
+  customFields: (Named & { type?: string })[];
+}
+
+/**
+ * How many releases and areas a track has, as the create form lists them (T-253): an optional
+ * release or area row goes from that form when its list is empty.
+ */
+export interface TrackLists {
+  releases: number;
+  areas: number;
 }
 
 export interface PreviewRequest {
@@ -80,6 +90,11 @@ export interface LayoutsClient extends TrackScopeClient {
   ) => Promise<LayoutSet>;
   deleteLayoutSet: (id: number) => Promise<void>;
   preview: (id: number, body: PreviewRequest) => Promise<Preview>;
+  /**
+   * A track's releases and areas, counted from the lists the create form reads; the preview of a
+   * create form leaves out the rows it would drop. Without it, the preview says they may go.
+   */
+  trackLists?: (trackId: number) => Promise<TrackLists>;
   /** Makes a track use one of its own sets (`PATCH /api/v1/tracks/:id`). */
   assignLayoutSet: (trackId: number, setId: number) => Promise<void>;
 }
@@ -124,6 +139,14 @@ export const layoutsClient: LayoutsClient = {
   preview: async (id, body) =>
     (await api<{ preview: Preview }>(`/layout-sets/${id}/preview`, { method: 'POST', body }))
       .preview,
+  // The create form's own requests (CreateTicketPage's client), so both count the same lists.
+  trackLists: async (trackId) => {
+    const [{ releases }, { areas }] = await Promise.all([
+      api<{ releases: unknown[] }>(`/tracks/${trackId}/releases`),
+      api<{ areas: unknown[] }>(`/tracks/${trackId}/areas`),
+    ]);
+    return { releases: releases.length, areas: areas.length };
+  },
   assignLayoutSet: async (trackId, setId) => {
     await api<unknown>(`/tracks/${trackId}`, { method: 'PATCH', body: { layoutSetId: setId } });
   },

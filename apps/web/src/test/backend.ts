@@ -46,12 +46,20 @@ export function stubBackend(handlers: Record<string, Handler>): Call[] {
 
 export const noContent = () => new Response(null, { status: 204 });
 
-/** Every visible text and accessible name inside `root`, for the pseudo-locale checks. */
+/**
+ * Every visible text and accessible name inside `root`, for the pseudo-locale checks. A path or an
+ * address that offers a line break after each '/' (BreakAtSlashes) is one text, not its pieces.
+ */
 export function visibleTexts(root: HTMLElement): string[] {
   const texts: string[] = [];
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (node.parentElement?.closest('.slash-breaks')) continue;
     const text = node.textContent?.trim();
+    if (text) texts.push(text);
+  }
+  for (const whole of root.querySelectorAll('.slash-breaks')) {
+    const text = whole.textContent?.trim();
     if (text) texts.push(text);
   }
   for (const el of root.querySelectorAll('[aria-label], [title]')) {

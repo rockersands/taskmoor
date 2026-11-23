@@ -637,7 +637,9 @@ export function registerLayoutRoutes(
       .filter((fieldId): fieldId is number => fieldId !== null)
       .flatMap((fieldId) => {
         const def = catalog.fields.get(fieldId);
-        return def ? [{ id: def.id, name: def.name }] : [];
+        // Its type too, so the editor's preview knows a list of the track's releases or areas,
+        // which the create form leaves out when the track has none (T-359).
+        return def ? [{ id: def.id, name: def.name, type: def.type }] : [];
       });
     return { preview: { source: chosen?.source ?? 'none', layout, leftOut, customFields } };
   });

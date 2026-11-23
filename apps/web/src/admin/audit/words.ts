@@ -47,6 +47,7 @@ export const AUDIT_SUBJECTS = [
   'mcp',
   'notification_policy',
   'oauth_client',
+  'password_link',
   'personal_data',
   'plan',
   'priority',
@@ -101,6 +102,9 @@ export const AUDIT_VERBS = [
   'approval_decided',
   'approvers_set',
   'archived',
+  'baseline_captured',
+  'baseline_deleted',
+  'baseline_renamed',
   'bulk_revoked',
   'cancelled',
   'capacity_set',
@@ -117,6 +121,9 @@ export const AUDIT_VERBS = [
   'delivery_replayed',
   'draft_discarded',
   'draft_saved',
+  'drafts_committed',
+  'drafts_discarded',
+  'drafts_set',
   'duplicated',
   'ended',
   'erased',
@@ -128,13 +135,19 @@ export const AUDIT_VERBS = [
   'group_updated',
   'imported',
   'left',
+  'locked_out',
   'member_added',
   'member_removed',
   'merged',
   'moved',
   'nested',
+  'partition_dropped',
   'password_changed',
+  'password_check_failed',
   'password_link_created',
+  'program_board_created',
+  'program_board_deleted',
+  'program_board_updated',
   'published',
   'purged',
   'quarantined',
@@ -143,6 +156,7 @@ export const AUDIT_VERBS = [
   'recovery_codes_regenerated',
   'refused_repeatedly',
   'registered',
+  'rejected',
   'removed',
   'reordered',
   'resent',
@@ -150,12 +164,21 @@ export const AUDIT_VERBS = [
   'restored',
   'revoked',
   'rotated',
+  'scenario_created',
+  'scenario_deleted',
+  'scenario_promoted',
+  'scenario_updated',
+  'schedule_ran',
   'settings_updated',
   'shared',
   'shipped',
   'sign_in_failed',
+  'sign_in_refused',
   'signed_in',
   'started',
+  'structure_changed',
+  'structure_created',
+  'structure_deleted',
   'subscribed',
   'summary_layout_removed',
   'summary_layout_set',
@@ -191,18 +214,57 @@ export function auditSubjectWords(t: Translate, type: string): string | null {
 }
 
 /**
- * An action code in plain words, "Ticket template created" for `ticket_template.created` (D19).
- * A code the catalogue does not know yet shows as it is.
+ * Verbs that name what they act on, so their words stand without the subject: 'Password changed'
+ * rather than 'Person password changed' (S3-AD-4), 'Sign-in locked after failed attempts' rather
+ * than a session's.
  */
-export function auditActionWords(t: Translate, action: string): string {
+const OWN_OBJECT_VERBS: ReadonlySet<string> = new Set([
+  'locked_out',
+  'partition_dropped',
+  'password_changed',
+  'password_check_failed',
+  'password_link_created',
+  'recovery_codes_regenerated',
+  'sign_in_refused',
+  'two_factor_disabled',
+  'two_factor_enabled',
+  'two_factor_reset',
+]);
+
+/** The names the server gives a role that was given or taken, and to whom (S3-AD-4). */
+export interface AuditAbout {
+  role?: string;
+  person?: string;
+  group?: string;
+}
+
+const ROLE_MOVES: Partial<Record<string, MessageId>> = {
+  'track_role.actor_added': 'admin.audit.roleGiven',
+  'track_role.actor_removed': 'admin.audit.roleTaken',
+};
+
+const capitalised = (words: string) => words.charAt(0).toLocaleUpperCase() + words.slice(1);
+
+/**
+ * An action code in plain words, "Ticket template created" for `ticket_template.created` (D19),
+ * and 'Track role “Reviewers” given to Ada' when the server names the role and the person
+ * (S3-AD-4). A code the catalogue does not know yet shows as it is; `words.test.ts` holds every
+ * code the server writes to having words.
+ */
+export function auditActionWords(t: Translate, action: string, about?: AuditAbout): string {
   const dot = action.indexOf('.');
   const subject = auditSubjectWords(t, action.slice(0, dot));
   const verb = action.slice(dot + 1);
   if (dot < 0 || subject === null || !VERBS.has(verb)) return t('common.value', { value: action });
-  return t('admin.audit.actionWords', {
-    subject,
-    verb: t(`admin.audit.verb.${verb}` as MessageId),
-  });
+  const move = ROLE_MOVES[action];
+  if (move && about?.role !== undefined) {
+    const kind =
+      about.person !== undefined ? 'person' : about.group !== undefined ? 'group' : 'none';
+    return t(move, { role: about.role, kind, who: about.person ?? about.group ?? '' });
+  }
+  const words = t(`admin.audit.verb.${verb}` as MessageId);
+  if (OWN_OBJECT_VERBS.has(verb)) return capitalised(words);
+  return t('admin.audit.actionWords', { subject, verb: words });
 }
 
 /**

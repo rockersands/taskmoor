@@ -205,6 +205,17 @@ describe('AI spend limits, audit log and redaction (M1-077)', () => {
     });
     use(bedrock);
     await call('alice');
+    // A rate is kept by the provider's id, which the calls carry: under its name ('Amazon
+    // Bedrock', as the AI page shows it) it would never apply, so it is refused (S3-AD-3).
+    const named = await send('admin', 'PUT', '/api/v1/admin/ai/prices', {
+      provider: 'Amazon Bedrock',
+      model: 'claude-opus-5-5',
+      input: 4.4,
+      output: 22,
+      cacheRead: 0.22,
+      cacheWrite: 5.5,
+    });
+    expect(named.statusCode, named.body).toBe(400);
     const price = await send('admin', 'PUT', '/api/v1/admin/ai/prices', {
       provider: 'bedrock',
       model: 'claude-opus-5-5',

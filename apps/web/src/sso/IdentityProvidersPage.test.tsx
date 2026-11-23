@@ -1,7 +1,8 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
+import { slashPieces } from '../admin/BreakAtSlashes';
 import { ADMIN, MEMBER } from '../admin/fixtures';
 import { type Handler, noContent, stubBackend, untranslated, visibleTexts } from '../test/backend';
 import { jsonResponse } from '../test/setup';
@@ -103,9 +104,9 @@ describe('identity provider administration (M1-080)', () => {
     openPage();
     expect(await screen.findByRole('heading', { level: 1, name: 'Single sign-on' })).toBeVisible();
     // From the backend's public URL, not the browser's address.
-    expect(await screen.findByRole('textbox', { name: 'Redirect URI to register' })).toHaveValue(
-      REDIRECT_URI,
-    );
+    const address = await screen.findByRole('textbox', { name: 'Redirect URI to register' });
+    expect(address.textContent).toBe(REDIRECT_URI);
+    expect(address).toHaveAttribute('aria-readonly', 'true');
     const staff = await providerItem('Staff accounts');
     for (const text of [
       'Single sign-on enforced',
@@ -148,32 +149,25 @@ describe('identity provider administration (M1-080)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Copying did not work. Select the address and copy it yourself.',
     );
+    // Focused, the whole address is selected, ready to copy by hand.
     expect(field).toHaveFocus();
-    expect((field as HTMLInputElement).selectionEnd).toBe(REDIRECT_URI.length);
+    expect(window.getSelection()?.toString()).toBe(REDIRECT_URI);
   });
 
-  it('[IAM-003] shows the whole redirect URI on a phone, wrapping instead of cut at the edge (AD-9)', async () => {
+  it('[IAM-003] shows the whole redirect URI on a phone, a line ending only after a slash (AD-9)', async () => {
     setViewportWidth(375);
     openPage();
     const field = await screen.findByRole('textbox', { name: 'Redirect URI to register' });
-    expect(field.tagName).toBe('TEXTAREA');
-    expect(field).toHaveAttribute('rows', '2');
-    expect(field).toHaveClass('redirect-uri-value');
-  });
-
-  it('[IAM-003] grows the redirect URI field to its whole address, without field-sizing (AD-9)', async () => {
-    // The height the address needs, as a browser without `field-sizing: content` measures it.
-    const scrollHeight = vi
-      .spyOn(HTMLTextAreaElement.prototype, 'scrollHeight', 'get')
-      .mockReturnValue(96);
-    try {
-      setViewportWidth(375);
-      openPage();
-      const field = await screen.findByRole('textbox', { name: 'Redirect URI to register' });
-      expect((field as HTMLTextAreaElement).style.height).toBe('96px');
-    } finally {
-      scrollHeight.mockRestore();
-    }
+    // A read-only text block, not a text field, which would break inside 'v1' or the host: a
+    // break is offered after each '/' (the story RedirectUriField Phone measures the lines).
+    expect(field.tagName).not.toBe('TEXTAREA');
+    expect(field).toHaveAttribute('tabindex', '0');
+    expect(field.textContent).toBe(REDIRECT_URI);
+    expect(field.querySelectorAll('wbr')).toHaveLength(slashPieces(REDIRECT_URI).length - 1);
+    // Focused, as Tab reaches it, it selects the whole address.
+    await act(async () => field.focus());
+    expect(field).toHaveFocus();
+    expect(window.getSelection()?.toString()).toBe(REDIRECT_URI);
   });
 
   it('[IAM-003] adds a provider with its domains, policy and group mapping', async () => {
@@ -187,7 +181,7 @@ describe('identity provider administration (M1-080)', () => {
         return jsonResponse(201, { provider: created });
       },
     });
-    await user.click(await screen.findByRole('button', { name: 'Add an identity provider' }));
+    await user.click(await screen.findByRole('button', { name: 'New identity provider' }));
     const form = screen.getByRole('form', { name: 'New identity provider' });
     expect(within(form).getByLabelText('Name')).toHaveFocus();
     // A new provider has no domains and no mappings, each said as an empty state (T-289).
@@ -323,7 +317,7 @@ describe('identity provider administration (M1-080)', () => {
   it('[IAM-003] keeps a typed text that is not a domain in the field, with the reason', async () => {
     const user = userEvent.setup();
     const calls = openPage();
-    await user.click(await screen.findByRole('button', { name: 'Add an identity provider' }));
+    await user.click(await screen.findByRole('button', { name: 'New identity provider' }));
     const form = screen.getByRole('form', { name: 'New identity provider' });
     await user.type(within(form).getByLabelText('Domain'), 'good.example corp_example{Enter}');
     expect(within(form).getByRole('alert')).toHaveTextContent(
@@ -402,7 +396,7 @@ describe('identity provider administration (M1-080)', () => {
   it('[IAM-003] says there is no group to map claim values to yet, as an empty state', async () => {
     const user = userEvent.setup();
     openPage({ 'GET /groups': () => jsonResponse(200, { groups: [] }) });
-    await user.click(await screen.findByRole('button', { name: 'Add an identity provider' }));
+    await user.click(await screen.findByRole('button', { name: 'New identity provider' }));
     const form = screen.getByRole('form', { name: 'New identity provider' });
     // A short title; why and what to do first in its body (T-295).
     expect(await within(form).findByText('No groups yet')).toHaveClass('empty-state-title');
@@ -448,7 +442,7 @@ describe('identity provider administration (M1-080)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'The identity providers could not be read. Try again in a moment.',
     );
-    expect(screen.queryByRole('button', { name: 'Add an identity provider' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'New identity provider' })).toBeNull();
   });
 
   it('[IAM-001] an ended session leads to the sign-in prompt', async () => {
@@ -509,7 +503,7 @@ describe('identity provider administration (M1-080)', () => {
         return jsonResponse(201, { provider: created });
       },
     });
-    await user.click(await screen.findByRole('button', { name: 'Add an identity provider' }));
+    await user.click(await screen.findByRole('button', { name: 'New identity provider' }));
     const form = screen.getByRole('form', { name: 'New identity provider' });
     await user.keyboard('Agency');
     const protocol = within(form).getByRole('group', { name: 'Type of provider' });
@@ -551,7 +545,7 @@ describe('identity provider administration (M1-080)', () => {
   it('[IAM-002] asks for metadata or the settings before sending a new SAML provider', async () => {
     const user = userEvent.setup();
     const calls = openPage();
-    await user.click(await screen.findByRole('button', { name: 'Add an identity provider' }));
+    await user.click(await screen.findByRole('button', { name: 'New identity provider' }));
     const form = screen.getByRole('form', { name: 'New identity provider' });
     await user.keyboard('Agency');
     await user.click(within(form).getByRole('radio', { name: 'SAML 2.0' }));
@@ -684,7 +678,7 @@ describe('identity provider administration (M1-080)', () => {
 
   describe('the Google choice (IAM-031)', () => {
     async function openGoogleForm(user: ReturnType<typeof userEvent.setup>) {
-      await user.click(await screen.findByRole('button', { name: 'Add an identity provider' }));
+      await user.click(await screen.findByRole('button', { name: 'New identity provider' }));
       const form = screen.getByRole('form', { name: 'New identity provider' });
       await user.click(within(form).getByRole('radio', { name: 'Google' }));
       return form;

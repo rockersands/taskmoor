@@ -1,8 +1,8 @@
 ---
 title: "Monitoring and logs"
 audience: admins
-sources: apps/server/src/app.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/observability.ts, apps/server/src/routes/admin.ts, apps/server/src/routes/meta.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/chain.ts, apps/server/src/audit/query.ts, apps/server/src/audit/record.ts, apps/server/src/audit/retention.ts, apps/server/src/audit/subscriber.ts, apps/server/src/cli.ts, apps/web/src/admin/SystemPage.tsx, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/observability/prometheus.yml, deploy/observability/alerts.yml, deploy/observability/grafana-dashboard.json, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, deploy/allinone/entrypoint.sh, Dockerfile, docs/adr/0023-observability.md, docs/adr/0034-audit-log.md, docs/adr/0070-meta-endpoint-and-version-window.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/audit/syslog.ts, apps/server/src/routes/audit.ts, apps/web/src/admin/audit/AuditPage.tsx, apps/web/src/admin/audit/words.ts, apps/web/src/admin/TableScroller.tsx, apps/web/src/admin/audit/AuditSettings.tsx, docs/adr/0078-allowlists-and-syslog.md, apps/web/src/admin/UpdateNotice.tsx, apps/server/src/routes/update-check.ts, packages/webconfig/src/csv.ts, apps/web/src/account/csvStyle.tsx
-accessed: 2026-11-16
+sources: apps/server/src/app.ts, apps/server/src/main.ts, apps/server/src/config.ts, apps/server/src/observability.ts, apps/server/src/routes/admin.ts, apps/server/src/routes/meta.ts, apps/server/src/routes/audit.ts, apps/server/src/audit/chain.ts, apps/server/src/audit/query.ts, apps/server/src/audit/record.ts, apps/server/src/audit/retention.ts, apps/server/src/audit/subscriber.ts, apps/server/src/cli.ts, apps/web/src/admin/SystemPage.tsx, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/observability/prometheus.yml, deploy/observability/alerts.yml, deploy/observability/grafana-dashboard.json, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, deploy/allinone/entrypoint.sh, Dockerfile, docs/adr/0023-observability.md, docs/adr/0034-audit-log.md, docs/adr/0070-meta-endpoint-and-version-window.md, docs/specs/05a-administration-security-and-self-hosting.md, docs/specs/05b-administration-security-and-self-hosting.md, apps/server/src/audit/syslog.ts, apps/server/src/routes/audit.ts, apps/web/src/admin/audit/AuditPage.tsx, apps/web/src/admin/audit/words.ts, apps/web/src/admin/TableScroller.tsx, apps/web/src/admin/audit/AuditSettings.tsx, docs/adr/0078-allowlists-and-syslog.md, apps/web/src/admin/UpdateNotice.tsx, apps/server/src/routes/update-check.ts, packages/webconfig/src/csv.ts, apps/web/src/styles/admin.css, docs/plan/page-review-third-sweep.md, apps/web/src/account/csvStyle.tsx
+accessed: 2026-11-23
 attestation: own-words
 ---
 # Monitoring and logs
@@ -164,9 +164,18 @@ action. The action is picked in words: **Action about** names what it concerns, 
 **Person** for every event about people, and then **What happened** narrows it to one kind, such
 as **Signed in**. Each action in the list reads as words too, such as **Ticket template created**
 for `ticket_template.created`, and what it is about by its kind and its name as it is now, such
-as **Track “Shop”**, or by its number when it has no name to show, such as **API token 7** (an
-erased person is never named); an action the page does not know yet shows as its code. Times stay on one line. A table wider
-than the screen scrolls sideways inside its card, which the keyboard reaches with Tab. On a phone
+as **Track “Shop”** or **Priority “Urgent”**, a ticket by its key, such as **Ticket “MOB-12”**, a
+field option by its value and a frontend by its label (else its address). Only a subject with no
+name, such as **Bulk change 7**, or one since deleted shows by its number (an erased person is
+never named either). The security
+actions read as words as well: a refused password link is **Password link refused**, a lockout
+**Sign-in locked after failed attempts**, a change of password just **Password changed**. A track
+role given or taken says which role and to whom, such as **Track role “Developers” given to Noor
+Haddad**, while the role and the person still exist. Every action Taskmoor writes has its words in
+English and Spanish; one from a newer server the page does not know yet shows as its code. In
+the table the day stands over the time, and the address a record came from under who made it,
+in the column **Who, from where**. A table wider than the screen scrolls sideways inside its
+card, which the keyboard reaches with Tab. On a phone
 each record is one block: when, who and what, then what it is about and the address it came
 from. Through the API, `action=user.` finds every event about people. **Download as CSV** and **Download as JSON Lines** save
 every record the filter finds, oldest first; each download is itself recorded. The CSV file is

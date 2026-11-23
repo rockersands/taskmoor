@@ -395,13 +395,39 @@
   }
 }
 
-/* The redirect address wraps anywhere rather than running past the field's edge (AD-9). */
+/*
+ * The redirect address (AD-9): a read-only block drawn as a field's well, whose lines end only
+ * after a '/' (BreakAtSlashes); a piece breaks inside only when it is wider than the line alone.
+ * A click selects the whole address, as focusing it with Tab does.
+ */
 .form-field .redirect-uri-value {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
   min-height: var(--hit-target);
-  overflow-wrap: anywhere;
-  word-break: break-all;
-  resize: none;
-  field-sizing: content;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-2);
+  background: var(--field-surface);
+  box-shadow: var(--shadow-inset);
+  color: var(--color-text);
+  overflow-wrap: break-word;
+  cursor: text;
+  user-select: all;
+}
+
+/*
+ * The address is a flex item of the block, and a flex item is never narrower than its longest
+ * piece unless told so: without this a host name wider than a phone's line ran past the block's
+ * edge and scrolled the page sideways instead of breaking inside.
+ */
+.form-field .redirect-uri-value .slash-breaks {
+  min-width: 0;
+}
+
+.form-field .redirect-uri-value:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
 }
 
 @media (pointer: coarse) {

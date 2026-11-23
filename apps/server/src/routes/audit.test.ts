@@ -8,11 +8,14 @@ import { buildApp } from '../app';
 import { appendAudit } from '../audit/chain';
 import { type AuditView, CSV_COLUMNS } from '../audit/query';
 import { AUDIT_ACTIONS } from '../audit/record';
+import { AUDITED_EVENTS } from '../audit/subscriber';
 import { SESSION_COOKIE } from '../auth';
 import { EventBus } from '../events/bus';
+import { EVENT_TYPES } from '../events/catalogue';
 import { JobRunner } from '../events/queue';
 import { registerSubscribers } from '../events/subscribers';
 import { records } from '../import/csv';
+import { type AuditAbout, NAMED_SUBJECTS } from './audit';
 
 const PASSWORD = 'ladder violet harbour';
 
@@ -80,9 +83,13 @@ describe('audit log API (M1-003, IAM-013)', () => {
     while ((await runner.runOnce()) > 0) {}
   }
 
-  async function search(
-    query: string,
-  ): Promise<{ records: AuditView[]; nextCursor: string | null }> {
+  // A record as the search answers it: its subject named, a role given or taken named (AD-2, S3-AD-4).
+  type Found = Omit<AuditView, 'subject'> & {
+    subject: { type: string; id: string | null; name?: string } | null;
+    about?: AuditAbout;
+  };
+
+  async function search(query: string): Promise<{ records: Found[]; nextCursor: string | null }> {
     const res = await asAdmin({ method: 'GET', url: `/api/v1/audit?${query}` });
     expect(res.statusCode, res.body).toBe(200);
     return res.json();
@@ -264,6 +271,295 @@ describe('audit log API (M1-003, IAM-013)', () => {
       { type: 'user', id: String(gone) },
       { type: 'user', id: String(ids.target), name: 'target' },
       { type: 'track', id: String(track.id), name: 'Named track' },
+    ]);
+  });
+
+  it('[IAM-013] names a ticket by its key, and sprints, plans, track groups, saved searches and areas (AD-2)', async () => {
+    const policy = await database.db
+      .selectFrom('access_policy')
+      .select('id')
+      .where('workspace_id', '=', 1)
+      .executeTakeFirstOrThrow();
+    const track = await database.db
+      .insertInto('track')
+      .values({ workspace_id: 1, key: 'KEYED', name: 'Keyed track', access_policy_id: policy.id })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const type = await database.db
+      .selectFrom('ticket_type')
+      .select('id')
+      .where('workspace_id', '=', 1)
+      .executeTakeFirstOrThrow();
+    const ticket = await sql<{ id: number }>`
+      INSERT INTO ticket (workspace_id, track_id, number, ticket_type_id, summary, rank)
+      VALUES (1, ${track.id}, 41, ${type.id}, 'Named by its key', 'a') RETURNING id`.execute(
+      database.db,
+    );
+    const owner = ids.admin ?? 0;
+    const board = await database.db
+      .insertInto('board')
+      .values({
+        workspace_id: 1,
+        name: 'Keyed board',
+        kind: 'scrum',
+        location_track_id: null,
+        location_user_id: owner,
+        filter_query: 'track = KEYED',
+        sub_filter_query: null,
+        columns: JSON.stringify([]),
+        swimlanes: JSON.stringify({ kind: 'none' }),
+        card_rules: JSON.stringify([]),
+        created_by: null,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const named = {
+      ticket: ticket.rows[0]?.id ?? 0,
+      sprint: (
+        await database.db
+          .insertInto('sprint')
+          .values({ workspace_id: 1, board_id: board.id, name: 'Keyed sprint 4', sequence: 4 })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id,
+      plan: (
+        await database.db
+          .insertInto('plan')
+          .values({ workspace_id: 1, owner_id: owner, name: 'Next quarter' })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id,
+      track_group: (
+        await database.db
+          .insertInto('track_group')
+          .values({ workspace_id: 1, owner_id: owner, name: 'Mobile tracks', position: 0 })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id,
+      saved_search: (
+        await database.db
+          .insertInto('saved_search')
+          .values({
+            workspace_id: 1,
+            owner_id: owner,
+            name: 'My open work',
+            query: 'status = Open',
+          })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id,
+      area: (
+        await database.db
+          .insertInto('area')
+          .values({ workspace_id: 1, track_id: track.id, name: 'Payments' })
+          .returning('id')
+          .executeTakeFirstOrThrow()
+      ).id,
+    };
+    await appendAudit(
+      database.db,
+      Object.entries(named).map(([subjectType, subjectId]) => ({
+        workspaceId: 1,
+        actorId: null,
+        action: 'test.keyed',
+        subjectType,
+        subjectId,
+      })),
+    );
+    const { records } = await search('action=test.keyed');
+    expect(Object.fromEntries(records.map((r) => [r.subject?.type, r.subject?.name]))).toEqual({
+      ticket: 'KEYED-41',
+      sprint: 'Keyed sprint 4',
+      plan: 'Next quarter',
+      track_group: 'Mobile tracks',
+      saved_search: 'My open work',
+      area: 'Payments',
+    });
+  });
+
+  it('[IAM-013] says which role was given or taken, and to whom (S3-AD-4)', async () => {
+    const role = await database.db
+      .insertInto('role')
+      .values({ workspace_id: 1, name: 'Reviewers' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const group = await database.db
+      .insertInto('user_group')
+      .values({ workspace_id: 1, name: 'Night shift' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const gone = await createUser('gone-role@example.com');
+    await database.db
+      .updateTable('app_user')
+      .set({ erased_at: new Date() })
+      .where('id', '=', gone)
+      .execute();
+    const given = (action: string, userId: number | null, groupId: number | null) => ({
+      workspaceId: 1,
+      actorId: null,
+      action,
+      subjectType: 'track',
+      subjectId: 1,
+      details: { roleId: role.id, userId, groupId },
+    });
+    await appendAudit(database.db, [
+      given('track_role.actor_added', ids.target ?? 0, null),
+      given('track_role.actor_removed', null, group.id),
+      given('track_role.actor_added', gone, null),
+    ]);
+    const { records } = await search('action=track_role.');
+    expect(records.slice(0, 3).map((r) => [r.action, r.about])).toEqual([
+      // An erased person is never named; the role still is.
+      ['track_role.actor_added', { role: 'Reviewers' }],
+      ['track_role.actor_removed', { role: 'Reviewers', group: 'Night shift' }],
+      ['track_role.actor_added', { role: 'Reviewers', person: 'target' }],
+    ]);
+  });
+
+  it('[IAM-013] names every audited subject whose table has a name (AD-2)', async () => {
+    // The audited subjects whose table is not called after them, and those with no table.
+    const tableOf: Record<string, string> = {
+      user: 'app_user',
+      group: 'user_group',
+      directory: 'ldap_directory',
+    };
+    const noTable = new Set(['ai_run']);
+    const { rows } = await sql<{ table_name: string; column_name: string }>`
+      SELECT table_name, column_name FROM information_schema.columns
+       WHERE table_schema = current_schema()`.execute(database.db);
+    const columns = new Map<string, Set<string>>();
+    for (const row of rows) {
+      columns.set(row.table_name, (columns.get(row.table_name) ?? new Set()).add(row.column_name));
+    }
+    const kinds = [...new Set(AUDITED_EVENTS.map((type) => EVENT_TYPES[type].subject))];
+    const tableFor = (kind: string) => tableOf[kind] ?? kind;
+    expect(
+      kinds.filter((kind) => !noTable.has(kind) && !columns.has(tableFor(kind))),
+      'audited subjects whose table this test cannot find',
+    ).toEqual([]);
+    const named = new Map<string, string>(Object.entries(NAMED_SUBJECTS));
+    const hasName = (table: string) =>
+      ['id', 'workspace_id', 'name'].every((column) => columns.get(table)?.has(column));
+    expect(
+      kinds.filter((kind) => hasName(tableFor(kind)) && named.get(kind) !== tableFor(kind)),
+      'audited subjects with a name that the log leaves as an id',
+    ).toEqual([]);
+    for (const [kind, table] of named) {
+      expect(
+        ['id', 'workspace_id'].every((column) => columns.get(table)?.has(column)),
+        kind,
+      ).toBe(true);
+    }
+  });
+
+  it('[IAM-013] names priorities, link types, identity providers, tokens, app connections, frontends and field options (AD-2)', async () => {
+    const priority = await asAdmin({
+      method: 'POST',
+      url: '/api/v1/priorities',
+      payload: { name: 'Urgent today' },
+    });
+    expect(priority.statusCode, priority.body).toBe(201);
+    const linkType = await asAdmin({
+      method: 'POST',
+      url: '/api/v1/link-types',
+      payload: { name: 'Mirrors', outward: 'mirrors', inward: 'is mirrored by' },
+    });
+    expect(linkType.statusCode, linkType.body).toBeLessThan(300);
+    await deliverEvents();
+    expect((await search('action=priority.created')).records[0]?.subject).toEqual({
+      type: 'priority',
+      id: String(priority.json().priority.id),
+      name: 'Urgent today',
+    });
+    expect((await search('action=link_type.created')).records[0]?.subject?.name).toBe('Mirrors');
+
+    const insert = async (table: string, values: Record<string, unknown>) =>
+      (
+        await sql<{ id: number | string }>`
+          INSERT INTO ${sql.table(table)} (${sql.join(Object.keys(values).map((c) => sql.ref(c)))})
+          VALUES (${sql.join(Object.values(values))}) RETURNING id`.execute(database.db)
+      ).rows[0]?.id ?? 0;
+    const field = await insert('field', { workspace_id: 1, name: 'Shade', type: 'select' });
+    const context = await insert('field_context', {
+      workspace_id: 1,
+      field_id: field,
+      name: 'Shade everywhere',
+    });
+    const subjects: [string, number | string][] = [
+      [
+        'identity_provider',
+        await insert('identity_provider', {
+          workspace_id: 1,
+          name: 'Staff accounts',
+          issuer: 'https://login.example.com',
+          client_id: 'taskmoor',
+        }),
+      ],
+      [
+        'api_token',
+        await insert('api_token', {
+          workspace_id: 1,
+          user_id: ids.admin ?? 0,
+          name: 'Nightly export',
+          token_hash: 'not-a-token-hash',
+          scopes: sql`ARRAY['read']::text[]`,
+          expires_at: new Date('2999-01-01T00:00:00Z'),
+        }),
+      ],
+      [
+        // An app connection's id is text.
+        'oauth_client',
+        await insert('oauth_client', {
+          id: 'tmc_auditnamedclient0001',
+          workspace_id: 1,
+          name: 'Editor plugin',
+          redirect_uris: sql`ARRAY['http://127.0.0.1/callback']::text[]`,
+        }),
+      ],
+      [
+        'frontend_origin',
+        await insert('frontend_origin', {
+          workspace_id: 1,
+          origin: 'https://board.example.com',
+          label: 'Wall board',
+        }),
+      ],
+      [
+        'frontend_origin',
+        await insert('frontend_origin', { workspace_id: 1, origin: 'https://plain.example.com' }),
+      ],
+      ['field_context', context],
+      [
+        'field_option',
+        await insert('field_option', {
+          workspace_id: 1,
+          field_id: field,
+          context_id: context,
+          value: 'Teal',
+          sort_order: 1,
+        }),
+      ],
+    ];
+    await appendAudit(
+      database.db,
+      subjects.map(([subjectType, subjectId]) => ({
+        workspaceId: 1,
+        actorId: null,
+        action: 'test.more_named',
+        subjectType,
+        subjectId,
+      })),
+    );
+    const { records } = await search('action=test.more_named');
+    expect(records.map((r) => [r.subject?.type, r.subject?.name]).reverse()).toEqual([
+      ['identity_provider', 'Staff accounts'],
+      ['api_token', 'Nightly export'],
+      ['oauth_client', 'Editor plugin'],
+      ['frontend_origin', 'Wall board'],
+      // A frontend with no label is named by its address.
+      ['frontend_origin', 'https://plain.example.com'],
+      ['field_context', 'Shade everywhere'],
+      ['field_option', 'Teal'],
     ]);
   });
 

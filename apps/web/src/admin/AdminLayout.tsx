@@ -17,6 +17,28 @@ import { ADMIN_HOME, type AdminGroup, adminGroupHref, adminPlace, groupsFor } fr
 /** Below this width the section's navigation folds away above the page. */
 const NARROW = '(max-width: 1023px)';
 
+/**
+ * What the overview's list opens (S3-AD-2): groups only when there are this few, and of those
+ * the ones whose pages add up to no more than this many links, in order. A site administrator's
+ * six groups stay closed; a configuration administrator's single-page groups open, and their
+ * twelve-page Tracks and setup stays closed, since with it open the list ran past the card at a
+ * laptop's 1280 by 800 and hid its last pages in the card's own scroller.
+ */
+const OPEN_ON_OVERVIEW = { groups: 3, links: 6 } as const;
+
+/** The groups the overview's list opens (S3-AD-2): see OPEN_ON_OVERVIEW. */
+function openOnOverview(groups: readonly AdminGroup[]): string[] {
+  if (groups.length > OPEN_ON_OVERVIEW.groups) return [];
+  const open: string[] = [];
+  let links = 0;
+  for (const group of groups) {
+    if (links + group.pages.length > OPEN_ON_OVERVIEW.links) continue;
+    links += group.pages.length;
+    open.push(group.id);
+  }
+  return open;
+}
+
 /** A step a page adds after its own name in the breadcrumb: a track, a workflow, a sub-page. */
 export interface AdminCrumb {
   label: string;
@@ -128,9 +150,10 @@ function AdminNav({
   const groups = groupsFor(access ?? 'none');
   const currentGroup = place?.group.id ?? null;
   // A page shows only its own group's pages, so the list stays short (D18); any other group
-  // opens from its heading. The overview, where Administration is entered, shows them all.
+  // opens from its heading. The overview, which lists every page itself, shows every group's
+  // heading and opens only short groups, so the whole list fits beside it (S3-AD-2).
   const [opened, setOpened] = useState<ReadonlySet<string>>(
-    () => new Set(currentGroup ? [currentGroup] : groups.map((g) => g.id)),
+    () => new Set(currentGroup ? [currentGroup] : openOnOverview(groups)),
   );
   const toggle = (id: string) =>
     setOpened((was) => {

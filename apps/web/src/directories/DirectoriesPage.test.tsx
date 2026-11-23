@@ -93,7 +93,7 @@ describe('directory administration (M1-082)', () => {
         return jsonResponse(201, { directory: created });
       },
     });
-    await user.click(await screen.findByRole('button', { name: 'Add a directory' }));
+    await user.click(await screen.findByRole('button', { name: 'New directory' }));
     const form = screen.getByRole('form', { name: 'New directory' });
     expect(within(form).getByLabelText('Name')).toHaveFocus();
     await user.keyboard('Lab');

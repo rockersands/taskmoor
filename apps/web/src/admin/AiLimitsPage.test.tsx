@@ -7,7 +7,7 @@ import { type Session, SessionProvider } from '../session/SessionProvider';
 import { visibleTexts } from '../test/backend';
 import { setViewportWidth } from '../test/viewport';
 import { type AiLimitsClient, AiLimitsPage, type AiPrice, type StoredLimit } from './AiLimitsPage';
-import { fakeAiLimitsClient } from './aiLimitsFixtures';
+import { fakeAiLimitsClient, PRICES } from './aiLimitsFixtures';
 import { ADMIN, CONFIG_ADMIN } from './fixtures';
 
 function renderPage(
@@ -36,10 +36,24 @@ describe('AI limits and prices (UI-T19)', () => {
     expect(within(limits).getByText('200,000 tokens each')).toBeVisible();
     const prices = screen.getByRole('region', { name: 'Price table' });
     const list = within(prices)
-      .getByText(/anthropic, claude-example/)
+      .getByText(/Anthropic API, claude-example/)
       .closest('li');
     expect(within(list as HTMLElement).getByText('List price: check your bill')).toBeVisible();
     expect(within(list as HTMLElement).getByText(/Above 100,000 tokens/)).toBeVisible();
+  });
+
+  it('[OPS-020] names each price by its provider’s name, not its id (S3-AD-3)', async () => {
+    const prices: AiPrice[] = [
+      ...PRICES,
+      { ...(PRICES[1] as AiPrice), provider: 'acme-gateway', model: 'm-1' },
+    ];
+    renderPage(ADMIN, 'es', fakeAiLimitsClient(undefined, prices));
+    const table = await screen.findByRole('region', { name: 'Tabla de precios' });
+    expect(within(table).getByText(/^API de Anthropic, claude-example/)).toBeVisible();
+    expect(within(table).getByText(/^Amazon Bedrock, claude-other/)).toBeVisible();
+    // A provider the app has no name for keeps its id.
+    expect(within(table).getByText(/^acme-gateway, m-1/)).toBeVisible();
+    expect(within(table).queryByText(/^anthropic,/)).toBeNull();
   });
 
   it('[OPS-020] adds through filled "New …" buttons at the head of each card, the form above the list (D11, AD-19)', async () => {
@@ -166,12 +180,17 @@ describe('AI limits and prices (UI-T19)', () => {
     const user = userEvent.setup();
     const client = renderPage();
     await user.click(
-      await screen.findByRole('button', { name: 'Change the rate of anthropic, claude-example' }),
+      await screen.findByRole('button', {
+        name: 'Change the rate of Anthropic API, claude-example',
+      }),
     );
     const form = screen.getByRole('form', {
-      name: 'Change the rate of anthropic, claude-example',
+      name: 'Change the rate of Anthropic API, claude-example',
     });
     expect(within(form).getByLabelText('Model')).toHaveAttribute('readonly');
+    // The provider by its name, as the row's title gives it, not its id (S3-AD-3).
+    expect(within(form).getByRole('textbox', { name: 'Provider' })).toHaveValue('Anthropic API');
+    expect(within(form).getByRole('textbox', { name: 'Provider' })).toHaveAttribute('readonly');
     await user.clear(within(form).getAllByLabelText('Input')[0] as HTMLElement);
     await user.type(within(form).getAllByLabelText('Input')[0] as HTMLElement, '4');
     await user.click(within(form).getByRole('button', { name: 'Save the rate' }));
@@ -184,7 +203,7 @@ describe('AI limits and prices (UI-T19)', () => {
     });
     await user.click(
       await screen.findByRole('button', {
-        name: 'Back to the list price: anthropic, claude-example',
+        name: 'Back to the list price: Anthropic API, claude-example',
       }),
     );
     expect(
@@ -201,13 +220,33 @@ describe('AI limits and prices (UI-T19)', () => {
     const client = renderPage();
     await user.click(await screen.findByRole('button', { name: 'New rate' }));
     const form = screen.getByRole('form', { name: 'New rate' });
-    await user.type(within(form).getByLabelText('Provider'), 'bedrock');
+    // The providers are offered by the AI page's names and kept by the ids the calls carry, so a
+    // rate cannot be saved under a name that no call matches (S3-AD-3).
+    const provider = within(form).getByRole('combobox', { name: 'Provider' });
+    expect(provider).toHaveAccessibleDescription(
+      'The provider chosen on the AI page. The OpenAI and Gemini APIs count as an OpenAI-compatible server.',
+    );
+    expect(
+      within(provider)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual([
+      'Choose a provider',
+      'Anthropic API',
+      'Amazon Bedrock',
+      'Google Vertex AI',
+      'Microsoft Foundry',
+      'OpenAI-compatible server (Ollama, vLLM)',
+    ]);
     await user.type(within(form).getByLabelText('Model'), 'custom');
-    await user.click(within(form).getByRole('button', { name: 'Save the rate' }));
-    expect(await within(form).findByRole('alert')).toHaveTextContent('Fill in');
     for (const [i, label] of ['Input', 'Output', 'Cache reads', 'Cache writes'].entries()) {
       await user.type(within(form).getAllByLabelText(label)[0] as HTMLElement, String(i + 1));
     }
+    await user.click(within(form).getByRole('button', { name: 'Save the rate' }));
+    // No provider chosen yet.
+    expect(await within(form).findByRole('alert')).toHaveTextContent('Fill in');
+    expect(client.calls.some((c) => c.action === 'setPrice')).toBe(false);
+    await user.selectOptions(provider, 'Amazon Bedrock');
     await user.click(within(form).getByRole('button', { name: 'Save the rate' }));
     await screen.findByText('The rate of custom was saved.');
     expect(client.calls.at(-1)?.args[0]).toEqual({

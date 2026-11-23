@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, within } from 'storybook/test';
 import { type Session, SessionProvider } from '../session/SessionProvider';
 import { AdminGroupPage } from './AdminGroupPage';
 import { AdminLayout } from './AdminLayout';
@@ -51,8 +52,47 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/**
+ * A small laptop's window height (1280 by 720). The story's own window is taller, so a list that
+ * fits there may still run past the card on a laptop: the stories measure against this instead.
+ */
+const LAPTOP_HEIGHT = 720;
+
+/** How tall the side list's card may grow in a window this high (admin.css, .admin-nav-side). */
+const cardLimitAt = (windowHeight: number) => {
+  const tokens = getComputedStyle(document.documentElement);
+  const token = (name: string) => Number.parseFloat(tokens.getPropertyValue(name));
+  return windowHeight - token('--topbar-height') - 3 * token('--shell-gap');
+};
+
+/** The card's whole height with all of its list showing, scrolled part and borders included. */
+const listHeight = (card: HTMLElement) => card.scrollHeight + card.offsetHeight - card.clientHeight;
+
 /** What a site administrator opens on: every group, health, people and alerts. */
 export const Overview: Story = {};
+
+/**
+ * Beside the overview the list shows every group's heading, closed, so the last one is in view
+ * inside the card and nothing hides in its own scroller (S3-AD-2); the pages are on the overview.
+ */
+export const EveryGroupInView: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const nav = canvas.getByRole('navigation', { name: 'Administration pages' });
+    const card = nav.closest('.admin-nav-side') as HTMLElement;
+    const last = within(nav).getByRole('button', { name: 'System' });
+    await expect(last).toHaveAttribute('aria-expanded', 'false');
+    // Within a pixel: the heights are rounded.
+    await expect(card.scrollHeight - card.clientHeight).toBeLessThanOrEqual(1);
+    await expect(last.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      card.getBoundingClientRect().bottom,
+    );
+    // And on a laptop, whose window is shorter than the story's.
+    await expect(listHeight(card)).toBeLessThanOrEqual(cardLimitAt(LAPTOP_HEIGHT));
+    const every = canvas.getByRole('region', { name: 'Every page' });
+    await expect(within(every).getByRole('link', { name: 'Guardrails' })).toBeVisible();
+  },
+};
 
 /** Nothing back yet. */
 export const Reading: Story = {
@@ -66,9 +106,29 @@ export const NothingWaiting: Story = {
   },
 };
 
-/** A configuration administrator sees only the setup pages. */
+/**
+ * A configuration administrator sees only the setup pages: their single-page groups open beside
+ * the overview and the twelve pages of Tracks and setup stay closed, so the whole list fits the
+ * card on a laptop and nothing hides in its own scroller (S3-AD-2).
+ */
 export const ConfigurationAdministrator: Story = {
   parameters: { session: CONFIG_ADMIN },
+  play: async ({ canvasElement }) => {
+    const nav = within(canvasElement).getByRole('navigation', { name: 'Administration pages' });
+    const card = nav.closest('.admin-nav-side') as HTMLElement;
+    for (const name of ['Your tracks', 'People and access']) {
+      await expect(within(nav).getByRole('button', { name })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      );
+    }
+    await expect(within(nav).getByRole('button', { name: 'Tracks and setup' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    await expect(within(nav).getByRole('link', { name: 'Visibility policies' })).toBeVisible();
+    await expect(listHeight(card)).toBeLessThanOrEqual(cardLimitAt(LAPTOP_HEIGHT));
+  },
 };
 
 /** A group's own page, where a breadcrumb leads back to. */

@@ -9,6 +9,7 @@ import { useSessionExpiry } from '../session/useSessionExpiry';
 import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
+import type { ProviderId } from './AiSettingsPage';
 import type { AiLimit } from './AiUsagePage';
 import { CardHead, NewButton, useNewForm } from './NewButton';
 
@@ -26,6 +27,28 @@ export interface AiPrice {
 }
 
 export type NewPrice = Omit<AiPrice, 'source'>;
+
+/** The providers' names as the AI settings give them (S3-AD-3), by the ids the prices carry. */
+const PROVIDER_NAMES: Record<ProviderId, MessageId> = {
+  anthropic: 'ai.provider.anthropic',
+  bedrock: 'ai.provider.bedrock',
+  vertex: 'ai.provider.vertex',
+  foundry: 'ai.provider.foundry',
+  'openai-compatible': 'ai.provider.openaiCompatible',
+};
+
+/** The providers a new rate may be for, in the AI page's order: a rate is kept by their id. */
+const PRICE_PROVIDERS = Object.keys(PROVIDER_NAMES) as ProviderId[];
+
+const isProviderId = (provider: string): provider is ProviderId =>
+  Object.hasOwn(PROVIDER_NAMES, provider);
+
+/** A provider by its name, 'Anthropic API' for `anthropic`; one the app does not know, as it is. */
+function providerName(t: ReturnType<typeof useT>, provider: string): string {
+  return isProviderId(provider)
+    ? t(PROVIDER_NAMES[provider])
+    : t('common.value', { value: provider });
+}
 
 export interface LimitInput {
   scope: AiLimit['scope'];
@@ -610,7 +633,10 @@ function PriceRow({ price, client, said, failed }: Feedback & { price: AiPrice }
   const t = useT();
   const intl = useIntl();
   const [editing, setEditing] = useState(false);
-  const name = t('admin.aiLimits.priceName', { provider: price.provider, model: price.model });
+  const name = t('admin.aiLimits.priceName', {
+    provider: providerName(t, price.provider),
+    model: price.model,
+  });
   return (
     <li className="people-item people-group">
       <div className="people-main">
@@ -769,17 +795,30 @@ function PriceForm({
         <label htmlFor={`${id}-provider`} className="form-label">
           {t('admin.aiLimits.provider')}
         </label>
-        <input
-          id={`${id}-provider`}
-          dir="ltr"
-          value={provider}
-          readOnly={Boolean(price)}
-          aria-describedby={`${id}-provider-hint`}
-          onChange={(e) => setProvider(e.target.value)}
-        />
-        <p id={`${id}-provider-hint`} className="form-hint">
-          {t('admin.aiLimits.providerHint')}
-        </p>
+        {/* Named as the AI page names it, kept by its id, which the calls carry: a typed name
+            would never match them (S3-AD-3). A rate's own provider stays as it is. */}
+        {price ? (
+          <input id={`${id}-provider`} value={providerName(t, price.provider)} readOnly />
+        ) : (
+          <>
+            <select
+              id={`${id}-provider`}
+              value={provider}
+              aria-describedby={`${id}-provider-hint`}
+              onChange={(e) => setProvider(e.target.value)}
+            >
+              <option value="">{t('admin.aiLimits.chooseProvider')}</option>
+              {PRICE_PROVIDERS.map((choice) => (
+                <option key={choice} value={choice}>
+                  {providerName(t, choice)}
+                </option>
+              ))}
+            </select>
+            <p id={`${id}-provider-hint`} className="form-hint">
+              {t('admin.aiLimits.providerHint')}
+            </p>
+          </>
+        )}
       </div>
       <div className="form-field">
         <label htmlFor={`${id}-model`} className="form-label">

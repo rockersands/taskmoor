@@ -268,6 +268,22 @@ details[open] > summary.admin-disclosure::after,
   padding: var(--space-4);
 }
 
+/* The overview's every page, by group, in as many columns as fit (S3-AD-2). */
+.admin-overview + .admin-panel {
+  margin-top: var(--space-4);
+}
+
+.admin-every-page {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 14rem), 1fr));
+  gap: var(--space-4) var(--space-5);
+}
+
+.admin-every-page .link-list {
+  gap: 0;
+  margin-top: var(--space-2);
+}
+
 .admin-panel > * + * {
   margin-top: var(--space-3);
 }
@@ -597,6 +613,24 @@ details[open] > summary.admin-disclosure::after,
 
 .audit-table .audit-when {
   white-space: nowrap;
+}
+
+/* The day over the time, and where a record came from under who made it: the action and its
+   subject keep the room beside Administration's list, where 'Ticket template created' broke
+   onto three lines and 'Eval Admin' onto two (AD-2). */
+.audit-table :is(.audit-day, .audit-time, .audit-from) {
+  display: block;
+}
+
+.audit-table :is(.audit-time, .audit-from) {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-100);
+}
+
+/* Wide enough for a first and last name and an IPv4 address on one line each; a longer name
+   wraps between its words, and an IPv6 address where it must. */
+.audit-table .audit-who {
+  min-width: 8rem;
 }
 
 /* On a phone: one block per record (D19). */

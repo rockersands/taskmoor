@@ -35,7 +35,7 @@ export const AddingADirectory: Story = {
   args: { client: fakeDirectoriesClient([]) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Add a directory' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'New directory' }));
     await userEvent.keyboard('Head office');
     await userEvent.type(canvas.getByLabelText('URL'), 'ldaps://dc1.corp.example');
     await userEvent.type(canvas.getByLabelText('Bind DN'), 'CN=Taskmoor,DC=corp,DC=example');

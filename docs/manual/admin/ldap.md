@@ -2,7 +2,7 @@
 title: "LDAP directories"
 audience: admins
 sources: apps/server/src/routes/directories.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/account.ts, apps/server/src/ldap/settings.ts, apps/server/src/ldap/sync.ts, apps/server/src/ldap/scheduler.ts, apps/server/src/ldap/gateway.ts, apps/server/src/ldap/accounts.ts, apps/server/src/ldap/nesting.ts, packages/db/src/migrations/0021_ldap.ts, apps/web/src/directories/DirectoriesPage.tsx, apps/web/src/directories/DirectoryForm.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md, apps/web/src/shell/DangerAction.tsx
-accessed: 2026-11-16
+accessed: 2026-11-23
 attestation: own-words
 ---
 # LDAP directories
@@ -28,7 +28,7 @@ Taskmoor until you connect one.
 
 ## Adding a directory
 
-Select **Add a directory** and fill in the form:
+Select **New directory** and fill in the form:
 
 | Section | Field | Notes |
 |---|---|---|

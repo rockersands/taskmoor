@@ -35,7 +35,7 @@ export const AddingAProvider: Story = {
   args: { client: fakeIdentityProvidersClient([]) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Add an identity provider' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'New identity provider' }));
     await userEvent.keyboard('Contractors');
     await userEvent.type(canvas.getByLabelText('Issuer URL'), 'https://login.contractors.example');
     await userEvent.type(canvas.getByLabelText('Client ID'), 'taskmoor-web');
@@ -50,7 +50,7 @@ export const AddingASamlProvider: Story = {
   args: { client: fakeIdentityProvidersClient([]) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Add an identity provider' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'New identity provider' }));
     await userEvent.keyboard('Agency');
     await userEvent.click(canvas.getByRole('radio', { name: 'SAML 2.0' }));
     await userEvent.type(

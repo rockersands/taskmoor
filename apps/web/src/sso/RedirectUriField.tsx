@@ -1,50 +1,38 @@
-import { useCallback, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
+import { BreakAtSlashes } from '../admin/BreakAtSlashes';
 import { useT } from '../i18n/I18nProvider';
-import { COMPACT_QUERY, useMediaQuery } from '../shell/useMediaQuery';
 
 export interface RedirectUriFieldProps {
   /** The backend's callback address, as the provider must know it. */
   uri: string;
 }
 
+/** Selects the whole address in its block, ready to copy with the keyboard. */
+const selectWhole = (block: HTMLElement) => window.getSelection()?.selectAllChildren(block);
+
+/**
+ * Selects it once focus has settled: the focusing steps may move the selection to the start of
+ * what gets focus (jsdom does), after the focus event is heard.
+ */
+const selectOnFocus = (block: HTMLElement) =>
+  queueMicrotask(() => {
+    if (document.activeElement === block) selectWhole(block);
+  });
+
 /**
  * The redirect URI administrators register at the identity provider (M1-080): read-only,
  * selected on focus, with a copy button. One address serves every provider.
+ *
+ * A read-only text block rather than a field (AD-9): a line ends after a '/', where
+ * BreakAtSlashes offers a break, so the whole address shows on a phone without cutting 'v1' or
+ * the host in two; only a host too long for a line of its own breaks inside (sso.css). A
+ * browser's text field breaks a long address wherever the line runs out.
  */
 export function RedirectUriField({ uri }: RedirectUriFieldProps) {
   const t = useT();
   const id = useId();
-  const input = useRef<HTMLTextAreaElement>(null);
-  const narrow = useMediaQuery(COMPACT_QUERY);
+  const block = useRef<HTMLDivElement>(null);
   const [copy, setCopy] = useState<'idle' | 'copied' | 'failed'>('idle');
-
-  // The field grows to its whole address, so a long one is never cut on a phone. CSS
-  // `field-sizing: content` does this only in some browsers; this does it in all of them, again
-  // whenever the field's width changes.
-  const fit = useCallback(() => {
-    const field = input.current;
-    if (!field) return;
-    field.style.height = 'auto';
-    const style = getComputedStyle(field);
-    const border =
-      (Number.parseFloat(style.borderTopWidth) || 0) +
-      (Number.parseFloat(style.borderBottomWidth) || 0);
-    if (field.scrollHeight > 0) field.style.height = `${field.scrollHeight + border}px`;
-  }, []);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new address or width is fitted again
-  useLayoutEffect(() => {
-    fit();
-    const field = input.current;
-    if (!field || typeof ResizeObserver === 'undefined') return;
-    let width = field.clientWidth;
-    const observer = new ResizeObserver(() => {
-      if (field.clientWidth === width) return;
-      width = field.clientWidth;
-      fit();
-    });
-    observer.observe(field);
-    return () => observer.disconnect();
-  }, [fit, uri, narrow]);
 
   const copyUri = async () => {
     try {
@@ -52,8 +40,12 @@ export function RedirectUriField({ uri }: RedirectUriFieldProps) {
       await navigator.clipboard.writeText(uri);
       setCopy('copied');
     } catch {
-      input.current?.focus();
-      input.current?.select();
+      // The whole address focused and selected, for the person to copy themselves.
+      const whole = block.current;
+      if (whole) {
+        whole.focus();
+        selectWhole(whole);
+      }
       setCopy('failed');
     }
   };
@@ -67,21 +59,24 @@ export function RedirectUriField({ uri }: RedirectUriFieldProps) {
         {t('admin.sso.redirectIntro')}
       </p>
       <div className="form-field">
-        <label htmlFor={`${id}-value`}>{t('admin.sso.redirectLabel')}</label>
+        <span id={`${id}-label`} className="form-label">
+          {t('admin.sso.redirectLabel')}
+        </span>
         <div className="token-secret-row">
-          {/* A text block that wraps, so the whole address shows on a phone (AD-9). */}
-          <textarea
-            ref={input}
-            id={`${id}-value`}
-            className="token-secret-value redirect-uri-value"
-            readOnly
-            rows={narrow ? 2 : 1}
-            value={uri}
-            spellCheck={false}
-            autoComplete="off"
+          {/* A read-only text box: reached with Tab, read and selected, never changed. */}
+          {/* biome-ignore lint/a11y/useSemanticElements: a text field cannot offer a line break only after a '/' (AD-9) */}
+          <div
+            ref={block}
+            role="textbox"
+            aria-readonly="true"
+            aria-labelledby={`${id}-label`}
             aria-describedby={`${id}-intro`}
-            onFocus={(e) => e.currentTarget.select()}
-          />
+            tabIndex={0}
+            className="token-secret-value redirect-uri-value"
+            onFocus={(e) => selectOnFocus(e.currentTarget)}
+          >
+            <BreakAtSlashes text={uri} />
+          </div>
           <button type="button" className="button-secondary" onClick={() => void copyUri()}>
             {t('admin.sso.copy')}
           </button>

@@ -4,7 +4,9 @@ import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 import { App, NAV_ITEMS } from '../App';
 import { I18nProvider } from '../i18n/I18nProvider';
+import { messagesEn } from '../i18n/messages.en';
 import type { User } from '../people/client';
+import { routeHref } from '../routing/router';
 import { type Session, SessionProvider } from '../session/SessionProvider';
 import { NotFoundPage } from '../shell/NotFoundPage';
 import { stubBackend, visibleTexts } from '../test/backend';
@@ -140,7 +142,10 @@ describe('Administration (ADR-114)', () => {
 
   it('[AGL-018] shows a site administrator every group, and health, people and alerts', async () => {
     renderOverview(ADMIN);
+    // Every heading, closed, so all six fit beside the overview, which lists the pages itself
+    // (S3-AD-2); each opens from its heading.
     for (const name of [
+      'Your tracks',
       'People and access',
       'Tracks and setup',
       'Sign-in and security',
@@ -149,9 +154,21 @@ describe('Administration (ADR-114)', () => {
     ]) {
       expect(within(pagesNav()).getByRole('button', { name })).toHaveAttribute(
         'aria-expanded',
-        'true',
+        'false',
       );
-      expect(within(pagesNav()).getByRole('list', { name })).toBeVisible();
+      expect(within(pagesNav()).queryByRole('list', { name })).toBeNull();
+    }
+    await userEvent.click(within(pagesNav()).getByRole('button', { name: 'System' }));
+    expect(within(pagesNav()).getByRole('list', { name: 'System' })).toBeVisible();
+    // The overview lists every page by its group, one click away.
+    const every = screen.getByRole('region', { name: 'Every page' });
+    for (const group of ADMIN_GROUPS) {
+      const list = within(every).getByRole('list', { name: messagesEn[group.labelId] });
+      expect(
+        within(list)
+          .getAllByRole('link')
+          .map((a) => a.getAttribute('href')),
+      ).toEqual(group.pages.map((page) => routeHref(page.href)));
     }
     expect(within(pagesNav()).getByRole('link', { name: 'Overview' })).toHaveAttribute(
       'aria-current',
@@ -226,7 +243,7 @@ describe('Administration (ADR-114)', () => {
     expect(screen.queryByRole('region', { name: 'System health' })).toBeNull();
   });
 
-  it('[IAM-009] shows a configuration administrator only the setup pages, and no panels', () => {
+  it('[IAM-009] shows a configuration administrator only the setup pages, and no panels', async () => {
     renderOverview(CONFIG_ADMIN);
     expect(within(pagesNav()).getByRole('button', { name: 'Tracks and setup' })).toBeVisible();
     expect(within(pagesNav()).getByRole('button', { name: 'Your tracks' })).toBeVisible();
@@ -237,6 +254,19 @@ describe('Administration (ADR-114)', () => {
       'href',
       '#/admin/visibility',
     );
+    // Their single-page groups open beside the overview; the twelve pages of Tracks and setup
+    // would run past the card on a laptop, so that group opens from its heading (S3-AD-2).
+    for (const name of ['Your tracks', 'People and access']) {
+      expect(within(pagesNav()).getByRole('button', { name })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      );
+    }
+    const setup = within(pagesNav()).getByRole('button', { name: 'Tracks and setup' });
+    expect(setup).toHaveAttribute('aria-expanded', 'false');
+    expect(within(pagesNav()).queryByRole('link', { name: 'Workflow maps' })).toBeNull();
+    await userEvent.click(setup);
+    expect(within(pagesNav()).getByRole('link', { name: 'Workflow maps' })).toBeVisible();
     expect(within(pagesNav()).queryByRole('link', { name: 'People' })).toBeNull();
     expect(within(pagesNav()).queryByRole('link', { name: 'Permission explainer' })).toBeNull();
     expect(within(pagesNav()).queryByRole('link', { name: 'System status' })).toBeNull();
