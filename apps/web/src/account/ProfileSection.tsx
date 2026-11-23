@@ -1,10 +1,12 @@
-import { type FormEvent, useId, useMemo, useState } from 'react';
+import type { CsvSeparator } from '@taskmoor/webconfig';
+import { type FormEvent, useEffect, useId, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { type SessionUser, useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
 import type { AccountClient } from './client';
+import { useRememberCsvChoice } from './csvStyle';
 import { localeOptions, timeZoneOptions } from './options';
 
 export interface ProfileSectionProps {
@@ -14,7 +16,13 @@ export interface ProfileSectionProps {
 
 type Failure = { message: string; field: 'timeZone' | 'locale' | null };
 
-/** Name, time zone and locale of the signed-in person (IAM-008). */
+/** The CSV choice as the form holds it: '' is Automatic. */
+type CsvChoice = '' | CsvSeparator;
+
+/**
+ * Name, time zone and locale of the signed-in person (IAM-008), and how their CSV files are
+ * written (T-263; NFR-006), a personal setting saved through the preferences route.
+ */
 export function ProfileSection({ user, client }: ProfileSectionProps) {
   const t = useT();
   const intl = useIntl();
@@ -24,6 +32,10 @@ export function ProfileSection({ user, client }: ProfileSectionProps) {
   const [name, setName] = useState(user.name);
   const [timeZone, setTimeZone] = useState(user.timeZone ?? '');
   const [locale, setLocale] = useState(user.locale ?? '');
+  // The saved CSV choice (undefined until read) and the one in the form.
+  const [savedCsv, setSavedCsv] = useState<CsvChoice | undefined>(undefined);
+  const [csv, setCsv] = useState<CsvChoice | undefined>(undefined);
+  const rememberCsv = useRememberCsvChoice();
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [failure, setFailure] = useState<Failure | null>(null);
@@ -46,6 +58,23 @@ export function ProfileSection({ user, client }: ProfileSectionProps) {
     [intl, user.locale],
   );
 
+  useEffect(() => {
+    let live = true;
+    client.preferences().then(
+      (preferences) => {
+        if (!live) return;
+        const choice = preferences.csvSeparator ?? '';
+        setSavedCsv(choice);
+        // A choice made while the setting was read stays.
+        setCsv((now) => now ?? choice);
+      },
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [client]);
+
   const field = (key: string) => `${id}-${key}`;
   const edited = () => {
     setSaved(false);
@@ -65,6 +94,13 @@ export function ProfileSection({ user, client }: ProfileSectionProps) {
           locale: locale || null,
         }),
       );
+      if (csv !== undefined && csv !== (savedCsv ?? '')) {
+        const kept = await client.updatePreferences({ csvSeparator: csv || null });
+        const choice = kept.csvSeparator ?? '';
+        setSavedCsv(choice);
+        setCsv(choice);
+        rememberCsv(kept.csvSeparator ?? null);
+      }
       setSaved(true);
     } catch (error) {
       if (expired(error)) return;
@@ -152,6 +188,25 @@ export function ProfileSection({ user, client }: ProfileSectionProps) {
           </select>
           <p id={field('locale-hint')} className="form-hint">
             {t('account.localeHint')}
+          </p>
+        </div>
+        <div className="form-field">
+          <label htmlFor={field('csv')}>{t('account.csv')}</label>
+          <select
+            id={field('csv')}
+            value={csv ?? ''}
+            aria-describedby={field('csv-hint')}
+            onChange={(e) => {
+              setCsv(e.target.value as CsvChoice);
+              edited();
+            }}
+          >
+            <option value="">{t('account.csvAutomatic')}</option>
+            <option value="comma">{t('account.csvComma')}</option>
+            <option value="semicolon">{t('account.csvSemicolon')}</option>
+          </select>
+          <p id={field('csv-hint')} className="form-hint">
+            {t('account.csvHint')}
           </p>
         </div>
         {failure && (

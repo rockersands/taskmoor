@@ -325,7 +325,8 @@ export async function registerScimRoutes(
         .execute();
     }
     const endedSessions = changes.active && !values.active ? await signOut(trx, row.id) : 0;
-    // A deactivated person runs no track (T-087b; IAM-033).
+    // Deactivation keeps the roles and the create-tracks grant that came with them (T-259); one
+    // whose roles are already gone still goes (T-087b; IAM-033).
     const lapsed =
       changes.active && !values.active
         ? await dropLapsedCreateTracks(trx, workspaceId, [row.id])

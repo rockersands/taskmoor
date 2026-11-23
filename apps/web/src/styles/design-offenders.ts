@@ -74,12 +74,18 @@ export const ALLOWED = {
     '.capacity-table tbody td:last-child': STICKY,
     '.capacity-row.is-team td:last-child': STICKY,
     '.program-board tbody th': STICKY,
+    '.plan-grid-table thead th': STICKY,
+    '.plan-grid-table tbody th': STICKY,
+    '.plan-grid-table tfoot th': STICKY,
+    '.plan-grid-table tfoot td': STICKY,
     '.scenario-action-bar':
       'the change list’s actions stuck to the foot of a phone’s page: the cards scroll under it, so glass would show them through its buttons',
     '.create-dialog .create-form > .form-actions':
       "the create dialog's sticky foot (D3): the form scrolls under Create, so glass would show it through",
     '.timeline-fade':
       'the rows fading out at the foot of the timeline, into the colour of its sticky cells; no text',
+    '.timeline-head::after':
+      'the head’s labels fading out at the right edge of the timeline, into its sticky head’s colour; no text',
     '.skin-preview-bar': SKIN_PREVIEW,
     '.skin-preview-card': SKIN_PREVIEW,
   },
@@ -135,9 +141,11 @@ export const ALLOWED = {
     'plans/PlanPage.tsx plans.notice.noSources': MISSING_SETUP,
     'plans/PlanListPage.tsx list.group.noValue': 'the heading of the group of rows with no value',
     'plans/PlanSettingsPage.tsx plans.settings.noLinkTypes': NO_CHOICE,
+    'plans/StructureDialog.tsx grid.dialog.links.none': NO_CHOICE,
     'plans/ProgramBoardPage.tsx programBoard.noField': ONE_READING,
     'plans/ProgramBoardsPage.tsx programBoard.noField': ONE_READING,
     'plans/ProgramBoardsPage.tsx programBoards.noField': MISSING_SETUP,
+    'plans/ProgramBoardsPage.tsx programBoards.noFieldAdmin': MISSING_SETUP,
     'plans/ScenarioCompare.tsx scenario.compare.noTeamField': MISSING_SETUP,
     'releases/CrossTrackReleasePage.tsx crossTrack.new.noMove':
       'what linking a release does to its dates, not a list',

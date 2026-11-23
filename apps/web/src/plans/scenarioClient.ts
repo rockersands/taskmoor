@@ -190,6 +190,9 @@ export const PLACED_REASONS = [
   'after_higher_ranked',
   'first_for_blocked',
   'already',
+  // Evening out load (ADR-122 stage 9).
+  'moved_off_over',
+  'pushed_by_move',
 ] as const;
 export const KEPT_REASONS = [
   'person_draft',
@@ -209,6 +212,9 @@ export const NOT_PLACED_REASONS = [
   'blocker_undated',
   'blocker_not_placed',
   'no_room',
+  // Evening out load (ADR-122 stage 9).
+  'still_over',
+  'would_make_late',
 ] as const;
 export const LEFT_OUT_REASONS = ['level', 'type', 'release', 'query'] as const;
 export const SCHEDULE_WARNINGS = ['after_release', 'late_against_kept', 'over_where_kept'] as const;
@@ -219,6 +225,8 @@ export type LeftOutReason = (typeof LEFT_OUT_REASONS)[number];
 export type ScheduleWarningKind = (typeof SCHEDULE_WARNINGS)[number];
 export type ScheduleReason = PlacedReason | KeptReason | NotPlacedReason;
 export type ScheduleOutcome = 'placed' | 'kept' | 'not_placed';
+/** What a run does: place work in rank order, or even out load (ADR-122 stage 9). */
+export type ScheduleMode = 'fill' | 'even_out';
 
 /**
  * What a reason or warning names: ids, days (`YYYY-MM-DD`) and amounts in the plan's unit only.
@@ -229,7 +237,11 @@ export type ScheduleOutcome = 'placed' | 'kept' | 'not_placed';
  * `too_big` subject, `capacity`; `cycle` `ticketIds`, `size`; `blocker_undated` and
  * `blocker_not_placed` `blockerId`; `no_room` subject (when one has capacity), `until`. Warnings:
  * `after_release` `releaseId`, `releaseDate`, `days`; `late_against_kept` `ticketIds`, `count`;
- * `over_where_kept` subject, `periodStart`.
+ * `over_where_kept` subject, `periodStart`. Evening out (`apps/server/src/plans/evenOut.ts`):
+ * `moved_off_over` subject, `fromPeriod`, `fromPeriodEnd`, `toPeriod`, `toPeriodEnd`, `days`,
+ * `over`; `pushed_by_move` `blockerId`, `days`; `still_over` subject, `until`; `would_make_late`
+ * `ticketId`, `why` (`kept`, `left_out`, `cycle`, `hidden_blocker`, `sprint` or `past_end`),
+ * `until`.
  */
 export type ScheduleArgs = Record<string, number | string | number[]>;
 
@@ -304,6 +316,11 @@ export interface ScheduleReadiness {
   scenario?: { proposals: number; drafts: number; notShown?: number } | null;
   /** How many scenarios the plan has. */
   scenarios?: number;
+  /**
+   * How many cells (a team or person in a period of the run) are over capacity now, over the
+   * reader's tickets: what evening out would work on.
+   */
+  overCells?: number;
 }
 
 /** The body of `POST /plans/:id/schedule`. */
@@ -317,6 +334,19 @@ export interface ScheduleRequest {
   leaveOut?: { typeIds?: number[]; releaseIds?: number[]; query?: string };
   /** The two flags are on by default. */
   keep?: { inProgress?: boolean; inActiveSprint?: boolean; query?: string };
+  /** `fill` (the default) or `even_out`. */
+  mode?: ScheduleMode;
+}
+
+/** A cell still over capacity after evening out, in the plan's unit. */
+export interface ScheduleOverLeft {
+  teamId?: number;
+  userId?: number;
+  periodStart: string;
+  periodEnd: string;
+  over: number;
+  /** Only tickets that may not move were in it. */
+  onlyFixed: boolean;
 }
 
 /** A run's counts: tickets by outcome and reason, and what the write did. */
@@ -325,6 +355,11 @@ export interface ScheduleCounts {
   placed: number;
   /** Placed where they already are: nothing drafted. */
   already?: number;
+  /**
+   * Evening out only: the tickets moved later (or pushed) whose proposal stands. The list of
+   * tickets is cut at 2,000, with those moved after those not moved, so it cannot be counted.
+   */
+  moved?: number;
   /** Proposals already drafted as they are now. */
   unchanged: number;
   /** Earlier proposals removed. */
@@ -352,6 +387,10 @@ export interface ScheduleResult {
   /** Tickets not listed. */
   more: number;
   names?: ScheduleNames;
+  /** What the run did; `fill` when the answer does not say. */
+  mode?: ScheduleMode;
+  /** Evening out only: the cells still over capacity, every one of them. */
+  overLeft?: ScheduleOverLeft[];
 }
 
 /** A run's answer, or its refusal with the limit and count it names. */

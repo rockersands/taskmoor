@@ -5,11 +5,12 @@ import type { z } from 'zod';
 import { requireUser } from '../auth';
 import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
+import { planEditable } from '../plans/access';
 import { dependencyOptions, linkTypesNamed } from '../plans/dependencies';
 import {
   createBody,
   duplicateBody,
-  EXPORT_SORTS,
+  exportOrder,
   exportQuery,
   filterQuery,
   idParam,
@@ -60,8 +61,8 @@ import { sendTicketExport } from './search-export';
  *   the search a List runs; `GET /api/v1/plans/:id/choices` is what the filters offer: the
  *   plan's tracks, ticket types and up to 50 assignees, counted in one statement.
  * - `POST /api/v1/plans/:id/duplicate` copies a plan for anyone who sees it (PLN-014): the sources
- *   they may see, the settings and the teams; never hidden sources (only counted), shares or
- *   capacity. The copy is private to them and has no tie to the original.
+ *   they may see, the settings, the teams and the Grid's structures; never hidden sources (only
+ *   counted), shares or capacity. The copy is private to them and has no tie to the original.
  * - `GET /api/v1/plans/:id/export` is the List's file (PLN-014): every ticket of the plan the person
  *   sees, through the search export's stream.
  *
@@ -188,10 +189,6 @@ export function registerPlanRoutes(
     return q.executeTakeFirst() as Promise<Row | undefined>;
   }
 
-  async function mayManage(request: FastifyRequest, row: Row): Promise<boolean> {
-    return row.owner_id === request.user?.id || (await request.authz.isSiteAdmin());
-  }
-
   /**
    * The plan's capacity settings and teams (PLN-005) and its dependency options (PLN-013), the
    * same for every viewer: everyone signed in reads teams and link types.
@@ -219,7 +216,7 @@ export function registerPlanRoutes(
       description: row.description,
       owner: { id: row.owner_id, name: row.owner_name },
       shares,
-      editable: await mayManage(request, row),
+      editable: await planEditable(request, row.owner_id),
       sources: tickets.sources,
       hiddenSources: tickets.hidden,
       query: tickets.query,
@@ -591,6 +588,12 @@ export function registerPlanRoutes(
       await writeSources(trx, ws, copy.id, sources);
       await writeTeams(trx, ws, copy.id, teams);
       await writeDependencyTypes(trx, ws, copy.id, deps.linkTypeIds);
+      // The Grid's structures go with the plan's settings (ADR-122 stage 10, question 15): recipes,
+      // never tickets, so each reader of the copy still sees only their own rows.
+      await sql`
+        INSERT INTO plan_structure (workspace_id, plan_id, name, spec, created_by, updated_by)
+        SELECT workspace_id, ${copy.id}::int, name, spec, ${user.id}::int, ${user.id}::int
+          FROM plan_structure WHERE plan_id = ${row.id}::int ORDER BY id`.execute(trx);
       const hiddenSources = current.length - sources.length;
       await emit(trx, by(request), {
         type: 'plan.duplicated',
@@ -617,7 +620,7 @@ export function registerPlanRoutes(
     if (!p.success) return notFound(reply);
     const q = exportQuery.safeParse(request.query ?? {});
     if (!q.success) return invalidFields(reply, shapeErrors(q.error));
-    const { format, columns, sort, ...filters } = q.data;
+    const { format, columns, sort, order, separator, ...filters } = q.data;
     const row = await visible(request, p.data.id);
     if (!row) return notFound(reply);
     let query: string | null;
@@ -633,9 +636,10 @@ export function registerPlanRoutes(
       return searchRefusal(reply, error, timeoutMs);
     }
     return sendTicketExport(db, options.catalogs, request, reply, {
-      q: query === null ? null : `${query} ORDER BY ${EXPORT_SORTS[sort]}`,
+      q: query === null ? null : `${query} ORDER BY ${exportOrder(sort, order)}`,
       format,
       columns,
+      separator,
       file: planFile(row.name),
       timeoutMs,
     });
@@ -745,7 +749,7 @@ export function registerPlanRoutes(
     const ws = request.workspaceId;
     const row = await visible(request, p.data.id);
     if (!row) return notFound(reply);
-    if (!(await mayManage(request, row))) return forbidden(reply, 'edit_plan');
+    if (!(await planEditable(request, row.owner_id))) return forbidden(reply, 'edit_plan');
 
     const current = await sourceRows(db, [row.id]);
     let sources: SourceInput[] | undefined;
@@ -893,7 +897,7 @@ export function registerPlanRoutes(
     if (!p.success) return notFound(reply);
     const row = await visible(request, p.data.id);
     if (!row) return notFound(reply);
-    if (!(await mayManage(request, row))) return forbidden(reply, 'edit_plan');
+    if (!(await planEditable(request, row.owner_id))) return forbidden(reply, 'edit_plan');
     await db.transaction().execute(async (trx) => {
       await trx.deleteFrom('plan').where('id', '=', row.id).execute();
       await emit(trx, by(request), {

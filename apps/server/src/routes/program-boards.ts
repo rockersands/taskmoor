@@ -10,6 +10,7 @@ import { draftMarks, draftOverlay } from '../plans/drafts';
 import { filterShape, idParam, scenarioShape } from '../plans/model';
 import { type Period, periodsFrom } from '../plans/periods';
 import { planTickets, sourceRows } from '../plans/query';
+import { viewerDay } from '../reports/zone';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
 import { isCalendarDay } from '../tickets/model';
 import { viewScenario } from './plan-scenarios';
@@ -267,7 +268,8 @@ export function registerProgramBoardRoutes(
     const ws = request.workspaceId;
     const field = await chooseField(ws, parsed.data.teamFieldId);
     if ('fields' in field) return invalidFields(reply, field.fields);
-    const from = parsed.data.from ?? new Date().toISOString().slice(0, 10);
+    // With no first day given, the board starts from the person's own today (T-280).
+    const from = parsed.data.from ?? viewerDay(request);
     const periods = parsed.data.periods ?? DEFAULT_BOARD_PERIODS;
     const made = await db.transaction().execute(async (trx) => {
       const row = await trx

@@ -590,6 +590,77 @@ describe('priorities, close reasons, labels, releases and areas (M1-014)', () =>
           .statusCode,
       ).toBe(400);
     });
+
+    it('[CORE-017] lists labels with how many tickets have each, for administrators (T-322)', async () => {
+      const usage = async (query: string) => {
+        const res = await get('admin', `/api/v1/labels/usage?${query}`);
+        expect(res.statusCode, res.body).toBe(200);
+        return res.json() as { labels: { name: string; ticketCount: number }[]; more: boolean };
+      };
+      await create('alice', {
+        track: 'ABC',
+        summary: 'Count one',
+        labels: ['count-api', 'count-UI'],
+      });
+      await create('alice', { track: 'XYZ', summary: 'Count two', labels: ['count-api'] });
+      const trashed = await create('alice', {
+        track: 'XYZ',
+        summary: 'Count trashed',
+        labels: ['count-api', 'count-web'],
+      });
+      // A ticket in the trash counts: a merge changes it too.
+      await database.db
+        .updateTable('ticket')
+        .set({ deleted_at: new Date() })
+        .where('id', '=', trashed.id)
+        .execute();
+      // A label no ticket has any more stays in the vocabulary with no tickets.
+      const gone = await create('alice', {
+        track: 'ABC',
+        summary: 'Count gone',
+        labels: ['count-old'],
+      });
+      await edit('alice', gone.id, { labels: [] });
+
+      expect(await usage('q=COUNT-')).toEqual({
+        labels: [
+          { name: 'count-api', ticketCount: 3 },
+          { name: 'count-old', ticketCount: 0 },
+          { name: 'count-UI', ticketCount: 1 },
+          { name: 'count-web', ticketCount: 1 },
+        ],
+        more: false,
+      });
+      // A page at a time: the next starts after the last label of the one before.
+      expect(await usage('q=count-&limit=2')).toEqual({
+        labels: [
+          { name: 'count-api', ticketCount: 3 },
+          { name: 'count-old', ticketCount: 0 },
+        ],
+        more: true,
+      });
+      expect(await usage('q=count-&limit=2&after=count-old')).toEqual({
+        labels: [
+          { name: 'count-UI', ticketCount: 1 },
+          { name: 'count-web', ticketCount: 1 },
+        ],
+        more: false,
+      });
+      expect((await usage('q=count-%25')).labels).toEqual([]);
+
+      // Only site and configuration administrators read it.
+      expect((await get('alice', '/api/v1/labels/usage')).statusCode).toBe(403);
+      expect((await get('admin', '/api/v1/labels/usage?limit=101')).statusCode).toBe(400);
+      expect((await get('admin', '/api/v1/labels/usage?sort=name')).statusCode).toBe(400);
+
+      // After a merge the counts follow the tickets.
+      await post('admin', '/api/v1/labels/merge', { labels: ['count-web'], into: 'count-api' });
+      expect((await usage('q=count-')).labels).toEqual([
+        { name: 'count-api', ticketCount: 3 },
+        { name: 'count-old', ticketCount: 0 },
+        { name: 'count-UI', ticketCount: 1 },
+      ]);
+    });
   });
 
   describe('releases', () => {

@@ -1,6 +1,7 @@
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
+import { type NumberShow, numberText } from '../fields/numberFormat';
 import { dayText, isCalendarDay, isInstant, momentText } from '../i18n/days';
 import { useT } from '../i18n/I18nProvider';
 import { type Lock, useLockText } from '../locks/useLockText';
@@ -23,6 +24,8 @@ import {
   DATE_COLUMNS,
   editorStart,
   isDateTimeColumn,
+  numberShowOfColumn,
+  orderOfColumn,
   type TableSort,
   valueText,
 } from './columns';
@@ -49,8 +52,19 @@ export interface ResultTableProps {
   format?: (ticket: SearchTicket) => RowFormat | null;
   /** The order the rows are in, marked on that column's header (PL-11). */
   sort?: TableSort | null;
+  /**
+   * Ordering by a column's heading (T-330): a heading the query language can order by becomes a
+   * button that calls this with its column; the page decides the order (`nextSort`) and gives it
+   * back as `sort`. Without it the headings are plain words, as search shows them.
+   */
+  onSort?: (column: string) => void;
   /** No cell edits in place: a plan's List read in a scenario (ADR-122 stage 6). */
   readOnly?: boolean;
+  /**
+   * The scrolling table's name, 'Result table' by default. A page with a table per group names
+   * each after its group: regions of one page need names of their own (axe landmark-unique).
+   */
+  label?: string;
 }
 
 /**
@@ -170,7 +184,9 @@ export function ResultGrid({
   onSaved,
   format,
   sort,
+  onSort,
   readOnly = false,
+  label,
 }: ResultTableProps) {
   const t = useT();
   const region = useRef<HTMLElement>(null);
@@ -198,7 +214,7 @@ export function ResultGrid({
       ref={region}
       className="glass-card glass-scroller search-table-scroll"
       data-more={more}
-      aria-label={t('search.table')}
+      aria-label={label ?? t('search.table')}
       // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must be reachable by keyboard
       tabIndex={0}
     >
@@ -206,8 +222,7 @@ export function ResultGrid({
         <thead>
           <tr>
             <th scope="col" aria-sort={sortOf('key', sort)}>
-              {t('search.column.key')}
-              <SortMark column="key" sort={sort} />
+              <Heading column="key" name={t('search.column.key')} sort={sort} onSort={onSort} />
             </th>
             {columns.map((column) => (
               <th
@@ -217,8 +232,7 @@ export function ResultGrid({
                 data-one-line={ONE_LINE.has(column) || undefined}
                 aria-sort={sortOf(column, sort)}
               >
-                {nameOf(column)}
-                <SortMark column={column} sort={sort} />
+                <Heading column={column} name={nameOf(column)} sort={sort} onSort={onSort} />
               </th>
             ))}
           </tr>
@@ -239,6 +253,7 @@ export function ResultGrid({
                     columnName={nameOf(column)}
                     editor={readOnly ? null : cellEditor(column, fields)}
                     dateTime={isDateTimeColumn(column, fields)}
+                    number={numberShowOfColumn(column, fields)}
                     priorities={priorities}
                     client={client}
                     onSaved={onSaved}
@@ -269,12 +284,49 @@ function SortMark({ column, sort }: { column: string; sort: TableSort | null | u
   );
 }
 
-function Cell({
+/**
+ * A column's heading: its name and the arrow when the rows follow it. Where the page orders by
+ * headings (T-330) and the query language can order by the column, a button named by those
+ * words: a click or Enter orders by it, and again the other way. The `th` keeps `aria-sort`.
+ */
+function Heading({
+  column,
+  name,
+  sort,
+  onSort,
+}: {
+  column: string;
+  name: string;
+  sort: TableSort | null | undefined;
+  onSort: ((column: string) => void) | undefined;
+}) {
+  if (!onSort || !orderOfColumn(column)) {
+    return (
+      <>
+        {name}
+        <SortMark column={column} sort={sort} />
+      </>
+    );
+  }
+  return (
+    <button type="button" className="search-sort-button" onClick={() => onSort(column)}>
+      {name}
+      <SortMark column={column} sort={sort} />
+    </button>
+  );
+}
+
+/**
+ * One editable cell of a ticket's column, shared with a plan's Grid (ADR-122 stage 10): the value,
+ * and where `editor` allows, an edit in place through the ticket route with the refusal on the cell.
+ */
+export function Cell({
   ticket,
   column,
   columnName,
   editor,
   dateTime,
+  number = null,
   priorities,
   client,
   onSaved,
@@ -286,6 +338,8 @@ function Cell({
   editor: CellEditor | null;
   /** A moment (created, updated, closed or a custom datetime field), read in the locale. */
   dateTime: boolean;
+  /** How a number field's or formula's numbers show, by its settings (T-320). */
+  number?: NumberShow | null;
   priorities: { id: number; name: string; level?: number }[] | null;
   client: SearchClient;
   onSaved: (ticket: SearchTicket) => void;
@@ -319,6 +373,9 @@ function Cell({
         : unassigned
           ? t('search.edit.unassigned')
           : valueText(value);
+  // A number as its field's settings show it (T-320).
+  const text =
+    number !== null && typeof value === 'number' ? numberText(intl, value, number) : shown;
 
   const close = () => {
     setInput(null);
@@ -410,7 +467,7 @@ function Cell({
       ) : (
         <span className="search-cell-view">
           <span className={unassigned ? 'search-cell-value search-cell-none' : 'search-cell-value'}>
-            <CellPicture column={column} value={value} shown={shown} />
+            <CellPicture column={column} value={value} shown={text} />
           </span>
           {editor && (
             <button
@@ -452,7 +509,8 @@ function CellPicture({ column, value, shown }: { column: string; value: unknown;
   return shown;
 }
 
-function CellInput({
+/** The input of a cell being edited, by its editor's kind. */
+export function CellInput({
   editor,
   value,
   label,

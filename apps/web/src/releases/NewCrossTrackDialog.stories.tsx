@@ -32,6 +32,7 @@ export const StopsShort: Story = {
 
 /** A finger reaches each way to end it and each release to tick (ADR-033). */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async () => {
     const dialog = await within(document.body).findByRole('dialog');

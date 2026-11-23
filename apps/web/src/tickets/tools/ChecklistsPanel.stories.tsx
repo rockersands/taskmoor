@@ -49,6 +49,30 @@ export const Several: Story = {
   },
 };
 
+/**
+ * Removing a list with items asks first, in its heading's place, saying what goes (D13, T-267); at
+ * a small phone's width the question takes the heading's whole line and nothing sticks out.
+ */
+export const RemovingAListAsksOnAPhone: Story = {
+  decorators: [
+    (Story) => (
+      <div data-testid="phone-width" style={{ width: 360 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Remove the checklist Before release' }),
+    );
+    const question = canvas.getByRole('group', { name: /^Removing Before release/ });
+    await expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    const box = canvas.getByTestId('phone-width');
+    await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+  },
+};
+
 /** Someone who may only read: the states are words, and nothing can change. */
 export const ReadOnly: Story = {
   args: { client: fakeToolsClient({ canEdit: false }) },
@@ -102,6 +126,7 @@ export const DraggingAnItem: Story = {
  * size (T-290).
  */
 export const GripsOnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
@@ -187,6 +212,7 @@ export const ItemsOnAPhone: Story = {
 
 /** The same on a phone, with nothing sideways. */
 export const GripsOnATouchPhone: Story = {
+  tags: ['touch'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {

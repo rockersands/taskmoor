@@ -4,6 +4,26 @@
 // the private demo only. It looks before it adds, so a later run on the same data adds nothing.
 const STAMP = 'Sweep';
 
+/**
+ * Every row of a list the API answers a page at a time (`next`, sent back as `?after=`), such as
+ * teams since T-286. `get` reads one path; `key` names the rows in each answer.
+ */
+export async function everyPage(get, path, key) {
+  const rows = [];
+  const seen = new Set();
+  let after = null;
+  do {
+    const joiner = path.includes('?') ? '&' : '?';
+    const page = await get(
+      after === null ? path : `${path}${joiner}after=${encodeURIComponent(after)}`,
+    );
+    rows.push(...(page?.[key] ?? []));
+    seen.add(after);
+    after = page?.next ?? null;
+  } while (after !== null && !seen.has(after));
+  return rows;
+}
+
 /** A day this many days from today, as the API writes one. */
 const day = (offset) => new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
 
@@ -289,7 +309,12 @@ export async function seedDemo(request, url) {
   });
 
   await step('team', async () => {
-    const { teams } = await get('/teams');
+    // Teams come a page at a time (T-286): the name narrows them, and every page is read.
+    const teams = await everyPage(
+      get,
+      `/teams?query=${encodeURIComponent(`${STAMP} team`)}`,
+      'teams',
+    );
     if (!teams.some((t) => t.name === `${STAMP} team`)) {
       await post('/teams', { name: `${STAMP} team` });
     }

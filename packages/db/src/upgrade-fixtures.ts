@@ -1849,6 +1849,59 @@ export const UPGRADE_SEEDS: Record<string, UpgradeSeed> = {
           FROM plan_scenario s WHERE s.name = 'Seed scenario'`.execute(db);
     },
   },
+  '0111_plan_baselines': {
+    tables: {
+      plan_baseline: `name = 'Seed baseline' AND source = 'scenario'
+        AND scenario_name = 'Seed scenario' AND tickets = 1
+        AND plan_id = (SELECT id FROM plan WHERE name = 'Seed plan')`,
+      plan_baseline_day: `due_date = DATE '2026-12-01' AND start_date IS NULL AND dated = 'own'
+        AND NOT closed
+        AND baseline_id = (SELECT id FROM plan_baseline WHERE name = 'Seed baseline')`,
+    },
+    seed: async (db) => {
+      // A baseline of the seed plan from its main scenario, holding the first seed ticket's
+      // drafted due day (ADR-122 stage 9).
+      await sql`INSERT INTO plan_baseline
+          (workspace_id, plan_id, name, source, scenario_name, tickets, created_by)
+        SELECT 1, p.id, 'Seed baseline', 'scenario', 'Seed scenario', 1, p.owner_id FROM plan p
+         WHERE p.name = 'Seed plan'`.execute(db);
+      await sql`INSERT INTO plan_baseline_day
+          (workspace_id, plan_id, baseline_id, ticket_id, start_date, due_date, dated, closed)
+        SELECT 1, b.plan_id, b.id, (SELECT min(id) FROM ticket), NULL, DATE '2026-12-01', 'own',
+               false
+          FROM plan_baseline b WHERE b.name = 'Seed baseline'`.execute(db);
+    },
+  },
+  '0112_plan_structures': {
+    tables: {
+      plan_structure: `name = 'Seed structure' AND version = 1
+        AND spec -> 'steps' -> 0 ->> 'kind' = 'insert'
+        AND plan_id = (SELECT id FROM plan WHERE name = 'Seed plan')`,
+    },
+    seed: async (db) => {
+      // A structure of the seed plan's Grid: its tickets and their children, with a count total
+      // (ADR-122 stage 10).
+      await sql`INSERT INTO plan_structure
+          (workspace_id, plan_id, name, spec, created_by, updated_by)
+        SELECT 1, p.id, 'Seed structure',
+               '{"steps":[{"kind":"insert"},{"kind":"children"}],
+                 "columns":[{"kind":"ticket","field":"summary"},{"kind":"total","fn":"count"}]}'::jsonb,
+               p.owner_id, p.owner_id
+          FROM plan p WHERE p.name = 'Seed plan'`.execute(db);
+    },
+  },
+  '0113_csv_separator': {
+    tables: {
+      user_preference: `csv_separator = 'semicolon' AND auto_follow = false
+        AND user_id = (SELECT id FROM app_user WHERE email = 'seed@example.com')`,
+    },
+    seed: async (db) => {
+      // The seed person writes semicolons in spreadsheet files; their earlier settings stay
+      // (T-263).
+      await sql`UPDATE user_preference SET csv_separator = 'semicolon'
+        WHERE user_id = (SELECT id FROM app_user WHERE email = 'seed@example.com')`.execute(db);
+    },
+  },
 };
 
 /**

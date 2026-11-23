@@ -145,8 +145,19 @@ export const History: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Version history' }));
     await expect(
-      await canvas.findByRole('button', { name: 'Restore version 1 as the draft' }),
+      await canvas.findByRole('button', { name: 'Restore as draft from version 1' }),
     ).toBeVisible();
+  },
+};
+
+/** Discarding asks first, in the toolbar's place, saying what goes (D13, T-267). */
+export const DiscardAsks: Story = {
+  args: { client: withDraft() },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Discard draft' }));
+    const question = canvas.getByRole('group', { name: /^The saved draft and every unsaved/ });
+    await expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
   },
 };
 

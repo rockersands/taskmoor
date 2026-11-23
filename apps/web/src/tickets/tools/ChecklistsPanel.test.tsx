@@ -224,6 +224,11 @@ describe('ChecklistsPanel', () => {
     renderPanel();
     await user.click(await screen.findByRole('button', { name: 'Add a checklist' }));
     await user.click(screen.getByRole('button', { name: 'Remove the checklist Before release' }));
+    await user.click(
+      within(screen.getByRole('group', { name: /^Removing Before release/ })).getByRole('button', {
+        name: 'Remove the checklist Before release',
+      }),
+    );
     await waitFor(() =>
       expect(screen.queryByRole('region', { name: 'Before release' })).toBeNull(),
     );
@@ -335,13 +340,52 @@ describe('ChecklistsPanel', () => {
     expect(renamed).not.toBeChecked();
   });
 
-  it('[CORE-033] removes an item and a checklist', async () => {
+  it('[CORE-033] removes an item at once, and a checklist with items after saying what goes (D13)', async () => {
     const user = userEvent.setup();
-    renderPanel();
-    await user.click(await screen.findByRole('button', { name: 'Remove Print it' }));
+    const { client } = renderPanel();
+    // An item comes back by typing it again: no question (T-267).
+    const item = await screen.findByRole('button', { name: 'Remove Print it' });
+    expect(item).toHaveClass('button-secondary');
+    await user.click(item);
     await waitFor(() => expect(screen.queryByRole('checkbox', { name: 'Print it' })).toBeNull());
-    await user.click(screen.getByRole('button', { name: 'Remove the checklist Before release' }));
+    // The list takes its items and their states, and history keeps only its name: it asks.
+    const trigger = screen.getByRole('button', { name: 'Remove the checklist Before release' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    const question = screen.getByRole('group', {
+      name: 'Removing Before release deletes its 4 items and the state of each: 3 were done. History keeps only the checklist’s name, so this cannot be undone.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    expect(client.calls.some((c) => c.action === 'removeChecklist')).toBe(false);
+    await user.click(
+      within(question).getByRole('button', { name: 'Remove the checklist Before release' }),
+    );
     expect(await screen.findByText('No checklists yet.')).toBeVisible();
+  });
+
+  it('[CORE-033] removes an empty checklist at once, and keeps the question when refused', async () => {
+    const user = userEvent.setup();
+    const client = fakeToolsClient();
+    renderPanel(client);
+    await user.click(await screen.findByRole('button', { name: 'Add a checklist' }));
+    await user.keyboard('Afterwards{Enter}');
+    await screen.findByRole('region', { name: 'Afterwards' });
+    // An empty list loses only a name.
+    const empty = screen.getByRole('button', { name: 'Remove the checklist Afterwards' });
+    expect(empty).toHaveClass('button-secondary');
+    await user.click(empty);
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Afterwards' })).toBeNull());
+
+    client.removeChecklist = async () => {
+      throw new ApiError(409, { error: 'order_changed' });
+    };
+    await user.click(screen.getByRole('button', { name: 'Remove the checklist Before release' }));
+    const question = screen.getByRole('group', { name: /^Removing Before release/ });
+    await user.click(
+      within(question).getByRole('button', { name: 'Remove the checklist Before release' }),
+    );
+    expect(await screen.findByRole('alert')).toBeVisible();
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toBeVisible();
   });
 
   it('[CORE-033] holds several named lists, with overall progress and an order', async () => {

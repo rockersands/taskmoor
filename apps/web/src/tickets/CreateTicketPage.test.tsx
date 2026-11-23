@@ -344,7 +344,7 @@ describe('the create form (M1-012)', () => {
     expect(screen.queryByText('This value was refused.')).toBeNull();
   });
 
-  it('[CORE-015] [CORE-013] [CORE-010] says so when an area or a custom release is not the track’s own (T-282)', async () => {
+  it('[CORE-015] [CORE-016] [CORE-013] [CORE-010] [CORE-008] says so when an area or a custom release is not the track’s own, naming which (T-282, T-286)', async () => {
     const user = userEvent.setup();
     const form = withFields(CHORE_FORM, [
       { key: 'area', required: false, description: null },
@@ -373,10 +373,17 @@ describe('the create form (M1-012)', () => {
     await within(release).findByRole('option', { name: 'Spring' });
     await user.selectOptions(release, 'Spring');
     await user.click(screen.getByRole('button', { name: 'Create' }));
-    const words = 'This track does not offer this choice. Choose one of its own.';
-    expect(await screen.findAllByText(words)).toHaveLength(2);
-    expect(screen.getByRole('group', { name: 'Areas' })).toHaveAccessibleDescription(words);
-    expect(screen.getByRole('combobox', { name: 'Fixed in' })).toHaveAccessibleDescription(words);
+    // Each says what it holds: an area, and a custom release field by its type (T-286).
+    const area = 'This area is not in this track. Choose one of its areas.';
+    const releaseWords = 'This release is not in this track. Choose one of its releases.';
+    expect(await screen.findByText(area)).toBeVisible();
+    expect(screen.getByRole('group', { name: 'Areas' })).toHaveAccessibleDescription(area);
+    expect(screen.getByRole('combobox', { name: 'Fixed in' })).toHaveAccessibleDescription(
+      releaseWords,
+    );
+    expect(
+      screen.queryByText('This track does not offer this choice. Choose one of its own.'),
+    ).toBeNull();
     expect(screen.queryByText('This value was refused.')).toBeNull();
   });
 
@@ -800,5 +807,136 @@ describe('the create form (M1-012)', () => {
     const texts = visibleTexts(main);
     expect(texts.length).toBeGreaterThan(10);
     expect(untranslated(texts).filter((t) => !data.has(t))).toEqual([]);
+  });
+});
+
+describe('the create form’s defaults (T-320)', () => {
+  /** The bug form with a default for each custom field, and a short text field defaulting too. */
+  const DEFAULTS_FORM: TicketForm = {
+    ...withFields(BUG_FORM, [{ key: 'cf[9]', required: false, description: null }]),
+    customFields: [
+      ...BUG_FORM.customFields.map((f) =>
+        f.id === 7
+          ? { ...f, defaultValue: { id: 71, value: 'Minor' } }
+          : {
+              ...f,
+              defaultValue: {
+                id: 80,
+                value: 'Backend',
+                child: { id: 81, value: 'Queue' },
+              },
+            },
+      ),
+      {
+        id: 9,
+        name: 'Customer',
+        description: '',
+        type: 'text',
+        multiple: false,
+        defaultValue: 'ACME',
+      },
+    ],
+  };
+
+  it('[CORE-009] starts each field with its default and sends null for one emptied', async () => {
+    const user = userEvent.setup();
+    const calls = openCreate({
+      'GET /tracks/SHOP/layout?ticketTypeId=3&operation=create': () =>
+        jsonResponse(200, DEFAULTS_FORM),
+      'POST /tickets': () => jsonResponse(201, { ticket: { id: 9, key: 'SHOP-9' } }),
+    });
+    const customer = await screen.findByLabelText('Customer');
+    // The form shows what the ticket would get.
+    expect(customer).toHaveValue('ACME');
+    expect(screen.getByLabelText('Severity (required)')).toHaveValue('71');
+    expect(screen.getByLabelText('Component')).toHaveValue('80');
+    expect(screen.getByLabelText('Component: second level')).toHaveValue('81');
+
+    await user.type(screen.getByLabelText('Summary (required)'), 'Checkout fails');
+    await user.type(screen.getByLabelText('Due date (required)'), '2026-12-01');
+    await user.clear(customer);
+    await user.selectOptions(screen.getByLabelText('Severity (required)'), 'Blocker');
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+    expect(await screen.findByText('SHOP-9 was created.')).toBeVisible();
+    const sent = calls.filter((c) => c.method === 'POST' && c.path === '/tickets').pop();
+    // Emptied, it is sent as null: the server would otherwise fill its default in.
+    expect((sent?.body as { fields?: unknown } | undefined)?.fields).toEqual({
+      7: 70,
+      8: { parent: 80, child: 81 },
+      9: null,
+    });
+    // The next ticket starts with the defaults again.
+    expect(screen.getByLabelText('Customer')).toHaveValue('ACME');
+    expect(screen.getByLabelText('Severity (required)')).toHaveValue('71');
+  });
+
+  it('[CORE-009] keeps what was typed and drops the defaults another ticket type lacks', async () => {
+    const user = userEvent.setup();
+    openCreate({
+      'GET /tracks/SHOP/layout?ticketTypeId=3&operation=create': () =>
+        jsonResponse(200, DEFAULTS_FORM),
+    });
+    await user.type(await screen.findByLabelText('Summary (required)'), 'Checkout fails');
+    expect(screen.getByLabelText('Customer')).toHaveValue('ACME');
+    await chooseType(user, 'Chore');
+    expect(await screen.findByLabelText('Summary (required)')).toHaveValue('Checkout fails');
+    await chooseType(user, 'Bug');
+    expect(await screen.findByLabelText('Customer')).toHaveValue('ACME');
+    expect(screen.getByLabelText('Summary (required)')).toHaveValue('Checkout fails');
+  });
+});
+
+describe('the blocks of a new ticket’s text (NTF-013, T-120)', () => {
+  it('[NTF-013] links another ticket from the description, found by search, as its key only', async () => {
+    const user = userEvent.setup();
+    const form = withFields(CHORE_FORM, [
+      { key: 'description', required: false, description: null },
+    ]);
+    const calls = openCreate({
+      'GET /tracks/SHOP/ticket-types': () =>
+        jsonResponse(200, { typeSetId: 1, defaultTypeId: 4, ticketTypes: TYPES }),
+      'GET /tracks/SHOP/layout?ticketTypeId=4&operation=create': () => jsonResponse(200, form),
+      'POST /search': () =>
+        jsonResponse(200, {
+          tickets: [
+            { id: 40, key: 'SHOP-4', summary: 'Retry a failed payment', status: { name: 'Open' } },
+          ],
+        }),
+      'POST /tickets': () => jsonResponse(201, { ticket: { id: 9, key: 'SHOP-9' } }),
+    });
+    await user.type(await screen.findByLabelText('Summary (required)'), 'Follow up');
+    const description = screen.getByRole('textbox', { name: 'Description' });
+    await user.click(description);
+    await user.keyboard('See /another');
+    await screen.findByRole('listbox', { name: 'Blocks to add' });
+    await user.keyboard('{Enter}');
+    await screen.findByRole('combobox', { name: 'Another ticket' });
+    await user.keyboard('retry');
+    await user.click(await screen.findByRole('option', { name: /SHOP-4/ }));
+    // Files need a ticket, which this one is not yet.
+    await user.click(description);
+    await user.keyboard('/image');
+    expect(await screen.findByText('No block matches.')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Create' }));
+    expect(await screen.findByText('SHOP-9 was created.')).toBeVisible();
+    const searched = calls.filter((c) => c.method === 'POST' && c.path === '/search');
+    expect(JSON.stringify(searched.at(-1)?.body)).toContain('retry');
+    const sent = calls.filter((c) => c.method === 'POST' && c.path === '/tickets').pop();
+    expect(sent?.body).toMatchObject({
+      description: {
+        type: 'doc',
+        content: [
+          {
+            type: 'paragraph',
+            content: [
+              { type: 'text', text: 'See ' },
+              { type: 'ticketRef', attrs: { key: 'SHOP-4' } },
+              { type: 'text', text: ' /image' },
+            ],
+          },
+        ],
+      },
+    });
+    expect(JSON.stringify(sent?.body)).not.toContain('Retry a failed payment');
   });
 });

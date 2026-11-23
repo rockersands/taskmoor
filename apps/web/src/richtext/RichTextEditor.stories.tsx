@@ -213,6 +213,7 @@ export const AllToolsWhereWide: Story = {
  * one row: More is counted when the tools are fitted, so it never wraps alone onto a second row.
  */
 export const OneRowOnAPhone: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   render: (args) => (
     <div style={{ width: 290 }}>

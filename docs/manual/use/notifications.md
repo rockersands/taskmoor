@@ -1,8 +1,8 @@
 ---
 title: "Notifications and your inbox"
 audience: users
-sources: apps/web/src/inbox/InboxPage.tsx, apps/web/src/notifications/NotificationsSection.tsx, apps/web/src/notifications/UnsubscribePage.tsx, apps/web/src/notifications/client.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/richtext/mentions.ts, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/notifications/model.ts, apps/server/src/email/deliver.ts, apps/server/src/email/render.ts, apps/server/src/tickets/comments.ts, apps/server/src/tickets/followers.ts, packages/db/src/migrations/0030_notifications.ts, docs/adr/0041-notification-recipients.md, docs/adr/0047-inbox-mentions-activity.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/server/src/security/notices.ts, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/notifications/track-groups.ts, apps/server/src/routes/inbox.ts, docs/adr/0121-personal-track-groups.md, apps/server/src/notifications/checklists.ts, packages/db/src/migrations/0103_checklist_notices.ts, apps/web/src/trackpeople/ChecklistNoticesBox.tsx, docs/adr/0120-ticket-tools.md, apps/web/src/shell/StandaloneFrame.tsx
-accessed: 2026-11-13
+sources: apps/web/src/inbox/InboxPage.tsx, apps/web/src/notifications/NotificationsSection.tsx, apps/web/src/notifications/UnsubscribePage.tsx, apps/web/src/notifications/client.ts, apps/web/src/account/AccountPage.tsx, apps/web/src/richtext/mentions.ts, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/notifications/model.ts, apps/server/src/email/deliver.ts, apps/server/src/email/render.ts, apps/server/src/tickets/comments.ts, apps/server/src/tickets/followers.ts, packages/db/src/migrations/0030_notifications.ts, docs/adr/0041-notification-recipients.md, docs/adr/0047-inbox-mentions-activity.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/server/src/security/notices.ts, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/notifications/track-groups.ts, apps/server/src/routes/inbox.ts, docs/adr/0121-personal-track-groups.md, apps/server/src/notifications/checklists.ts, packages/db/src/migrations/0103_checklist_notices.ts, apps/web/src/trackpeople/ChecklistNoticesBox.tsx, docs/adr/0120-ticket-tools.md, apps/web/src/shell/StandaloneFrame.tsx, apps/web/src/inbox/client.ts, apps/web/src/i18n/zone.ts
+accessed: 2026-11-16
 attestation: own-words
 ---
 # Notifications and your inbox
@@ -93,8 +93,9 @@ takes you to the comment it is about.
 On each item:
 
 - **Mark as read** or **Mark as unread**.
-- **Snooze**: **For an hour**, **Until tomorrow** or **Until next week**. A snoozed item comes
-  back unread at the top of the inbox when its time comes. **Back to the inbox** returns it at
+- **Snooze**: **For an hour**, **Until tomorrow** (9:00) or **Until next week** (Monday at 9:00),
+  on [your clock](account.md#your-time-zone). A snoozed item comes back unread at the top of the
+  inbox when its time comes. **Back to the inbox** returns it at
   once.
 
 **Mark all as read** clears the whole list. A notification you read in the inbox is not emailed
@@ -133,10 +134,11 @@ Under **Email**, choose how email arrives:
 | **Weekly digest** | One email on Mondays with the week before |
 | **No email** | Nothing by email; notifications still reach your inbox |
 
-Digests go out at an hour your administrator sets, in your own time zone.
+Digests go out at an hour your administrator sets, in the time zone saved in your account (UTC
+when it is set to **Automatic**, as no device is there when they are sent).
 
 **Hold email during quiet hours**, with **From** and **Until**, keeps email back until the quiet
-hours end, in your time zone. **Tell me about changes I make myself** is off unless you turn it
+hours end, in the same time zone. **Tell me about changes I make myself** is off unless you turn it
 on.
 
 **What you hear about, and where** is a table with one row per event and a box for **Email** and

@@ -36,11 +36,13 @@ import './styles/ticket-templates.css';
 import './styles/timeline.css';
 import './styles/views.css';
 import './styles/plans.css';
+import './styles/grid.css';
 import './styles/ai.css';
 import './styles/surfaces.css';
 import './styles/track-groups.css';
 import './styles/drag.css';
 import './styles/layout-editor.css';
+import './styles/fields.css';
 import './styles/motion.css';
 import './styles/print.css';
 

@@ -4,6 +4,7 @@ import type { FastifyInstance, InjectOptions, LightMyRequestResponse } from 'fas
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
+import { Authorizer } from '../authz/authorizer';
 import { EventBus } from '../events/bus';
 import { JobRunner } from '../events/queue';
 import { registerSubscribers } from '../events/subscribers';
@@ -749,19 +750,80 @@ describe('who may create tracks (IAM-033)', () => {
       }
     });
 
-    it('[IAM-033] deactivating a person takes the grant that came with a role, audited', async () => {
+    const deactivate = (user: string) =>
+      as('admin', { method: 'POST', url: `/api/v1/users/${ids[user]}/deactivate` });
+    const reactivate = (user: string) =>
+      as('admin', { method: 'POST', url: `/api/v1/users/${ids[user]}/reactivate` });
+    /** What the authorizer gives the person now, read afresh. */
+    const permissionsOf = async (user: string) => [
+      ...(await new Authorizer(database.db).globalPermissions(1, ids[user] as number)),
+    ];
+
+    it('[IAM-033] deactivating a manager keeps the grant with their roles, unusable until they are reactivated (T-259)', async () => {
       expect((await giveOn(track, 'pia', true)).statusCode).toBe(204);
       const [grant] = await grantsOf('pia');
       expect(grant).toBeDefined();
-      const deactivated = await as('admin', {
-        method: 'POST',
-        url: `/api/v1/users/${ids.pia}/deactivate`,
-      });
+      expect(await permissionsOf('pia')).toContain('create_local_tracks');
+      const deactivated = await deactivate('pia');
       expect(deactivated.statusCode, deactivated.body).toBe(200);
-      expect(await grantsOf('pia')).toEqual([]);
+      // Kept, as the role is, but worth nothing while she is deactivated: no permission at all.
+      expect(await grantsOf('pia')).toEqual([grant]);
+      expect(await permissionsOf('pia')).toEqual([]);
       expect((await lastEvent('user.deactivated')).payload).toEqual({
         endedSessions: expect.any(Number),
+      });
+      // Reactivated, she has it again with her role, and may create a track.
+      const reactivated = await reactivate('pia');
+      expect(reactivated.statusCode, reactivated.body).toBe(200);
+      expect(await grantsOf('pia')).toEqual([grant]);
+      expect(await permissionsOf('pia')).toContain('create_local_tracks');
+      cookies.pia = await signIn('pia@example.com');
+      expect(await mayCreate('pia')).toBe(true);
+
+      // Deactivated again, then her last role taken: the grant goes with it, as for anyone.
+      expect((await deactivate('pia')).statusCode).toBe(200);
+      expect((await takeOn(track, 'pia')).statusCode).toBe(204);
+      expect(await grantsOf('pia')).toEqual([]);
+      expect((await lastEvent('track_role.actor_removed')).payload).toMatchObject({
         createTracksGrantsRemoved: [{ userId: ids.pia, grantId: grant?.id }],
+      });
+      expect((await reactivate('pia')).statusCode).toBe(200);
+      expect(await permissionsOf('pia')).not.toContain('create_local_tracks');
+    });
+
+    it('[IAM-033] [IAM-008] erasing a manager who still holds the role takes the grant, listed on user.erased (T-259)', async () => {
+      expect((await giveOn(track, 'ora', true)).statusCode).toBe(204);
+      const [grant] = await grantsOf('ora');
+      expect(grant).toBeDefined();
+      const erased = await as('admin', {
+        method: 'POST',
+        url: `/api/v1/users/${ids.ora}/erase`,
+        payload: { confirmEmail: 'ora@example.com' },
+      });
+      expect(erased.statusCode, erased.body).toBe(200);
+      // Erased, she runs no track whatever roles she held.
+      expect(await grantsOf('ora')).toEqual([]);
+      expect((await lastEvent('user.erased')).payload).toMatchObject({
+        createTracksGrantsRemoved: [{ userId: ids.ora, grantId: grant?.id }],
+      });
+    });
+
+    it('[IAM-033] deactivating a person whose roles are already gone takes the grant that came with one, audited', async () => {
+      expect((await giveOn(track, 'quy', true)).statusCode).toBe(204);
+      const [grant] = await grantsOf('quy');
+      expect(grant).toBeDefined();
+      // The role went by a path that left the grant behind, such as an older version.
+      await database.db
+        .deleteFrom('track_role_actor')
+        .where('track_id', '=', track)
+        .where('user_id', '=', ids.quy as number)
+        .execute();
+      const deactivated = await deactivate('quy');
+      expect(deactivated.statusCode, deactivated.body).toBe(200);
+      expect(await grantsOf('quy')).toEqual([]);
+      expect((await lastEvent('user.deactivated')).payload).toEqual({
+        endedSessions: expect.any(Number),
+        createTracksGrantsRemoved: [{ userId: ids.quy, grantId: grant?.id }],
       });
       // The audit log records each removal with the change that made it.
       const bus = new EventBus(database.db);
@@ -778,7 +840,7 @@ describe('who may create tracks (IAM-033)', () => {
       expect(records).toContainEqual({
         action: 'user.deactivated',
         details: expect.objectContaining({
-          createTracksGrantsRemoved: [{ userId: ids.pia, grantId: grant?.id }],
+          createTracksGrantsRemoved: [{ userId: ids.quy, grantId: grant?.id }],
         }),
       });
       expect(records).toContainEqual({

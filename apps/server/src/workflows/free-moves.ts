@@ -10,7 +10,8 @@ import { heldStatusInfo, holdCurrentVersions, rewriteCurrentVersions } from './s
  * The free moves the server gives a workflow beyond the editor's (WF-008 (4); ADR-116): a draft's
  * new statuses (T-210), a workflow published or imported with no transitions at all (T-246), and
  * an old workflow left with none (T-237; migration 0107 gave every such workflow its moves at the
- * upgrade, and `cli.mjs workflow-moves` checks that none is left).
+ * upgrade, and `cli.mjs workflow-moves` checks that none is left). A publish or a file imported as
+ * a new workflow that wanted them and could get none is refused (T-260).
  */
 
 /**
@@ -64,7 +65,9 @@ export async function withFreeMoves(
  * A definition about to be published or imported with no transitions at all, with the free moves
  * a new workflow gets (T-246; WF-008 (4); ADR-116): a global transition into every status, as
  * `withFreeMoves` gives a draft with none. A definition with any transition, one with a rule and a
- * board-managed one stay as they are. The caller holds the workflow (or has just made it).
+ * board-managed one stay as they are. One whose every status is in the closed stage, with no close
+ * reason for free moves to close with, gets none: `noMovesPossible` tells the publish and the file
+ * import to refuse it (T-260). The caller holds the workflow (or has just made it).
  */
 export async function withMovesIfNone(
   trx: Transaction<Database>,
@@ -74,6 +77,25 @@ export async function withMovesIfNone(
 ): Promise<WorkflowDefinition> {
   if (definition.transitions.length > 0) return definition;
   return withFreeMoves(trx, workspaceId, workflowId, definition, definition, true);
+}
+
+/**
+ * Whether a definition wanted free moves and could get none (T-260; WF-008 (4)): it has no
+ * transitions, no rule and no board, so `withMovesIfNone` meant to give it a move into every
+ * status, and `moved`, what that gave, still has none. That happens when every status is in the
+ * closed stage and no close reason can be set: none is named Completed, and the default workflow
+ * sets none when it closes (`closingReasonId`). Published so, no ticket could ever move. A
+ * definition with a rule or a board was never meant to get them, and stays as it is (ADR-116).
+ */
+export function noMovesPossible(
+  definition: WorkflowDefinition,
+  moved: WorkflowDefinition,
+): boolean {
+  return (
+    definition.transitions.length === 0 &&
+    moved.transitions.length === 0 &&
+    statusesWantingFreeMove(definition, definition, true).length > 0
+  );
 }
 
 /**

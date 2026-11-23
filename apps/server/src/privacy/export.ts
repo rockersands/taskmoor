@@ -338,6 +338,8 @@ export async function writePersonalData(
     crossTrackReleases,
     scenarios,
     drafts,
+    baselines,
+    structures,
   ] = await Promise.all([
     db.selectFrom('user_preference').selectAll().where('user_id', '=', userId).executeTakeFirst(),
     db
@@ -415,10 +417,32 @@ export async function writePersonalData(
       .orderBy('ticket_id')
       .orderBy('field')
       .execute(),
+    // Baselines they captured in plans (PLN-011): by the plan's id, without days, as the plan or
+    // its tickets may be hidden from them now.
+    db
+      .selectFrom('plan_baseline')
+      .select(['id', 'plan_id', 'name', 'source', 'created_at'])
+      .where('workspace_id', '=', ws)
+      .where('created_by', '=', userId)
+      .orderBy('plan_id')
+      .orderBy('id')
+      .execute(),
+    // Structures they made in plans' Grids (PLN-010): by the plan's id and the name, without the
+    // steps or columns, as the plan may be hidden from them now.
+    db
+      .selectFrom('plan_structure')
+      .select(['id', 'plan_id', 'name', 'created_at'])
+      .where('workspace_id', '=', ws)
+      .where('created_by', '=', userId)
+      .orderBy('plan_id')
+      .orderBy('id')
+      .execute(),
   ]);
   files.push(
     await writeJson(sink, 'preferences.json', {
       autoFollow: preference?.auto_follow ?? null,
+      // How their CSV files are written; null is automatic, from their region (T-263).
+      csvSeparator: preference?.csv_separator ?? null,
       notifyOwnChanges: preference?.notify_own_changes ?? null,
       emailDelivery: preference?.email_delivery ?? null,
       quietHours:
@@ -470,6 +494,19 @@ export async function writePersonalData(
         draft: d.new_value,
         origin: d.origin,
         updatedAt: iso(d.updated_at),
+      })),
+      planBaselines: baselines.map((x) => ({
+        planId: x.plan_id,
+        baselineId: x.id,
+        name: x.name,
+        source: x.source,
+        createdAt: iso(x.created_at),
+      })),
+      planStructures: structures.map((x) => ({
+        planId: x.plan_id,
+        structureId: x.id,
+        name: x.name,
+        createdAt: iso(x.created_at),
       })),
       crossTrackReleases: crossTrackReleases.map((c) => ({
         name: c.name,

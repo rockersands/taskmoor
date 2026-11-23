@@ -122,3 +122,17 @@ history (`ticket_change`) records every change, comment and time entry and is ne
 - A rich text change (description, environment) carries a line of each side's text in
   `display` (80 characters at most, null with no document), never the document, so a reader
   can tell a change set, changed or cleared it.
+
+## Answered on 2026-11-16 (T-283): custom field names in history
+
+- A ticket's history and both activity streams name a custom field's row (`fieldName`, T-277 and
+  T-282) when the field applies to the ticket where it is now, as before, or when the reader may
+  read the field's definition (`GET /api/v1/fields/:id`): a shared field for anyone signed in, a
+  track's own field (local mode) for those who browse or administer that track, and site and
+  configuration administrators. Hiding a name the reader can fetch with one call protected
+  nothing, while the row's values were shown anyway.
+- It still reads as "a custom field" for a field since deleted, a local field of a track the
+  reader may not see (after the ticket moved out of it; CORE-003 (1)), and, for someone not
+  signed in, any field that no longer applies. Names of deleted fields are not stored in history.
+- One helper says who may read a field's definition (`apps/server/src/fields/access.ts`), used by
+  the fields API and by the history routes, which ask each owning track once per page.

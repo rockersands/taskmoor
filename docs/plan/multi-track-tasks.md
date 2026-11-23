@@ -2,8 +2,9 @@
 
 One plan that brings together work from several tracks and saved searches, so someone leading
 several teams can see it in one place without changing how those teams work. All of it is in 1.0
-except the hierarchy grid (PLN-010) and baselines (PLN-011) (the user's decision, 2026-11-03,
-`docs/plan/decisions.csv` rows "Multi-track scope" and "Multi-track first rules"). ADR-122 holds
+(the user's decision, 2026-11-03, `docs/plan/decisions.csv` rows "Multi-track scope" and
+"Multi-track first rules"), and since 2026-11-13 the hierarchy grid (PLN-010) and baselines,
+the critical path and levelling (PLN-011) too (row "Hierarchy grid and baselines"). ADR-122 holds
 the decisions, with a section per stage.
 
 ## Handoff (2026-11-03, third stage built)
@@ -83,10 +84,12 @@ MT-08 (T-089c to T-089g) have not started.
 - **Half-done:** nothing.
 - **Not measured:** PLN-001 (1), 300 tracks and 50,000 tickets in under 3 s. The 20-track
   measurement above suggests it holds; `plans.large.test.ts` takes the size as constants.
-- **Still outside M1 in the spec:** only PLN-010 (M2) and PLN-011 (M4). PLN-006 moved to M1
+- **Still outside M1 in the spec:** nothing. PLN-006 moved to M1
   with MT-02, PLN-005 and PLN-009 with MT-03, PLN-007 with MT-04, PLN-008 and PLN-013 with MT-05,
   PLN-002 and PLN-003 with MT-06 and PLN-004 with MT-07. Each moved to M1 with its stage, so nothing
-  listed them for 1.0 before they existed.
+  listed them for 1.0 before they existed. PLN-010 (from M2) and PLN-011 (from M4) moved to M1 as
+  Musts with ADR-122's stages 10 and 9 when they were designed (2026-11-14), reworded to what is
+  built; PLN-011 is built as MT-09 and PLN-010 as MT-10.
 
 ### Open question for the user (not blocking)
 
@@ -131,8 +134,9 @@ room: our own spec only, no Atlassian site, product or connection. A plan gives 
 | MT-06 | T-089e | Draft changes and scenarios | PLN-002, PLN-003 | 0110 | Built on `wave15/t089e-scenarios`, waiting for the gate and merge |
 | MT-07 | T-089f | Auto-scheduler, previewed as draft changes: a run places a plan's open level-0 tickets in its periods within capacity, blockers first, as scheduler drafts in a scenario, with a reason per ticket. PLN-004 reworded and moved to M1 | PLN-004 | none | Built on `wave18/t089f-auto-scheduler`, waiting for the gate and merge |
 | MT-08 | T-089g | Duplicate a plan, a link to any view, CSV and image export | PLN-014 | none | Built on `wave8/multi-track-stages`, waiting for the coordinator's gate and merge |
+| MT-09 | T-089a | Baselines, the critical path and levelling (ADR-122 stage 9): named baselines of a plan's own and sprint days, from Live or a scenario, compared with the days now in calendar days; the critical path with each ticket's slack, over the whole plan the viewer is shown; and Even out load, a mode of the auto-scheduler's run that moves only work putting someone over capacity, later, keeping its length. PLN-011 reworded and moved to M1 | PLN-011 | 0111 | Built on `wave19/t089a-hierarchy-baselines`, waiting for the gate and merge |
+| MT-10 | T-089a | The hierarchy grid (ADR-122 stage 10): a plan's Grid section, built for each viewer from structures the plan's editors save (Add tickets, up to two Group by, Add children down every level, up to two Add linked tickets), with ticket columns edited in place, totals of the rows below and formula columns computed in the browser, up to 100,000 rows; one row moved under another parent by dragging or Move under, after confirmation, through the ticket's own change; live and read-only in a scenario; hidden tickets only counted. PLN-010 reworded and moved to M1 | PLN-010 | 0112 | Built on `wave20/t089a-hierarchy-grid`, waiting for the gate and merge |
 
-PLN-010 (hierarchy grid) and PLN-011 (baselines) are not in this scope unless the user says so.
 Migration numbers: take the next free one on `main` when each stage starts (MT-03 took 0102).
 
 **Every ticket delivers:** spec, ADR section, routes with events, contract scenarios, audit

@@ -40,6 +40,19 @@ const REASON_ARGS: Record<ScheduleReason, ScheduleArgs> = {
   blocker_undated: { blockerId: 10 },
   blocker_not_placed: { blockerId: 10 },
   no_room: { teamId: 1, until: '2027-02-08' },
+  // Evening out load (ADR-122 stage 9).
+  moved_off_over: {
+    teamId: 1,
+    fromPeriod: '2026-12-01',
+    fromPeriodEnd: '2026-12-14',
+    toPeriod: '2026-12-15',
+    toPeriodEnd: '2026-12-28',
+    days: 14,
+    over: 6,
+  },
+  pushed_by_move: { blockerId: 10, days: 3 },
+  still_over: { teamId: 1, until: '2027-02-08' },
+  would_make_late: { ticketId: 4, why: 'kept', until: '2027-02-08' },
 };
 const WARNING_ARGS: Record<ScheduleWarningKind, ScheduleArgs> = {
   after_release: { releaseId: 21, releaseDate: '2026-12-01', days: 9 },
@@ -172,5 +185,62 @@ describe('the words of an auto-schedule run (PLN-004)', () => {
     expect(said.reason(entry('too_big', { teamId: 1, capacity: 7.5 }))).toBe(
       'Not placed: bigger than Atlas’s 7.5 hours in any period.',
     );
+  });
+
+  it('[PLN-011] says what evening out moved, did not move and left over, as the ADR words them', () => {
+    const said = words('en');
+    expect(said.reason(entry('moved_off_over'))).toBe(
+      'Moved 2 weeks later, from Dec 1–Dec 14 to Dec 15–Dec 28: Atlas was 6 points over.',
+    );
+    expect(
+      said.reason(entry('moved_off_over', { ...REASON_ARGS.moved_off_over, days: 3 })),
+    ).toMatch(/^Moved 3 days later, /);
+    expect(said.reason(entry('pushed_by_move'))).toBe(
+      'Moved 3 days later after SPA-10, which was moved.',
+    );
+    expect(said.reason(entry('pushed_by_move', { blockerId: 10, days: 7 }))).toBe(
+      'Moved 1 week later after SPA-10, which was moved.',
+    );
+    expect(said.reason(entry('still_over'))).toBe('Still over: no room for Atlas up to Feb 8.');
+    expect(said.reason(entry('would_make_late'))).toBe(
+      'Not moved: moving it would make kept SPA-4 late.',
+    );
+    expect(
+      said.reason(entry('would_make_late', { ticketId: 3, why: 'left_out', until: '2027-02-08' })),
+    ).toBe('Not moved: moving it would make SPA-3 late, and this run does not move that ticket.');
+    expect(
+      said.reason(entry('would_make_late', { ticketId: 3, why: 'past_end', until: '2027-02-08' })),
+    ).toBe('Not moved: moving it would push SPA-3 past Feb 8, the run’s last day.');
+    expect(
+      said.overLeft({
+        teamId: 1,
+        periodStart: '2027-02-01',
+        periodEnd: '2027-02-14',
+        over: 6,
+        onlyFixed: false,
+      }),
+    ).toBe('Atlas is 6 points over in Feb 1–Feb 14: no later period of the run has room.');
+    expect(
+      said.overLeft({
+        userId: 7,
+        periodStart: '2027-02-01',
+        periodEnd: '2027-02-14',
+        over: 1.5,
+        onlyFixed: true,
+      }),
+    ).toBe('Ana Ruiz is 1.5 points over in Feb 1–Feb 14: only tickets that do not move are there.');
+    // In Spanish too, every value filled in.
+    const es = words('es');
+    for (const cell of [true, false]) {
+      const text = es.overLeft({
+        teamId: 1,
+        periodStart: '2027-02-01',
+        periodEnd: '2027-02-14',
+        over: 6,
+        onlyFixed: cell,
+      });
+      expect(text).not.toMatch(/[{}]|undefined|NaN/);
+      expect(text).toMatch(/^Atlas supera su capacidad en 6 puntos/);
+    }
   });
 });

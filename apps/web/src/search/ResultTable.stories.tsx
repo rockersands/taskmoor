@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { MEMBER } from '../admin/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
 import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
@@ -98,6 +98,7 @@ export const Sorted: Story = {
  * assignee and priority, inside a phone's width with nothing sticking out, the key a finger wide.
  */
 export const StackedOnAPhone: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   render: (args) => (
     <div data-testid="phone-width" style={{ width: 360 }}>
@@ -225,5 +226,65 @@ export const ScrollsWithAFadeWhenNarrow: Story = {
     await expect(getComputedStyle(region).maskImage).toContain('linear-gradient');
     region.scrollLeft = region.scrollWidth;
     await waitFor(() => expect(region).toHaveAttribute('data-more', 'start'));
+  },
+};
+
+/**
+ * Headings a list orders by (T-330): each column the query language can order by is a button in
+ * its heading, named by its words, which tells the page; the heading keeps `aria-sort` and the
+ * arrow. Labels cannot be ordered, so their heading stays words.
+ */
+export const SortableHeadings: Story = {
+  args: { sort: { column: 'key', direction: 'ascending' }, onSort: fn() },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const key = canvas.getByRole('columnheader', { name: 'Key' });
+    await expect(key).toHaveAttribute('aria-sort', 'ascending');
+    await expect(key.querySelector('.search-sort-mark')).toHaveTextContent('\u2191');
+    await userEvent.click(within(key).getByRole('button', { name: 'Key' }));
+    await expect(args.onSort).toHaveBeenLastCalledWith('key');
+    const type = within(canvas.getByRole('columnheader', { name: 'Type' }));
+    type.getByRole('button', { name: 'Type' }).focus();
+    await userEvent.keyboard('{Enter}');
+    await expect(args.onSort).toHaveBeenLastCalledWith('ticketType');
+    await userEvent.click(canvas.getByRole('button', { name: 'Customer' }));
+    await expect(args.onSort).toHaveBeenLastCalledWith('cf[40]');
+    const labels = canvas.getByRole('columnheader', { name: 'Labels' });
+    await expect(within(labels).queryByRole('button')).toBeNull();
+  },
+};
+
+/** Ordered by a heading the other way (T-330): the arrow points down and `aria-sort` says so. */
+export const SortableReversed: Story = {
+  args: { sort: { column: 'key', direction: 'descending' }, onSort: fn() },
+  play: async ({ canvasElement }) => {
+    const key = within(canvasElement).getByRole('columnheader', { name: 'Key' });
+    await expect(key).toHaveAttribute('aria-sort', 'descending');
+    await expect(key.querySelector('.search-sort-mark')).toHaveTextContent('\u2193');
+  },
+};
+
+/**
+ * The headings on a tablet's touch screen (T-330; ADR-033): each button a finger tall and wide,
+ * and the table still scrolls inside its card, never the page.
+ */
+export const SortableOnATouchScreen: Story = {
+  tags: ['touch'],
+  beforeEach: onARealTouchScreen,
+  args: { sort: { column: 'updatedAt', direction: 'descending' }, onSort: fn() },
+  render: (args) => (
+    <div data-testid="tablet-width" style={{ width: 768 }}>
+      <ResultGrid {...args} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('columnheader', { name: 'Updated' })).toHaveAttribute(
+      'aria-sort',
+      'descending',
+    );
+    await expect(tooSmallForAFinger(canvasElement, ['.search-sort-button'])).toEqual([]);
+    const box = canvas.getByTestId('tablet-width');
+    await expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
   },
 };

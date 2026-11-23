@@ -1,7 +1,7 @@
 import { ApiError } from '../api/client';
 import type { Session, SessionUser } from '../session/SessionProvider';
 import type { TotpSetupStart } from '../twofactor/types';
-import type { AccountClient, AccountSession, TwoFactorStatus } from './client';
+import type { AccountClient, AccountPreferences, AccountSession, TwoFactorStatus } from './client';
 import type { PersonalDataClient, PersonalExport } from './personalData';
 
 /** Synthetic people and sessions for stories and tests. */
@@ -112,9 +112,18 @@ export function twoFactorOn(now = Date.now()): TwoFactorStatus {
  */
 export function fakeAccountClient(
   overrides: Partial<AccountClient> = {},
-  options: { user?: SessionUser; sessions?: AccountSession[]; twoFactor?: TwoFactorStatus } = {},
+  options: {
+    user?: SessionUser;
+    sessions?: AccountSession[];
+    twoFactor?: TwoFactorStatus;
+    preferences?: AccountPreferences;
+  } = {},
 ): AccountClient {
   let user = options.user ?? KALO;
+  let preferences: AccountPreferences = options.preferences ?? {
+    autoFollow: true,
+    csvSeparator: null,
+  };
   let sessions = options.sessions ?? sampleSessions();
   let factors = options.twoFactor ?? TWO_FACTOR_OFF;
   let nextKeyId = 100;
@@ -134,6 +143,11 @@ export function fakeAccountClient(
     updateProfile: async (changes) => {
       user = { ...user, ...changes };
       return user;
+    },
+    preferences: async () => preferences,
+    updatePreferences: async (changes) => {
+      preferences = { ...preferences, ...changes };
+      return preferences;
     },
     changePassword: async () => {
       const others = sessions.filter((s) => !s.current).length;

@@ -87,6 +87,23 @@
   border-bottom: 1px solid var(--color-border);
 }
 
+/*
+ * Months, sprints and releases cut at the card's right edge fade out there (S3-PL-7, D2), as the
+ * rows do at its foot. A strip after the scale, held at the edge in view while more of the head
+ * lies beyond it: scrolled to the end, or with nothing cut, it stands past the last label and
+ * covers nothing. The head only; the rows' bars have their own edge markers.
+ */
+.timeline-head::after {
+  content: "";
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  flex: none;
+  width: 2.5rem;
+  background: linear-gradient(to right, transparent, var(--color-surface-raised));
+  pointer-events: none;
+}
+
 .timeline-corner {
   position: sticky;
   left: 0;
@@ -780,4 +797,48 @@ button.timeline-bar:focus-visible {
 .timeline-link.is-same-sprint {
   stroke-dasharray: 1 3;
   stroke-linecap: round;
+}
+
+/*
+ * The critical path (PLN-011; ADR-122 stage 9): each bar on the path gets a heavy outline and a ▲
+ * just before it, never colour alone; a tight link between two of them is drawn heavier. The list
+ * in words is the dependency list's card, with numbered chains.
+ */
+.timeline-bar.is-critical {
+  border: 3px solid var(--color-text);
+}
+
+.timeline-critical-mark {
+  position: absolute;
+  top: 50%;
+  left: -0.875rem;
+  width: 0;
+  height: 0;
+  border-inline: 5px solid transparent;
+  border-bottom: 9px solid var(--color-text);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.timeline-link.is-critical {
+  stroke: var(--color-text);
+  stroke-width: 3;
+}
+
+.timeline-legend-mark.is-critical {
+  border: 3px solid var(--color-text);
+}
+
+.critical-path-summary {
+  margin: 0;
+  font-weight: var(--font-weight-strong);
+}
+
+.critical-path-list .board-hint {
+  margin: 0;
+}
+
+.critical-steps {
+  margin: var(--space-1) 0 0;
+  padding-inline-start: var(--space-5);
 }

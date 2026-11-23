@@ -12,6 +12,7 @@ import {
   type GroupSummary,
   type PeopleClient,
   peopleClient,
+  type ServiceAccountChoice,
   type User,
 } from './client';
 
@@ -22,8 +23,9 @@ export interface GroupsPageProps {
 
 /**
  * Groups (IAM-008), for site administrators: make, rename and delete groups, add and remove
- * people, and put groups inside groups (a member of an inner group counts in every group around
- * it; a loop is refused). Groups a directory keeps (M1-082) are changed there, and say so.
+ * people and service accounts (IAM-007), and put groups inside groups (a member of an inner group
+ * counts in every group around it; a loop is refused). Groups a directory keeps (M1-082) are
+ * changed there, and say so.
  */
 export function GroupsPage({ client = peopleClient }: GroupsPageProps) {
   const t = useT();
@@ -69,10 +71,11 @@ export function GroupsPage({ client = peopleClient }: GroupsPageProps) {
     },
     [t],
   );
+  /** Says what was done and reads the list again; resolves once it is read. */
   const said = (text: string) => {
     setMessage(text);
     setProblem(null);
-    void load();
+    return load();
   };
 
   return (
@@ -106,7 +109,7 @@ export function GroupsPage({ client = peopleClient }: GroupsPageProps) {
               client={client}
               onAdded={(name, id) => {
                 creating.close();
-                said(t('admin.groups.added', { name }));
+                void said(t('admin.groups.added', { name }));
                 setOpen(id);
               }}
               onCancel={creating.close}
@@ -161,7 +164,7 @@ export function GroupsPage({ client = peopleClient }: GroupsPageProps) {
                         onDeleted={(name) => {
                           // The group's row goes: the page's heading takes the focus.
                           setOpen(null);
-                          said(t('admin.groups.deleted', { name }));
+                          void said(t('admin.groups.deleted', { name }));
                           title.current?.focus();
                         }}
                         onProblem={(error) => setProblem(refusal(error))}
@@ -253,7 +256,8 @@ function GroupPanel({
   id: number;
   client: PeopleClient;
   groups: GroupSummary[];
-  onChanged: (message: string) => void;
+  /** Says what was done; resolves once the list is read again. */
+  onChanged: (message: string) => Promise<void>;
   onDeleted: (name: string) => void;
   onProblem: (error: unknown) => void;
 }) {
@@ -263,6 +267,8 @@ function GroupPanel({
   const [search, setSearch] = useState('');
   const [found, setFound] = useState<User[]>([]);
   const [child, setChild] = useState('');
+  const [accounts, setAccounts] = useState<ServiceAccountChoice[]>([]);
+  const [account, setAccount] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -274,6 +280,8 @@ function GroupPanel({
   // biome-ignore lint/correctness/useExhaustiveDependencies: once per group
   useEffect(() => {
     void load();
+    // Service accounts are not in the people list, so they have a choice of their own (T-320).
+    client.serviceAccounts().then(setAccounts, () => setAccounts([]));
   }, [id]);
 
   useEffect(() => {
@@ -295,13 +303,16 @@ function GroupPanel({
     };
   }, [client, search]);
 
+  /** True once the work is done and the group and the list are read again. */
   const run = async (work: () => Promise<void>, message: string) => {
     try {
       await work();
       await load();
-      onChanged(message);
+      await onChanged(message);
+      return true;
     } catch (error) {
       onProblem(error);
+      return false;
     }
   };
 
@@ -310,9 +321,21 @@ function GroupPanel({
   const memberIds = new Set(detail.members.map((m) => m.id));
   const childIds = new Set(detail.children.map((c) => c.id));
   const others = groups.filter((g) => g.id !== id && !childIds.has(g.id));
+  // A directory's group takes its members from the directory, where no service account is.
+  const addable = detail.directory ? [] : accounts.filter((a) => !memberIds.has(a.id));
 
   return (
     <div className="people-panel">
+      <GroupDetails
+        group={detail.group}
+        directory={detail.directory?.name ?? null}
+        onSave={(change) =>
+          run(
+            () => client.renameGroup(id, change),
+            t('admin.groups.saved', { name: change.name ?? name }),
+          )
+        }
+      />
       <h2 className="facts-title">{t('admin.groups.membersOf', { name })}</h2>
       {detail.members.length === 0 ? (
         <EmptyState compact title={t('admin.groups.noMembers')} />
@@ -322,6 +345,12 @@ function GroupPanel({
             <li key={m.id}>
               <span>
                 {m.name} · {m.email}
+                {m.kind === 'service' && (
+                  <>
+                    {' '}
+                    <span className="people-badge">{t('admin.groups.serviceAccount')}</span>
+                  </>
+                )}
               </span>
               <button
                 type="button"
@@ -383,6 +412,51 @@ function GroupPanel({
               </li>
             ))}
         </ul>
+      )}
+
+      {addable.length > 0 && (
+        <form
+          className="people-inline"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const picked = addable.find((a) => String(a.id) === account);
+            if (!picked) return;
+            void run(
+              async () => {
+                await client.addMember(id, picked.id);
+                setAccount('');
+              },
+              t('admin.groups.memberAdded', { person: picked.name, group: name }),
+            );
+          }}
+        >
+          <div className="form-field">
+            <label htmlFor={`${formId}-account`} className="form-label">
+              {t('admin.groups.addServiceAccount')}
+            </label>
+            <select
+              id={`${formId}-account`}
+              value={account}
+              aria-describedby={`${formId}-account-hint`}
+              onChange={(event) => setAccount(event.target.value)}
+            >
+              <option value="">{t('admin.groups.pickServiceAccount')}</option>
+              {addable.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+            <p id={`${formId}-account-hint`} className="form-hint">
+              {t('admin.groups.addServiceAccountHint')}
+            </p>
+          </div>
+          <div className="form-actions">
+            <button type="submit" className="button-secondary" disabled={!account}>
+              {t('admin.groups.addServiceAccountShort')}
+            </button>
+          </div>
+        </form>
       )}
 
       <h2 className="facts-title">{t('admin.groups.childrenOf', { name })}</h2>
@@ -475,5 +549,87 @@ function GroupPanel({
         />
       </div>
     </div>
+  );
+}
+
+/**
+ * A group's name and description (IAM-008; T-320). A directory owns the name of a group it keeps,
+ * so only its description changes here, and the form says where the name is changed.
+ */
+function GroupDetails({
+  group,
+  directory,
+  onSave,
+}: {
+  group: { name: string; description: string };
+  directory: string | null;
+  /** True once saved and the lists are read again. */
+  onSave: (change: { name?: string; description: string }) => Promise<boolean>;
+}) {
+  const t = useT();
+  const id = useId();
+  const save = useRef<HTMLButtonElement>(null);
+  const [name, setName] = useState(group.name);
+  const [description, setDescription] = useState(group.description);
+  /** Saved: Save takes the keyboard back once the page has drawn what was read again. */
+  const [saved, setSaved] = useState(false);
+  // The form stays, so the keyboard stays in it; it starts again from what was saved.
+  useEffect(() => {
+    setName(group.name);
+    setDescription(group.description);
+  }, [group.name, group.description]);
+  // A new name can move the group's row in the list, which takes the keyboard from the form.
+  useEffect(() => {
+    if (!saved) return;
+    save.current?.focus();
+    setSaved(false);
+  }, [saved]);
+  return (
+    <form
+      className="people-inline"
+      aria-label={t('admin.groups.editOf', { name: group.name })}
+      onSubmit={(event) => {
+        event.preventDefault();
+        const wanted = name.trim();
+        if (directory === null && !wanted) return;
+        void onSave({
+          ...(directory === null ? { name: wanted } : {}),
+          description: description.trim(),
+        }).then((done) => done && setSaved(true));
+      }}
+    >
+      {directory === null ? (
+        <div className="form-field">
+          <label htmlFor={`${id}-name`} className="form-label">
+            {t('admin.groups.name')}
+          </label>
+          <input
+            id={`${id}-name`}
+            type="text"
+            required
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+        </div>
+      ) : (
+        <p className="page-note">{t('admin.groups.directoryName', { directory })}</p>
+      )}
+      <div className="form-field">
+        <label htmlFor={`${id}-description`} className="form-label">
+          {t('admin.groups.description')}
+        </label>
+        <input
+          id={`${id}-description`}
+          type="text"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+        />
+      </div>
+      <div className="form-actions">
+        <button ref={save} type="submit" className="button-secondary">
+          {t('admin.groups.save')}
+        </button>
+      </div>
+    </form>
   );
 }

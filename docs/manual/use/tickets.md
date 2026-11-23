@@ -1,8 +1,8 @@
 ---
 title: "Working with tickets"
 audience: users
-sources: apps/web/src/tickets/view/drafts.tsx, apps/server/src/routes/tickets.ts, apps/web/src/richtext/slashTools.ts, apps/web/src/richtext/BlockPrompt.tsx, packages/richtext/src/schema.ts, packages/richtext/src/adf.ts, apps/web/src/tickets/tools/ChecklistsPanel.tsx, apps/server/src/routes/checklists.ts, apps/server/src/notifications/checklists.ts, apps/web/src/tickets/tools/SubticketsPanel.tsx, apps/web/src/tickets/tools/client.ts, apps/server/src/routes/subtickets.ts, apps/web/src/tickets/tools/LinksPanel.tsx, apps/web/src/tickets/tools/TicketPicker.tsx, docs/adr/0120-ticket-tools.md, apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/shell/OverlayLayer.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/server/src/routes/activity.ts, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md, apps/web/src/shell/NavList.tsx, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/HelpTip.tsx, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/tickets/view/TicketPopup.tsx, apps/web/src/routing/router.ts, apps/web/src/tickets/templates/TemplatePicker.tsx, apps/web/src/tickets/templates/start.ts, apps/server/src/routes/ticket-templates.ts, docs/adr/0113-ticket-templates.md, apps/web/src/tracks/recentTracks.ts, apps/server/src/tracks/membership.ts, apps/web/src/tutorial/FirstRunOffer.tsx, apps/web/src/attachments/FileDrop.tsx, apps/web/src/richtext/expandView.ts, apps/web/src/tickets/tools/ChildStatusMenu.tsx, apps/web/src/tickets/view/StatusMenu.tsx, apps/web/src/styles/print.css, apps/web/src/skins/skins.ts, apps/web/src/styles/ticket-view.css, docs/plan/page-review-findings.md, apps/web/src/tickets/PersonPicker.tsx, apps/web/src/shell/TrackSelect.tsx, apps/web/src/tickets/form.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/rich-text.ts, apps/server/src/privacy/export.ts, apps/server/src/tickets/checklists.ts, apps/server/src/import/load-checklists.ts, apps/web/src/bulk/client.ts, apps/web/src/styles/tickets.css, apps/web/src/styles/shell.css, apps/server/src/routes/fields.ts, apps/server/src/routes/teams.ts, apps/server/src/fields/values.ts, apps/web/src/i18n/days.ts, apps/web/src/tickets/refusedFields.ts, apps/web/src/tickets/customFieldNames.ts
-accessed: 2026-11-14
+sources: apps/web/src/tickets/view/drafts.tsx, apps/server/src/routes/tickets.ts, apps/web/src/richtext/slashTools.ts, apps/web/src/richtext/BlockPrompt.tsx, packages/richtext/src/schema.ts, packages/richtext/src/adf.ts, apps/web/src/tickets/tools/ChecklistsPanel.tsx, apps/server/src/routes/checklists.ts, apps/server/src/notifications/checklists.ts, apps/web/src/tickets/tools/SubticketsPanel.tsx, apps/web/src/tickets/tools/client.ts, apps/server/src/routes/subtickets.ts, apps/web/src/tickets/tools/LinksPanel.tsx, apps/web/src/tickets/tools/TicketPicker.tsx, docs/adr/0120-ticket-tools.md, apps/web/src/App.tsx, apps/web/src/routing/ImportedLinkPage.tsx, packages/webconfig/src/links.ts, docs/adr/0097-imported-keys-and-links.md, apps/web/src/home/HomePage.tsx, apps/web/src/home/client.ts, apps/web/src/shell/CommandPalette.tsx, apps/web/src/shell/OverlayLayer.tsx, apps/web/src/tickets/CreateTicketDialog.tsx, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/server/src/routes/activity.ts, apps/web/src/comments/CommentsPanel.tsx, apps/web/src/attachments/AttachmentPanel.tsx, apps/web/src/attachments/AttachmentPreview.tsx, apps/web/src/richtext/RichTextEditor.tsx, apps/web/src/richtext/CollaborativeEditor.tsx, apps/web/src/locks/useLockText.ts, apps/web/src/bulk/BulkOperationPage.tsx, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/bulk.ts, apps/server/src/tickets/followers.ts, docs/adr/0042-edit-locks.md, docs/adr/0043-bulk-operations.md, docs/adr/0044-comments.md, docs/adr/0046-home-create-dialog-palette.md, docs/specs/00-terminology.md, docs/specs/01a-core-work-tracking.md, apps/web/src/tickets/view/InfoPanel.tsx, apps/server/src/tickets/info.ts, apps/web/src/tickets/clone/CloneDialog.tsx, apps/server/src/routes/clone.ts, apps/server/src/clone/run.ts, docs/adr/0077-clone-and-deep-clone.md, apps/web/src/shell/NavList.tsx, apps/web/src/shell/PageHeader.tsx, apps/web/src/shell/HelpTip.tsx, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/tickets/view/TicketPopup.tsx, apps/web/src/routing/router.ts, apps/web/src/tickets/templates/TemplatePicker.tsx, apps/web/src/tickets/templates/start.ts, apps/server/src/routes/ticket-templates.ts, docs/adr/0113-ticket-templates.md, apps/web/src/tracks/recentTracks.ts, apps/server/src/tracks/membership.ts, apps/web/src/tutorial/FirstRunOffer.tsx, apps/web/src/attachments/FileDrop.tsx, apps/web/src/richtext/expandView.ts, apps/web/src/tickets/tools/ChildStatusMenu.tsx, apps/web/src/tickets/view/StatusMenu.tsx, apps/web/src/styles/print.css, apps/web/src/skins/skins.ts, apps/web/src/styles/ticket-view.css, docs/plan/page-review-findings.md, apps/web/src/tickets/PersonPicker.tsx, apps/web/src/shell/TrackSelect.tsx, apps/web/src/tickets/form.ts, apps/server/src/routes/layouts.ts, apps/server/src/routes/rich-text.ts, apps/server/src/privacy/export.ts, apps/server/src/tickets/checklists.ts, apps/server/src/import/load-checklists.ts, apps/web/src/bulk/client.ts, apps/web/src/styles/tickets.css, apps/web/src/styles/shell.css, apps/server/src/routes/fields.ts, apps/server/src/routes/teams.ts, apps/server/src/fields/values.ts, apps/web/src/i18n/days.ts, apps/web/src/tickets/refusedFields.ts, apps/web/src/tickets/customFieldNames.ts, apps/web/src/tickets/defaults.ts, apps/web/src/fields/numberFormat.ts, apps/server/src/fields/access.ts, apps/web/src/i18n/zone.ts, apps/web/src/shell/DangerAction.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/web/src/richtext/EditorTools.tsx
+accessed: 2026-11-16
 attestation: own-words
 ---
 # Working with tickets
@@ -90,16 +90,18 @@ it. The same form also has its own page at the address ending in `create`.
 2. Fill in the fields. Rich text fields (description and environment) use the editor described
    in [Descriptions and rich text](#descriptions-and-rich-text). Separate labels with spaces or commas.
    Under the estimates a hint shows the format (**2h 30m**, or **1d**), and a number field such as
-   **Points** asks for a number.
+   **Points** asks for a number. A custom field starts with the default an administrator gave it
+   for the track and ticket type, so the form shows what the ticket would get; empty it to leave
+   the ticket without one.
 3. Press **Create**. The dialog says **PAY-42 was created.** and offers **Open PAY-42**.
 
 People, the parent, releases, areas, groups and teams are chosen with pickers:
 
 | Field | How you choose it |
 |---|---|
-| **Assignee** | Type part of a name and pick the person from the matches. Only people who may be given tickets in the track are offered. **Remove** clears the choice so you can pick someone else. |
+| **Assignee** | Type part of a name and pick the person from the matches. Only people who may be given tickets in the track are offered. **Remove** clears the choice so you can pick someone else. The permission to assign tickets in the track is enough to search: without **See people and groups**, the picker finds people by name only, once you type, and only those who can see the track. |
 | **Requester** | The same way, among the people of the site. Left empty, you are the requester. The field shows only if you have the permission to change the requester. |
-| A custom person field | The same way, among the people of the site. When an administrator limited the field to a group's or a role's people, only they are offered, and the field says so. A field that holds several people keeps its search field for the next one. |
+| A custom person field | The same way, among the people of the site, for those with the **See people and groups** permission. When an administrator limited the field to a group's or a role's people, only they are offered, to anyone who can fill the field, and the field says so. A field that holds several people keeps its search field for the next one. |
 | A custom group field | Type part of a group's name and pick it, as for people. The site's groups are offered to those with the **See people and groups** permission, as people to mention are. |
 | A custom team field | Type part of a team's name and pick it, as for people. Everyone signed in can find the site's teams. |
 | **Parent** | Type the parent's key, such as `PAY-12`, or words from its summary, and pick it from the list with the mouse or the arrow keys and Enter. Only tickets one level above the chosen ticket type are offered, and for a subticket only those in the same track. Choosing a type at another level lets go of the parent. **Remove** clears it. |
@@ -135,8 +137,12 @@ template's. A value that cannot go into its picker shows under **Also from this 
 checkbox instead, as do the template's subtickets (**Create its 2 subtickets**): a release or area
 that is no longer offered, for example one archived since the template was saved, and a person or
 group you may not see (without the **See people and groups** permission, or a person whose account
-is deactivated), whose name the form does not show. Untick the checkbox to leave the value out. A
-release or area you tick in the form yourself takes the place of the template's.
+is deactivated), whose name the form does not show. That goes for the template's assignee too,
+which then shows as **Assignee**. In a person field an administrator limited to a group's or a
+role's people, a person is named when the field's own list offers them for this ticket type, with
+or without the permission; one it no longer offers shows under **Also from this template**. Untick
+the checkbox to leave the value out. A release or area you tick in the form yourself takes the
+place of the template's.
 
 A template never gets round what you may do. Fields that are hidden for this type or that you may
 not set do not show, and they stay off the ticket. After **Create** the form names them: **Left
@@ -149,9 +155,11 @@ track's summary page links to its templates, under **Ticket templates**, for any
 
 When the server refuses a value, the message shows next to the field, for example **This field
 is required.**, or **This release or area is archived. Choose another.** for one archived after
-the form opened. A release, area, priority or ticket type that is not the track's own, in a field
-of its own or a custom field, says **This track does not offer this choice. Choose one of its
-own.** If there is no track you may create tickets in, the form says so.
+the form opened. A release that is not the track's own, in a field of its own or a custom release
+field, says **This release is not in this track. Choose one of its releases.**, and an area says
+**This area is not in this track. Choose one of its areas.** A priority or ticket type the track
+does not offer says **This track does not offer this choice. Choose one of its own.** If there is
+no track you may create tickets in, the form says so.
 
 Boards' backlogs and a track's list can also make a ticket from a summary alone: see
 [the backlog](boards.md#the-backlog) and [the list view](views.md#the-list-view).
@@ -232,16 +240,20 @@ Each change saves at once and the page says **Saved.** If someone changed the ti
 opened it, the page says so: read it again and retry. A choice the track does not offer, or a
 release or area archived meanwhile, is refused with the create form's words: **This track does
 not offer this choice. Choose one of its own.** or **This release or area is archived. Choose
-another.** Any refused value is named by its field's label, a custom field by its name, each with
-the reason: **Check these values. Priority: This track does not offer this choice. Choose one of
-its own.** A move whose form asks for fields the page cannot fill in names them the same way. A
+another.** A release or area of the ticket's own fields that is not the track's says which it is,
+as on the create form (**This release is not in this track. Choose one of its releases.**), in a
+change here and on a move's screen alike; a custom field's keeps the general words. Any refused value is named by its field's label, a custom
+field by its name, each with the reason: **Check these values. Priority: This track does not
+offer this choice. Choose one of its own.** A move whose form asks for fields the page cannot fill in names them the same way. A
 custom field that is not on the ticket's form is named from the track's list of fields, looked up
 the first time a message needs it; only when that list cannot be read does the message say **A
 custom field** instead.
 
 Number fields on the ticket's edit form, such as **Points**, show in the details too, reading
 **None** while empty: type a value and press Enter or leave the box, clear it to remove the value, and Escape puts back what is
-saved. Someone who may not change it reads the value. The ticket view does not yet show other
+saved. Someone who may not change it reads the value. A number field an administrator set to show
+as a currency, a percentage or with a set number of decimals reads that way, such as **€1,234.50**,
+and under the box when you may change it. The ticket view does not yet show other
 custom fields; they can be shown as columns in [search results](search.md#search-results).
 
 ### Info
@@ -286,9 +298,17 @@ Escape closes it and leaves what you typed. It offers:
 | Text | Paragraph, headings 1 to 6, quote |
 | Lists | Bulleted, numbered, checklist |
 | Panels | Information, note, warning, success, error |
-| Layout | Collapsible section, two or three columns, table, divider |
+| Layout | Collapsible section, two or three columns, table, divider; inside a table, its edits |
 | In a line | Link, mention, another ticket, emoji, date, status label |
-| Other | Code block with a language, a file of this ticket |
+| Other | Code block with a language, a file of this ticket, picked or uploaded |
+
+On the create form and in a ticket template, the menu finds another ticket too, but offers no
+file: a file belongs to a ticket, and there is none yet.
+
+With the caret in a table, the menu offers that table's edits in place of a new table: **Add a row
+below**, **Add a column to the right**, **Delete this row**, **Delete this column** and **Delete the
+table**, the same as the buttons the toolbar shows there. A table's last row or column goes only
+with the table, so the menu leaves it out and the toolbar's button for it is off.
 
 A block that needs something asks for it above the text, such as a code block's language or a
 status label's words and colour. A code block's language is one word, such as `sql`; a list of
@@ -310,9 +330,12 @@ Columns are equal unless you give them widths: with the caret in a column, `/wid
 **Column widths**, such as a quarter and three quarters, for all of them at once. Columns stack on
 a phone. A file is found by its name among the ticket's attachments and opens for whoever may see
 it. When two files share a name, the list says each one's size, when it came and who added it, and
-the text keeps the one you picked. A ticket shows only its key, so a document never gives away the
-summary of a ticket someone may not see. Every block can be written in Markdown and in
-[wiki markup](../admin/rest-api.md#rich-text), with a few losses listed there.
+the text keeps the one you picked. Where you may add files to the ticket, the list also has **Upload
+a file**: the file is added to the ticket's **Attachments**, with their size limit and other checks,
+and goes into the text as soon as it arrives. While it is sent the list says so; if it cannot be
+added, the reason shows there and nothing goes in. A ticket shows only its key, so a document
+never gives away the summary of a ticket someone may not see. Every block can be written in
+Markdown and in [wiki markup](../admin/rest-api.md#rich-text), with a few losses listed there.
 
 ### Comments and mentions
 
@@ -365,6 +388,11 @@ ticket's [history](#history) and reaches others who have the ticket open. Changi
 the **Edit tickets** permission; a status that reserves editing to some people holds here too, and
 the section says so. Everyone who can see the ticket can read them.
 
+An item goes at once: the history keeps its words, so typing it again brings it back. A checklist
+that holds items asks first, in the danger colour, saying how many items go and how many were done:
+the history keeps only the checklist's name, so it cannot be undone. **Cancel**, which has the
+focus, or Escape keeps it. An empty checklist goes at once.
+
 Where the track's administrators turn it on, the ticket's followers are told when its checklists
 change, and a run of changes comes as one notice that says who made them and how many, never what
 an item says. You are never told of your own changes. See [Notifications and your
@@ -414,7 +442,9 @@ the list, Enter picks and Escape closes it. Pick as many as you need, then press
 **Remove** beside a link takes it away from both tickets.
 
 The list only looks in this ticket's track. Links to other tracks, which an import or the
-[REST API](../admin/rest-api.md) can make, show and can be removed like any other. Changing
+[REST API](../admin/rest-api.md) can make, show and can be removed too, but the list cannot make
+them again, so their **Remove**, in the danger colour, asks first and says so. A link inside the
+track goes at once. Changing
 links needs the **Link tickets** permission. Site and configuration administrators manage the
 link types, and can turn links off, through the [REST API](../admin/rest-api.md).
 
@@ -434,9 +464,12 @@ tracking is off for your site, the tab says so.
 
 The **History** tab lists every change, newest first: who, when and what, such as "Changed
 Priority from Normal to High". Dates read in your language, as on the ticket, a custom
-date-and-time field's with its time on your device's clock ("Set Cut-over to Oct 13, 2026,
-4:00 AM"). A custom field is named as the ticket shows it; one that no longer applies to the
-ticket where it is now reads as "a custom field". **Show older changes** reads further back, and what it brought stays when the
+date-and-time field's with its time on [your clock](account.md#your-time-zone) ("Set Cut-over to
+Oct 13, 2026, 4:00 AM"). A custom field is named as the ticket shows it, and so is one that no
+longer applies to the ticket where it is now, when you may read its definition: any field shared
+between tracks, and a track's own field when you can see that track. A field since deleted, a field
+of a track you cannot see and, for someone not signed in, any field that no longer applies read as
+"a custom field". **Show older changes** reads further back, and what it brought stays when the
 ticket changes.
 
 The **All** tab mixes comments, changes and time entries in one stream, newest first: a time
@@ -528,7 +561,8 @@ result for every ticket stay readable for 14 days after it finishes. The web app
 ending in `bulk/` and the operation's number: how many tickets were changed, not changed,
 skipped or waiting, a **Cancel the rest** button while it runs, and every ticket that was not
 changed with the reason; a value the ticket's track does not offer, or an archived release or
-area, is named as the create form names it. Above the progress, a line says what the change was: each field it set
+area, is named as the create form names it, a release or area of the ticket's own fields saying
+which it is (**This area is not in this track. Choose one of its areas.**). Above the progress, a line says what the change was: each field it set
 and the new value (**The change: Priority set to High.**), the track a move went to, or the
 status a transition took the tickets to (**The change: moved to the Done status.**). Once it
 finishes, **Tickets that were changed** links each changed ticket (for a clone, each copy), and

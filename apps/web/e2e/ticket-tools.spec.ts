@@ -352,3 +352,37 @@ test('[NTF-014] a reference to one of two files of one name opens that one (TT-4
   const link = page.locator('.comment-body').last().getByRole('link', { name: 'notes.txt' });
   await expect(link).toHaveAttribute('href', new RegExp(`/attachments/${second.id}/content`));
 });
+
+// Tools around the blocks (T-120).
+
+test('[NTF-013] [CORE-021] a file uploaded from the file prompt goes in, and under Attachments (T-120)', async ({
+  context,
+  page,
+}) => {
+  const here = await makeTicket(context.request, `Upload from text ${Date.now()}`);
+  await open(page, here.key);
+  const composer = page.locator('.comment-composer');
+  await composer.locator('[contenteditable]').click();
+  await page.keyboard.type('/image');
+  await expect(page.getByRole('listbox', { name: 'Blocks to add' })).toBeVisible();
+  await page.keyboard.press('Enter');
+  // A new ticket has no files: the prompt offers to upload one.
+  await expect(composer.getByText('No file of this ticket matches.')).toBeVisible();
+  await composer.getByLabel('Upload a file').setInputFiles({
+    name: 'from-the-text.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('written while commenting'),
+  });
+  await expect(composer.locator('[data-attachment-ref="from-the-text.txt"]')).toBeVisible();
+  await expect(composer.getByLabel('Upload a file')).toHaveCount(0);
+  // The ticket's own file, through the panel's upload: listed there without a reload.
+  await expect(
+    page
+      .getByRole('region', { name: 'Attachments' })
+      .getByText('from-the-text.txt', { exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Comment', exact: true }).click();
+  await expect(
+    page.locator('.comment-body').last().getByRole('link', { name: 'from-the-text.txt' }),
+  ).toHaveAttribute('href', /\/attachments\/\d+\/content/);
+});

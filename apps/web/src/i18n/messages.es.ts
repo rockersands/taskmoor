@@ -433,6 +433,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Cada informe lee los tickets de este tablero en el periodo que elijas. Flujo acumulado muestra dónde se acumula el trabajo, el gráfico de control y el tiempo de ciclo cuánto tardan los tickets, y el tiempo en cada estado dónde esperan. Los gráficos y las tablas solo cuentan los tickets que puedes ver.',
   'about.sprintReport':
     'Comprometido cuenta los tickets que tenía el sprint al empezar; Añadido y Quitado, lo que cambió después del inicio. Las listas de abajo nombran los tickets completados, no completados y quitados, con cualquier estimación que cambió por el camino.',
+  'about.plan':
+    'Cada pestaña muestra los tickets de este plan a su manera: Resumen los cuenta, Cronograma y Calendario los colocan en sus fechas, Lista los da en filas, Capacidad compara el trabajo con lo que cabe a cada equipo en un periodo, y Versiones y Tableros de programa lo siguen entre tracks. Elige un escenario para probar cambios como borradores antes de que lleguen a los tickets. Cada persona ve en un plan solo los tickets que ya puede ver.',
   'help.about': '¿Para qué sirve {name}?',
   'help.menu': 'Ayuda',
   'help.tutorials': 'Tutoriales',
@@ -786,6 +788,7 @@ export const messagesEs: Record<MessageId, string> = {
   'search.run': 'Buscar',
   'search.query': 'Consulta',
   'search.suggestions': 'Sugerencias',
+  'search.suggestionCount': '{count, plural, one {# sugerencia} other {# sugerencias}}',
   'search.hint': 'Ctrl+Espacio sugiere; Tab o Intro toma una sugerencia; Intro busca.',
   'search.errorAt': '{message} (en la columna {column}, cerca de "{near}")',
   'search.results': 'Resultados',
@@ -1258,6 +1261,169 @@ export const messagesEs: Record<MessageId, string> = {
     'Alguien comparte contigo un grupo de tracks o te lo asigna',
   'notifications.event.checklist_changed':
     'Cambia una lista de comprobación de un ticket que sigues',
+  // Políticas de notificaciones (NTF-001) y Correo (NTF-002, NTF-004) en Administración (T-155).
+  'settings.notificationPolicies': 'Políticas de notificaciones',
+  'settings.notificationPoliciesHint':
+    'Quién se entera de qué cambios en los tickets, en los tracks que usan cada política.',
+  'settings.email': 'Correo',
+  'settings.emailHint':
+    'Si el correo puede salir, cuánto esperan los cambios para llegar juntos y la hora del resumen.',
+  'notificationPolicies.title': 'Políticas de notificaciones',
+  'notificationPolicies.about':
+    'Una política de notificaciones empareja eventos, como un comentario añadido, con quién se entera de ellos: el responsable, los seguidores, una persona, un grupo, un rol del track o las personas de un campo. Cada track usa una política, o la predeterminada si no nombra ninguna, y cada persona elige después si un evento le llega a su bandeja de entrada, a su correo o a ambos. La política que usa un track se elige en Qué conjuntos usa un track.',
+  'notificationPolicies.trackAbout':
+    'Este track tiene su propia configuración, así que puede tener sus propias políticas de notificaciones: quién se entera de qué cambios solo en este track. Los demás tracks no se ven afectados.',
+  'notificationPolicies.trackIntro':
+    'Las políticas de notificaciones propias de este track. Las compartidas son cosa de los administradores del sitio y de la configuración.',
+  'notificationPolicies.forbidden':
+    'Solo los administradores del sitio y de la configuración, y quienes llevan un track con configuración propia, gestionan las políticas de notificaciones.',
+  'notificationPolicies.choose.intro':
+    'Llevas estos tracks con configuración propia. Elige uno para gestionar sus propias políticas de notificaciones.',
+  'notificationPolicies.choose.none':
+    'Ninguno de los tracks que llevas tiene configuración propia. Usan políticas de notificaciones compartidas, que cambian los administradores del sitio y de la configuración.',
+  'notificationPolicies.choose.open': 'Políticas de notificaciones de {key} · {name}',
+  'notificationPolicies.scope.shared':
+    '{key} usa configuración compartida, así que usa una política de notificaciones compartida, que cambian los administradores del sitio y de la configuración.',
+  'notificationPolicies.loading': 'Leyendo las políticas de notificaciones…',
+  'notificationPolicies.failed':
+    'No se pudieron leer las políticas de notificaciones. Inténtalo de nuevo en un momento.',
+  'notificationPolicies.new': 'Nueva política',
+  'notificationPolicies.addPolicy': 'Añadir política',
+  'notificationPolicies.cancelNew': 'Cancelar',
+  'notificationPolicies.name': 'Nombre de la política',
+  'notificationPolicies.description': 'Descripción',
+  'notificationPolicies.startWith': 'Empezar con',
+  'notificationPolicies.startEmpty': 'Sin reglas',
+  'notificationPolicies.startCopy': 'Las reglas de {name}',
+  'notificationPolicies.startHint':
+    'Una política sin reglas no avisa a nadie de nada, así que empezar con una copia suele ser más rápido.',
+  'notificationPolicies.added': 'Se añadió la política {name}.',
+  'notificationPolicies.sharedList': 'Políticas compartidas',
+  'notificationPolicies.ownList': 'Políticas de {key}',
+  'notificationPolicies.chooseNote':
+    'La política que usa un track se elige con sus otros conjuntos:',
+  'notificationPolicies.chooseLink': 'Qué conjuntos usa un track',
+  'notificationPolicies.trackUsesOwn': '{key} usa {name}.',
+  'notificationPolicies.trackUsesShared':
+    '{key} usa ahora una política compartida. Usa una propia para cambiar quién se entera de qué en él.',
+  'notificationPolicies.emptyTitle': 'Aún no hay políticas',
+  'notificationPolicies.empty': 'Añade una con Nueva política y úsala para {key}.',
+  'notificationPolicies.emptyShared':
+    'Añade una con Nueva política y elígela para los tracks en Qué conjuntos usa un track.',
+  'notificationPolicies.default': 'Predeterminada',
+  'notificationPolicies.defaultUse': 'La usan los tracks que no nombran otra política.',
+  'notificationPolicies.usedBy': 'La usan {tracks}.',
+  'notificationPolicies.unused': 'Ningún track la usa.',
+  'notificationPolicies.moreTracks': '{tracks} y {count} más',
+  'notificationPolicies.ruleCount':
+    '{count, plural, =0 {Sin reglas.} one {# regla.} other {# reglas.}}',
+  'notificationPolicies.manage': 'Gestionar',
+  'notificationPolicies.manageOf': 'Gestionar {name}',
+  'notificationPolicies.rulesOf': 'Quién se entera de qué en {name}',
+  'notificationPolicies.noRules': 'Aún no hay reglas',
+  'notificationPolicies.noRulesBody':
+    'Nadie se entera de nada por esta política hasta que tenga una regla. Las menciones siguen llegando a las personas mencionadas.',
+  'notificationPolicies.remove': 'Quitar',
+  'notificationPolicies.removeRule': 'Quitar {recipient} de {event}',
+  'notificationPolicies.ruleRemoved': 'Regla quitada en {event}: {recipient}.',
+  'notificationPolicies.ruleAdded': 'Regla añadida en {event}: {recipient}.',
+  'notificationPolicies.addRuleTo': 'Añadir una regla a {name}',
+  'notificationPolicies.event': 'Evento',
+  'notificationPolicies.builtInEvents': 'Eventos de todos los tracks',
+  'notificationPolicies.transitionEvents': 'Eventos que lanzan las transiciones',
+  'notificationPolicies.otherEvent': 'Otro evento de transición…',
+  'notificationPolicies.eventName': 'Nombre del evento de transición',
+  'notificationPolicies.eventNameHint':
+    'Como lo nombra el flujo de trabajo de la transición: hasta 100 letras, dígitos, espacios, puntos, guiones y guiones bajos.',
+  'notificationPolicies.eventNameInvalid':
+    'Escribe el nombre del evento: hasta 100 letras, dígitos, espacios, puntos, guiones y guiones bajos.',
+  'notificationPolicies.customEvent': 'Evento de transición «{name}»',
+  'notificationPolicies.recipientKind': 'Quién se entera',
+  'notificationPolicies.findPerson': 'Buscar a una persona',
+  'notificationPolicies.person': 'Persona',
+  'notificationPolicies.personEmpty': 'Escribe un nombre arriba para buscar a alguien',
+  'notificationPolicies.group': 'Grupo',
+  'notificationPolicies.role': 'Rol del track',
+  'notificationPolicies.userField': 'Campo de usuario',
+  'notificationPolicies.groupField': 'Campo de grupo',
+  'notificationPolicies.addRule': 'Añadir regla',
+  'notificationPolicies.duplicate': 'Esa regla ya existe.',
+  'notificationPolicies.pickTarget': 'Elige primero a quién nombra la regla.',
+  'notificationPolicies.gone': 'algo que ya se eliminó',
+  'notificationPolicies.recipient.assignee': 'El responsable',
+  'notificationPolicies.recipient.requester': 'El solicitante',
+  'notificationPolicies.recipient.follower': 'Los seguidores',
+  'notificationPolicies.recipient.area_owner': 'Los propietarios de las áreas del ticket',
+  'notificationPolicies.recipient.track_owner': 'El propietario del track',
+  'notificationPolicies.recipient.current_user': 'La persona que hizo el cambio',
+  'notificationPolicies.recipient.user': '{name}',
+  'notificationPolicies.recipient.group': 'Miembros de {name}',
+  'notificationPolicies.recipient.role': 'Personas con el rol {name}',
+  'notificationPolicies.recipient.user_field': 'Personas en {name}',
+  'notificationPolicies.recipient.group_field': 'Miembros de los grupos en {name}',
+  'notificationPolicies.kind.user': 'Una persona',
+  'notificationPolicies.kind.group': 'Los miembros de un grupo',
+  'notificationPolicies.kind.role': 'Las personas con un rol del track',
+  'notificationPolicies.kind.user_field': 'Las personas de un campo de usuario',
+  'notificationPolicies.kind.group_field': 'Los miembros de los grupos de un campo de grupo',
+  'notificationPolicies.detailsOf': 'Nombre y descripción de {name}',
+  'notificationPolicies.saveDetails': 'Guardar nombre y descripción',
+  'notificationPolicies.detailsSaved': 'Se guardó {name}.',
+  'notificationPolicies.useFor': 'Usar esta política para {key}',
+  'notificationPolicies.useHint':
+    'Desde entonces el track sigue esta política. Solo los administradores del sitio y de la configuración pueden volver a darle una compartida.',
+  'notificationPolicies.usedFor': '{key} usa ahora {name}.',
+  'notificationPolicies.delete': 'Eliminar',
+  'notificationPolicies.deleteOf': 'Eliminar {name}',
+  'notificationPolicies.confirmDelete':
+    '{name} y sus reglas se eliminan para siempre. Ningún track la usa, así que nadie deja de enterarse de nada.',
+  'notificationPolicies.deleted': 'Se eliminó la política {name}.',
+  'notificationPolicies.defaultStays':
+    'La política predeterminada no se puede eliminar: la usan los tracks que no nombran otra.',
+  'notificationPolicies.inUseStays':
+    'Hay tracks que usan esta política, así que no se puede eliminar hasta que usen otra.',
+  'notificationPolicies.problem.nameTaken':
+    'Ya existe una política con ese nombre. Elige otro nombre.',
+  'notificationPolicies.problem.inUse':
+    'Hay tracks que usan esta política ({tracks}), así que no se eliminó. Elige antes otra política para ellos.',
+  'notificationPolicies.problem.default': 'La política predeterminada no se puede eliminar.',
+  'notificationPolicies.problem.invalid':
+    'No se guardó: una regla nombra algo que ya no existe, o un campo de otro tipo. Vuelve a leer la página y revisa la regla.',
+  'notificationPolicies.problem.forbidden': 'Ya no puedes cambiar esta política.',
+  'notificationPolicies.problem.other': 'No se pudo guardar. Inténtalo de nuevo en un momento.',
+  // A rule naming a field since deleted (T-155): it reaches nobody and goes with the next change.
+  'notificationPolicies.goneRulesNote':
+    '{count, plural, one {Una regla nombra un campo ya eliminado, así que no avisa} other {# reglas nombran campos ya eliminados, así que no avisan}} a nadie. El próximo cambio en estas reglas {count, plural, one {la quita} other {las quita}}.',
+  'notificationPolicies.goneRulesRemoved':
+    '{count, plural, one {También se quitó la regla que nombraba un campo ya eliminado} other {También se quitaron # reglas que nombraban campos ya eliminados}}.',
+  'emailSettings.title': 'Correo',
+  'emailSettings.about':
+    'Taskmoor envía las notificaciones por correo a través de un servidor SMTP indicado donde se ejecuta (TASKMOOR_SMTP_URL y las variables que lo acompañan) o en el formulario de la primera configuración; su contraseña solo sale del entorno, nunca de esta página. Aquí ves si hay un servidor configurado y eliges cuánto esperan los cambios de un ticket para llegar en un solo correo, y a qué hora salen los resúmenes.',
+  'emailSettings.forbidden': 'Solo los administradores del sitio cambian los ajustes de correo.',
+  'emailSettings.loading': 'Leyendo los ajustes de correo…',
+  'emailSettings.failed':
+    'No se pudieron leer los ajustes de correo. Inténtalo de nuevo en un momento.',
+  'emailSettings.outgoing': 'Correo saliente',
+  'emailSettings.server': 'Servidor de correo',
+  'emailSettings.serverOn': 'Configurado',
+  'emailSettings.serverOff': 'Sin configurar',
+  'emailSettings.serverOnNote':
+    'Taskmoor puede enviar correo. El servidor y sus credenciales se cambian donde se ejecuta Taskmoor, no en esta página.',
+  'emailSettings.serverOffNote':
+    'El correo espera sin enviarse, y las notificaciones siguen llegando a la bandeja de entrada. Indica un servidor SMTP donde se ejecuta Taskmoor (TASKMOOR_SMTP_URL) y lo que espera sale.',
+  'emailSettings.formLabel': 'Cuándo sale el correo',
+  'emailSettings.window': 'Espera antes de enviar los cambios de un ticket, en minutos',
+  'emailSettings.windowHint':
+    'Los cambios de un ticket dentro de este tiempo llegan en un solo correo. De 0 a 60; por defecto, 2.',
+  'emailSettings.windowInvalid': 'Indica un número de minutos de 0 a 60.',
+  'emailSettings.digestHour': 'Hora del resumen',
+  'emailSettings.digestHourHint':
+    'Los resúmenes diarios salen a esta hora en la zona horaria guardada en la cuenta de cada persona (UTC para quien la tenga en Automática, porque no hay ningún dispositivo cuando se envían), y los semanales los lunes a la misma hora.',
+  'emailSettings.hour': '{hour}:00',
+  'emailSettings.save': 'Guardar los ajustes de correo',
+  'emailSettings.saved': 'Se guardaron los ajustes de correo.',
+  'emailSettings.saveFailed':
+    'No se pudieron guardar los ajustes de correo. Inténtalo de nuevo en un momento.',
   'unsubscribe.title': 'Darse de baja',
   'unsubscribe.checking': 'Comprobando el enlace…',
   'unsubscribe.noToken':
@@ -1306,10 +1472,17 @@ export const messagesEs: Record<MessageId, string> = {
   'account.name': 'Nombre',
   'account.timeZone': 'Zona horaria',
   'account.timeZoneAutomatic': 'Automática',
-  'account.timeZoneHint': 'Automática sigue la zona horaria del dispositivo que estás usando.',
+  'account.timeZoneHint':
+    'Automática sigue el dispositivo que estás usando. Una zona elegida aquí fija tus días y horas en todos tus dispositivos.',
   'account.locale': 'Idioma y región',
   'account.localeAutomatic': 'Automático',
   'account.localeHint': 'Automático sigue la configuración de idioma de tu navegador.',
+  'account.csv': 'Hojas de cálculo (CSV)',
+  'account.csvAutomatic': 'Automático',
+  'account.csvComma': 'Comas, números como 1.5',
+  'account.csvSemicolon': 'Punto y coma, números como 1,5',
+  'account.csvHint':
+    'Cómo separan sus celdas los archivos CSV que descargas, para que tu hoja de cálculo los abra en columnas. Automático sigue tu idioma y región: punto y coma donde los números se escriben 1,5, comas donde se escriben 1.5.',
   'account.saveProfile': 'Guardar el perfil',
   'account.profileSaved': 'Perfil guardado.',
   'account.invalidTimeZone': 'No se reconoce esa zona horaria.',
@@ -1449,6 +1622,8 @@ export const messagesEs: Record<MessageId, string> = {
   'account.twoFactor.turnOnApp': 'Activar',
   'account.twoFactor.appEnabled': 'Aplicación autenticadora configurada.',
   'account.twoFactor.switchOffApp': 'Desactivar la aplicación',
+  'account.twoFactor.appOffOutcome':
+    'Los códigos de tu aplicación autenticadora ya no sirven para iniciar sesión. Para volver a usarla, configúrala de nuevo.',
   'account.twoFactor.appDisabled': 'Aplicación autenticadora desactivada.',
   'account.twoFactor.keys': 'Llaves de seguridad',
   'account.twoFactor.keysIntro':
@@ -1459,6 +1634,7 @@ export const messagesEs: Record<MessageId, string> = {
   'account.twoFactor.keyNeverUsed': 'Aún sin usar',
   'account.twoFactor.removeKey': 'Quitar',
   'account.twoFactor.removeKeyNamed': 'Quitar {name}',
+  'account.twoFactor.removeKeyOutcome': 'Ya no puedes iniciar sesión con {name}.',
   'account.twoFactor.keyRemoved': 'Se quitó {name}.',
   'account.twoFactor.addKey': 'Añadir una llave de seguridad',
   'account.twoFactor.keyName': 'Nombre de la llave',
@@ -1960,6 +2136,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.imports.report.code': 'Código {code}.',
   'admin.imports.report.codeDetail': 'Código {code}: {detail}.',
   'admin.imports.report.examples': 'Por ejemplo {examples}.',
+  'admin.imports.report.lineExample': 'línea {line}: {text}',
   'admin.imports.report.unsupported': 'No importado',
   'admin.imports.report.unsupportedItem': '{kind}: {count} ({reason})',
   'admin.imports.report.failures': 'Fallos',
@@ -2067,6 +2244,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Una clave anterior pertenece aquí a otra cosa y sigue siendo suya.',
   'admin.imports.warning.ticket_in_another_open_sprint':
     'Un ticket estaba en dos sprints abiertos; se queda en el primero.',
+  'admin.imports.warning.read_as_windows_1252':
+    'El archivo no está en UTF-8, así que se leyó como europeo occidental de Windows (Windows-1252), que es como Excel guarda un CSV sencillo. Revisa las letras con tilde de las líneas indicadas. Para ir sobre seguro, guarda el archivo desde Excel como «CSV UTF-8» e importa ese.',
   'admin.frontends.title': 'Frontends web',
   'admin.frontends.forbidden':
     'Solo los administradores del sitio cambian qué frontends pueden usar este servidor.',
@@ -2464,7 +2643,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.sso.spEntityId': 'ID de entidad que registrar',
   'admin.sso.acsUrl': 'URL del servicio consumidor de aserciones (HTTP-POST)',
   'admin.sso.spMetadata': 'Metadatos que importar',
-  'admin.sso.spMetadataNamed': 'Metadatos de Taskmoor para {name}',
+  'admin.sso.spMetadataNamed': '{url} (metadatos de Taskmoor para {name})',
   'admin.sso.form.protocol': 'Tipo de proveedor',
   'admin.sso.form.protocolOidc': 'OpenID Connect',
   'admin.sso.form.protocolSaml': 'SAML 2.0',
@@ -2624,14 +2803,14 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.directories.neverSynced': 'Aún sin sincronizar',
   'admin.directories.nextSync': 'Próxima sincronización {when}',
   'admin.directories.sync': 'Sincronizar ahora',
-  'admin.directories.syncNamed': 'Sincronizar {name} ahora',
+  'admin.directories.syncNamed': 'Sincronizar ahora desde {name}',
   'admin.directories.fullSync': 'Sincronización completa',
-  'admin.directories.fullSyncNamed': 'Sincronizar todo {name} ahora',
+  'admin.directories.fullSyncNamed': 'Sincronización completa de {name}',
   'admin.directories.syncQueued': 'Hay una sincronización de {name} en camino.',
   'admin.directories.syncDisabled':
     'Este directorio está desactivado. Actívalo para sincronizarlo.',
   'admin.directories.confirmRemovals': 'Sincronizar y quitar',
-  'admin.directories.confirmRemovalsNamed': 'Sincronizar {name} y quitar lo que salió de él',
+  'admin.directories.confirmRemovalsNamed': 'Sincronizar y quitar lo que salió de {name}',
   'admin.directories.confirmRemovalsOutcome':
     'Una sincronización completa de {name} empieza ahora y quita {removed, number} de sus {known, number} {what, select, groups {grupos} other {personas}}: {what, select, groups {los que} other {las que}} salieron del directorio. {what, select, groups {Esos grupos se eliminan, y eso no se puede deshacer. Las personas que salieron de él se desactivan y conservan su trabajo.} other {Esas personas se desactivan y conservan su trabajo. Los grupos que salieron de él se eliminan, y eso no se puede deshacer.}}',
   'admin.directories.confirmRemovalsOutcomeUncounted':
@@ -2899,6 +3078,9 @@ export const messagesEs: Record<MessageId, string> = {
   'tickets.error.otherTrack': 'Un subticket se queda en el track de su padre.',
   'tickets.error.archived': 'Esta versión o área está archivada. Elige otra.',
   'tickets.error.notInTrack': 'Este track no ofrece esta opción. Elige una de las suyas.',
+  'tickets.error.releaseNotInTrack':
+    'Esta versión no es de este track. Elige una de sus versiones.',
+  'tickets.error.areaNotInTrack': 'Esta área no es de este track. Elige una de sus áreas.',
   'tickets.create.withheld':
     'No puedes definir este campo en un ticket nuevo. El ticket solo se crea si lo rellena un valor predeterminado o el flujo de trabajo; si no, pídeselo a un administrador del track.',
   'tickets.create.parentHint': 'Escribe la clave de un ticket o palabras de su resumen.',
@@ -3044,6 +3226,90 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.users.problem.erased': 'Esta persona ya se borró.',
   'admin.users.problem.lastTrackAdmin':
     'Borrarla quitaría un rol que sus grupos de tracks compartidos le dieron a la única otra persona que dirige un track. Primero da a alguien más un rol que lo dirija.',
+  'admin.users.edit': 'Editar',
+  'admin.users.editOf': 'Editar {name}',
+  'admin.users.role.configuration_admin': 'Administrador de configuración',
+  'admin.users.role.automation_admin': 'Administrador de automatización',
+  'admin.users.role.ai_admin': 'Administrador de IA',
+  'admin.users.role.extension_admin': 'Administrador de extensiones',
+  'admin.users.runsTracks': '{count, plural, one {Dirige # track} other {Dirige # tracks}}',
+  'admin.users.member': 'Miembro',
+  'admin.users.roleSeparator': ', ',
+  'admin.users.filter.role': 'Rol',
+  'admin.users.filter.any': 'Cualquier rol',
+  'admin.users.filter.site_admin': 'Administradores del sitio',
+  'admin.users.filter.configuration_admin': 'Administradores de configuración',
+  'admin.users.filter.automation_admin': 'Administradores de automatización',
+  'admin.users.filter.ai_admin': 'Administradores de IA',
+  'admin.users.filter.extension_admin': 'Administradores de extensiones',
+  'admin.users.filter.runs_tracks': 'Personas que dirigen tracks',
+  'admin.users.filter.member': 'Miembros, sin rol',
+  'admin.person.loading': 'Leyendo la persona…',
+  'admin.person.failed': 'No se pudo leer la persona. Inténtalo de nuevo en un momento.',
+  'admin.person.purpose':
+    'Todo sobre una persona: sus roles, perfil, inicio de sesión, datos y cuenta.',
+  'admin.person.about':
+    'Los roles se dan en Permisos globales, a la persona o a un grupo en el que está, y los administradores de un track en la página Personas de ese track; cada rol de abajo enlaza adonde cambia. Los cambios de aquí quedan en el registro de auditoría.',
+  'admin.person.roles': 'Roles',
+  'admin.person.member': 'Miembro: no tiene ningún rol de administrador ni dirige ningún track.',
+  'admin.person.source.account': 'Marcado en su cuenta',
+  'admin.person.source.user': 'Dado a la persona en Permisos globales',
+  'admin.person.source.group': 'Por el grupo {group}',
+  'admin.person.source.everyone':
+    'Dado a todas las personas con sesión iniciada, en Permisos globales',
+  'admin.person.track': '{key} · {name}',
+  'admin.person.moreTracks': '{count, plural, one {y # track más} other {y # tracks más}}',
+  'admin.person.inGroups': 'En los grupos {groups}.',
+  'admin.person.groupless': 'En ningún grupo.',
+  'admin.person.whereRoles': 'Dónde cambian los roles:',
+  'admin.person.toPermissions': 'Permisos globales',
+  'admin.person.toGroups': 'Grupos',
+  'admin.person.profile': 'Perfil',
+  'admin.person.directoryKeeps':
+    '{directory} mantiene a esta persona: su nombre y su correo cambian allí, no aquí.',
+  'admin.person.directoryWrites':
+    '{directory} mantiene a esta persona: un nombre o un correo nuevos se escriben también allí.',
+  'admin.person.timeZoneHint': 'Las fechas y horas que ve. Automática sigue a su dispositivo.',
+  'admin.person.localeHint':
+    'Cómo se escriben para ella fechas y números. Automático sigue a su navegador.',
+  'admin.person.save': 'Guardar perfil',
+  'admin.person.signIn': 'Inicio de sesión',
+  'admin.person.passwordLinkHint':
+    'Un enlace de un solo uso para elegir una contraseña nueva, que tú le envías. Su contraseña actual sigue funcionando hasta que lo use.',
+  'admin.person.passwordDirectory':
+    '{directory} comprueba su contraseña, así que aquí no se crea ningún enlace.',
+  'admin.person.breakGlass': 'Cuenta de emergencia',
+  'admin.person.breakGlassHint':
+    'Una cuenta de emergencia puede seguir iniciando sesión con contraseña mientras el inicio de sesión único es obligatorio, para cuando el proveedor de identidad no responde. Que sean pocas.',
+  'admin.person.isBreakGlass': 'Es una cuenta de emergencia.',
+  'admin.person.notBreakGlass': 'No es una cuenta de emergencia.',
+  'admin.person.markBreakGlass': 'Marcar como cuenta de emergencia',
+  'admin.person.unmarkBreakGlass': 'Quitar la marca de emergencia',
+  'admin.person.breakGlassOn': '{name} es ahora una cuenta de emergencia.',
+  'admin.person.breakGlassOff': '{name} ya no es una cuenta de emergencia.',
+  'admin.person.breakGlassDirectory':
+    'Una cuenta que mantiene un directorio no puede ser de emergencia.',
+  'admin.person.breakGlassDirectoryMarked':
+    'Ahora mantiene esta cuenta un directorio, así que no debería seguir siendo de emergencia: quita la marca.',
+  'admin.person.twoFactor': 'Segundo factor',
+  'admin.person.withoutTwoFactor': 'No tiene segundo factor.',
+  'admin.person.hasTwoFactor': 'Tiene un segundo factor configurado.',
+  'admin.person.ownTwoFactor': 'El tuyo se cambia en la página de tu cuenta.',
+  'admin.person.resetTwoFactor': 'Restablecer segundo factor',
+  'admin.person.resetTwoFactorOf': 'Restablecer el segundo factor de {name}',
+  'admin.person.resetTwoFactorConfirm':
+    'La aplicación de autenticación, las llaves de seguridad y los códigos de recuperación de {name} dejan de funcionar al momento. Donde el sitio exige segundo factor, vuelve a configurarlo en su próximo inicio de sesión.',
+  'admin.person.twoFactorReset': 'Se restableció el segundo factor de {name}.',
+  'admin.person.account': 'Cuenta',
+  'admin.person.activeNote':
+    'Desactivar cierra su sesión en todas partes y conserva sus tickets y su historial. Borrar reemplaza su nombre y su correo en todas partes y no se puede deshacer.',
+  'admin.person.deactivatedNote':
+    'Desactivada: no puede iniciar sesión. Reactivarla le devuelve sus roles. Borrar reemplaza su nombre y su correo en todas partes y no se puede deshacer.',
+  'admin.person.self':
+    'Eres tú: otro administrador del sitio desactiva o borra tu cuenta, o cambia tu marca de administrador del sitio.',
+  'admin.person.erasedNote':
+    'Esta persona fue borrada: la cuenta es un marcador que conserva su historial, sin acciones.',
+  'admin.person.problem.deactivated': 'Está desactivada: reactívala primero.',
   'admin.groups.title': 'Grupos',
   'admin.groups.intro':
     'Los grupos reúnen a personas para darles permisos o restringir lo que ven. Un grupo dentro de otro cuenta como parte de él.',
@@ -3154,6 +3420,8 @@ export const messagesEs: Record<MessageId, string> = {
   'trackPeople.ownConfigIntro': '{key} tiene configuración propia, y puedes cambiarla aquí:',
   'trackPeople.layoutsLink': 'Conjuntos de diseños: dónde aparecen los campos en sus formularios',
   'trackPeople.setsLink': 'Conjuntos de configuración: sus tipos de ticket y reglas de campos',
+  'trackPeople.notificationsLink':
+    'Políticas de notificaciones: quién se entera de qué cambios en él',
   'trackPeople.invite': 'Invitar personas',
   'trackPeople.inviteOff':
     'Las invitaciones están desactivadas en este track. Un administrador del sitio puede activarlas.',
@@ -3182,7 +3450,7 @@ export const messagesEs: Record<MessageId, string> = {
   'trackPeople.roleGivenWithTracks': '{name} ahora tiene {role} y puede crear tracks.',
   'trackPeople.createTracks': 'Permitir también crear tracks',
   'trackPeople.createTracksHint':
-    'Es un permiso para todo el sitio, no solo para este track. Quitar el rol después no lo retira; un administrador del sitio puede hacerlo en la página Permisos.',
+    'Es un permiso para todo el sitio, no solo para este track. Va con el rol: cuando ya no dirija ningún track, se retira también. Para que lo conserve, un administrador del sitio lo da en la página Permisos.',
   'trackPeople.pending': 'Invitaciones en espera',
   'trackPeople.noPending': 'No hay invitaciones en espera.',
   'trackPeople.pendingMeta': '{role}, invitación de {who}.',
@@ -3197,6 +3465,8 @@ export const messagesEs: Record<MessageId, string> = {
   'trackPeople.linkMade': 'Hay un enlace nuevo para {who}; el anterior ya no funciona.',
   'trackPeople.revoke': 'Retirar',
   'trackPeople.revokeFor': 'Retirar la invitación a {who}',
+  'trackPeople.revokeOutcome':
+    'El enlace enviado a {who} deja de funcionar. Si esta invitación ya le dio el rol {role}, lo pierde.',
   'trackPeople.revoked': 'Se retiró la invitación a {who}.',
   'trackPeople.inviteTitle': 'Invitar personas a {key}',
   'trackPeople.addresses': 'Direcciones de correo',
@@ -3340,15 +3610,12 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.tracks.archiveOf': 'Archivar el track {key}',
   'admin.tracks.restore': 'Restaurar el track',
   'admin.tracks.restoreOf': 'Restaurar el track {key}',
-  'admin.tracks.confirmArchive':
-    '¿Archivar {key}? Sus tickets se pueden seguir leyendo y nadie puede cambiarlos.',
-  'admin.tracks.confirmRestore': '¿Restaurar {key}? Sus tickets se pueden volver a cambiar.',
-  'admin.tracks.confirmYes': 'Sí',
-  'admin.tracks.confirmNo': 'No',
+  'admin.tracks.archiveOutcome':
+    'Nadie puede cambiar los tickets de {key} hasta que se restaure, y la búsqueda los deja fuera. Se siguen pudiendo leer.',
   'admin.tracks.archivedSaid': 'Se archivó el track {key}.',
   'admin.tracks.restored': 'Se restauró el track {key}.',
   'admin.tracks.problem.mapping':
-    '{tickets, plural, one {# ticket está} other {# tickets están}} en estados que los nuevos flujos de trabajo no tienen. Da una correspondencia de estados mediante la API y luego cambia.',
+    '{tickets, plural, one {# ticket está} other {# tickets están}} en estados que los nuevos flujos de trabajo no tienen. Vuelve a elegir el mapa de flujos para decir adónde van.',
   'admin.tracks.problem.migrating':
     'Los tickets aún se están moviendo tras un cambio anterior. Inténtalo de nuevo cuando haya terminado.',
   'admin.tracks.problem.key': 'Esa clave está ocupada o no es una clave válida.',
@@ -3357,7 +3624,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.maps.title': 'Mapas de flujos',
   'admin.maps.intro':
     'Un mapa de flujos dice qué flujo de trabajo sigue cada tipo de ticket en los tracks que lo usan. Los tipos que no nombra siguen su flujo de trabajo predeterminado.',
-  'admin.maps.forbidden': 'Solo los administradores gestionan los mapas de flujos.',
+  'admin.maps.forbidden':
+    'Solo los administradores del sitio y de la configuración, y quienes llevan un track con configuración propia, gestionan los mapas de flujos.',
   'admin.maps.loading': 'Leyendo los mapas de flujos…',
   'admin.maps.failed': 'No se pudieron leer los mapas de flujos. Inténtalo de nuevo en un momento.',
   'admin.maps.new': 'Nuevo mapa de flujos de trabajo',
@@ -3388,7 +3656,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.maps.confirmDelete':
     '¿Eliminar {name}? Ningún track podrá usarlo después, y no se puede deshacer.',
   'admin.maps.problem.mapping':
-    '{tickets, plural, one {# ticket está} other {# tickets están}} en estados que los nuevos flujos de trabajo no tienen. Da una correspondencia de estados mediante la API y luego guarda.',
+    '{tickets, plural, one {# ticket está} other {# tickets están}} en estados que los nuevos flujos de trabajo no tienen. Vuelve a guardar el mapa para decir adónde van.',
   'admin.maps.problem.migrating':
     'Los tickets aún se están moviendo tras un cambio anterior. Inténtalo de nuevo cuando haya terminado.',
   'admin.maps.problem.nameTaken': 'Ya hay un mapa con ese nombre.',
@@ -3457,16 +3725,136 @@ export const messagesEs: Record<MessageId, string> = {
     '{tracks, plural, one {# track usa} other {# tracks usan}} este conjunto: dales otro primero.',
   'admin.sets.problem.default': 'Un conjunto predeterminado no se elimina.',
   'admin.sets.problem.typeInUse':
-    'Hay tickets con un tipo que el conjunto quitaría: muévelos antes a otro tipo mediante la API.',
+    'Hay tickets con un tipo que el conjunto quitaría: elige abajo el tipo que toman y vuelve a guardar.',
   'admin.sets.problem.nameTaken': 'Ya hay un conjunto con ese nombre.',
   'admin.sets.problem.invalid':
     'Esa combinación no está permitida: un campo nunca es obligatorio y oculto a la vez, ni obligatorio solo para algunos editores.',
   'admin.sets.problem.forbidden': 'No puedes cambiar este conjunto.',
+  // Tipos de ticket y niveles, y los ajustes de los conjuntos de tipos (T-320; UI-T21).
+  'settings.ticketTypes': 'Tipos de ticket',
+  'settings.ticketTypesHint':
+    'Las clases de ticket, y los niveles que dicen qué ticket puede ser padre de cuál.',
+  'admin.ticketTypes.title': 'Tipos de ticket',
+  'admin.ticketTypes.intro':
+    'Cada tipo de ticket está en un nivel, y el padre de un ticket está justo un nivel más arriba; un subticket siempre tiene padre. Los tres niveles incorporados se renombran, pero nunca se mueven ni se quitan. Los niveles que añades van por encima de Objetivo. Los tipos que ofrece un track salen de su conjunto de tipos, en Conjuntos de configuración.',
+  'admin.ticketTypes.forbidden':
+    'Solo los administradores del sitio y de configuración gestionan los tipos de ticket y los niveles.',
+  'admin.ticketTypes.loading': 'Leyendo los tipos de ticket…',
+  'admin.ticketTypes.failed':
+    'No se pudieron leer los tipos de ticket. Inténtalo de nuevo en un momento.',
+  'admin.ticketTypes.newType': 'Nuevo tipo de ticket',
+  'admin.ticketTypes.newLevel': 'Nuevo nivel',
+  'admin.ticketTypes.addType': 'Añadir un tipo de ticket',
+  'admin.ticketTypes.addLevel': 'Añadir un nivel',
+  'admin.ticketTypes.cancelNew': 'Cancelar',
+  'admin.ticketTypes.typeName': 'Nombre del tipo de ticket',
+  'admin.ticketTypes.levelName': 'Nombre del nivel',
+  'admin.ticketTypes.description': 'Descripción',
+  'admin.ticketTypes.level': 'Nivel',
+  'admin.ticketTypes.place': 'Dónde va',
+  'admin.ticketTypes.placeAbove': 'Encima de {name}',
+  'admin.ticketTypes.placeHint':
+    'Los tickets del nuevo nivel pueden ser padres de los tickets del nivel justo debajo.',
+  'admin.ticketTypes.icon': 'Icono',
+  'admin.ticketTypes.icon.outcome': 'Objetivo',
+  'admin.ticketTypes.icon.feature': 'Funcionalidad',
+  'admin.ticketTypes.icon.bug': 'Error',
+  'admin.ticketTypes.icon.chore': 'Tarea',
+  'admin.ticketTypes.icon.toDo': 'Pendiente',
+  'admin.ticketTypes.icon.idea': 'Idea',
+  'admin.ticketTypes.icon.subticket': 'Subticket',
+  'admin.ticketTypes.icon.plain': 'Hexágono simple',
+  'admin.ticketTypes.levelBuiltin': 'Incorporado: se puede renombrar, no mover ni quitar.',
+  'admin.ticketTypes.levelAdded': 'Añadido: se puede renombrar, mover y quitar.',
+  'admin.ticketTypes.noTypes': 'Ningún tipo de ticket está en este nivel.',
+  'admin.ticketTypes.typesAt': 'Tipos de ticket en {name}',
+  'admin.ticketTypes.manage': 'Gestionar',
+  'admin.ticketTypes.manageOf': 'Gestionar el tipo de ticket {name}',
+  'admin.ticketTypes.settingsOf': 'Ajustes de {name}',
+  'admin.ticketTypes.save': 'Guardar el tipo',
+  'admin.ticketTypes.renameLevel': 'Renombrar',
+  'admin.ticketTypes.renameLevelOf': 'Renombrar el nivel {name}',
+  'admin.ticketTypes.saveLevel': 'Guardar el nivel',
+  'admin.ticketTypes.up': 'Subir',
+  'admin.ticketTypes.down': 'Bajar',
+  'admin.ticketTypes.moveUp': 'Subir el nivel {name}',
+  'admin.ticketTypes.moveDown': 'Bajar el nivel {name}',
+  'admin.ticketTypes.removeLevel': 'Quitar el nivel',
+  'admin.ticketTypes.removeLevelOf': 'Quitar el nivel {name}',
+  'admin.ticketTypes.confirmRemove':
+    '¿Quitar {name}? {types, plural, =0 {{own, plural, =0 {Ningún tipo de ticket está en él.} one {# tipo de ticket de un track con su propia configuración pasa al nivel {standard}.} other {# tipos de ticket de tracks con su propia configuración pasan al nivel {standard}.}}} one {Su tipo, {names}, pasa al nivel {standard}{own, plural, =0 {.} one {, y también # tipo de ticket de un track con su propia configuración.} other {, y también # tipos de ticket de tracks con su propia configuración.}}} other {Sus tipos, {names}, pasan al nivel {standard}{own, plural, =0 {.} one {, y también # tipo de ticket de un track con su propia configuración.} other {, y también # tipos de ticket de tracks con su propia configuración.}}}} {known, select, yes {{tickets, plural, =0 {Ningún ticket cambia de nivel.} one {# ticket cambia de nivel.} other {# tickets cambian de nivel.}}} other {}} No se puede deshacer.',
+  'admin.ticketTypes.breaks':
+    '{links, plural, =0 {no se rompería ningún vínculo con un padre} one {se rompería # vínculo con un padre} other {se romperían # vínculos con un padre}}, y {orphans, plural, =0 {ningún ticket quedaría sin el padre que necesita un subticket} one {# ticket quedaría sin el padre que necesita un subticket} other {# tickets quedarían sin el padre que necesita un subticket}}',
+  'admin.ticketTypes.cannotRemove':
+    '{name} no se puede quitar ahora: {why}. Cambia antes los padres de esos tickets.',
+  'admin.ticketTypes.retypePreview':
+    '{tickets, plural, =0 {Ningún ticket de este tipo cambia de nivel.} one {# ticket de este tipo cambia de nivel.} other {# tickets de este tipo cambian de nivel.}}',
+  'admin.ticketTypes.retypeRefused': 'Este nivel se rechazaría: {why}.',
+  'admin.ticketTypes.deleteType': 'Eliminar el tipo de ticket',
+  'admin.ticketTypes.deleteTypeOf': 'Eliminar el tipo de ticket {name}',
+  'admin.ticketTypes.confirmDelete':
+    '¿Eliminar {name}? Después nada podrá usarlo, y no se puede deshacer.',
+  'admin.ticketTypes.typeAdded': 'Se añadió {name}.',
+  'admin.ticketTypes.typeSaved': 'Se guardó {name}.',
+  'admin.ticketTypes.typeDeleted': 'Se eliminó {name}.',
+  'admin.ticketTypes.levelCreated': 'Se añadió el nivel {name}.',
+  'admin.ticketTypes.levelSaved': 'Se guardó el nivel {name}.',
+  'admin.ticketTypes.levelMovedUp': '{name} subió.',
+  'admin.ticketTypes.levelMovedDown': '{name} bajó.',
+  'admin.ticketTypes.levelRemoved': 'Se quitó el nivel {name}.',
+  'admin.ticketTypes.problem.breaks':
+    'No cambió nada: {why}. Cambia antes los padres de esos tickets.',
+  'admin.ticketTypes.problem.typeNameTaken': 'Ya hay un tipo de ticket con ese nombre.',
+  'admin.ticketTypes.problem.levelNameTaken': 'Ya hay un nivel con ese nombre.',
+  'admin.ticketTypes.problem.inTypeSets':
+    '{name} está en los conjuntos de tipos {sets}: quítalo antes de ellos en Conjuntos de configuración.',
+  'admin.ticketTypes.problem.hasTickets':
+    '{tickets, plural, one {# ticket tiene} other {# tickets tienen}} este tipo, la papelera incluida: dales antes otro tipo.',
+  'admin.ticketTypes.problem.builtin':
+    'Un nivel incorporado se renombra, pero nunca se mueve ni se quita.',
+  'admin.ticketTypes.problem.rank': 'Un nivel que añades va por encima de Objetivo.',
+  'admin.ticketTypes.problem.forbidden': 'No puedes cambiar los tipos de ticket ni los niveles.',
+  'admin.ticketTypes.problem.invalid': 'No se aceptó: revisa el nombre y el nivel.',
+  'admin.ticketTypes.problem.other': 'Eso no funcionó. Inténtalo de nuevo en un momento.',
+  'admin.sets.order': 'Orden en el conjunto',
+  'admin.sets.orderHint': 'El formulario de creación ofrece los tipos en este orden.',
+  'admin.sets.up': 'Subir',
+  'admin.sets.down': 'Bajar',
+  'admin.sets.moveUp': 'Subir {name}',
+  'admin.sets.moveDown': 'Bajar {name}',
+  'admin.sets.preselected': 'Tipo preseleccionado',
+  'admin.sets.preselectedFirst': 'Ninguno: el primer tipo del orden',
+  'admin.sets.defaultForLegend': 'Conjunto por defecto de los nuevos tracks de estas clases',
+  'admin.sets.defaultForHint':
+    'Cada clase de track tiene un conjunto por defecto. Para dejar de serlo, márcala en otro conjunto.',
+  'admin.sets.kindChoice.software': 'Tracks de desarrollo de software',
+  'admin.sets.kindChoice.business': 'Tracks de negocio',
+  'admin.sets.kindChoice.service': 'Tracks de servicio',
+  'admin.sets.kindChoice.discovery': 'Tracks de descubrimiento',
+  'admin.sets.mapping': 'Tickets de los tipos que quitas',
+  'admin.sets.mappingIntro':
+    '{tickets, plural, one {# ticket de los tracks que usan este conjunto tiene} other {# tickets de los tracks que usan este conjunto tienen}} un tipo que el conjunto quitaría. Elige el tipo que toman, del mismo nivel, y vuelve a guardar.',
+  'admin.sets.mappingFor': 'Los tickets de {name} pasan a ser',
+  'admin.sets.mappingChoose': 'Elige un tipo',
+  'admin.sets.mappingNowhere':
+    'El conjunto no conserva ningún tipo del nivel {level}, así que los tickets de {name} no tienen adónde ir: conserva {name}, o añade un tipo de ese nivel.',
+  'admin.sets.savedMapped':
+    'Se guardó {name}; {tickets, plural, one {# ticket tomó otro tipo} other {# tickets tomaron otro tipo}}.',
+  'admin.sets.problem.mapping':
+    'Cada tipo que quitas necesita un tipo de su mismo nivel que el conjunto conserve.',
+  // When the server's counts do not tell how many tickets the dropped types hold (T-320).
+  'admin.sets.mappingIntroUncounted':
+    'Hay tickets de los tracks que usan este conjunto con un tipo que el conjunto quitaría. Elige el tipo que toman, del mismo nivel, y vuelve a guardar.',
+  'admin.sets.savedMappedUncounted':
+    'Se guardó {name}; los tickets de los tipos que quitaste tomaron otro tipo.',
+  'admin.sets.problem.defaultRequired':
+    'Cada clase de track tiene un conjunto por defecto: márcala en otro conjunto.',
   'admin.sets.problem.other': 'Eso no funcionó. Inténtalo de nuevo en un momento.',
   'admin.fields.title': 'Campos',
   'admin.fields.intro':
     'Los campos personalizados añaden lo que los tickets necesitan guardar además de los integrados. Un campo conserva su tipo; sus opciones pueden cambiar sin tocar los tickets.',
-  'admin.fields.forbidden': 'Solo los administradores gestionan los campos.',
+  'admin.fields.forbidden':
+    'Solo los administradores del sitio y de configuración gestionan los campos. Quienes administran un track con configuración propia gestionan sus campos propios desde la página del track.',
   'admin.fields.loading': 'Leyendo los campos…',
   'admin.fields.failed': 'No se pudieron leer los campos. Inténtalo de nuevo en un momento.',
   'admin.fields.none': 'Aún no hay campos personalizados.',
@@ -3477,14 +3865,12 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.fields.typeLabel': 'Tipo',
   'admin.fields.multiple': 'Admite varios valores',
   'admin.fields.added': 'Se añadió {name}.',
-  'admin.fields.saved': 'Se cambió el nombre de {name}.',
+  'admin.fields.saved': 'Se guardó {name}.',
   'admin.fields.deleted': 'Se eliminó {name}.',
   'admin.fields.local': 'Un track',
   'admin.fields.summaryMultiple': '{type}, varios valores',
   'admin.fields.manage': 'Gestionar',
   'admin.fields.manageOf': 'Gestionar el campo {name}',
-  'admin.fields.renameOf': 'Cambiar el nombre de {name}',
-  'admin.fields.rename': 'Cambiar el nombre',
   'admin.fields.optionsOf': 'Opciones en {context}',
   'admin.fields.noOptions': 'Aún no hay opciones.',
   'admin.fields.newOption': 'Opción nueva',
@@ -3507,6 +3893,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.fields.optionEnableOf': 'Volver a ofrecer {value}',
   'admin.fields.optionDelete': 'Eliminar',
   'admin.fields.optionDeleteOf': 'Eliminar {value}',
+  'admin.fields.optionDeleteOutcome':
+    '{children, plural, =0 {¿Eliminar {value}? Sale de esta lista para siempre.} one {¿Eliminar {value} y su opción hija? Salen de esta lista para siempre.} other {¿Eliminar {value} y sus # opciones hijas? Salen de esta lista para siempre.}} {isDefault, select, yes {Los tickets nuevos de {context} empiezan con {value}: cuando se vaya empezarán vacíos hasta que se guarde otro valor por defecto. } other {}}{children, plural, =0 {Una opción que tenga un ticket no se elimina: deja de ofrecerla.} other {Las opciones que tenga un ticket no se eliminan: deja de ofrecerlas.}} No se puede deshacer.',
   'admin.fields.delete': 'Eliminar el campo',
   'admin.fields.deleteOf': 'Eliminar el campo {name}',
   'admin.fields.confirmDelete':
@@ -3534,6 +3922,179 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.fields.problem.valueTaken': 'Ya hay una opción con ese nombre.',
   'admin.fields.problem.forbidden': 'No puedes cambiar este campo.',
   'admin.fields.problem.other': 'Eso no funcionó. Inténtalo de nuevo en un momento.',
+  // Campos: descripciones, ajustes, fórmulas, contextos, valores por defecto y orden (T-320).
+  'admin.fields.description': 'Descripción',
+  'admin.fields.descriptionHint':
+    'Los formularios la muestran bajo el campo, salvo que una regla de campo dé su propio texto de ayuda.',
+  'admin.fields.detailsOf': 'Nombre y descripción de {name}',
+  'admin.fields.saveDetails': 'Guardar el nombre y la descripción',
+  'admin.fields.settings.titleOf': 'Ajustes de {name}',
+  'admin.fields.settings.save': 'Guardar los ajustes',
+  'admin.fields.settings.saved': 'Se guardaron los ajustes de {name}.',
+  'admin.fields.settings.maxChars': 'Máximo de caracteres',
+  'admin.fields.settings.maxCharsHint':
+    'Si lo dejas vacío, un párrafo admite hasta {usual} caracteres; puedes permitir hasta {most}.',
+  'admin.fields.settings.numberLegend': 'Cómo se muestran los valores',
+  'admin.fields.settings.format': 'Se muestra como',
+  'admin.fields.settings.format.number': 'Número',
+  'admin.fields.settings.format.currency': 'Moneda',
+  'admin.fields.settings.format.percentage': 'Porcentaje (40 significa 40 %)',
+  'admin.fields.settings.decimals': 'Decimales',
+  'admin.fields.settings.decimalsAny': 'Como se escriban',
+  'admin.fields.settings.currency': 'Código de moneda',
+  'admin.fields.settings.currencyHint': 'Tres letras, como EUR o USD.',
+  'admin.fields.settings.sample': '{plain} se muestra como {shown} en los tickets y en las listas.',
+  'admin.fields.formula.titleOf': 'Fórmula de {name}',
+  'admin.fields.formula.legend': 'Fórmula',
+  'admin.fields.formula.expression': 'Expresión',
+  'admin.fields.formula.hint':
+    'Escribe los nombres de los campos entre llaves y llama a las funciones por su nombre. La línea de abajo la comprueba mientras escribes.',
+  'admin.fields.formula.output': 'Resultado',
+  'admin.fields.formula.output.number': 'Número',
+  'admin.fields.formula.output.currency': 'Moneda',
+  'admin.fields.formula.output.percentage': 'Porcentaje (40 significa 40 %)',
+  'admin.fields.formula.output.date': 'Fecha',
+  'admin.fields.formula.output.duration': 'Duración',
+  'admin.fields.formula.output.text': 'Texto',
+  'admin.fields.formula.save': 'Guardar la fórmula',
+  'admin.fields.formula.at': 'Línea {line}, columna {column}: {problem}',
+  'admin.fields.formula.gives.number': 'Da un número.',
+  'admin.fields.formula.gives.date': 'Da una fecha.',
+  'admin.fields.formula.gives.duration': 'Da una duración.',
+  'admin.fields.formula.gives.text': 'Da texto.',
+  'admin.fields.formula.gives.boolean': 'Da sí o no.',
+  'admin.fields.formula.reads': 'Lee {fields}.',
+  'admin.fields.formula.readsNothing': 'No lee ningún campo.',
+  'admin.fields.formula.help': 'Qué puede usar una fórmula',
+  'admin.fields.formula.helpFields': 'Campos que puede leer',
+  'admin.fields.formula.helpFunctions': 'Funciones',
+  'admin.fields.formula.helpMore':
+    'La página del manual sobre los campos explica más en Campos de fórmula: operadores, tickets hijos y días laborables.',
+  'admin.fields.formula.problem.too_long':
+    'La fórmula es demasiado larga: puede tener como mucho 4000 caracteres.',
+  'admin.fields.formula.problem.too_deep':
+    'La fórmula anida demasiados niveles: divídela en partes más sencillas.',
+  'admin.fields.formula.problem.too_complex': 'La fórmula tiene demasiadas partes: acórtala.',
+  'admin.fields.formula.problem.empty': 'Escribe una fórmula.',
+  'admin.fields.formula.problem.unexpected_character': '{text} no se puede usar en una fórmula.',
+  'admin.fields.formula.problem.unexpected_token':
+    '{text} está fuera de lugar aquí: puede que falte algo antes.',
+  'admin.fields.formula.problem.unexpected_end':
+    'La fórmula termina demasiado pronto: falta algo al final.',
+  'admin.fields.formula.problem.unterminated_string':
+    'Un texto entre comillas no tiene la comilla de cierre.',
+  'admin.fields.formula.problem.unterminated_field':
+    'Un nombre de campo entre llaves no tiene la llave de cierre.',
+  'admin.fields.formula.problem.empty_field': 'Un par de llaves no nombra ningún campo.',
+  'admin.fields.formula.problem.invalid_number': '{text} no es un número que las fórmulas lean.',
+  'admin.fields.formula.problem.unknown_name':
+    '{text} no es una función ni una palabra que las fórmulas conozcan: el nombre de un campo va entre llaves.',
+  'admin.fields.formula.problem.unknown_function': 'Ninguna función se llama {text}.',
+  'admin.fields.formula.problem.arity': '{text} recibe un número de valores que no le corresponde.',
+  'admin.fields.formula.problem.unknown_field':
+    'Ningún campo se llama {text}, o una fórmula de aquí no puede verlo.',
+  'admin.fields.formula.problem.ambiguous_field':
+    'Varios campos se llaman {text}: nombra el que quieres por su número, como cf[12] entre llaves.',
+  'admin.fields.formula.problem.unsupported_field':
+    'Las fórmulas aún no pueden leer {text}: leen números, fechas, texto, direcciones web y otras fórmulas.',
+  'admin.fields.formula.problem.type_mismatch':
+    '{text} no encaja aquí: su valor es de otra clase, como un texto donde va un número.',
+  'admin.fields.formula.problem.children_misplaced':
+    '{text} solo funciona dentro de sum, avg, min, max o count.',
+  'admin.fields.formula.problem.output_mismatch':
+    'Lo que da la fórmula no encaja con el resultado elegido: elige otro resultado o cambia la fórmula.',
+  'admin.fields.formula.problem.cycle':
+    'Unos campos de fórmula necesitarían los valores de otros aquí, a través de {text}.',
+  'admin.fields.formula.problem.other': 'Algo no está bien aquí.',
+  'admin.fields.contexts.title': 'Dónde se aplica {name}',
+  'admin.fields.contexts.hint':
+    'Cada contexto cubre tracks y tipos de ticket y tiene su propio valor por defecto y sus opciones. En un ticket gana el más concreto: track y tipo, luego track, luego tipo y luego el de todos.',
+  'admin.fields.contexts.none': 'Este campo no se aplica en ningún sitio.',
+  'admin.fields.contexts.noneBody': 'Añade un contexto para ofrecerlo de nuevo en los tickets.',
+  'admin.fields.contexts.reach': '{tracks}; {types}',
+  'admin.fields.contexts.everyTrack': 'Todos los tracks',
+  'admin.fields.contexts.someTracks': 'Tracks: {names}',
+  'admin.fields.contexts.everyType': 'todos los tipos de ticket',
+  'admin.fields.contexts.someTypes': 'tipos de ticket: {names}',
+  'admin.fields.contexts.peopleAnyone': 'Personas para elegir: cualquiera',
+  'admin.fields.contexts.peopleGroup': 'Personas para elegir: los miembros de {name}',
+  'admin.fields.contexts.peopleRole':
+    'Personas para elegir: quien tenga {name} en el track del ticket',
+  'admin.fields.contexts.change': 'Cambiar',
+  'admin.fields.contexts.changeOf': 'Cambiar el contexto {name}',
+  'admin.fields.contexts.save': 'Guardar el contexto',
+  'admin.fields.contexts.saved': 'Se guardó el contexto {name}.',
+  'admin.fields.contexts.new': 'Nuevo contexto',
+  'admin.fields.contexts.add': 'Añadir un contexto',
+  'admin.fields.contexts.added': 'Se añadió el contexto {name}.',
+  'admin.fields.contexts.name': 'Nombre del contexto',
+  'admin.fields.contexts.tracks': 'Tracks',
+  'admin.fields.contexts.allTracks': 'Todos los tracks',
+  'admin.fields.contexts.chosenTracks': 'Solo estos tracks',
+  'admin.fields.contexts.types': 'Tipos de ticket',
+  'admin.fields.contexts.allTypes': 'Todos los tipos de ticket',
+  'admin.fields.contexts.chosenTypes': 'Solo estos tipos de ticket',
+  'admin.fields.contexts.ownTrack': 'Solo cubre {name}: el campo pertenece a ese track.',
+  'admin.fields.contexts.people': 'Personas para elegir',
+  'admin.fields.contexts.peopleFrom': 'Ofrecer',
+  'admin.fields.contexts.limit.anyone': 'Cualquiera',
+  'admin.fields.contexts.limit.group': 'Los miembros de un grupo',
+  'admin.fields.contexts.limit.role': 'Quienes tengan un rol del track',
+  'admin.fields.contexts.group': 'Grupo',
+  'admin.fields.contexts.role': 'Rol del track',
+  'admin.fields.contexts.chooseOne': 'Elige uno',
+  'admin.fields.contexts.chooseTrack': 'Marca al menos un track, o elige Todos los tracks.',
+  'admin.fields.contexts.chooseType':
+    'Marca al menos un tipo de ticket, o elige Todos los tipos de ticket.',
+  'admin.fields.contexts.choosePeople': 'Elige el grupo o el rol cuyas personas ofrece.',
+  'admin.fields.contexts.delete': 'Eliminar',
+  'admin.fields.contexts.deleteOf': 'Eliminar el contexto {name}',
+  'admin.fields.contexts.confirmDelete':
+    '¿Eliminar {name}? Su valor por defecto y sus opciones se van con él, y sus tracks y tipos de ticket pasan a los otros contextos del campo. No se puede deshacer.',
+  'admin.fields.contexts.confirmDeleteLast':
+    '¿Eliminar {name}? Es el último contexto del campo, así que el campo no se aplicará en ningún sitio hasta que añadas otro. No se puede deshacer.',
+  'admin.fields.contexts.deleted': 'Se eliminó el contexto {name}.',
+  'admin.fields.default.label': 'Valor por defecto',
+  'admin.fields.default.of': 'Valor por defecto en {name}',
+  'admin.fields.default.child': 'Opción hija por defecto',
+  'admin.fields.default.unset': 'Sin valor por defecto',
+  'admin.fields.default.clear': 'Quitar el valor por defecto',
+  'admin.fields.default.save': 'Guardar el valor por defecto',
+  'admin.fields.default.saved': 'Se guardó el valor por defecto en {name}.',
+  'admin.fields.default.removed': '{name} ya no tiene valor por defecto.',
+  'admin.fields.default.labelsHint': 'Separa las etiquetas con espacios.',
+  'admin.fields.default.notTaken': 'Un campo de tipo {type} no admite valor por defecto.',
+  'admin.fields.defaultBadge': 'Por defecto',
+  'admin.fields.optionUp': 'Subir',
+  'admin.fields.optionDown': 'Bajar',
+  'admin.fields.optionUpOf': 'Subir {value}',
+  'admin.fields.optionDownOf': 'Bajar {value}',
+  'admin.fields.optionMoved': 'Se movió {value}.',
+  'admin.fields.childOptionsOf': 'Opciones hijas de {parent}',
+  'admin.fields.noChildOptions': '{parent} aún no tiene opciones hijas.',
+  'admin.fields.newChildOption': 'Opción hija nueva',
+  'admin.fields.addChild': 'Añadir la opción hija',
+  'admin.fields.addChildTo': 'Añadir una opción hija a {parent}',
+  'admin.fields.childAdded': 'Se añadió {value} bajo {parent}.',
+  'admin.fields.problem.optionsInUse':
+    '{tickets, plural, one {# ticket contiene} other {# tickets contienen}} una de sus opciones, la papelera incluida. En su lugar, deja de ofrecerlas.',
+  'admin.fields.problem.contextNameTaken': 'Este campo ya tiene un contexto con ese nombre.',
+  'admin.fields.problem.overlap':
+    'Otro contexto de este campo ya cubre uno de esos tracks con uno de esos tipos de ticket. Acota uno de los dos primero.',
+  'admin.fields.problem.invalidDefault':
+    'Ese valor por defecto no encaja con el campo: revisa el valor o elige una opción que aún ofrezca.',
+  'admin.fields.problem.listChanged':
+    'Algo elegido aquí ya no existe. Vuelve a cargar la página para tener las listas al día.',
+  'admin.fields.problem.trackArchived':
+    'El track del campo está archivado, así que sus campos no cambian hasta que se restaure.',
+  'admin.fields.problem.limit':
+    'Eso superaría uno de los límites del sitio. Un administrador del sitio puede subirlo en la página Salvaguardas.',
+  'admin.fields.problem.invalid': 'No se aceptaron esos ajustes. Revísalos e inténtalo de nuevo.',
+  // La página Campos tras la revisión (T-320).
+  'admin.fields.default.notOffered':
+    'El valor por defecto aún nombra {values}, que ya no se ofrece aquí, así que al guardarlo se deja fuera.',
+  'admin.fields.contexts.goneTracks':
+    '{count, plural, one {Un track que nombra está} other {# tracks que nombra están}} en la papelera, así que al guardar {count, plural, one {queda} other {quedan}} fuera de este contexto.',
   'admin.permissions.title': 'Permisos',
   'admin.permissions.intro':
     'Los roles nombran lo que las personas hacen en un track; las políticas de acceso dicen qué puede hacer cada rol, grupo o persona en los tracks que las usan; los permisos globales se aplican en todas partes.',
@@ -3589,6 +4150,9 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.permissions.removed': '{grantee} ya no tiene {permission}.',
   'admin.permissions.remove': 'Quitar',
   'admin.permissions.removeOf': 'Quitar a {grantee} de {permission}',
+  'admin.permissions.removeOutcome':
+    '{grantee} pierde {permission} en {count, plural, =0 {cada track que use esta política, y aún no la usa ninguno} one {{tracks}, el track que usa esta política} other {{tracks}, los # tracks que usan esta política}}.',
+  'admin.permissions.removeGlobalOutcome': '{grantee} pierde {permission} en todo el sitio.',
   'admin.permissions.global': 'Permisos globales',
   'admin.permissions.newGrantIn': 'Nuevo permiso en {name}',
   'admin.permissions.newGlobal': 'Nuevo permiso global',
@@ -3611,6 +4175,56 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.permissions.granteeKind.anyone': 'Cualquiera, con sesión iniciada o no',
   'admin.permissions.granteeKind.requester': 'El solicitante',
   'admin.permissions.granteeKind.assignee': 'El responsable',
+  // T-320 (UI-T21): beneficiarios de campo, el paso de correspondencia de estados, renombrar
+  // grupos y cuentas de servicio, y cuentas de servicio en grupos.
+  'admin.permissions.granteeKind.user_field': 'Personas en un campo de usuario',
+  'admin.permissions.granteeKind.group_field': 'Grupos en un campo de grupo',
+  'admin.permissions.pickUserField': 'Campo de usuario',
+  'admin.permissions.pickGroupField': 'Campo de grupo',
+  'admin.permissions.pickFieldEmpty': 'Aún no hay ningún campo de este tipo',
+  'admin.permissions.problem.field': 'Ese campo ya no existe o no es de este tipo. Elige otro.',
+  'statusMapping.lead':
+    '{count, plural, one {# ticket está} other {# tickets están}} en estados que los nuevos flujos de trabajo no tienen. Elige adónde van: se mueven cuando confirmes.',
+  'statusMapping.changed':
+    'Los tickets cambiaron desde que se leyó esto. Revisa adónde va cada uno y vuelve a confirmar.',
+  'statusMapping.legend': 'Adónde van los tickets',
+  'statusMapping.moveTo':
+    'Mover {count, plural, one {el # ticket de tipo {type}} other {los # tickets de tipo {type}}} de {status} a',
+  'statusMapping.choose': 'Elige un estado',
+  'statusMapping.of': 'Un estado de {workflow}, el nuevo flujo de trabajo de {type}.',
+  'statusMapping.missing': 'Elige un estado para cada uno y luego confirma.',
+  'statusMapping.cancel': 'Cancelar',
+  'statusMapping.moved':
+    '{count, plural, one {# ticket pasó a su nuevo estado.} other {# tickets pasaron a sus nuevos estados.}}',
+  'statusMapping.moving':
+    '{count, plural, one {# ticket está pasando a su nuevo estado.} other {# tickets están pasando a sus nuevos estados.}}',
+  'statusMapping.progress': 'Tickets movidos: {moved, number} de {total, number}',
+  'statusMapping.done':
+    '{total, plural, one {El ticket ya se movió.} other {Los # tickets ya se movieron.}}',
+  'statusMapping.progressFailed':
+    'No se pudo leer cuánto han avanzado los tickets. Siguen moviéndose: vuelve a mirar en un momento.',
+  'admin.tracks.mappingTitle': 'Cambiar {key} a {map}',
+  'admin.tracks.mappingConfirm': 'Cambiar y mover los tickets',
+  'admin.maps.mappingTitle': 'Guardar {name}',
+  'admin.maps.mappingConfirm': 'Guardar y mover los tickets',
+  'admin.groups.editOf': 'Nombre y descripción de {name}',
+  'admin.groups.save': 'Guardar',
+  'admin.groups.saved': 'Se guardó {name}.',
+  'admin.groups.directoryName':
+    'El directorio {directory} gestiona el nombre de este grupo: renómbralo allí. La descripción la puedes cambiar tú.',
+  'admin.groups.serviceAccount': 'Cuenta de servicio',
+  'admin.groups.addServiceAccount': 'Añadir una cuenta de servicio',
+  'admin.groups.addServiceAccountHint':
+    'Una cuenta de servicio en un grupo recibe los permisos del grupo, como una persona.',
+  'admin.groups.pickServiceAccount': 'Elige una cuenta de servicio',
+  'admin.groups.addServiceAccountShort': 'Añadir la cuenta',
+  'admin.serviceAccounts.change': 'Cambiar',
+  'admin.serviceAccounts.changeNamed': 'Cambiar el nombre y la descripción de {name}',
+  'admin.serviceAccounts.save': 'Guardar',
+  'admin.serviceAccounts.saved': 'Se guardó {name}.',
+  'admin.serviceAccounts.cancelChange': 'Cancelar',
+  'admin.serviceAccounts.saveFailed':
+    'No se pudo guardar la cuenta de servicio. Inténtalo de nuevo en un momento.',
   'admin.permissions.problem.roleInUse':
     'Hay políticas de acceso o tracks que todavía usan este rol: quítalo antes de ellos.',
   'admin.permissions.problem.policyInUse':
@@ -3709,6 +4323,162 @@ export const messagesEs: Record<MessageId, string> = {
   'closeReason.name.notPlanned': 'No planificado',
   'closeReason.name.duplicate': 'Duplicado',
   'closeReason.name.notReproducible': 'No reproducible',
+  // Prioridades, conjuntos de prioridades y motivos de cierre (T-320; CORE-014; ADR-114).
+  'settings.priorities': 'Prioridades',
+  'settings.prioritiesHint':
+    'Las prioridades y los motivos de cierre entre los que eligen los tickets, y qué prioridades ofrece cada track.',
+  'admin.priorities.title': 'Prioridades',
+  'admin.priorities.purpose':
+    'Mantén las prioridades y los motivos de cierre del sitio, y los conjuntos de prioridades que deciden qué prioridades ofrece un track.',
+  'admin.priorities.about':
+    'Todo ticket tiene una prioridad. Un track ofrece las prioridades de su conjunto de prioridades, y un ticket nuevo recibe la predeterminada de ese conjunto salvo que alguien elija otra. Un motivo de cierre dice por qué se cerró un ticket; los flujos de trabajo definen uno al cerrar un ticket. Una prioridad o un motivo de cierre en uso solo se elimina cuando eliges cuál ocupa su lugar.',
+  'admin.priorities.forbidden':
+    'Solo los administradores del sitio y de configuración cambian las prioridades y los motivos de cierre.',
+  'admin.priorities.loading': 'Leyendo las prioridades…',
+  'admin.priorities.failed':
+    'No se pudieron leer las prioridades. Inténtalo de nuevo en un momento.',
+  'admin.priorities.name': 'Nombre',
+  'admin.priorities.description': 'Descripción (opcional)',
+  'admin.priorities.up': 'Subir',
+  'admin.priorities.down': 'Bajar',
+  'admin.priorities.change': 'Cambiar',
+  'admin.priorities.manage': 'Gestionar',
+  'admin.priorities.delete': 'Eliminar',
+  'admin.priorities.save': 'Guardar',
+  'admin.priorities.cancel': 'Cancelar',
+  'admin.priorities.added': 'Se añadió {name}.',
+  'admin.priorities.saved': 'Se guardó {name}.',
+  'admin.priorities.deleted': 'Se eliminó {name}.',
+  'admin.priorities.movedUp': '{name} subió.',
+  'admin.priorities.movedDown': '{name} bajó.',
+  'admin.priorities.replaceOf': 'Qué ocupa el lugar de {name}',
+  'admin.priorities.replaceWith': 'En su lugar, darles',
+  'admin.priorities.problem.nameTaken': 'Ese nombre ya existe. Elige otro.',
+  'admin.priorities.problem.defaultSet':
+    'El conjunto predeterminado no se elimina. Primero haz predeterminado otro conjunto.',
+  'admin.priorities.problem.limit':
+    'Un conjunto de prioridades ofrece como mucho {limit} prioridades en este sitio.',
+  'admin.priorities.problem.listChanged':
+    'La lista cambió desde que esta página la leyó, así que nada se movió. Se ha leído de nuevo: inténtalo otra vez.',
+  'admin.priorities.problem.gone': 'Eso ya no existe. La página se ha leído de nuevo.',
+  'admin.priorities.problem.forbidden':
+    'Ya no puedes cambiar esto. Un administrador del sitio puede darte Cambiar la configuración.',
+  'admin.priorities.problem.other': 'No se pudo guardar. Inténtalo de nuevo en un momento.',
+  'admin.priorities.priorities': 'Prioridades, de la más urgente a la menos',
+  'admin.priorities.new': 'Nueva prioridad',
+  'admin.priorities.add': 'Añadir una prioridad',
+  'admin.priorities.note':
+    'Una prioridad nueva entra en el conjunto de prioridades predeterminado. El icono de una prioridad sale de su lugar en esta lista, de la más urgente arriba a la menos urgente abajo, así que moverla cambia su icono.',
+  'admin.priorities.emptyTitle': 'No hay prioridades.',
+  'admin.priorities.empty': 'Todo ticket necesita una: añade la primera.',
+  'admin.priorities.moveUp': 'Subir la prioridad {name}',
+  'admin.priorities.moveDown': 'Bajar la prioridad {name}',
+  'admin.priorities.changeOf': 'Cambiar la prioridad {name}',
+  'admin.priorities.deleteOf': 'Eliminar la prioridad {name}',
+  'admin.priorities.confirmDelete':
+    '¿Eliminar {name}? Si hay tickets que la tienen, eliges a continuación qué prioridad reciben en su lugar, y los conjuntos de prioridades que ofrecen {name} ofrecerán esa. No se puede deshacer.',
+  'admin.priorities.inUse':
+    '{count, plural, one {# ticket tiene {name}.} other {# tickets tienen {name}.}} Elige la prioridad que reciben en su lugar. Los conjuntos de prioridades que ofrecen {name} la ofrecerán, y los que dan {name} a los tickets nuevos darán esa.',
+  'admin.priorities.noOther': 'No hay otra prioridad que darles. Añade una primero.',
+  'admin.priorities.deletedInto': 'Se eliminó {name}; sus tickets tienen ahora {into}.',
+  'admin.priorities.sets': 'Conjuntos de prioridades',
+  'admin.priorities.newSet': 'Nuevo conjunto de prioridades',
+  'admin.priorities.addSet': 'Añadir un conjunto de prioridades',
+  'admin.priorities.setsNote':
+    'Un track ofrece las prioridades del conjunto que usa, y un track que no elige ninguno usa el conjunto predeterminado. Un ticket conserva una prioridad que su track deja de ofrecer hasta que alguien la cambia.',
+  'admin.priorities.setsLink': 'Elige el conjunto de un track en Qué conjuntos usa un track.',
+  'admin.priorities.setName': 'Nombre del conjunto',
+  'admin.priorities.offers': 'Prioridades que ofrece',
+  'admin.priorities.newTickets': 'Los tickets nuevos reciben',
+  'admin.priorities.middle': 'La del medio de las que ofrece',
+  'admin.priorities.newTicketsHint':
+    'Quien crea un ticket puede elegir aún otra prioridad que ofrezca el conjunto.',
+  'admin.priorities.defaultSet': 'Conjunto predeterminado',
+  'admin.priorities.setSummary':
+    'Ofrece {priorities}. Los tickets nuevos reciben {priority}. {tracks, plural, =0 {Ningún track lo usa.} one {# track lo usa.} other {# tracks lo usan.}}',
+  'admin.priorities.setSummaryMiddle':
+    'Ofrece {priorities}. Los tickets nuevos reciben la del medio. {tracks, plural, =0 {Ningún track lo usa.} one {# track lo usa.} other {# tracks lo usan.}}',
+  'admin.priorities.manageSetOf': 'Gestionar el conjunto de prioridades {name}',
+  'admin.priorities.setChangeOf': 'Cambiar el conjunto de prioridades {name}',
+  'admin.priorities.defaultSetNote':
+    'Los tracks que no eligen conjunto usan este. El conjunto predeterminado no se elimina: para eliminarlo, primero haz predeterminado otro conjunto.',
+  'admin.priorities.makeDefault': 'Hacer este el conjunto predeterminado',
+  'admin.priorities.makeDefaultOf': 'Hacer este el conjunto predeterminado: {name}',
+  'admin.priorities.madeDefault':
+    '{name} es ahora el conjunto predeterminado. Los tracks que no eligen conjunto ofrecen sus prioridades.',
+  'admin.priorities.deleteSetOf': 'Eliminar el conjunto de prioridades {name}',
+  'admin.priorities.confirmDeleteSet':
+    '¿Eliminar {name}? {tracks, plural, =0 {Ningún track lo usa.} one {El # track que lo usa vuelve al conjunto predeterminado, {fallback}.} other {Los # tracks que lo usan vuelven al conjunto predeterminado, {fallback}.}} No se puede deshacer.',
+  'admin.priorities.reasons': 'Motivos de cierre',
+  'admin.priorities.newReason': 'Nuevo motivo de cierre',
+  'admin.priorities.addReason': 'Añadir un motivo de cierre',
+  'admin.priorities.reasonsNote':
+    'Por qué se cerró un ticket. Los flujos de trabajo definen uno al cerrar un ticket, o lo piden; sus listas siguen este orden.',
+  'admin.priorities.reasonsEmptyTitle': 'No hay motivos de cierre.',
+  'admin.priorities.reasonsEmpty':
+    'Añade uno para que los flujos de trabajo tengan un motivo que definir al cerrar un ticket.',
+  'admin.priorities.reasonMoveUp': 'Subir el motivo de cierre {name}',
+  'admin.priorities.reasonMoveDown': 'Bajar el motivo de cierre {name}',
+  'admin.priorities.reasonChangeOf': 'Cambiar el motivo de cierre {name}',
+  'admin.priorities.reasonDeleteOf': 'Eliminar el motivo de cierre {name}',
+  'admin.priorities.reasonConfirmDelete':
+    '¿Eliminar {name}? Si hay tickets que se cerraron con él, o un flujo de trabajo lo define, eliges a continuación qué motivo ocupa su lugar, y cada flujo de trabajo que define {name} recibe una versión nueva que define ese. No se puede deshacer.',
+  'admin.priorities.reasonInUse':
+    '{count, plural, one {# ticket se cerró con {name}.} other {# tickets se cerraron con {name}.}} Elige el motivo que reciben en su lugar. Un flujo de trabajo que define {name} recibe una versión nueva que define ese también.',
+  'admin.priorities.reasonUsedBy':
+    '{count, plural, one {El flujo de trabajo {workflows} define {name}.} other {Los flujos de trabajo {workflows} definen {name}.}} Elige el motivo que definen en su lugar: cada uno recibe una versión nueva que lo define.',
+  'admin.priorities.reasonNoOther': 'No hay otro motivo de cierre que elegir. Añade uno primero.',
+  'admin.priorities.reasonDeletedInto': 'Se eliminó {name}; {into} ocupa su lugar.',
+  // Etiquetas: fusionar varias en una, que también renombra una (T-322; CORE-017; ADR-114).
+  'settings.labels': 'Etiquetas',
+  'settings.labelsHint':
+    'Fusiona las etiquetas que significan lo mismo, o renombra una, en todos los tickets a la vez.',
+  'admin.labels.title': 'Etiquetas',
+  'admin.labels.about':
+    'Las etiquetas son palabras libres en los tickets, sugeridas entre todas las que están en uso mientras se escribe. Cuando se escribe una misma idea de varias formas, como front-end, frontend y FE, fusiónalas: cada ticket que tiene una de ellas recibe la etiqueta en la que se convierten, una sola vez, y su historial registra el cambio. Fusionar una sola etiqueta en una palabra nueva la renombra. Los recuentos incluyen los tickets de la papelera, que una fusión también cambia.',
+  'admin.labels.forbidden':
+    'Solo los administradores del sitio y de configuración fusionan y renombran etiquetas.',
+  'admin.labels.merging': 'Fusionar o renombrar',
+  'admin.labels.mergingNote':
+    'Marca etiquetas en la lista de abajo y escribe la etiqueta en la que se convierten: una que ya está en uso, para fusionarlas en ella, o una palabra nueva, para renombrarlas.',
+  'admin.labels.nothingTicked': 'Aún no hay ninguna etiqueta marcada.',
+  'admin.labels.chosen': 'Marcadas: {labels}.',
+  'admin.labels.withCount':
+    '{name} ({count, plural, =0 {ningún ticket} one {# ticket} other {# tickets}})',
+  'admin.labels.into': 'Se convierten en',
+  'admin.labels.intoHint':
+    'Una palabra, sin espacios. Las mayúsculas cuentan: FE y fe son dos etiquetas, y fusionar una en la otra las hace una.',
+  'admin.labels.oneWord': 'Una etiqueta es una palabra de hasta 255 caracteres, sin espacios.',
+  'admin.labels.chooseOther':
+    'Las etiquetas marcadas ya son {into}: marca otra etiqueta o escribe otra palabra.',
+  'admin.labels.tooMany': 'Marca como mucho {max} etiquetas a la vez.',
+  'admin.labels.merge': 'Fusionar',
+  'admin.labels.rename': 'Renombrar',
+  'admin.labels.mergeInto': 'Fusionar en {into}',
+  'admin.labels.renameTo': 'Renombrar {label} como {into}',
+  'admin.labels.confirmMerge':
+    '{count, plural, =0 {¿Fusionar {labels} en {into}? Ningún ticket las tiene ahora, así que solo cambian las sugerencias.} one {¿Fusionar {labels} en {into}? El ticket que las tiene recibe {into} en su lugar, y su historial lo registra.} other {¿Fusionar {labels} en {into}? Los tickets que las tienen, # como mucho, reciben {into} en su lugar, una vez cada uno, y su historial lo registra.}} No se puede deshacer.',
+  'admin.labels.confirmRename':
+    '{count, plural, =0 {¿Renombrar {label} como {into}? Ningún ticket la tiene ahora, así que solo cambian las sugerencias.} one {¿Renombrar {label} como {into}? Su ticket recibe {into} en su lugar, y su historial lo registra.} other {¿Renombrar {label} como {into}? Sus # tickets reciben {into} en su lugar, y su historial lo registra.}} Si {into} ya es una etiqueta, las dos pasan a ser una. No se puede deshacer.',
+  'admin.labels.done':
+    '{count, plural, =0 {{into} sustituye a {labels}; ningún ticket cambió.} one {{into} sustituye a {labels} en # ticket.} other {{into} sustituye a {labels} en # tickets.}}',
+  'admin.labels.clear': 'Quitar las marcas',
+  'admin.labels.list': 'Etiquetas de este sitio',
+  'admin.labels.search': 'Buscar las etiquetas que empiezan por',
+  'admin.labels.count': '{count, plural, =0 {Ningún ticket} one {# ticket} other {# tickets}}',
+  'admin.labels.loading': 'Leyendo las etiquetas…',
+  'admin.labels.failed': 'No se pudieron leer las etiquetas. Inténtalo de nuevo en un momento.',
+  'admin.labels.emptyTitle': 'Aún no hay etiquetas',
+  'admin.labels.empty':
+    'Una etiqueta aparece aquí cuando un ticket la tiene. Las personas añaden etiquetas en un ticket, y las importaciones traen las suyas.',
+  'admin.labels.noneMatchTitle': 'Ninguna etiqueta empieza por {q}',
+  'admin.labels.noneMatch': 'Prueba con menos letras, o vacía la búsqueda para ver todas.',
+  'admin.labels.more': 'Mostrar más etiquetas',
+  'admin.labels.moreFailed': 'No se pudieron leer más etiquetas. Inténtalo de nuevo en un momento.',
+  'admin.labels.problem.labels':
+    'Esas etiquetas no se pueden fusionar: marca como mucho {max}, distintas de la que resulta.',
+  'admin.labels.problem.other':
+    'No se pudieron fusionar las etiquetas. Inténtalo de nuevo en un momento.',
   'ticketView.editLabels': 'Editar las etiquetas',
   'ticketView.save': 'Guardar',
   'ticketView.cancel': 'Cancelar',
@@ -4030,6 +4800,9 @@ export const messagesEs: Record<MessageId, string> = {
   'richtext.table.addRow': 'Añadir una fila debajo',
   'richtext.table.addColumn': 'Añadir una columna a la derecha',
   'richtext.table.delete': 'Eliminar la tabla',
+  // Removing a row or a column (T-120).
+  'richtext.table.deleteRow': 'Eliminar esta fila',
+  'richtext.table.deleteColumn': 'Eliminar esta columna',
   'richtext.mention': 'Mencionar a alguien',
   'richtext.taskItem': 'Elemento de la lista: {text}',
   'richtext.taskItemEmpty': 'Elemento de la lista vacío',
@@ -4212,7 +4985,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.fixTextFirst':
     'Corrige antes el texto: el diagrama solo puede mostrar una definición que se lea correctamente.',
   'admin.workflow.confirmDiscard':
-    '¿Descartar el borrador y todos los cambios sin guardar? La versión publicada se queda como está.',
+    'El borrador guardado y todos los cambios sin guardar se eliminan. La versión publicada se queda como está.',
   'admin.workflow.confirmDiscardButton': 'Descartar el borrador',
   'admin.workflow.discarded': 'El borrador se descartó; el editor muestra la versión publicada.',
   'admin.workflow.cancel': 'Cancelar',
@@ -4522,6 +5295,8 @@ export const messagesEs: Record<MessageId, string> = {
     '{where}: el motivo de cierre que establece ya no existe.',
   'workflow.problem.invalid_pattern': '{where}: {pattern} no es una expresión regular válida.',
   'workflow.problem.guards_too_deep': '{where}: las condiciones se anidan demasiado.',
+  'workflow.problem.no_moves':
+    'Ningún ticket podría moverse nunca en él: no tiene transiciones, todos sus estados están en la etapa cerrada y no hay ningún motivo de cierre con el que cerrar. Añade un motivo de cierre llamado Completed, haz que el flujo de trabajo predeterminado defina un motivo al cerrar un ticket, añade un estado fuera de la etapa cerrada o dibuja tú las transiciones.',
   'workflow.problem.onCreate': 'Crear un ticket',
   'workflow.problem.refused': 'El servidor rechazó la definición.',
   'workflow.problem.mappingRequired': 'Elige adónde van los tickets de cada estado que se quita.',
@@ -4539,7 +5314,7 @@ export const messagesEs: Record<MessageId, string> = {
     '{count, plural, one {El borrador tiene # aviso; aun así se puede publicar.} other {El borrador tiene # avisos; aun así se puede publicar.}}',
   'admin.workflow.publishPanel.dropped': 'Estados que quita esta versión',
   'admin.workflow.publishPanel.freeMoves':
-    'Esta versión no tiene transiciones, así que al publicarla cada uno de sus estados recibe una transición desde cualquier estado, como un flujo de trabajo nuevo.',
+    'Esta versión no tiene transiciones, así que al publicarla sus estados reciben una transición desde cualquier estado, como un flujo de trabajo nuevo. Un estado de la etapa cerrada solo la recibe si hay un motivo de cierre con el que cerrar; si ningún estado puede recibirla, la publicación se rechaza y dice por qué.',
   'admin.workflow.publishPanel.moveTo':
     'Mover {count, plural, one {el # ticket} other {los # tickets}} de {status} a',
   'admin.workflow.publishPanel.empty': '{status}: no hay tickets que mover.',
@@ -4559,9 +5334,9 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.versions.publishedAt': 'Publicada {when} por {name}',
   'admin.workflow.versions.publishedBySystem': 'Publicada {when}',
   'admin.workflow.versions.restore': 'Restaurar como borrador',
-  'admin.workflow.versions.restoreNamed': 'Restaurar la versión {version} como borrador',
+  'admin.workflow.versions.restoreNamed': 'Restaurar como borrador desde la versión {version}',
   'admin.workflow.versions.confirmRestore':
-    'Restaurar la versión {version} reemplaza el borrador actual y todos los cambios sin guardar.',
+    'Restaurar la versión {version} reemplaza {draft, select, none {todos los cambios sin guardar} other {el borrador (versión {draft}) y todos los cambios sin guardar}}. La versión publicada se queda como está.',
   'admin.workflow.versions.confirmRestoreButton': 'Restaurar la versión {version}',
   'admin.workflow.versions.restored':
     'La versión {version} es ahora el borrador. Publícala para volver a usarla.',
@@ -5434,6 +6209,7 @@ export const messagesEs: Record<MessageId, string> = {
   'plans.summary.failed': 'No se pudieron cargar los números de este plan.',
   'plans.timeline.failed': 'No se pudo cargar el cronograma de este plan.',
   'plans.calendar.failed': 'No se pudo cargar el calendario de este plan.',
+  'plans.calendar.sprint': '{sprint} · {track}',
   'plans.list.capped':
     'La lista se detiene en {count, number} tickets. Filtra el plan, o ábrelo en la búsqueda, para ver el resto.',
   'plans.sources.find': 'Buscar un track o una búsqueda guardada',
@@ -5599,7 +6375,7 @@ export const messagesEs: Record<MessageId, string> = {
   'summary.filter.mine': 'Mis tickets',
   'summary.filter.clear': 'Quitar el filtro',
   'summary.filter.note':
-    'Solo tú ves este filtro. Reduce cada número y cada widget de aquí a los tickets que también coinciden, y se queda en la dirección de esta página, así que puedes guardarla en marcadores. El resumen que ven los demás no cambia.',
+    'Este filtro solo cambia tu vista: reduce cada número y cada widget de aquí a los tickets que también coinciden. Se queda en la dirección de esta página, así que puedes guardarla en marcadores o compartir el enlace; el resumen que ven los demás no cambia.',
   'summary.filter.bad':
     'Ese filtro no se lee como una búsqueda. Revísalo en la página de búsqueda.',
   'summary.filter.on': 'Solo se muestran los tickets que coinciden con {filter}.',
@@ -5691,6 +6467,7 @@ export const messagesEs: Record<MessageId, string> = {
   'list.group.noValue': 'Ninguno',
   'list.group.other': 'Otros valores',
   'list.groupTitle': '{name} ({count, plural, one {# ticket} other {# tickets}})',
+  'list.groupTable': 'Tabla de resultados de {name}',
   'list.otherHint': 'Tickets con los valores menos frecuentes; búscalos para verlos todos.',
   'list.groupsFailed': 'No se pudieron contar los grupos. Revisa el filtro.',
   'list.sortBy': 'Ordenar por',
@@ -5698,6 +6475,12 @@ export const messagesEs: Record<MessageId, string> = {
   'list.sort.updated': 'Actualizados recientemente',
   'list.sort.due': 'Fecha límite',
   'list.sort.priority': 'Prioridad',
+  'list.sort.type': 'Tipo',
+  'list.sort.key': 'Clave',
+  'list.sort.current': '{column}, {direction, select, ascending {ascendente} other {descendente}}',
+  'list.sort.current.date':
+    '{column}, {direction, select, ascending {primero la fecha más temprana} other {primero la fecha más tardía}}',
+  'list.sort.announce': 'Ordenado por {order}',
   'list.filter': 'Filtro',
   'list.filterPlaceholder': 'assignee = currentUser()',
   'list.filterApply': 'Aplicar el filtro',
@@ -5749,7 +6532,7 @@ export const messagesEs: Record<MessageId, string> = {
   'timeline.legend.sprint': 'Fechas de su sprint',
   'timeline.legend.rollup': 'Calculado a partir de sus hijos',
   'timeline.legend.closed': 'Parte de los hijos cerrada',
-  'timeline.legend.none': 'Aún sin fechas',
+  'timeline.legend.none': 'Sin fechas',
   'timeline.legend.today': 'Hoy',
   'timeline.legend.release': 'Versión',
   'timeline.legend.link': 'Bloquea el ticket al que lleva',
@@ -5845,6 +6628,85 @@ export const messagesEs: Record<MessageId, string> = {
   'releases.create.submit': 'Añadir la versión',
   'releases.create.taken': 'Este track ya tiene una versión con ese nombre.',
   'releases.create.failed': 'No se pudo añadir la versión.',
+  // Las áreas de un track (CORE-015, T-320): su página y los enlaces a ella desde el track.
+  'areas.title': 'Áreas',
+  'areas.purpose':
+    'Las partes del trabajo de este track, el propietario de cada una y quién recibe sus tickets nuevos.',
+  'areas.about':
+    'Un área es una parte del trabajo de un track, como API o Facturación. Un ticket puede estar en varias áreas. Cada área puede nombrar un propietario y un equipo propietario, y dice quién recibe un ticket nuevo que no nombra responsable: el propietario del área, el propietario del track o nadie. Decide la primera de las áreas del ticket cuya regla nombra a alguien; si a esa persona no se le pueden asignar tickets en el track, el ticket se queda sin asignar. Un área archivada sigue en sus tickets, pero no se ofrece para tickets nuevos. Todos los que pueden ver el track leen esta página; sus administradores la cambian.',
+  'areas.loading': 'Cargando las áreas…',
+  'areas.failed': 'No se pudieron cargar las áreas. Inténtalo de nuevo en un momento.',
+  'areas.new': 'Área nueva',
+  'areas.readOnly': 'Solo los administradores de este track pueden cambiar sus áreas.',
+  'areas.readOnlyArchived': 'Este track está archivado, así que sus áreas no pueden cambiar.',
+  'areas.none': 'Aún no hay áreas',
+  'empty.areas.body':
+    'Las áreas dividen el trabajo del track en partes, como API o Facturación, cada una con un propietario. Cuando el track tiene alguna, el formulario de creación las ofrece. Añade una con Área nueva.',
+  'empty.areas.bodyRead':
+    'Las áreas dividen el trabajo del track en partes, como API o Facturación, cada una con un propietario. Las añaden los administradores del track.',
+  'areas.listLabel': 'Áreas de {key}',
+  'areas.archivedTitle': 'Áreas archivadas',
+  'areas.archivedNote': 'Siguen en sus tickets, pero no se ofrecen para tickets nuevos.',
+  'areas.owner': 'Propietario: {name}',
+  'areas.ownerUnset': 'Sin propietario',
+  'areas.ownerTeam': 'Equipo propietario: {name}',
+  'areas.rule.area_owner': 'Los tickets nuevos sin responsable van al propietario del área.',
+  'areas.rule.track_owner': 'Los tickets nuevos sin responsable van al propietario del track.',
+  'areas.rule.unassigned': 'Los tickets nuevos sin responsable se quedan sin asignar.',
+  'areas.change': 'Cambiar',
+  'areas.changeOf': 'Cambiar el área {name}',
+  'areas.archive': 'Archivar',
+  'areas.archiveOf': 'Archivar el área {name}',
+  'areas.restore': 'Restaurar',
+  'areas.restoreOf': 'Restaurar el área {name}',
+  'areas.delete': 'Eliminar',
+  'areas.deleteOf': 'Eliminar el área {name}',
+  'areas.confirmDelete':
+    '¿Eliminar el área {name}? No se puede recuperar. Si hay tickets en ella, eliges después adónde van.',
+  'areas.whereTicketsGo': 'Adónde van los tickets de {name}',
+  'areas.inUse':
+    '{count, plural, one {# ticket está} other {# tickets están}} en {name}. Elige adónde van; el historial del ticket registra el cambio.',
+  'areas.inUseSearch': 'Abrirlos en la búsqueda',
+  'areas.moveTo': 'Moverlos a',
+  'areas.moveNone': 'Ninguna área: quitarles {name}',
+  'areas.form.name': 'Nombre',
+  'areas.form.description': 'Descripción',
+  'areas.form.owner': 'Propietario',
+  'areas.form.ownerHint':
+    'Escribe un nombre para encontrar a alguien; primero salen quienes pueden ver este track.',
+  'areas.form.removeOwner': 'Quitar a {name} como propietario',
+  'areas.form.team': 'Equipo propietario',
+  'areas.form.teamHint': 'Escribe un nombre para encontrar un equipo.',
+  'areas.form.removeTeam': 'Quitar {name} como equipo propietario',
+  'areas.form.rule': 'Los tickets nuevos sin responsable van a',
+  'areas.form.rule.area_owner': 'El propietario del área',
+  'areas.form.rule.track_owner': 'El propietario del track',
+  'areas.form.rule.unassigned': 'Nadie: se quedan sin asignar',
+  'areas.form.ruleHint':
+    'Cuando un ticket está en varias áreas, decide la primera cuya regla nombra a alguien; si a esa persona no se le pueden asignar tickets aquí, el ticket se queda sin asignar.',
+  'areas.form.ruleNoOwner':
+    'Esta área aún no tiene propietario: hasta que lo tenga, su regla no da los tickets nuevos a nadie.',
+  'areas.form.save': 'Guardar el área',
+  'areas.form.cancel': 'Cancelar',
+  'areas.created': 'Se añadió el área {name}.',
+  'areas.saved': 'Se guardó el área {name}.',
+  'areas.archivedDone': 'Se archivó el área {name}.',
+  'areas.restoredDone': 'Se restauró el área {name}.',
+  'areas.deleted': 'Se eliminó el área {name}.',
+  'areas.deletedMoved': 'Se eliminó el área {name}; sus tickets pasaron a {to}.',
+  'areas.deletedRemoved': 'Se eliminó el área {name} y se quitó de sus tickets.',
+  'areas.problem.nameTaken': 'Este track ya tiene un área con ese nombre.',
+  'areas.problem.limit':
+    'Este track tiene tantas áreas como permite el sitio ({limit}). Archiva una antes, o pide a un administrador del sitio que suba el límite en Salvaguardas.',
+  'areas.problem.changed': 'Alguien cambió esta área mientras tanto. Se volvió a leer la lista.',
+  'areas.problem.owner': 'Esa persona ya no puede ser propietaria de un área. Elige a otra.',
+  'areas.problem.team': 'Ese equipo ya no existe. Elige otro.',
+  'areas.problem.replacement': 'Esa área ya no puede recibir los tickets. Elige otra.',
+  'areas.problem.other': 'No se pudo guardar el cambio. Inténtalo de nuevo en un momento.',
+  'areas.manageTitle': 'Sus áreas',
+  'areas.manageIntro':
+    'Quién es propietario de cada parte del trabajo de {key} y quién recibe sus tickets nuevos.',
+  'areas.manageLink': 'Áreas: las partes de su trabajo y sus propietarios',
   'release.notFound': 'Esta versión no existe, o no puedes verla.',
   'release.title': 'Versión',
   'release.failed': 'No se pudo cargar esta versión. Inténtalo de nuevo en un momento.',
@@ -5985,6 +6847,7 @@ export const messagesEs: Record<MessageId, string> = {
   'notFound.dashboard': 'Panel no encontrado',
   'notFound.bulk': 'Cambio en bloque no encontrado',
   'notFound.workflow': 'Flujo de trabajo no encontrado',
+  'notFound.person': 'Persona no encontrada',
   'page.itemCount': '{count, plural, =0 {Ningún elemento} one {# elemento} other {# elementos}}',
   'builder.title': 'Taskmoor Builder',
   'builder.intro':
@@ -6279,6 +7142,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.aiUsage.scope.eachPerson': 'Cada persona',
   'admin.aiUsage.tokens': '{count, plural, one {# token} other {# tokens}}',
   'admin.aiUsage.limits': 'Límites de gasto',
+  'admin.aiUsage.limitsTable': 'Tabla de límites de gasto',
   'admin.aiUsage.limitsHint':
     'Al llegar a un límite, las llamadas a la IA se detienen hasta que empieza su siguiente periodo; se avisa a los administradores al 80 % y al 100 %.',
   'admin.aiUsage.limitsFailed': 'No se pudieron cargar los límites de gasto.',
@@ -6289,6 +7153,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.aiUsage.period.week': 'Semana',
   'admin.aiUsage.period.month': 'Mes',
   'admin.aiUsage.calls': 'Últimas llamadas a la IA',
+  'admin.aiUsage.callsTable': 'Tabla de las últimas llamadas a la IA',
   'admin.aiUsage.callsHint':
     'El registro de IA: una entrada por llamada, con quién, función, tokens y coste.',
   'admin.aiUsage.outcome.ok': 'Respondida',
@@ -6428,7 +7293,8 @@ export const messagesEs: Record<MessageId, string> = {
     'Un nivel oculta tickets concretos a todos menos a sus miembros. Un track usa una política, que contiene sus niveles.',
   'admin.visibility.about':
     'Para ver un ticket de un nivel hay que ver el track y ser miembro del nivel. También vale para los administradores del sitio. Un ticket sin nivel lo ve todo el que ve su track.',
-  'admin.visibility.forbidden': 'Solo los administradores del sitio usan esta página.',
+  'admin.visibility.forbidden':
+    'Solo los administradores del sitio y de la configuración, y quienes llevan un track con configuración propia, gestionan las políticas de visibilidad.',
   'admin.visibility.loading': 'Leyendo las políticas…',
   'admin.visibility.failed': 'No se pudieron leer las políticas. Inténtalo de nuevo en un momento.',
   'admin.visibility.emptyTitle': 'Aún no hay políticas de visibilidad',
@@ -6494,6 +7360,57 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.visibility.problem.limit':
     'Esto supera un límite. La página de Salvaguardas tiene el límite de niveles.',
   'admin.visibility.problem.other': 'No se pudo hacer. Inténtalo de nuevo en un momento.',
+  // La configuración propia de un track en modo local: su mapa de flujos y sus políticas de
+  // visibilidad, y los administradores de la configuración en Políticas de visibilidad (T-322).
+  'admin.visibility.problem.forbidden':
+    'No puedes cambiar esta política. Solo la cambian quienes llevan su track y los administradores del sitio y de la configuración.',
+  'admin.visibility.trackAbout':
+    'Este track tiene su propia configuración, así que puede tener sus propias políticas de visibilidad: niveles solo para sus tickets. Los demás tracks no se ven afectados.',
+  'admin.visibility.trackIntro':
+    'Las políticas de visibilidad propias de este track. Las compartidas son cosa de los administradores del sitio y de la configuración.',
+  'admin.visibility.trackUsesOwn': '{key} usa {name}.',
+  'admin.visibility.trackUsesShared':
+    '{key} usa ahora una política compartida. Usa una propia para elegir quién ve cuáles de sus tickets.',
+  'admin.visibility.trackUsesNoPolicy':
+    '{key} no usa ahora ninguna política de visibilidad, así que quien lo ve ve todos sus tickets. Usa una propia para dar niveles a sus tickets.',
+  'admin.visibility.ownEmpty':
+    'Añade una con Nueva política de visibilidad, dale niveles y úsala para {key}.',
+  'admin.visibility.useFor': 'Usar esta política para {key}',
+  'admin.visibility.useHint':
+    'Los tickets de un nivel que esta política no tiene toman su nivel predeterminado, o ninguno, así que algunos pueden quedar a la vista de más personas. Solo los administradores del sitio y de la configuración pueden volver a darle al track una política compartida, o ninguna.',
+  'admin.visibility.usedFor': '{key} usa ahora {name}.',
+  'admin.visibility.choose.intro':
+    'Llevas estos tracks con configuración propia. Elige uno para gestionar sus propias políticas de visibilidad.',
+  'admin.visibility.choose.none':
+    'Ninguno de los tracks que llevas tiene configuración propia. Usan políticas de visibilidad compartidas, que cambian los administradores del sitio y de la configuración.',
+  'admin.visibility.choose.open': 'Políticas de visibilidad de {key} · {name}',
+  'admin.visibility.scope.shared':
+    '{key} usa configuración compartida, así que usa una política de visibilidad compartida, o ninguna, que eligen los administradores del sitio y de la configuración.',
+  'admin.maps.trackTitle': 'Mapa de flujos',
+  'admin.maps.trackAbout':
+    'Este track tiene su propia configuración, así que tiene su propio mapa de flujos: qué flujo de trabajo sigue cada uno de sus tipos de ticket, también sus flujos propios. Los demás tracks no se ven afectados.',
+  'admin.maps.trackIntro':
+    'El mapa de flujos propio de este track, creado con él. Los mapas compartidos son cosa de los administradores del sitio y de la configuración.',
+  'admin.maps.trackNote':
+    'Qué flujo de trabajo sigue cada tipo de ticket que ofrece {key}. Un tipo que el mapa no nombra sigue el flujo de trabajo para todos los demás tipos.',
+  'admin.maps.trackFailed':
+    'No se pudo leer el mapa de flujos del track. Inténtalo de nuevo en un momento.',
+  'admin.maps.ownWorkflow': '{name} (propio de {key})',
+  'admin.maps.choose.intro':
+    'Llevas estos tracks con configuración propia. Elige uno para cambiar su propio mapa de flujos.',
+  'admin.maps.choose.none':
+    'Ninguno de los tracks que llevas tiene configuración propia. Usan mapas de flujos compartidos, que cambian los administradores del sitio y de la configuración.',
+  'admin.maps.choose.open': 'Mapa de flujos de {key} · {name}',
+  'admin.maps.scope.shared':
+    '{key} usa configuración compartida, así que sigue un mapa de flujos compartido, que eligen y cambian los administradores del sitio y de la configuración.',
+  'admin.maps.problem.archived':
+    'El track está archivado, así que su mapa solo se puede cambiar cuando se restaure.',
+  'admin.maps.problem.forbidden':
+    'No puedes cambiar este mapa. Solo lo cambian quienes llevan su track y los administradores del sitio y de la configuración.',
+  'trackPeople.workflowMapLink':
+    'Mapa de flujos: qué flujo de trabajo sigue cada uno de sus tipos de ticket',
+  'trackPeople.visibilityLink':
+    'Políticas de visibilidad: cuáles de sus tickets solo ven algunas personas',
   'admin.explain.title': 'Explicador de permisos',
   'admin.explain.about':
     'Elige una persona y luego un track o un ticket y un permiso. La respuesta dice sí o no y nombra lo que lo decidió: un rol en el track, un grupo, un permiso global o un nivel de visibilidad. Solo lee; aquí no cambia nada.',
@@ -6624,7 +7541,7 @@ export const messagesEs: Record<MessageId, string> = {
   'webhooks.deliveryFacts': '{when}, {attempts, plural, one {# intento} other {# intentos}}.',
   'webhooks.lastStatus': 'Última respuesta {status}.',
   'webhooks.replay': 'Enviar de nuevo',
-  'webhooks.replayOne': 'Enviar {event} de nuevo',
+  'webhooks.replayOne': 'Enviar de nuevo: {event}',
   'webhooks.replayAll': 'Enviar de nuevo todas las fallidas',
   'webhooks.replayed': 'Se pidió enviarlas de nuevo, con el mismo id y contenido.',
   'webhooks.replayFailed': 'No se pudieron enviar de nuevo. Inténtalo de nuevo en un momento.',
@@ -6707,12 +7624,12 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.aiLimits.savePrice': 'Guardar la tarifa',
   'settings.trackSets': 'Qué conjuntos usa un track',
   'settings.trackSetsHint':
-    'Elegir los diseños, prioridades, política de visibilidad y notificaciones de un track.',
+    'Elegir la política de acceso, el conjunto de tipos, los diseños, prioridades, política de visibilidad y notificaciones de un track.',
   'admin.trackSets.title': 'Qué conjuntos usa un track',
   'admin.trackSets.purpose':
-    'Elige los diseños, prioridades, política de visibilidad y notificaciones de un track entre los conjuntos que existen.',
+    'Elige la política de acceso, el conjunto de tipos, los diseños, prioridades, política de visibilidad y notificaciones de un track entre los conjuntos que existen.',
   'admin.trackSets.about':
-    'Esta página solo elige. Los conjuntos de diseños y las políticas de visibilidad se crean en sus propias páginas; los conjuntos de prioridades y las políticas de notificación se crean por ahora con la API. Los conjuntos de tipos, de reglas de campos y los mapas de flujos se eligen donde se crean.',
+    'Esta página solo elige. Las políticas de acceso, los conjuntos de tipos, de diseños y de prioridades, las políticas de visibilidad y las de notificaciones se crean en sus propias páginas. Los conjuntos de reglas de campos y los mapas de flujos se eligen donde se crean. Un track con configuración propia conserva su propia política de acceso y su conjunto de tipos.',
   'admin.trackSets.forbidden':
     'Solo los administradores del sitio y de la configuración eligen aquí los conjuntos de un track.',
   'admin.trackSets.loading': 'Leyendo…',
@@ -6731,6 +7648,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.trackSets.priorityNone': 'Las prioridades predeterminadas del sitio',
   'admin.trackSets.priorityHint':
     'Las prioridades entre las que eligen los tickets. Un ticket conserva una prioridad que su track deja de ofrecer.',
+  'admin.trackSets.priorityLink': 'Crea y cambia los conjuntos de prioridades en Prioridades.',
   'admin.trackSets.visibility': 'Política de visibilidad',
   'admin.trackSets.visibilityNone': 'Ninguna: los tickets no tienen nivel',
   'admin.trackSets.visibilityHint':
@@ -6738,6 +7656,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.trackSets.notification': 'Notificaciones',
   'admin.trackSets.notificationNone': 'Las notificaciones predeterminadas del sitio',
   'admin.trackSets.notificationHint': 'Quién se entera de qué cambios en este track.',
+  'admin.trackSets.notificationLink':
+    'Crea y cambia las políticas de notificaciones en Políticas de notificaciones.',
   'admin.trackSets.own': '{name} (propio)',
   'admin.trackSets.save': 'Guardar',
   'admin.trackSets.saved': 'Se guardó {key}.',
@@ -6746,6 +7666,48 @@ export const messagesEs: Record<MessageId, string> = {
     'No puedes elegir eso para este track. Un administrador del sitio o de la configuración puede.',
   'admin.trackSets.problem.other': 'No se pudo guardar. Inténtalo de nuevo en un momento.',
   'admin.tracks.setsLink': 'Elegir los conjuntos que usa {key}',
+  // Deleting a track to the trash, and a shared-mode track's access policy and type set (T-322).
+  'admin.tracks.delete': 'Eliminar el track',
+  'admin.tracks.deleteOf': 'Eliminar el track {key}',
+  'admin.tracks.deleteOutcome':
+    '{key} va a la papelera con sus tickets, versiones y áreas. Allí nadie lo ve, y su clave sigue ocupada. Se puede restaurar desde Papelera hasta que se cumpla su tiempo allí; después se elimina para siempre.',
+  'admin.tracks.deletedSaid': 'El track {key} está en la papelera.',
+  'admin.tracks.trashLink': 'Restaurar {key} desde Papelera',
+  'admin.tracks.problem.inTrash': 'El track {key} ya está en la papelera.',
+  'admin.tracks.problem.gone': 'El track {key} ya no existe, o ya no puedes verlo.',
+  'admin.trackSets.access': 'Política de acceso',
+  'admin.trackSets.accessHint':
+    'Quién puede ver el track y qué puede hacer en él. Al cambiarla, eso cambia al momento para todos.',
+  'admin.trackSets.accessLink': 'Crea y cambia las políticas de acceso en Permisos.',
+  'admin.trackSets.typeSet': 'Conjunto de tipos',
+  'admin.trackSets.typeSetHint':
+    'Los tipos de ticket que ofrece el track. Si hay tickets de un tipo que el nuevo conjunto no tiene, al guardar se pregunta qué tipo toman.',
+  'admin.trackSets.typeSetLink':
+    'Crea y cambia los conjuntos de tipos en Conjuntos de configuración.',
+  'admin.trackSets.choose': 'Elige uno',
+  'admin.trackSets.ownKept':
+    '{key} tiene su propia política de acceso y su propio conjunto de tipos. Sus administradores cambian el conjunto de tipos en su propia página de Conjuntos de configuración, y la política de acceso a través de la API.',
+  'admin.trackSets.ownLink': 'Abrir los conjuntos de configuración de {key}',
+  'admin.trackSets.mapping': 'Tickets de los tipos que {set} no tiene',
+  'admin.trackSets.mappingIntro':
+    '{tickets, plural, one {# ticket de {key} tiene} other {# tickets de {key} tienen}} un tipo que {set} no tiene. Elige el tipo que toman, del mismo nivel, y vuelve a guardar.',
+  'admin.trackSets.mappingIntroUncounted':
+    'Hay tickets de {key} con un tipo que {set} no tiene. Elige el tipo que toman, del mismo nivel, y vuelve a guardar.',
+  'admin.trackSets.mappingNowhere':
+    '{set} no tiene ningún tipo del nivel {level}, así que los tickets de {name} no tienen adónde ir: elige otro conjunto de tipos, o añade a {set} un tipo de ese nivel.',
+  'admin.trackSets.savedMapped':
+    'Se guardó {key}; {tickets, plural, one {# ticket tomó otro tipo} other {# tickets tomaron otro tipo}}.',
+  'admin.trackSets.savedMappedUncounted':
+    'Se guardó {key}; los tickets de los tipos que faltaban tomaron otro tipo.',
+  'admin.trackSets.problem.typeInUse':
+    'Hay tickets de {key} con un tipo que {set} no tiene: elige el tipo que toman y vuelve a guardar.',
+  'admin.trackSets.problem.mapping':
+    'Cada tipo que {set} no tiene necesita un tipo del mismo nivel que {set} sí tenga.',
+  'admin.trackSets.problem.archived':
+    '{key} está archivado: restáuralo en Tracks antes de cambiar lo que usa.',
+  'admin.trackSets.problem.gone':
+    'Un conjunto que elegiste ya no existe, o es de un track con configuración propia. Vuelve a abrir la página y elige otro.',
+  'admin.trackSets.problem.trackGone': '{key} ya no existe, o ya no puedes verlo.',
   'summary.templates': 'Plantillas de ticket',
   'settings.ticketTemplates': 'Plantillas de ticket',
   'settings.ticketTemplatesHint':
@@ -6866,6 +7828,8 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketTools.links.added': 'Enlazado: {phrase} {key}.',
   'ticketTools.links.removed': 'Quitado: {phrase} {key}.',
   'ticketTools.links.remove': 'Quitar el enlace: {phrase} {key}',
+  'ticketTools.links.removeOutcome':
+    '{key} está en otro track: cuando el enlace se vaya, esta página no puede volver a enlazarlo.',
   'ticketTools.links.exists': 'Ese enlace ya existe.',
   'ticketTools.links.disabled': 'Los enlaces entre tickets están desactivados en este sitio.',
   'ticketTools.links.archived':
@@ -6922,6 +7886,8 @@ export const messagesEs: Record<MessageId, string> = {
   'ticketTools.checklists.moved': 'Se movió la lista {name}.',
   'ticketTools.checklists.rename': 'Editar la lista {name}',
   'ticketTools.checklists.remove': 'Quitar la lista {name}',
+  'ticketTools.checklists.removeOutcome':
+    'Quitar {name} elimina {count, plural, one {su # elemento} other {sus # elementos}} y el estado de cada uno: {done, plural, =0 {ninguno estaba hecho} one {# estaba hecho} other {# estaban hechos}}. El historial solo guarda el nombre de la lista, así que no se puede deshacer.',
   'ticketTools.checklists.moveListUp': 'Subir la lista {name}',
   'ticketTools.checklists.moveListDown': 'Bajar la lista {name}',
   'ticketTools.checklists.addItem': 'Añadir un elemento a {name}',
@@ -6977,6 +7943,10 @@ export const messagesEs: Record<MessageId, string> = {
   'richtext.prompt.file': '{name} ({details})',
   'richtext.prompt.fileBy': 'de {author}',
   'richtext.prompt.fileNumber': 'archivo {number}',
+  // A file uploaded from the file prompt (T-120).
+  'richtext.prompt.upload': 'Subir un archivo',
+  'richtext.prompt.uploadHint': 'Hasta {limit}. También aparece en Adjuntos.',
+  'richtext.prompt.uploading': 'Subiendo {name}…',
   'richtext.columns.widths': 'Ancho de las {count} columnas',
   'richtext.columns.equal': 'Iguales',
   'richtext.columns.apply': 'Aplicar',
@@ -7041,6 +8011,39 @@ export const messagesEs: Record<MessageId, string> = {
   'ownSets.archived': '{key} está archivado: su configuración se puede cambiar cuando se restaure.',
   'ownSets.useHint':
     'Desde entonces el track sigue este conjunto. Solo los administradores del sitio y de la configuración pueden volver a darle uno compartido.',
+  // Los tipos de ticket y los campos propios de un track con configuración propia (T-322).
+  'ownTypes.title': 'Sus tipos de ticket propios',
+  'ownTypes.intro':
+    'Tipos de ticket que solo tiene {key}. Su conjunto de tipos, más abajo, ofrece uno cuando lo marcas allí.',
+  'ownTypes.listOf': 'Tipos de ticket de {key}',
+  'ownTypes.none': '{key} aún no tiene tipos de ticket propios.',
+  'ownTypes.noneBody':
+    'Añade uno para el trabajo que solo hace este track. Los tipos compartidos no cambian.',
+  'ownTypes.summary':
+    'Nivel {level} · {offered, select, yes {en su conjunto de tipos} other {aún no está en su conjunto de tipos}}',
+  'ownTypes.added': 'Se añadió {name}. Márcalo en el conjunto de tipos para ofrecerlo.',
+  'ownTypes.levelHint':
+    'Otro nivel se rechaza si los tickets de este tipo se quedaran sin el padre que necesitan, y la página dice cuántos.',
+  'ownTypes.problem.inTypeSet':
+    '{name} está en {sets}: desmárcalo allí y guarda antes el conjunto.',
+  'ownFields.about':
+    'Este track tiene configuración propia: los campos que le pertenecen solo lo cubren a él, y los demás tracks no se ven afectados. Los campos compartidos que le llegan son cosa de los administradores del sitio y de la configuración.',
+  'ownFields.intro':
+    'Los campos propios de este track. Los compartidos son cosa de los administradores del sitio y de la configuración.',
+  'ownFields.none': '{key} aún no tiene campos propios.',
+  'ownFields.noneBody':
+    'Un campo propio guarda lo que solo necesitan los tickets de este track, y nada de él llega a otro track.',
+  'ownFields.choose.intro':
+    'Administras estos tracks con configuración propia. Elige uno para gestionar sus campos propios.',
+  'ownFields.choose.none':
+    'Ninguno de los tracks que administras tiene configuración propia. Sus campos son compartidos, y los cambian los administradores del sitio y de la configuración.',
+  'ownFields.choose.open': 'Campos de {key} · {name}',
+  'ownFields.scope.shared':
+    '{key} usa configuración compartida, así que sus campos son compartidos, y los cambian los administradores del sitio y de la configuración.',
+  'admin.fields.contexts.groupChosen': 'El grupo elegido antes',
+  'admin.fields.contexts.peopleChosenGroup':
+    'Personas para elegir: los miembros del grupo elegido antes',
+  'trackPeople.fieldsLink': 'Campos: los campos personalizados que le pertenecen',
   'layouts.loading': 'Leyendo los diseños…',
   'layouts.failed':
     'No se pudieron leer los conjuntos de diseños. Inténtalo de nuevo en un momento.',
@@ -7291,6 +8294,9 @@ export const messagesEs: Record<MessageId, string> = {
   'crossTrack.linked.choose': 'Elegir',
   'crossTrack.linked.tooMany': 'Una admite como máximo 100 versiones.',
   'crossTrack.linked.remove': 'Quitar {name}',
+  'crossTrack.linked.removeConfirm': 'Quitar {track} {name}',
+  'crossTrack.linked.removeOutcome':
+    '{name} de {track} sale de esta versión entre tracks: sus tickets dejan de contar aquí, y su fecha ya no se mueve con esta. Solo los administradores de {track} pueden volver a enlazarla, y solo mientras no esté publicada ni archivada.',
   'crossTrack.linked.removed': '{name} ya no está enlazada. Su fecha no cambió.',
   'crossTrack.linked.removeFailed': 'No se pudo quitar la versión.',
   'crossTrack.edit.open': 'Editar',
@@ -7349,6 +8355,8 @@ export const messagesEs: Record<MessageId, string> = {
   'release.crossTrack.add': 'Añadir a una versión entre tracks…',
   'release.crossTrack.listFailed': 'No se pudieron leer las versiones entre tracks.',
   'release.crossTrack.remove': 'Quitar de {name}',
+  'release.crossTrack.removeOutcome':
+    '{name} de {track} sale de {crossTrack}: sus tickets dejan de contar allí, y su fecha ya no se mueve con ella. Solo los administradores de {track} pueden volver a enlazarla, y solo mientras no esté publicada ni archivada.',
   'release.crossTrack.linked': 'Esta versión ahora está enlazada a {name}.',
   'release.crossTrack.unlinked': 'Esta versión ya no está enlazada a {name}. Su fecha no cambió.',
   'release.crossTrack.noneToJoin': 'No hay ninguna a la que unirse',
@@ -7416,6 +8424,9 @@ export const messagesEs: Record<MessageId, string> = {
     'Un tablero de programa ordena los objetivos y el trabajo de este plan por equipo y periodo. Quien ve el plan ve sus tableros y mueve tarjetas en la medida en que puede cambiar esos tickets.',
   'programBoards.noField':
     'Un tablero de programa coloca las tarjetas según un campo de equipo. Pide a un administrador del sitio que añada uno.',
+  'programBoards.noFieldAdmin':
+    'Un tablero de programa coloca las tarjetas según un campo de equipo. Añade un campo de tipo Equipo en Campos, dentro de Administración, y podrás elegirlo aquí.',
+  'programBoards.openFields': 'Abrir Campos',
   'programBoards.none': 'Aún no hay tableros de programa.',
   'programBoards.failed':
     'No se pudieron cargar los tableros de programa. Inténtalo de nuevo en un momento.',
@@ -7459,6 +8470,40 @@ export const messagesEs: Record<MessageId, string> = {
     'Un tipo de enlace que elegiste ya no existe, o siempre cuenta. Recarga la página y vuelve a elegir.',
   'dependencies.via': '({phrase})',
   'dependencies.sameSprint': 'Mismo sprint',
+  // The critical path on a plan's Timeline (PLN-011; ADR-122 stage 9).
+  'critical.toggle': 'Ruta crítica',
+  'critical.goTo': 'Ruta crítica en palabras',
+  'critical.failed': 'No se pudo leer la ruta crítica. Inténtalo más tarde.',
+  'critical.loading': 'Calculando la ruta crítica…',
+  'critical.bar.on': 'En la ruta crítica',
+  'critical.bar.slack': '{days, plural, one {# día de holgura} other {# días de holgura}}',
+  'critical.legend': 'En la ruta crítica (borde grueso y ▲)',
+  'critical.title': 'Ruta crítica',
+  'critical.covers':
+    'Abarca los tickets que este plan te muestra, sean cuales sean los filtros, así que puede ser distinta de la de otra persona.',
+  'critical.summary':
+    '{count, plural, =0 {Ningún ticket está} one {# ticket está} other {# tickets están}} en la ruta crítica. El plan termina el {end}.',
+  'critical.noPath':
+    'Ningún ticket abierto de este plan tiene fechas, así que no hay ruta crítica.',
+  'critical.chain': 'Cadena {number, number}',
+  'critical.step.first': 'empieza el {start}, termina el {end}',
+  'critical.step.firstEnd': 'empieza el {start}, termina el {end}, el final del plan.',
+  'critical.step.then': 'luego empieza el {start}, termina el {end}',
+  'critical.step.thenEnd': 'luego empieza el {start}, termina el {end}, el final del plan.',
+  'critical.step.late':
+    '(una dependencia anterior va {days, plural, one {# día} other {# días}} con retraso)',
+  'critical.more':
+    '{count, plural, one {# ticket más está} other {# tickets más están}} en la ruta y no se listan aquí.',
+  'critical.cycles':
+    '{count, plural, one {# ticket está} other {# tickets están}} en un círculo de dependencias y no {count, plural, one {tiene} other {tienen}} holgura.',
+  'critical.waitsElsewhere':
+    '{count, plural, one {# ticket espera} other {# tickets esperan}} trabajo fuera de este plan o que no se te muestra; ese trabajo no se cuenta.',
+  'critical.undated':
+    '{count, plural, one {# ticket abierto no tiene} other {# tickets abiertos no tienen}} fechas y se {count, plural, one {deja} other {dejan}} fuera.',
+  'critical.csv.slack': 'Holgura (días)',
+  'critical.csv.critical': 'Crítico',
+  'critical.image.legend':
+    'Borde grueso y ▲: en la ruta crítica. Línea gruesa: una dependencia ajustada en ella.',
   'timeline.badge.sprint': 'mismo sprint',
   'timeline.badge.withSprint':
     'Bloqueado por {count, plural, one {# ticket} other {# tickets}}{late, plural, =0 {} other {, # con retraso}}, {sprint, plural, one {# en el mismo sprint} other {# en el mismo sprint}}',
@@ -7565,6 +8610,113 @@ export const messagesEs: Record<MessageId, string> = {
   // Scenarios and draft changes of a plan (T-089e; ADR-122 stage 6).
   'plans.section.changes': 'Cambios',
   'plans.section.scenarios': 'Escenarios',
+  'plans.section.baselines': 'Líneas base',
+  'baselines.title': 'Líneas base',
+  'baselines.intro':
+    'Una línea base guarda los días de los tickets del plan tal como están en un momento, para ver después qué se movió. Cada persona ve sus días solo en los tickets que este plan le muestra.',
+  'baselines.capture': 'Capturar línea base…',
+  'baselines.full':
+    'Un plan guarda como mucho {count} líneas base. Elimina una para capturar otra.',
+  'baselines.readOnly':
+    'Solo el propietario del plan y los administradores del sitio capturan, renombran y eliminan líneas base.',
+  'baselines.empty': 'Aún no hay líneas base',
+  'baselines.emptyBody':
+    'Captura una antes de que el trabajo se mueva y compárala más adelante con los días actuales.',
+  'baselines.fromLive': 'Desde En vivo',
+  'baselines.fromScenario': 'Desde {name}',
+  'baselines.madeBy': 'Capturada por {name} el {when}',
+  'baselines.tickets': '{count, plural, =0 {Ningún ticket} one {# ticket} other {# tickets}}',
+  'baselines.open': 'Comparar',
+  'baselines.open.label': 'Comparar con {name}',
+  'baselines.rename': 'Renombrar',
+  'baselines.rename.label': 'Renombrar {name}',
+  'baselines.rename.title': 'Renombrar {name}',
+  'baselines.rename.save': 'Guardar nombre',
+  'baselines.rename.done': 'La línea base ahora se llama {name}.',
+  'baselines.delete': 'Eliminar',
+  'baselines.delete.label': 'Eliminar {name}',
+  'baselines.delete.ask': '{name} y los días que guarda se van. Ningún ticket cambia.',
+  'baselines.delete.done': '{name} se eliminó.',
+  'baselines.capture.title': 'Capturar línea base',
+  'baselines.capture.intro':
+    'Guarda los días de inicio y vencimiento de cada ticket que este plan te muestra, o los días de su sprint, tal como están ahora. Nada cambia en los tickets.',
+  'baselines.name': 'Nombre',
+  'baselines.capture.default': 'Línea base {day}',
+  'baselines.capture.sourceLive': 'Lo que muestra ahora el cronograma: En vivo',
+  'baselines.capture.sourceScenario':
+    'Lo que muestra ahora el cronograma: {name}, borradores sin aplicar',
+  'baselines.capture.save': 'Capturar',
+  'baselines.capture.done':
+    '{name} está capturada: {count, plural, =0 {ningún ticket} one {# ticket} other {# tickets}}.',
+  'baselines.cancel': 'Cancelar',
+  'baselines.nameRequired': 'Dale un nombre a la línea base.',
+  'baselines.refused.tooMany': 'Un plan guarda como mucho {count} líneas base. Elimina una antes.',
+  'baselines.refused.tooLarge':
+    'El plan tiene más de {count} tickets, demasiados para capturarlos en una línea base.',
+  'baselines.refused.conflict':
+    'Alguien cambió esta línea base mientras tanto. La lista se vuelve a leer; inténtalo otra vez.',
+  'baselines.refused.forbidden':
+    'Solo el propietario del plan y los administradores del sitio pueden cambiar sus líneas base.',
+  'baselines.refused.gone': 'Esta línea base o este escenario ya no existe.',
+  'baselines.refused.other': 'No funcionó. Inténtalo de nuevo en un momento.',
+  'baselines.listFailed': 'No se pudieron leer las líneas base. Inténtalo de nuevo en un momento.',
+  'baselines.compare.title': 'Comparado con {name}',
+  'baselines.compare.againstLive': 'Los días de ahora: En vivo.',
+  'baselines.compare.againstScenario': 'Los días de ahora: {name}, borradores sin aplicar.',
+  'baselines.compare.close': 'Cerrar la comparación',
+  'baselines.compare.later':
+    '{count, plural, =0 {Ningún ticket termina más tarde que en {name}} one {# ticket termina más tarde que en {name}, por {most, plural, one {# día} other {# días}}} other {# tickets terminan más tarde que en {name}, por hasta {most, plural, one {# día} other {# días}}}}',
+  'baselines.compare.sentence': '{later}; {earlier} antes; {same} igual.',
+  'baselines.compare.planLater':
+    'El plan termina {count, plural, one {# día} other {# días}} más tarde ({now}, era {was}).',
+  'baselines.compare.planEarlier':
+    'El plan termina {count, plural, one {# día} other {# días}} antes ({now}, era {was}).',
+  'baselines.compare.planSame': 'El plan termina el mismo día ({now}).',
+  'baselines.compare.planNone':
+    'Ningún ticket tiene días en ambos, así que el final del plan no se compara.',
+  'baselines.compare.notShown':
+    '{count, plural, one {# ticket de esta línea base no se te muestra.} other {# tickets de esta línea base no se te muestran.}}',
+  'baselines.compare.others':
+    '{added} fuera de la línea base; {undatedThen} sin días entonces; {undatedNow} sin días ahora.',
+  'baselines.compare.notInBaseline':
+    'Un ticket fuera de la línea base se añadió al plan después, o no se le mostraba a quien la capturó.',
+  'baselines.compare.yours':
+    'Los retrasos van en días naturales, sobre los tickets que este plan te muestra con los filtros de la página.',
+  'baselines.compare.show': 'Mostrar',
+  'baselines.compare.show.slipped': 'Más tarde ({count})',
+  'baselines.compare.show.earlier': 'Antes ({count})',
+  'baselines.compare.show.added': 'Fuera de la línea base ({count})',
+  'baselines.compare.show.all': 'Todos',
+  'baselines.compare.list': 'Tickets: {which}',
+  'baselines.compare.none': 'No hay tickets aquí',
+  'baselines.compare.dayLater':
+    '{count, plural, one {# día más tarde} other {# días más tarde}}: {now}, era {was}',
+  'baselines.compare.dayEarlier':
+    '{count, plural, one {# día antes} other {# días antes}}: {now}, era {was}',
+  'baselines.compare.sameEnd': 'Mismo final: {now}',
+  'baselines.compare.due': 'vence el {day}',
+  'baselines.compare.ends': 'termina el {day}',
+  'baselines.compare.noDays': 'sin días',
+  'baselines.compare.addedLine': 'Fuera de la línea base: {now}',
+  'baselines.compare.undatedThenLine': 'Sin días entonces; ahora {now}',
+  'baselines.compare.undatedNowLine': 'Sin días ahora; entonces {was}',
+  'baselines.compare.closed': '(cerrado)',
+  'baselines.compare.showMore': 'Mostrar más',
+  'baselines.compare.download': 'Descargar CSV',
+  'baselines.compare.downloadFailed':
+    'No se pudo crear el archivo. Inténtalo de nuevo en un momento.',
+  'baselines.compare.failed': 'No se pudo leer la comparación. Inténtalo de nuevo en un momento.',
+  'baselines.csv.baseline': 'Línea base: {name}',
+  'baselines.csv.startThen': 'Inicio entonces',
+  'baselines.csv.dueThen': 'Vencimiento entonces',
+  'baselines.csv.datedThen': 'Días entonces según',
+  'baselines.csv.startNow': 'Inicio ahora',
+  'baselines.csv.dueNow': 'Vencimiento ahora',
+  'baselines.csv.datedNow': 'Días ahora según',
+  'baselines.csv.delay': 'Retraso (días)',
+  'baselines.csv.startShift': 'Inicio movido (días)',
+  'baselines.csv.own': 'Sus propios días',
+  'baselines.csv.sprint': 'Su sprint',
   'draft.tag': 'Borrador',
   'draft.stale':
     'Cambió desde el borrador: el ticket ya no tiene los valores de los que partió este borrador.',
@@ -7818,6 +8970,47 @@ export const messagesEs: Record<MessageId, string> = {
     'Algunas opciones no son válidas. Revísalas y vuelve a ejecutarla.',
   'schedule.dialog.refused.other':
     'La ejecución no pudo terminar. Vuelve a intentarlo en un momento.',
+  // Repartir la carga: un modo de la ejecución del planificador automático (T-089a; ADR-122, etapa 9).
+  'schedule.evenOut.mode': 'Qué hace la ejecución',
+  'schedule.evenOut.mode.fill': 'Colocar el trabajo por rango',
+  'schedule.evenOut.mode.fillHint':
+    'Coloca cada ticket que puede mover, desde el primer día, por rango y con los bloqueadores primero.',
+  'schedule.evenOut.mode.evenOut': 'Repartir la carga',
+  'schedule.evenOut.mode.evenOutHint':
+    'Mueve solo el trabajo que pone a alguien por encima de su capacidad, más tarde y lo menos posible, manteniendo la duración de cada ticket.',
+  'schedule.evenOut.kept': 'Los tickets que se mantienen nunca se mueven (fechas fijas)',
+  'schedule.evenOut.overCells':
+    '{count, plural, one {# periodo de un equipo o persona está} other {# periodos de equipos y personas están}} por encima de la capacidad ahora.',
+  'schedule.evenOut.nothingOver':
+    'Ningún equipo ni persona supera ahora su capacidad, así que repartir la carga no movería nada.',
+  'schedule.evenOut.replaces':
+    'Una ejecución que reparte la carga y una por rango reemplazan las propuestas de la otra; las dos parten de las fechas de los tickets y de los borradores de las personas.',
+  'schedule.evenOut.title': 'Repartir la carga',
+  'schedule.evenOut.counts':
+    '{moved, plural, one {# ticket movido} other {# tickets movidos}} más tarde, {kept, plural, one {# mantenido} other {# mantenidos}}, {notMoved} sin mover, {withdrawn, plural, one {# propuesta anterior eliminada} other {# propuestas anteriores eliminadas}}.',
+  'schedule.evenOut.moved': 'Movidos ({count})',
+  'schedule.evenOut.notMoved': 'Sin mover ({count})',
+  'schedule.evenOut.overLeft': 'Aún por encima de la capacidad',
+  'schedule.evenOut.allWithin':
+    'Cada equipo y persona está ahora dentro de su capacidad en los periodos de la ejecución.',
+  'schedule.evenOut.overLeftOnlyFixed':
+    '{subject} supera su capacidad en {over} en {span}: allí solo hay tickets que no se mueven.',
+  'schedule.evenOut.overLeftNoRoom':
+    '{subject} supera su capacidad en {over} en {span}: ningún periodo posterior de la ejecución tiene hueco.',
+  'schedule.evenOut.span': '{start}–{end}',
+  'schedule.evenOut.daysLater': '{count, plural, one {# día} other {# días}} más tarde',
+  'schedule.evenOut.weeksLater': '{count, plural, one {# semana} other {# semanas}} más tarde',
+  'schedule.evenOut.reason.movedOffOver':
+    'Movido {later}, de {from} a {to}: {subject} superaba su capacidad en {over}.',
+  'schedule.evenOut.reason.pushedByMove': 'Movido {later} después de {blocker}, que se movió.',
+  'schedule.evenOut.reason.stillOver':
+    'Aún por encima: no hay hueco para {subject} hasta el {until}.',
+  'schedule.evenOut.reason.wouldMakeLate':
+    'Sin mover: moverlo retrasaría {ticket}, y esta ejecución no mueve ese ticket.',
+  'schedule.evenOut.reason.wouldMakeKeptLate':
+    'Sin mover: moverlo retrasaría {ticket}, que se mantiene.',
+  'schedule.evenOut.reason.wouldPassEnd':
+    'Sin mover: moverlo empujaría {ticket} más allá del {until}, el último día de la ejecución.',
   'scenario.notShown':
     '{count, plural, one {# cambio más está en un ticket que este plan no te muestra.} other {# cambios más están en tickets que este plan no te muestra.}}',
   'scenario.listFailed':
@@ -8015,4 +9208,237 @@ export const messagesEs: Record<MessageId, string> = {
   'plans.csv.draft': 'Borrador',
   'plans.csv.draftStale': 'Sí, cambió desde el borrador',
   'plans.image.inScenario': '{plan} — Escenario: {scenario}, borradores sin aplicar',
+  'plans.section.grid': 'Cuadrícula',
+  'grid.loading': 'Cargando la cuadrícula…',
+  'grid.listFailed':
+    'No se pudieron leer las estructuras del plan. Inténtalo de nuevo en un momento.',
+  'grid.failed': 'No se pudo leer la cuadrícula. Prueba Actualizar en un momento.',
+  'grid.timeout':
+    'Leer esta estructura tardó demasiado, así que no se muestra nada en lugar de una parte. Acótala con los filtros o una consulta, o inténtalo de nuevo.',
+  'grid.tryAgain': 'Intentar de nuevo',
+  'grid.cellsFailed': 'Algunas celdas no se pudieron leer, así que aún no muestran nada.',
+  'grid.structure': 'Estructura',
+  'grid.structure.broken': '{name} (en parte rota)',
+  'grid.structureGone':
+    'La estructura de este enlace ya no existe; se muestra la primera del plan.',
+  'grid.refresh': 'Actualizar',
+  'grid.new': 'Nueva estructura…',
+  'grid.edit': 'Editar estructura…',
+  'grid.saveDefault': 'Guardar como estructura…',
+  'grid.delete': 'Eliminar estructura',
+  'grid.delete.label': 'Eliminar estructura {name}',
+  'grid.delete.ask':
+    'Elimina la estructura {name} para todos los que ven este plan. Sus tickets quedan como están.',
+  'grid.delete.done': 'Se eliminó {name}.',
+  'grid.full': 'Un plan tiene como mucho {count} estructuras. Elimina una para crear otra.',
+  'grid.unsaved':
+    'Esta es la estructura predeterminada, sin guardar: los tickets del plan y sus hijos. Guárdala, o crea la tuya con Nueva estructura….',
+  'grid.unsaved.reader':
+    'Esta es la estructura predeterminada: los tickets del plan y sus hijos. Los editores del plan pueden guardar otras.',
+  'grid.live':
+    'La cuadrícula muestra los tickets como están, no los borradores, y sus celdas no se pueden editar aquí.',
+  'grid.saved.made': 'Se guardó {name}.',
+  'grid.saved.changed': 'Se cambió {name}.',
+  'grid.refused.tooMany':
+    'Un plan tiene como mucho {count} estructuras. Elimina una para crear otra.',
+  'grid.refused.nameTaken': 'Este plan ya tiene una estructura con ese nombre.',
+  'grid.refused.conflict':
+    'Alguien cambió esta estructura mientras tanto. Ciérrala y ábrela de nuevo.',
+  'grid.refused.forbidden': 'Solo los editores del plan pueden cambiar sus estructuras.',
+  'grid.refused.gone': 'Esta estructura ya no existe.',
+  'grid.refused.invalid': 'Algo de la estructura no funciona; está marcado abajo.',
+  'grid.refused.query': 'La consulta de Añadir tickets no se entiende. Revísala y guarda de nuevo.',
+  'grid.refused.other': 'No se pudo guardar la estructura. Inténtalo de nuevo en un momento.',
+  'grid.empty': 'No hay filas en esta estructura',
+  'grid.emptyBody':
+    'El plan no tiene tickets que puedas ver y que esta estructura añada, con estos filtros.',
+  'grid.emptyBroken':
+    'El paso Añadir tickets de la estructura no se ejecuta para ti, así que no añade nada; los editores del plan pueden cambiarlo.',
+  'grid.more': 'Muestra las primeras {count, number} filas.',
+  'grid.queryBroken': 'La consulta de Añadir tickets no se ejecuta para ti: {message}',
+  'grid.stepBroken':
+    'Un paso de esta estructura nombra un campo o tipo de vínculo que ya no existe; el resto sigue funcionando.',
+  'grid.column.tree': 'Ticket',
+  'grid.column.formula': 'Fórmula',
+  'grid.column.broken': 'No funciona: {reason}',
+  'grid.column.gone': 'No funciona: su campo ya no existe',
+  'grid.total.below': 'Total de las filas de abajo',
+  'grid.total.count': 'Filas de abajo',
+  'grid.total.progress': 'Progreso',
+  'grid.total.sum': 'Suma de {field}',
+  'grid.total.min': '{field} más bajo',
+  'grid.total.max': '{field} más alto',
+  'grid.total.earliest': '{field} más temprana',
+  'grid.total.latest': '{field} más tardía',
+  'grid.ref.originalEstimate': 'Estimación original',
+  'grid.ref.remainingEstimate': 'Estimación restante',
+  'grid.ref.timeSpent': 'Tiempo dedicado',
+  'grid.ref.start': 'Fecha de inicio',
+  'grid.ref.due': 'Fecha de vencimiento',
+  'grid.hours': '{hours, number} h',
+  'grid.progress': '{closed, number} de {of, number} cerrados',
+  'grid.partial': '{valued, number} de {of, number} tienen valor',
+  'grid.group': '{field}: {value}',
+  'grid.groupRows': '{count, plural, one {# fila} other {# filas}}',
+  'grid.noValue': 'Sin valor',
+  'grid.unnamed': 'Sin nombre',
+  'grid.notInPlan': 'No está en este plan',
+  'grid.notShown': '+{count, number} no mostrados',
+  'grid.elsewhere':
+    '{count, plural, one {Se alcanza una vez más, se muestra en otro lugar} other {Se alcanza # veces más, se muestra en otro lugar}}',
+  'grid.byLink': 'Colocado por un vínculo',
+  'grid.cellLoading': 'Cargando',
+  'grid.allRows': 'Todas las filas',
+  'grid.defaultName': 'Estructura predeterminada',
+  'grid.keys':
+    'Las flechas mueven entre filas y celdas; Derecha e Izquierda expanden y contraen una fila; Intro edita una celda; Escape cancela; Inicio y Fin van a los extremos de una fila, y con Control a los de la cuadrícula; Mayúsculas y F10 abren el menú de una fila, para moverla debajo de otro padre.',
+  'grid.expandAll': 'Expandir todo',
+  'grid.collapseAll': 'Contraer todo',
+  'grid.expandRow': 'Expandir {name}',
+  'grid.collapseRow': 'Contraer {name}',
+  'grid.rows': '{count, plural, one {# fila} other {# filas}}',
+  'grid.openCard': 'Abrir {key}',
+  'grid.sheet.close': 'Cerrar',
+  'grid.dialog.title.new': 'Nueva estructura',
+  'grid.dialog.title.edit': 'Editar {name}',
+  'grid.dialog.name': 'Nombre',
+  'grid.dialog.nameRequired': 'Una estructura necesita un nombre.',
+  'grid.dialog.steps': 'Pasos',
+  'grid.dialog.steps.order':
+    'Los pasos se aplican en este orden: los tickets del plan, sus grupos, sus hijos y luego los tickets vinculados.',
+  'grid.dialog.step.insert':
+    'Añadir tickets: una consulta que acota los tickets del plan (opcional)',
+  'grid.dialog.step.insertHint': 'Déjala vacía para empezar por todos los tickets del plan.',
+  'grid.dialog.step.group': 'Agrupar por',
+  'grid.dialog.step.groupThen': 'Luego agrupar por',
+  'grid.dialog.group.none': 'Sin agrupar',
+  'grid.dialog.step.children': 'Añadir hijos, en todos los niveles',
+  'grid.dialog.step.childrenHint':
+    'Los hijos que puedes ver se añaden bajo cada fila, estén en este plan o no; los ocultos solo se cuentan.',
+  'grid.dialog.step.links': 'Añadir tickets vinculados',
+  'grid.dialog.links.type': 'Añadir tickets vinculados {n}: tickets que este',
+  'grid.dialog.links.depth': 'Hasta dónde',
+  'grid.dialog.links.levels': '{count, plural, one {a # vínculo} other {hasta a # vínculos}}',
+  'grid.dialog.links.add': 'Añadir tickets vinculados',
+  'grid.dialog.links.none':
+    'El sitio no tiene tipos de vínculo, así que no se pueden añadir tickets vinculados.',
+  'grid.dialog.links.gone': 'Un tipo de vínculo que ya no existe',
+  'grid.dialog.columns': 'Columnas',
+  'grid.dialog.columns.count':
+    '{columns, number} de {maxColumns, number} columnas; {totals, number} de {maxTotals, number} totales; {formulas, number} de {maxFormulas, number} fórmulas',
+  'grid.dialog.fn.sum': 'Suma',
+  'grid.dialog.fn.min': 'Más bajo',
+  'grid.dialog.fn.max': 'Más alto',
+  'grid.dialog.fn.count': 'Recuento de filas de abajo',
+  'grid.dialog.fn.progress': 'Progreso por tickets cerrados',
+  'grid.dialog.totalOf': '{fn} de {field}',
+  'grid.dialog.check.key': 'Nombra cada fila y enlaza su ticket.',
+  'grid.dialog.check.edits': 'Se edita en el sitio, con las comprobaciones del propio ticket.',
+  'grid.dialog.check.readOnly': 'Se muestra, no se edita en la cuadrícula.',
+  'grid.dialog.check.sum': 'Suma {field} de las filas de abajo de cada fila.',
+  'grid.dialog.check.min': 'El valor más bajo de {field} en las filas de abajo de cada fila.',
+  'grid.dialog.check.max': 'El valor más alto de {field} en las filas de abajo de cada fila.',
+  'grid.dialog.check.count':
+    'Cuenta las filas de tickets de abajo de cada fila, a cualquier profundidad.',
+  'grid.dialog.check.progress':
+    'Cuántas filas de tickets de abajo están en un estado cerrado, de cuántas.',
+  'grid.dialog.check.unchecked': 'Sin comprobar aún: se comprueba al salir de la fórmula.',
+  'grid.dialog.check.ok': 'La fórmula es correcta.',
+  'grid.dialog.check.wrong': 'La fórmula no es correcta: {message}',
+  'grid.dialog.formula.name': 'Nombre de la columna',
+  'grid.dialog.formula.expression': 'Fórmula de la columna {n}',
+  'grid.dialog.formula.output': 'Da',
+  'grid.dialog.formula.decimals': 'Decimales',
+  'grid.dialog.formula.check': 'Comprobar fórmula',
+  'grid.dialog.formula.default': 'Filas hijas',
+  'grid.dialog.output.number': 'Un número',
+  'grid.dialog.output.currency': 'Un importe',
+  'grid.dialog.output.percentage': 'Un porcentaje',
+  'grid.dialog.output.date': 'Una fecha',
+  'grid.dialog.output.duration': 'Una duración',
+  'grid.dialog.output.text': 'Texto',
+  'grid.dialog.add': 'Añadir una columna',
+  'grid.dialog.add.kind': 'Tipo',
+  'grid.dialog.add.ticket': 'Columna del ticket',
+  'grid.dialog.add.total': 'Total de las filas de abajo',
+  'grid.dialog.add.formula': 'Fórmula',
+  'grid.dialog.add.field': 'Campo',
+  'grid.dialog.add.fn': 'Total',
+  'grid.dialog.add.of': 'De',
+  'grid.dialog.add.button': 'Añadir columna',
+  'grid.dialog.full.columns': 'Una estructura tiene como mucho 30 columnas.',
+  'grid.dialog.full.totals': 'Una estructura tiene como mucho 10 totales.',
+  'grid.dialog.full.formulas': 'Una estructura tiene como mucho 5 fórmulas.',
+  'grid.dialog.up': 'Subir {name}',
+  'grid.dialog.down': 'Bajar {name}',
+  'grid.dialog.upShort': 'Subir',
+  'grid.dialog.downShort': 'Bajar',
+  'grid.dialog.remove': 'Quitar',
+  'grid.dialog.removeColumn': 'Quitar {name}',
+  'grid.dialog.problem.notGroupable': 'Este campo no puede agrupar: tiene más de un valor.',
+  'grid.dialog.problem.duplicate': 'Está elegido dos veces.',
+  'grid.dialog.problem.gone': 'Ya no existe.',
+  'grid.dialog.problem.unknownField': 'No existe ese campo.',
+  'grid.dialog.problem.notSummable': 'Este campo no se puede totalizar así.',
+  'grid.dialog.problem.required': 'Elige un campo para el total.',
+  'grid.dialog.problem.notAllowed': 'Este total no lleva campo.',
+  'grid.dialog.problem.other': 'Esto no funciona.',
+  'grid.dialog.save': 'Guardar estructura',
+  'grid.dialog.create': 'Crear estructura',
+  'grid.dialog.cancel': 'Cancelar',
+  'grid.move.grip': 'Mover {key}',
+  'grid.move.under': 'Mover debajo de…',
+  'grid.move.remove': 'Quitar del padre',
+  'grid.move.title': 'Mover {key} debajo de…',
+  'grid.move.removeTitle': 'Quitar {key} de su padre',
+  'grid.move.find': 'Busca el nuevo padre por clave o resumen',
+  'grid.move.targets': 'Nuevo padre',
+  'grid.move.none': 'Ninguna fila para elegir',
+  'grid.move.noneBody':
+    'Ninguna fila de ticket de esta cuadrícula puede ser su padre. Escribe una clave para ver por qué una fila no puede.',
+  'grid.move.noneFound':
+    'Ninguna fila de ticket de esta cuadrícula coincide con lo que escribiste.',
+  'grid.move.more':
+    '{count, plural, one {# fila más coincide; escribe más para acotar la lista.} other {# filas más coinciden; escribe más para acotar la lista.}}',
+  'grid.move.ask': '¿Mover {key} debajo de {to}?',
+  'grid.move.removeAsk': '¿Quitar {key} de su padre?',
+  'grid.move.change': 'Su padre cambia de {from} a {to}.',
+  'grid.move.change.fromNone': 'Ahora no tiene padre; {to} pasa a ser su padre.',
+  'grid.move.change.remove': 'Su padre cambia de {from} a ninguno.',
+  'grid.move.hiddenParent': 'un ticket que no puedes ver',
+  'grid.move.with':
+    '{count, plural, one {# fila se mueve con él.} other {# filas se mueven con él.}}',
+  'grid.move.choose': 'Elige primero el nuevo padre.',
+  'grid.move.confirm': 'Mover',
+  'grid.move.removeConfirm': 'Quitar del padre',
+  'grid.move.cancel': 'Cancelar',
+  'grid.move.no.groupRow': 'Una fila de grupo no es un ticket, así que no se mueve.',
+  'grid.move.no.group': 'Un grupo no es un padre.',
+  'grid.move.no.link': 'Su lugar viene de un vínculo, no de su padre.',
+  'grid.move.no.own': 'Una fila no puede ir debajo de sus propias filas.',
+  'grid.move.no.same': 'Ya es su padre.',
+  'grid.move.no.level': 'Su padre debe ser un ticket justo un nivel más arriba.',
+  'grid.move.no.levelNamed': 'Su padre debe ser un ticket del nivel {level}.',
+  'grid.move.no.track': 'Un subticket se queda en el track de su padre.',
+  'grid.move.no.required': 'Un subticket necesita un padre.',
+  'grid.move.refused.parentGone': 'Ese ticket ya no está, o ya no puedes verlo.',
+  'grid.move.refused.invalid': 'Las reglas del ticket no permiten este movimiento.',
+  'grid.move.refused.forbidden': 'No puedes cambiar este ticket.',
+  'grid.move.refused.locked': 'Los tickets en este estado no se pueden cambiar.',
+  'grid.move.refused.gone': 'Este ticket ya no está, o ya no puedes verlo.',
+  'grid.move.refused.stale':
+    'Alguien cambió este ticket desde que la cuadrícula lo leyó, así que nada se movió. Se ha leído de nuevo: revísalo y muévelo otra vez.',
+  'grid.move.refused.archived': 'Su track está archivado, así que sus tickets no cambian.',
+  'grid.move.refused.other':
+    'No se pudo guardar el movimiento, así que nada se movió. Inténtalo de nuevo en un momento.',
+  'grid.move.readFailed':
+    'No se pudo leer {key}, así que no puede moverse ahora. Inténtalo de nuevo en un momento.',
+  'grid.move.byLink':
+    '{key} está colocado por un vínculo, no por su padre, así que no puede moverse aquí.',
+  'grid.move.drag.start': 'Moviendo {key}. Suéltalo sobre su nuevo padre, o pulsa Escape.',
+  'grid.move.drag.on': 'Mover {key} debajo de {to}',
+  'grid.move.drag.cancelled': '{key} no se movió.',
+  'grid.move.drag.refused': '{key} no se movió: {reason}',
+  'grid.move.done': '{key} se movió debajo de {to}.',
+  'grid.move.removed': '{key} ya no tiene padre.',
 };

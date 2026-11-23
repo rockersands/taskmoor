@@ -40,3 +40,31 @@ export const DryRun: Story = {
     },
   },
 };
+
+/**
+ * A dry run of what Spanish Excel saves as plain CSV (T-263): the file was not UTF-8, so the
+ * report says it was read as Windows-1252 and shows the first lines to check.
+ */
+export const CsvReadAsWindows1252: Story = {
+  args: {
+    report: {
+      ...REPORT,
+      run: { ...REPORT.run, importSource: 'csv', sourceSystem: 'csv', dryRun: true },
+      totals: { ...REPORT.totals, target: null, fidelity: null },
+      warnings: [
+        {
+          kind: 'source',
+          code: 'read_as_windows_1252',
+          detail: null,
+          count: 2,
+          examples: ['1: Descripción', '2: Árbol'],
+        },
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText(/read as Windows Western European/)).toBeVisible();
+    await expect(canvas.getByText(/line 1: Descripción, line 2: Árbol/)).toBeVisible();
+  },
+};

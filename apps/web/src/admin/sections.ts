@@ -7,6 +7,11 @@ export interface AdminPage {
   href: string;
   labelId: MessageId;
   hintId: MessageId;
+  /**
+   * A configuration administrator uses this page too, though its group is not Tracks and setup:
+   * the server lets them make the change it offers (T-322).
+   */
+  setup?: true;
 }
 
 export interface AdminGroup {
@@ -19,8 +24,7 @@ export interface AdminGroup {
 export const ADMIN_HOME = '#/admin';
 
 /**
- * Administration's groups and pages (ADR-114). A control that has no page yet is not listed:
- * priorities and notification policies join their groups with their pages.
+ * Administration's groups and pages (ADR-114). A control that has no page yet is not listed.
  * The tracks someone runs lead the list, and are all a track's manager sees here.
  */
 export const ADMIN_GROUPS: readonly AdminGroup[] = [
@@ -71,6 +75,7 @@ export const ADMIN_GROUPS: readonly AdminGroup[] = [
         href: '#/admin/visibility',
         labelId: 'settings.visibility',
         hintId: 'settings.visibilityHint',
+        setup: true,
       },
       {
         id: 'permission-explainer',
@@ -116,6 +121,12 @@ export const ADMIN_GROUPS: readonly AdminGroup[] = [
         hintId: 'settings.fieldsHint',
       },
       {
+        id: 'ticket-types',
+        href: '#/admin/ticket-types',
+        labelId: 'settings.ticketTypes',
+        hintId: 'settings.ticketTypesHint',
+      },
+      {
         id: 'configuration-sets',
         href: '#/admin/configuration-sets',
         labelId: 'settings.sets',
@@ -128,10 +139,28 @@ export const ADMIN_GROUPS: readonly AdminGroup[] = [
         hintId: 'settings.layoutsHint',
       },
       {
+        id: 'priorities',
+        href: '#/admin/priorities',
+        labelId: 'settings.priorities',
+        hintId: 'settings.prioritiesHint',
+      },
+      {
+        id: 'labels',
+        href: '#/admin/labels',
+        labelId: 'settings.labels',
+        hintId: 'settings.labelsHint',
+      },
+      {
         id: 'track-sets',
         href: '#/admin/track-sets',
         labelId: 'settings.trackSets',
         hintId: 'settings.trackSetsHint',
+      },
+      {
+        id: 'notification-policies',
+        href: '#/admin/notification-policies',
+        labelId: 'settings.notificationPolicies',
+        hintId: 'settings.notificationPoliciesHint',
       },
     ],
   },
@@ -252,14 +281,29 @@ export const ADMIN_GROUPS: readonly AdminGroup[] = [
         labelId: 'settings.guardrails',
         hintId: 'settings.guardrailsHint',
       },
+      {
+        id: 'email',
+        href: '#/admin/email',
+        labelId: 'settings.email',
+        hintId: 'settings.emailHint',
+      },
     ],
   },
 ];
 
-/** The groups a person sees: a configuration administrator only the setup pages (ADR-114). */
+/**
+ * The groups a person sees: a configuration administrator the setup pages and, in other groups,
+ * only the pages marked `setup` (ADR-114; T-322).
+ */
 export function groupsFor(access: AdminAccess): readonly AdminGroup[] {
   if (access === 'site') return ADMIN_GROUPS;
-  if (access === 'setup') return ADMIN_GROUPS.filter((g) => g.id === 'setup' || g.id === 'tracks');
+  if (access === 'setup') {
+    return ADMIN_GROUPS.flatMap((g) => {
+      if (g.id === 'setup' || g.id === 'tracks') return [g];
+      const pages = g.pages.filter((p) => p.setup);
+      return pages.length > 0 ? [{ ...g, pages }] : [];
+    });
+  }
   return access === 'tracks' ? ADMIN_GROUPS.filter((g) => g.id === 'tracks') : [];
 }
 

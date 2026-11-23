@@ -86,6 +86,7 @@ export function CrossTrackReleasePage({
   if (!data) return <p className="report-loading">{t('reports.loading')}</p>;
 
   const mayManage = data.viewer.mayManage;
+  // Asked first by DangerAction (D13, T-267): a refusal keeps the question open, the reason above.
   const unlink = async (release: LinkedRelease) => {
     setProblem(null);
     const answer = await client.unlink(id, release.id);
@@ -95,10 +96,14 @@ export function CrossTrackReleasePage({
           ? t('crossTrack.unreachable')
           : t('crossTrack.linked.removeFailed'),
       );
-      return;
+      throw new Error(answer.code);
     }
     setNotice(t('crossTrack.linked.removed', { name: release.name }));
-    // Its button is going away: focus waits at the heading of what is left, not on the page's body.
+    // Its row goes at once, its question with it, and focus waits at the heading of what is left,
+    // not on the page's body; the page then reads itself again.
+    setData(
+      (now) => now && { ...now, members: now.members.filter((member) => member.id !== release.id) },
+    );
     linkedHeading.current?.focus();
     load();
   };
@@ -187,9 +192,9 @@ export function CrossTrackReleasePage({
             {t('empty.crossTrack.linked')}
           </EmptyState>
         ) : compact ? (
-          <LinkedCards members={data.members} onRemove={(r) => void unlink(r)} />
+          <LinkedCards members={data.members} onRemove={unlink} />
         ) : (
-          <LinkedTable members={data.members} onRemove={(r) => void unlink(r)} />
+          <LinkedTable members={data.members} onRemove={unlink} />
         )}
         {data.hidden.releases > 0 && (
           <p className="cross-track-hidden">
@@ -337,12 +342,41 @@ const closedShare = (release: LinkedRelease) => ({
   count: release.progress.tickets,
 });
 
+/**
+ * Taking a release out, asked first (D13, T-267): its tickets stop counting here and its date stops
+ * moving with this one, and only its own track's administrators can link it again, while it is
+ * neither shipped nor archived.
+ */
+function RemoveLinked({
+  release,
+  onRemove,
+}: {
+  release: LinkedRelease;
+  onRemove: (release: LinkedRelease) => Promise<void>;
+}) {
+  const t = useT();
+  return (
+    <DangerAction
+      label={t('crossTrack.linked.remove', { name: release.name })}
+      outcome={t('crossTrack.linked.removeOutcome', {
+        name: release.name,
+        track: release.track.name,
+      })}
+      confirmLabel={t('crossTrack.linked.removeConfirm', {
+        name: release.name,
+        track: release.track.name,
+      })}
+      onConfirm={() => onRemove(release)}
+    />
+  );
+}
+
 function LinkedTable({
   members,
   onRemove,
 }: {
   members: LinkedRelease[];
-  onRemove: (release: LinkedRelease) => void;
+  onRemove: (release: LinkedRelease) => Promise<void>;
 }) {
   const t = useT();
   return (
@@ -374,13 +408,7 @@ function LinkedTable({
                 <ReleaseState release={r} />
               </td>
               <td>{t('releases.progress', closedShare(r))}</td>
-              <td>
-                {r.mayRemove && (
-                  <button type="button" className="button-quiet" onClick={() => onRemove(r)}>
-                    {t('crossTrack.linked.remove', { name: r.name })}
-                  </button>
-                )}
-              </td>
+              <td>{r.mayRemove && <RemoveLinked release={r} onRemove={onRemove} />}</td>
             </tr>
           ))}
         </tbody>
@@ -394,7 +422,7 @@ function LinkedCards({
   onRemove,
 }: {
   members: LinkedRelease[];
-  onRemove: (release: LinkedRelease) => void;
+  onRemove: (release: LinkedRelease) => Promise<void>;
 }) {
   const t = useT();
   return (
@@ -413,11 +441,7 @@ function LinkedCards({
             <ReleaseState release={r} />
           </p>
           <p className="board-meta">{t('releases.progress', closedShare(r))}</p>
-          {r.mayRemove && (
-            <button type="button" className="button-secondary" onClick={() => onRemove(r)}>
-              {t('crossTrack.linked.remove', { name: r.name })}
-            </button>
-          )}
+          {r.mayRemove && <RemoveLinked release={r} onRemove={onRemove} />}
         </li>
       ))}
     </ul>

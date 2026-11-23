@@ -331,6 +331,63 @@ describe('releases hub (M1-050)', () => {
     await get('alice', `${url}?timeZone=${encodeURIComponent('Mars/Olympus')}`, 400);
   });
 
+  it('[CORE-016] [NFR-006] writes the release notes in the reader’s language: ?locale=, else the account’s, else English; seeded type headings too (T-283)', async () => {
+    const english = await get('alice', `/api/v1/releases/${shipped}/notes`);
+    const url = `/api/v1/releases/${shipped}/notes`;
+    // The page's language, as the app sends it.
+    const spanish = await get('alice', `${url}?locale=es`);
+    expect(spanish.markdown).toContain('Entregada el 1 de octubre de 2026.');
+    expect(spanish.markdown).toContain('## Funcionalidad');
+    expect(spanish.markdown).toContain('## Error');
+    expect(spanish.markdown).not.toContain('Released on');
+    // What people wrote stays as written; the data keeps the stored names.
+    expect(spanish.markdown).toContain('Card payments, at last.');
+    expect(spanish.markdown).toContain('- RH-6 Wallet \\*payments\\* \\[beta\\]');
+    expect(spanish.sections.map((x: { type: string }) => x.type)).toEqual(['Feature', 'Bug']);
+    // The file the Download link fetches says the same.
+    const file = await as('alice', { method: 'GET', url: `${url}?format=markdown&locale=es` });
+    expect(file.statusCode, file.body).toBe(200);
+    expect(file.body).toBe(spanish.markdown);
+    // A language the notes are not written in, or English, reads as English.
+    expect((await get('alice', `${url}?locale=fr-CA`)).markdown).toBe(english.markdown);
+    expect((await get('alice', `${url}?locale=en`)).markdown).toBe(english.markdown);
+    await get('alice', `${url}?locale=${encodeURIComponent('es; DROP')}`, 400);
+    // Without ?locale=, the language saved on the account; never the browser's own header.
+    const accept = { 'accept-language': 'es-ES,es;q=0.9' };
+    expect((await call('alice', { method: 'GET', url, headers: accept })).markdown).toBe(
+      english.markdown,
+    );
+    await database.db
+      .updateTable('app_user')
+      .set({ locale: 'es-MX' })
+      .where('id', '=', users.alice?.id as number)
+      .execute();
+    try {
+      expect((await get('alice', url)).markdown).toBe(spanish.markdown);
+      expect((await get('alice', `${url}?locale=en`)).markdown).toBe(english.markdown);
+      const planned = (
+        await call(
+          'admin',
+          {
+            method: 'POST',
+            url: `/api/v1/tracks/${trackId}/releases`,
+            payload: { name: '2.4 notes', releaseDate: '2026-12-01' },
+          },
+          201,
+        )
+      ).release.id as number;
+      expect((await get('alice', `/api/v1/releases/${planned}/notes`)).markdown).toContain(
+        'Prevista para el 1 de diciembre de 2026.',
+      );
+    } finally {
+      await database.db
+        .updateTable('app_user')
+        .set({ locale: null })
+        .where('id', '=', users.alice?.id as number)
+        .execute();
+    }
+  });
+
   it('[CORE-016] judges overdue and ships an undated release on the viewer’s own day (T-282)', async () => {
     // Kiritimati (UTC+14) is always a day or two ahead of Pago Pago (UTC-11), whatever the hour.
     const ahead = 'Pacific/Kiritimati';
@@ -374,6 +431,23 @@ describe('releases hub (M1-050)', () => {
     expect(await listed(behind)).toMatchObject({ overdue: false });
     expect((await read(ahead, `/api/v1/releases/${due}`)).release.overdue).toBe(true);
     expect((await read(behind, `/api/v1/releases/${due}`)).release.overdue).toBe(false);
+    // The zone saved on the account wins over the device's the app sends (T-280): a person in
+    // Pago Pago on a laptop left on Kiritimati's clock sees the day they live in.
+    await database.db
+      .updateTable('app_user')
+      .set({ time_zone: behind })
+      .where('id', '=', users.alice?.id as number)
+      .execute();
+    try {
+      expect(await codes(ahead)).not.toContain('overdue');
+      expect(await listed(ahead)).toMatchObject({ overdue: false });
+    } finally {
+      await database.db
+        .updateTable('app_user')
+        .set({ time_zone: null })
+        .where('id', '=', users.alice?.id as number)
+        .execute();
+    }
     // Shipped with no day given, each ships on the shipper's own day, never UTC's for both.
     const shippedOn: Record<string, string> = {};
     for (const [name, timeZone] of [

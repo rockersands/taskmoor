@@ -1,8 +1,8 @@
 ---
 title: "Dashboards and reports"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/api/client.ts, apps/server/src/reports/zone.ts, apps/web/src/reports/DonutChart.tsx, apps/web/src/styles/dashboards.css, apps/web/src/tracks/client.ts, apps/web/src/dashboards/DashboardsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/server/src/routes/dashboards.ts, apps/web/src/dashboards/WidgetSettings.tsx, apps/web/src/dashboards/WidgetView.tsx, apps/web/src/sprints/SprintReportPage.tsx, apps/web/src/reports/BoardReportsPage.tsx, apps/web/src/tracks/TrackStatisticsPage.tsx, apps/web/src/tracks/BoardInTrack.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/reports/ScopeReports.tsx, apps/web/src/reports/ReportTable.tsx, apps/web/src/reports/ColumnChart.tsx, apps/web/src/shell/NotFoundPage.tsx, docs/plan/decisions.csv, apps/web/src/i18n/messages.en.ts, apps/server/src/reports/scope-burndown.ts, apps/server/src/reports/general.ts, apps/server/src/routes/scope-reports.ts, docs/adr/0054-sprints.md, docs/adr/0057-sprint-charts.md, docs/adr/0058-flow-reports.md, docs/adr/0059-general-and-release-reports.md, docs/adr/0060-dashboards.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/days.ts
-accessed: 2026-11-14
+sources: apps/web/src/App.tsx, apps/web/src/api/client.ts, apps/server/src/reports/zone.ts, apps/web/src/reports/DonutChart.tsx, apps/web/src/styles/dashboards.css, apps/web/src/tracks/client.ts, apps/web/src/dashboards/DashboardsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/server/src/routes/dashboards.ts, apps/web/src/dashboards/WidgetSettings.tsx, apps/web/src/dashboards/WidgetView.tsx, apps/web/src/sprints/SprintReportPage.tsx, apps/web/src/reports/BoardReportsPage.tsx, apps/web/src/tracks/TrackStatisticsPage.tsx, apps/web/src/tracks/BoardInTrack.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/reports/ScopeReports.tsx, apps/web/src/reports/ReportTable.tsx, apps/web/src/reports/ColumnChart.tsx, apps/web/src/shell/NotFoundPage.tsx, docs/plan/decisions.csv, apps/web/src/i18n/messages.en.ts, apps/server/src/reports/scope-burndown.ts, apps/server/src/reports/general.ts, apps/server/src/routes/scope-reports.ts, docs/adr/0054-sprints.md, docs/adr/0057-sprint-charts.md, docs/adr/0058-flow-reports.md, docs/adr/0059-general-and-release-reports.md, docs/adr/0060-dashboards.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/days.ts, apps/web/src/i18n/zone.ts
+accessed: 2026-11-16
 attestation: own-words
 ---
 # Dashboards and reports
@@ -140,8 +140,9 @@ the first screen:
 | **Time and workload** | **Time tracking**, **Workload by person**, **Release workload**, **Workload pie chart** |
 
 Moving between reports stays inside the track's tabs. Each report counts only the tickets you can see in the track, so two people may read
-different numbers. Reports and dashboard widgets count days in your browser's time zone, the same
-days the calendar shows, so a ticket created late in the evening counts on that day. A report with nothing to chart says so and what to try, such as a longer period.
+different numbers. Reports and dashboard widgets count days on [your clock](account.md#your-time-zone)
+(the time zone saved in your account, else your device's), the same days the calendar shows, so a
+ticket created late in the evening counts on that day. A report with nothing to chart says so and what to try, such as a longer period.
 
 Sprint and release reports follow sprints, so only a track with a Scrum board lists them. A Kanban
 track does not list them. An old link to one says it needs a Scrum board, and those who may change
@@ -215,7 +216,7 @@ no estimates; when both have none, one card across the row says it for all the c
 Work is counted by the board's estimation setting: tickets, the original estimate or a number
 field (see [Sprint settings](boards.md#sprint-settings)). With time tracking on and the original
 estimate chosen, the remaining estimate burns down, so logging time lowers the line. A ticket is
-completed when it reaches the board's rightmost column. Days end at midnight in your time zone.
+completed when it reaches the board's rightmost column. Days end at midnight on your clock.
 
 ## Board reports
 

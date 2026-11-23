@@ -13,10 +13,13 @@ type Db = Kysely<Database> | Transaction<Database>;
  * site-wide grant, so a token needs the admin scope for it. Only a new role brings the grant.
  *
  * The grant goes with the role (T-087b, the user's decision of 2026-11-13; ADR-118): once the
- * person runs no track any more, or is deactivated, the change that took it away removes the
- * grant that came with a role, and its event names it (`dropLapsedCreateTracks`). A grant a site
- * administrator gave on the Permissions page, or one the person already held when the box was
- * ticked, was given separately: it stays until a site administrator removes it.
+ * person runs no track any more, or is erased, the change that took it away removes the grant that
+ * came with a role, and its event names it (`dropLapsedCreateTracks`). Deactivation keeps the
+ * person's roles, so it keeps the grant too (T-259, 2026-11-16): unusable while they are
+ * deactivated, as every permission is, and theirs again with the roles when they are reactivated.
+ * It still goes with their last role while they are deactivated. A grant a site administrator gave
+ * on the Permissions page, or one the person already held when the box was ticked, was given
+ * separately: it stays until a site administrator removes it.
  */
 export const CREATE_TRACKS = 'create_local_tracks';
 
@@ -121,11 +124,12 @@ const GRANT_EVENTS = [
 ] as const;
 
 /**
- * The people of these who run no track now, read in the caller's transaction: deactivated, or
- * holding `administer_track` on no live track through a role (directly or through a group,
- * nested groups included), a grant to them, a group of theirs, every signed-in person or anyone,
- * or as a track's owner. The same ways to run a track that `trackKeepsAdministrator` counts,
- * over every track.
+ * The people of these who run no track now, read in the caller's transaction: erased, or holding
+ * `administer_track` on no live track through a role (directly or through a group, nested groups
+ * included), a grant to them, a group of theirs, every signed-in person or anyone, or as a track's
+ * owner. The same ways to run a track that `trackKeepsAdministrator` counts, over every track. A
+ * deactivated person who still holds such a role counts as running it (T-259): deactivation keeps
+ * the roles, and reactivation gives them back.
  */
 async function runningNoTrack(
   db: Db,
@@ -143,7 +147,7 @@ async function runningNoTrack(
     )
     SELECT u.id FROM app_user u
      WHERE u.workspace_id = ${workspaceId} AND u.id IN (${ids})
-       AND (u.deactivated_at IS NOT NULL OR NOT EXISTS (
+       AND (u.erased_at IS NOT NULL OR NOT EXISTS (
          SELECT 1 FROM track t
            JOIN access_grant g ON g.policy_id = t.access_policy_id
                                AND g.permission = 'administer_track'
@@ -164,8 +168,8 @@ async function runningNoTrack(
 
 /**
  * Removes, in the caller's transaction, the permission to create tracks of each of these people
- * who no longer runs a track (or is deactivated), when it came with a role: a grant one of
- * `GRANT_EVENTS` names. A grant given separately stays. Returns what it removed, for the
+ * who no longer runs a track (or is erased), when it came with a role: a grant one of
+ * `GRANT_EVENTS` names. A deactivation calls it too, for a grant whose roles were already gone. A grant given separately stays. Returns what it removed, for the
  * caller's one event (M1-005), which the audit log records; call it after the change that may
  * have taken the person's last role away, and only with the people that change touched.
  */

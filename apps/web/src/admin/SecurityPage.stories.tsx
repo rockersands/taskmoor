@@ -163,6 +163,7 @@ export const AtPhoneWidth: Story = {
  * beside its label (ADR-033, AD-22): who must use two-step sign-in, the groups and the alerts.
  */
 export const ChoicesOnAPhone: Story = {
+  tags: ['touch'],
   decorators: [atPhoneWidth],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {

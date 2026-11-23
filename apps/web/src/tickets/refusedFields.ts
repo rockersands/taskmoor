@@ -3,7 +3,7 @@ import type { Translate } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { fieldName as seededFieldName } from '../shell/seededNames';
 import { WORKFLOW_FIELD_LABELS } from '../workflow/refusal';
-import { customId, errorMessage, SYSTEM_FIELDS } from './form';
+import { customId, errorMessage, SYSTEM_FIELDS, trackThingOf } from './form';
 
 /**
  * A ticket route's field refusals (`invalid_fields`, CORE-008 (3)) in the words people see
@@ -70,7 +70,10 @@ export function refusedFieldsMessage(
   for (const [key, code] of Object.entries(fields)) {
     const field = refusedFieldLabel(t, key, custom);
     if (field === null) continue;
-    parts.push(t('tickets.create.fieldProblem', { field, problem: t(errorMessage(code)) }));
+    // A release or area field says which it holds; a custom one, whose type is not known
+    // here, keeps the general words (T-286).
+    const problem = t(errorMessage(code, trackThingOf(key)));
+    parts.push(t('tickets.create.fieldProblem', { field, problem }));
   }
   return parts.length === 0 ? null : t('ticketView.problem.fields', { fields: parts.join(' ') });
 }

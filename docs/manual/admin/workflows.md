@@ -1,8 +1,8 @@
 ---
 title: "Workflows"
 audience: admins
-sources: packages/workflow/src/model.ts, packages/workflow/src/pattern.ts, apps/server/src/workflows/transfer.ts, apps/server/src/workflows/transfer-store.ts, docs/adr/0073-workflow-files.md, packages/workflow/src/engine.ts, apps/server/src/workflows/model.ts, apps/server/src/workflows/fields.ts, apps/server/src/workflows/locks.ts, apps/server/src/workflows/maps.ts, apps/server/src/workflows/migration.ts, apps/server/src/workflows/state.ts, apps/server/src/workflows/store.ts, apps/server/src/routes/workflows.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/tracks.ts, apps/web/src/workflow/WorkflowsPage.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/workflow/definition.ts, apps/web/src/workflow/StatusesSection.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/PublishPanel.tsx, apps/web/src/workflow/VersionHistory.tsx, apps/web/src/workflow/lint.ts, apps/web/src/workflow/catalogue.ts, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0024_workflows.ts, packages/db/src/migrations/0042_workflow_maps.ts, packages/db/src/migrations/0089_seamless_default_workflow.ts, packages/db/src/migrations/0104_default_workflow_left_strict.ts, packages/db/src/migrations/0107_workflows_left_without_moves.ts, apps/server/src/workflows/free-moving.ts, apps/server/src/workflows/free-moves.ts, apps/server/src/cli.ts, apps/server/src/workflows/close-reasons.ts, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0042-edit-locks.md, docs/adr/0045-workflow-maps.md, docs/specs/01a-core-work-tracking.md, apps/server/src/workflows/board-managed.ts, docs/adr/0079-board-managed-workflows.md, docs/adr/0116-one-place-per-track.md, apps/web/src/workflow/client.ts, apps/web/src/workflow/WorkflowDiagram.tsx, apps/web/src/workflow/diagram.ts, apps/web/src/workflow/StructureLists.tsx, apps/web/src/admin/NewButton.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/shell/NotFoundPage.tsx, apps/web/src/admin/ActionSlot.tsx
-accessed: 2026-11-14
+sources: packages/workflow/src/model.ts, packages/workflow/src/pattern.ts, apps/server/src/workflows/transfer.ts, apps/server/src/workflows/transfer-store.ts, docs/adr/0073-workflow-files.md, packages/workflow/src/engine.ts, apps/server/src/workflows/model.ts, apps/server/src/workflows/fields.ts, apps/server/src/workflows/locks.ts, apps/server/src/workflows/maps.ts, apps/server/src/workflows/migration.ts, apps/server/src/workflows/state.ts, apps/server/src/workflows/store.ts, apps/server/src/routes/workflows.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/tickets.ts, apps/server/src/routes/tracks.ts, apps/web/src/workflow/WorkflowsPage.tsx, apps/web/src/workflow/WorkflowEditorPage.tsx, apps/web/src/workflow/definition.ts, apps/web/src/workflow/StatusesSection.tsx, apps/web/src/workflow/TransitionInspector.tsx, apps/web/src/workflow/StatusInspector.tsx, apps/web/src/workflow/PublishPanel.tsx, apps/web/src/workflow/VersionHistory.tsx, apps/web/src/workflow/lint.ts, apps/web/src/workflow/catalogue.ts, apps/web/src/configuration/WorkflowMapsPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0024_workflows.ts, packages/db/src/migrations/0042_workflow_maps.ts, packages/db/src/migrations/0089_seamless_default_workflow.ts, packages/db/src/migrations/0104_default_workflow_left_strict.ts, packages/db/src/migrations/0107_workflows_left_without_moves.ts, apps/server/src/workflows/free-moving.ts, apps/server/src/workflows/free-moves.ts, apps/server/src/cli.ts, apps/server/src/workflows/close-reasons.ts, docs/adr/0039-workflows-as-versioned-data.md, docs/adr/0042-edit-locks.md, docs/adr/0045-workflow-maps.md, docs/specs/01a-core-work-tracking.md, apps/server/src/workflows/board-managed.ts, docs/adr/0079-board-managed-workflows.md, docs/adr/0116-one-place-per-track.md, apps/web/src/workflow/client.ts, apps/web/src/workflow/WorkflowDiagram.tsx, apps/web/src/workflow/diagram.ts, apps/web/src/workflow/StructureLists.tsx, apps/web/src/admin/NewButton.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/shell/NotFoundPage.tsx, apps/web/src/admin/ActionSlot.tsx, apps/web/src/configuration/StatusMappingPanel.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/client.ts, apps/web/src/sets/trackScope.tsx, apps/web/src/webhooks/WebhooksPage.tsx, apps/web/src/workflow/describe.ts
+accessed: 2026-11-16
 attestation: own-words
 ---
 # Workflows
@@ -239,7 +239,9 @@ in Administration does. The address of a workflow that does not exist, or no lon
   On a workflow with rules it adds only the status, and the
   steps into it are yours to draw. **Add a transition** adds a transition. A status's panel can **Make
   it the initial status** or remove it from the workflow.
-- **Discard draft** throws the draft away; the published version stays as it is.
+- **Discard draft**, in the danger colour, throws the draft away after asking: the saved draft,
+  which may be another administrator's work, and every unsaved change are deleted, and the
+  published version stays as it is. **Cancel**, which has the focus, or Escape keeps them.
 - A draft of the default workflow saved before workflows moved freely may still have the steps the
   site first came with: **Start**, **Send to review**, **Back to active**, **Close** (which asks
   for a close reason) and **Reopen**. The editor says so and offers **Let this draft move freely**,
@@ -262,7 +264,9 @@ status the new version drops that holds tickets, choose where the tickets go, th
 **Publish now**. They move with their history; their close reason stays as it is.
 
 **Version history** lists every version with who saved and published it. **Restore as draft**
-replaces the draft with an earlier version; publish it to use it again. A version that sets a close
+replaces the draft with an earlier version; publish it to use it again. With a draft or unsaved
+changes to replace, it is in the danger colour and asks first, naming the draft's version; with
+nothing to replace it acts at once. A version that sets a close
 reason deleted since cannot be restored, nor can a draft name one: every move through that
 transition would be refused. Set the reason on the current version instead.
 
@@ -289,8 +293,16 @@ transition from any status into each of its statuses, as a new workflow gets, an
 version** says so before you publish. The moves are added only when the publish goes through: a
 publish refused, for example to ask where the tickets of a dropped status go, leaves the draft as
 it was. A draft with a rule, and the workflow of a board that manages it, are published as they
-are. So is a draft whose only statuses are closed-stage ones when no close reason exists to set:
-it is published with no transitions, and `cli.mjs workflow-moves` lists it until you add some.
+are.
+
+A closed-stage status gets its move only when there is a close reason for the move to set: the
+reason named **Completed** (in any case), or else the reason the default workflow sets when it
+closes a ticket. A draft whose only statuses are closed-stage ones, when there is no such reason,
+could get no move at all, so its publish is refused and says how to fix it: add a close reason
+named Completed, make the default workflow set a reason when it closes a ticket, add a status
+outside the closed stage, or draw the transitions yourself. The draft stays as you saved it.
+**Publish version** tells you before you publish that a closed-stage status gets its move only
+when there is a reason to close with.
 
 A workflow left with no transitions by an earlier version of Taskmoor got those moves when the
 server was upgraded, as a new published version; a draft you had saved stays as you saved it,
@@ -309,7 +321,10 @@ as **The next draft** of an existing one, to check in the editor and publish.
 
 A file whose workflow has no transitions at all imports with a transition from any status into
 each of its statuses, as a new workflow gets; a file with transitions or rules keeps them as they
-are.
+are. A file with no transitions whose only statuses are closed-stage ones, when there is no
+close reason for the moves to set (see above), is refused as a new workflow, which would be live
+at once with no move, and nothing it would have made is kept; as the next draft it is accepted,
+and its publish is refused until you fix it.
 
 The import matches statuses by name, ignoring case, and creates those this site lacks.
 Everything else must already exist with the same name. Whatever cannot be found never lets
@@ -354,24 +369,49 @@ On **Administration**, **Workflow maps**:
 A map holds at most 150 workflows by default ([guardrails](tracks.md#configuration-guardrails)).
 A shared-mode track chooses its map under **Administration**, **Tracks**, **Manage**, **Workflow map**.
 
-A local-mode track owns one map, named after its key, made with the track. Its administrators
-change it through the API, and may create workflows the track owns (`POST /api/v1/workflows`
-with `trackId`) and name them in its map.
+A local-mode track owns one map, named after its key (such as **OPS workflows**), made with the
+track; it is neither added nor deleted on its own. Whoever runs the track changes it on its own
+**Workflow map** page: on **Administration** > **Tracks you run**, **Manage** the track, then
+**Workflow map** under **Its own configuration** (the address ends in
+`/manage/tracks/<id>/workflow-map`). The track's name is above the title and its map is open at
+once, with the form **Manage** opens above, without **Delete map**. It offers the shared workflows
+and the track's own, which say so, as in **Runbook flow (OPS’s own)**, and the ticket types the
+track offers, plus any the map already names so they can be removed. Site and configuration
+administrators open the same page. On **Workflow maps**, someone who runs tracks but is no
+administrator sees only links to the tracks they run that have their own configuration, and a
+track in shared mode says it follows a shared map.
+
+The workflows a track owns are created and changed through the API for now
+(`POST /api/v1/workflows` with `trackId`); its map then names them.
 
 ## Migrating tickets between workflows
 
 Changing a map's workflows, or switching a track to another map, can leave tickets in statuses
 their new workflow lacks. Those tickets need a new status:
 
-- The change takes `statusMapping`, from old status id to new status id, and, where one ticket
-  type needs other targets, `typeStatusMapping` keyed by ticket type id. Without it the change
-  answers `409 status_mapping_required` with the statuses and ticket counts. The web app shows
-  that count and asks you to give the mapping through the API.
+- In the web app, **Save the map** on **Workflow maps** or on a track's own **Workflow map**, and
+  choosing another **Workflow map** for a track on **Tracks**, first read what the change would
+  do. When no ticket needs a new status, the change is made at once. Otherwise a step opens, named after the change (**Save**
+  and the map's name, or **Switch** a track **to** a map): it says how many tickets are in
+  statuses the new workflows lack, and lists each ticket type and status with its ticket count.
+  For each, choose the status they move to, from the statuses of that type's new workflow;
+  nothing is chosen for you, and the step says so if one is left open. **Save and move the
+  tickets** (or **Switch and move the tickets**) makes the change; **Cancel** leaves everything as
+  it was. If tickets changed since the step was read, it reads them again and asks you to check
+  and confirm again. Changing the map's form while its step is open closes the step, which was
+  for the map as it was: **Save the map** again reads what the map now would do.
+- Through the API, the change takes `statusMapping`, from old status id to new status id, and,
+  where one ticket type needs other targets, `typeStatusMapping` keyed by ticket type id (the
+  web app sends this one). Without it the change answers `409 status_mapping_required` with the
+  statuses and ticket counts.
 - Preview a change first: `POST /api/v1/workflow-maps/:id/impact` for a map,
-  `GET /api/v1/tracks/:id/workflow-map/impact?workflowMapId=` for a track's switch.
+  `GET /api/v1/tracks/:id/workflow-map/impact?workflowMapId=` for a track's switch. The answer
+  lists the tickets in statuses the new workflows lack (`lostStatuses`) and, in
+  `targetWorkflows`, each new workflow with the statuses they may move to.
 - The change applies at once. Up to 500 tickets move within the request; more move in the
   background, and the answer names a migration whose progress is at
-  `GET /api/v1/workflow-migrations/:id`.
+  `GET /api/v1/workflow-migrations/:id`. The web app then says how many tickets are moving and
+  shows **Tickets moved** with a bar, read again every two seconds until all have moved.
 - A ticket not yet moved still works: a transition on it moves it first.
 - While a migration runs, its tracks refuse another map change and their workflows refuse a
   publish (`409 status_migration_running`).
@@ -387,4 +427,6 @@ with `GET /api/v1/tracks/:id/workflow?ticketTypeId=`, and the track's map with
 - Approvals and forms. Until they arrive, **Waits for an approval** never holds a transition
   back, and the two form checks always block.
 - **Call a webhook** does not send a request yet: the transition's event only counts the calls.
-  To be told about transitions, register a webhook for ticket events through the API.
+  To be told about transitions, a site administrator adds a webhook on **Administration** >
+  **Webhooks** that sends **Tickets** (or `ticket.transitioned` alone, under **Other events**);
+  see [Webhooks](rest-api.md#webhooks).

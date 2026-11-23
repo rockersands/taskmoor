@@ -1,3 +1,4 @@
+import type { Translate } from '../../i18n/I18nProvider';
 import type { MessageId } from '../../i18n/messages.en';
 import type { RecordOutcome, RunStatus } from './client';
 
@@ -94,10 +95,25 @@ export const EXPLAINED_WARNINGS = [
   'name_taken',
   'former_key_taken',
   'ticket_in_another_open_sprint',
+  // The CSV import read a file that is not UTF-8 as Windows-1252 (T-263).
+  'read_as_windows_1252',
 ] as const;
 
 export function warningExplanation(code: string): MessageId {
   return (EXPLAINED_WARNINGS as readonly string[]).includes(code)
     ? (`admin.imports.warning.${code}` as MessageId)
     : 'admin.imports.warning.other';
+}
+
+/**
+ * A warning's example as the report shows it. The CSV note's `<line>: <word>` (T-263) says
+ * "line" in the reader's language, an older report's English `line <n>: ` too; any other
+ * example is data (a record's id, a file and offset), shown as it is.
+ */
+export function warningExample(t: Translate, code: string, example: string): string {
+  if (code !== 'read_as_windows_1252') return example;
+  const found = /^(?:line )?(\d+): (\S.*)$/.exec(example);
+  return found
+    ? t('admin.imports.report.lineExample', { line: found[1] ?? '', text: found[2] ?? '' })
+    : example;
 }

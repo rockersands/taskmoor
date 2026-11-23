@@ -1,5 +1,6 @@
+import { isUtf8 } from 'node:buffer';
 import { readFileSync } from 'node:fs';
-import { bomLength } from '@taskmoor/webconfig';
+import { bomLength, CSV_DELIMITERS, detectDelimiter } from '@taskmoor/webconfig';
 import { z } from 'zod';
 import type {
   Command,
@@ -9,6 +10,7 @@ import type {
   Mapped,
   Ref,
   SourceItem,
+  SourceNote,
   SourceRecord,
   TicketProperty,
   Warning,
@@ -33,6 +35,12 @@ import type {
  * The CSV that Taskmoor's search export writes (M1-042) reads back with a mapping of its
  * columns: lists are split on "; ", and a cell that starts with an apostrophe before =, +, -,
  * @, a tab or a carriage return (the export's guard against spreadsheet formulas) loses it.
+ *
+ * Files as spreadsheets save them (T-263): the separator is found from the header when the
+ * mapping does not name one (`detectDelimiter`); a file that is not UTF-8 is read as UTF-16 when
+ * it starts with that byte-order mark, else as Windows-1252 (what Excel's plain "CSV" saves in
+ * Western Europe and the Americas), with a note in the report; and a number field of a semicolon
+ * file reads a decimal comma ("2,5", "1.234,5"), as the export's semicolon style writes it.
  */
 export const CSV_SOURCE = 'csv';
 
@@ -91,7 +99,11 @@ export const csvMapping = z
       )
       .min(1)
       .max(500),
-    delimiter: z.enum([',', ';', '\t', '|']).default(','),
+    /**
+     * Between the cells; found from the header when left out (T-263). Runs stored before then
+     * hold the comma that was the default.
+     */
+    delimiter: z.enum(CSV_DELIMITERS).optional(),
     /** Between the values of a list in one cell (releases, areas, fields with several values). */
     listSeparator: z.string().min(1).max(3).default(';'),
     /** People by the text the file has for them, when it is not an email: text to email. */
@@ -226,6 +238,95 @@ export function cellText(raw: string): string {
   return /^'[=+\-@\t\r＝＋－＠]/.test(raw) ? raw.slice(1) : raw;
 }
 
+// --- Encodings and numbers (T-263) ------------------------------------------------------------
+
+/** How a file's bytes were read. */
+export type CsvEncoding = 'utf-8' | 'utf-16le' | 'utf-16be' | 'windows-1252';
+
+/**
+ * Windows-1252's characters for the bytes 0x80 to 0x9F, where it differs from Latin-1 (the euro
+ * sign, curly quotes, dashes, Š, Œ, Ž and so on). The five bytes it leaves undefined keep the
+ * Latin-1 control character, as browsers do. A table, so reading does not depend on the
+ * runtime's ICU data.
+ */
+const CP1252_HIGH = [
+  0x20ac, 0x81, 0x201a, 0x192, 0x201e, 0x2026, 0x2020, 0x2021, 0x2c6, 0x2030, 0x160, 0x2039, 0x152,
+  0x8d, 0x17d, 0x8f, 0x90, 0x2018, 0x2019, 0x201c, 0x201d, 0x2022, 0x2013, 0x2014, 0x2dc, 0x2122,
+  0x161, 0x203a, 0x153, 0x9d, 0x17e, 0x178,
+];
+
+/**
+ * A file's bytes as UTF-8, once, before any record is read, so the byte offsets every job part
+ * resumes from are the same (T-263):
+ *
+ * - a UTF-16 byte-order mark (FF FE or FE FF; Excel's "Unicode text") reads the rest as UTF-16;
+ * - otherwise bytes that are valid UTF-8 after any UTF-8 mark are kept as they are;
+ * - anything else is read as Windows-1252, which is what Excel's plain "CSV" saves in Spain and
+ *   the rest of Western Europe and the Americas. Accented text in that code page is almost never
+ *   valid UTF-8, and plain ASCII reads the same both ways, so the test does not misjudge a file
+ *   either way in practice. Other code pages (Mac Roman, Windows-1250) still read wrong: the
+ *   report's note says to save as "CSV UTF-8".
+ */
+export function decodeCsv(raw: Buffer): { bytes: Buffer; encoding: CsvEncoding } {
+  if (raw.length >= 2 && raw[0] === 0xff && raw[1] === 0xfe) {
+    return {
+      bytes: Buffer.from(raw.subarray(2).toString('utf16le'), 'utf8'),
+      encoding: 'utf-16le',
+    };
+  }
+  if (raw.length >= 2 && raw[0] === 0xfe && raw[1] === 0xff) {
+    const swapped = Buffer.from(raw.subarray(2, 2 + ((raw.length - 2) & ~1)));
+    swapped.swap16();
+    return { bytes: Buffer.from(swapped.toString('utf16le'), 'utf8'), encoding: 'utf-16be' };
+  }
+  const start = bomLength(raw);
+  if (isUtf8(raw.subarray(start))) return { bytes: raw, encoding: 'utf-8' };
+  const text = raw
+    .subarray(start)
+    .toString('latin1')
+    .replace(/[\u0080-\u009f]/g, (c) =>
+      String.fromCharCode(CP1252_HIGH[c.charCodeAt(0) - 0x80] as number),
+    );
+  return { bytes: Buffer.from(text, 'utf8'), encoding: 'windows-1252' };
+}
+
+/**
+ * A number cell of a semicolon file, where the comma is the decimal mark, as a number field
+ * reads it: "2,5" is 2.5 and "1.234,5" is 1234.5 (dots group thousands), as the export's
+ * semicolon style writes them (T-263). A cell with one group of three after a dot and no comma,
+ * such as "1.234", could be a thousands dot or a decimal point, so it is refused (null) rather than
+ * read as either. Anything else is returned as it is, for the field's own reading: "2.5" stays a
+ * decimal point, as a file from elsewhere may have it.
+ */
+export function fromDecimalComma(text: string): string | null {
+  const t = text.trim();
+  const comma = /^([+-]?)(\d{1,3}(?:\.\d{3})+|\d*),(\d+)([eE][+-]?\d{1,4})?$/.exec(t);
+  if (comma) {
+    const [, sign = '', whole = '', fraction = '', exponent = ''] = comma;
+    return `${sign}${whole.replaceAll('.', '')}.${fraction}${exponent}`;
+  }
+  if (/^[+-]?[1-9]\d{0,2}\.\d{3}$/.test(t)) return null;
+  if (/^[+-]?[1-9]\d{0,2}(?:\.\d{3}){2,}$/.test(t)) return t.replaceAll('.', '');
+  return t;
+}
+
+/**
+ * The first word of each line with a letter outside ASCII, as the note about the reading shows:
+ * `<line>: <word>`, data only, which the report words in the reader's language.
+ */
+function accentedLines(bytes: Buffer): { count: number; examples: string[] } {
+  const examples: string[] = [];
+  let count = 0;
+  const lines = bytes.toString('utf8', bomLength(bytes)).split('\n');
+  for (const [i, line] of lines.entries()) {
+    const word = /[^\s,;|"]*\P{ASCII}[^\s,;|"]*/u.exec(line);
+    if (!word) continue;
+    count += 1;
+    if (examples.length < 5) examples.push(`${i + 1}: ${word[0].slice(0, 40)}`);
+  }
+  return { count, examples };
+}
+
 // --- The source -------------------------------------------------------------------------------
 
 /** A row's values by what they fill, as the source hands them to the mapper. */
@@ -265,7 +366,12 @@ export class CsvSource implements ImportSource {
   readonly importSource = CSV_SOURCE;
   readonly system: string;
   private readonly mapping: CsvMapping;
+  /** The file as UTF-8 (`decodeCsv`): every offset is into these bytes. */
   private readonly buf: Buffer;
+  /** How the file's bytes were read. */
+  readonly encoding: CsvEncoding;
+  /** The mapping's separator, else the one the header shows (T-263). */
+  readonly delimiter: string;
   private scanned: {
     rows: { id: string; start: number; end: number; line: number; duplicate: boolean }[];
     named: Map<string, Named[]>;
@@ -275,10 +381,14 @@ export class CsvSource implements ImportSource {
   constructor(settings: CsvSettings) {
     this.system = settings.system;
     this.mapping = settings.mapping;
-    this.buf =
+    const read = decodeCsv(
       settings.data !== undefined
         ? Buffer.from(settings.data, 'utf8')
-        : readFileSync(settings.path as string);
+        : readFileSync(settings.path as string),
+    );
+    this.buf = read.bytes;
+    this.encoding = read.encoding;
+    this.delimiter = settings.mapping.delimiter ?? detectDelimiter(this.buf);
   }
 
   /** The header's columns by what they fill, or the first problem with the mapping. */
@@ -304,7 +414,13 @@ export class CsvSource implements ImportSource {
     for (const [key, indexes] of columns) {
       const texts = indexes.map((i) => cellText(fields[i] ?? ''));
       if (key.startsWith('field:')) {
-        custom.push({ fieldId: Number(key.slice('field:'.length)), texts, separator });
+        custom.push({
+          fieldId: Number(key.slice('field:'.length)),
+          texts,
+          separator,
+          // A semicolon file writes numbers with a decimal comma (T-263).
+          ...(this.delimiter === ';' ? { decimalComma: true } : {}),
+        });
       } else {
         values[key as CsvTarget] = texts;
       }
@@ -357,7 +473,7 @@ export class CsvSource implements ImportSource {
   /** Reads the file once: rows, their order, and what they name. */
   private scan() {
     if (this.scanned) return this.scanned;
-    const all = records(this.buf, this.mapping.delimiter);
+    const all = records(this.buf, this.delimiter);
     const head = all.next();
     if (head.done) throw new CsvFormatError(1, 'empty');
     const columns = this.columns(head.value.fields);
@@ -445,6 +561,16 @@ export class CsvSource implements ImportSource {
     this.scan();
   }
 
+  /**
+   * A file read as Windows-1252 says so in the report, with the first lines whose letters to
+   * check (T-263). A separator found from the header gets no note: the header shows it.
+   */
+  async notes(): Promise<SourceNote[]> {
+    if (this.encoding !== 'windows-1252') return [];
+    const { count, examples } = accentedLines(this.buf);
+    return [{ code: 'read_as_windows_1252', count: Math.max(count, 1), examples }];
+  }
+
   async kinds(): Promise<string[]> {
     const { named, rows } = this.scan();
     return [...named.keys(), ...(rows.length > 0 ? ['ticket'] : [])];
@@ -461,7 +587,7 @@ export class CsvSource implements ImportSource {
         cursor: String(from + i + 1),
       }));
     }
-    const d = this.mapping.delimiter.charCodeAt(0);
+    const d = this.delimiter.charCodeAt(0);
     return rows.slice(from, from + limit).map((r, i) => {
       const read = readRecord(this.buf, r.start, d);
       const row = this.row(read?.fields ?? [], r.line);

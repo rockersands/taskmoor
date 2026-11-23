@@ -1,20 +1,29 @@
 import type { Database } from '@taskmoor/db';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, type RawBuilder, sql, type Transaction } from 'kysely';
-import type { z } from 'zod';
+import { z } from 'zod';
 import { compileCondition, compileQuery } from '../boards/data';
 import type { FieldCatalogs } from '../fields/catalog';
-import { dependencyOptions, linkTypesNamed, readDependencies } from '../plans/dependencies';
+import { criticalPath } from '../plans/criticalPath';
+import {
+  blockingLinks,
+  dependencyOptions,
+  linkTypesNamed,
+  readDependencies,
+} from '../plans/dependencies';
 import { draftMarks, draftOverlay } from '../plans/drafts';
 import {
   calendarQuery,
   filterQuery,
+  filterShape,
   idParam,
   LISTED,
   MAX_CALENDAR_DAYS,
   type PlanFilters,
+  scenarioShape,
   timelineQuery,
 } from '../plans/model';
+import { isoDay } from '../plans/periods';
 import {
   browsedTracks,
   filterText,
@@ -22,6 +31,7 @@ import {
   planTickets,
   sourceRows,
 } from '../plans/query';
+import { barDays, MAX_OPEN_READ } from '../plans/scheduler';
 import { sprintDay } from '../plans/sprints';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
 import { countBulkExport } from '../security/alerts';
@@ -47,6 +57,9 @@ import { searchRefusal } from './search';
  *   the blockers it does not list, only counted (`blockersElsewhere`): those outside the plan or
  *   hidden from the viewer as one number, never named, and those of the plan that the filters or
  *   the 10,000 leave out as another. Blockers in the trash are not counted.
+ * - `GET /api/v1/plans/:id/critical-path` (PLN-011; ADR-122 stage 9): the critical path through
+ *   the plan's open dated tickets the viewer is shown, never narrowed by the filters, so a filter
+ *   cannot change the plan's end; the filters choose only which tickets' slack `listed` gives.
  * - `GET /api/v1/plans/:id/calendar?from=&to=`: the tickets with a start or due day in the
  *   range (at most 100 days, at most 10,000 tickets by due day), with the sprints and releases of
  *   their tracks that overlap it.
@@ -65,6 +78,11 @@ import { searchRefusal } from './search';
 const MARKERS = 1000;
 /** How many people the summary names; the rest stay in the open count. */
 const PEOPLE = 10;
+/** Tickets the critical path's chains name at most; the rest are counted in `more`. */
+export const CHAIN_LISTED = 500;
+
+/** `GET .../critical-path`: the filters (for `listed` only) and `scenario=`. */
+const criticalPathQuery = z.object({ ...filterShape, ...scenarioShape }).strict();
 
 interface ItemRow {
   id: number;
@@ -539,6 +557,169 @@ export function registerPlanViewRoutes(
         tracks: extra.tracks,
         markers: extra.markers,
         truncated: answer.more,
+      };
+    } catch (error) {
+      return searchRefusal(reply as FastifyReply, error, timeoutMs);
+    }
+  });
+
+  /**
+   * The critical path (PLN-011; ADR-122 stage 9, "The critical path"). One statement reads the
+   * plan's open tickets the viewer is shown (`unfiltered`, never the filters), each with its own
+   * days, else its sprint's, read with the scenario's drafts when `scenario=` names one; a parent
+   * dated only by its children's roll-up has neither and is counted as `undated`. Dependencies are
+   * blocking links and the plan's chosen types: one from a closed ticket of the plan holds
+   * nothing, one from a ticket outside the plan or hidden from the viewer is counted on the
+   * tickets it holds (`waitsElsewhere`), never named. `listed` gives the slack of the tickets the
+   * Timeline lists with the same filters, so the page marks its own bars; two viewers who are
+   * shown different tickets can get different paths.
+   */
+  app.get('/api/v1/plans/:id/critical-path', async (request, reply) => {
+    const f = criticalPathQuery.safeParse(request.query ?? {});
+    if (!f.success)
+      return reply.code(400).send({ error: 'invalid_fields', fields: shapeErrors(f.error) });
+    const { scenario: scenarioParam, ...filters } = f.data;
+    try {
+      const opened = await open(request, reply, filters);
+      if (!opened) return reply;
+      const { plan, tickets } = opened;
+      const ws = request.workspaceId;
+      const scenario = await viewScenario(db, ws, plan.id, scenarioParam, tickets.unfiltered);
+      if (scenario === 'not_found') {
+        return reply.code(400).send({ error: 'invalid_fields', fields: { scenario: 'not_found' } });
+      }
+      const inScenario = scenario ? { scenario } : {};
+      const none = {
+        plan,
+        ...inScenario,
+        planEnd: null,
+        chains: [],
+        more: 0,
+        counts: { critical: 0, cycles: 0, undated: 0, waitsElsewhere: 0 },
+        listed: [],
+      };
+      const where = tickets.where;
+      const unfiltered = tickets.unfiltered;
+      if (!where || !unfiltered) return none;
+      const over = draftOverlay(scenario?.id ?? null, unfiltered);
+      const options = await dependencyOptions(db, plan.id);
+      const answer = await readOnly(db, timeoutMs, async (trx) => {
+        const rows = (
+          await sql<{
+            id: number;
+            start: string | null;
+            due: string | null;
+            sprint_start: string | null;
+            sprint_end: string | null;
+          }>`
+            SELECT k.id, ${over.start}::text AS start, ${over.due}::text AS due,
+                   ${sprintDay('start_at')}::text AS sprint_start,
+                   ${sprintDay('end_at')}::text AS sprint_end
+              FROM ticket k JOIN status s ON s.id = k.status_id
+              ${over.join}
+             WHERE ${unfiltered} AND s.stage <> 'closed'
+             LIMIT ${MAX_OPEN_READ + 1}`.execute(trx)
+        ).rows;
+        if (rows.length > MAX_OPEN_READ) return 'too_large' as const;
+        const bars = rows.flatMap((r) => {
+          const own = r.start !== null || r.due !== null;
+          const b = own ? barDays(r.start, r.due) : barDays(r.sprint_start, r.sprint_end);
+          return b ? [{ id: r.id, ...b }] : [];
+        });
+        const openIds = rows.map((r) => r.id);
+        const open = new Set(openIds);
+        const dated = new Set(bars.map((b) => b.id));
+        const all = await blockingLinks(trx, ws, openIds, options);
+        // A blocker that is not open is either the plan's, and closed, or elsewhere.
+        const outsiders = [...new Set(all.filter((l) => !open.has(l.from)).map((l) => l.from))];
+        const closedInPlan = new Set(
+          outsiders.length === 0
+            ? []
+            : (
+                await sql<{ id: number }>`
+                  SELECT k.id FROM ticket k
+                   WHERE k.id = ANY(${outsiders}::int[]) AND ${unfiltered}`.execute(trx)
+              ).rows.map((r) => r.id),
+        );
+        const waiting = new Set(
+          all
+            .filter((l) => !open.has(l.from) && !closedInPlan.has(l.from) && dated.has(l.to))
+            .map((l) => l.to),
+        );
+        const path = criticalPath({
+          tickets: bars,
+          links: all.filter((l) => open.has(l.from)),
+        });
+        // The chains, cut at CHAIN_LISTED tickets; the rest counted.
+        const chains: number[][] = [];
+        let room = CHAIN_LISTED;
+        for (const chain of path.chains) {
+          if (room === 0) break;
+          const part = chain.slice(0, room);
+          chains.push(part);
+          room -= part.length;
+        }
+        const named = chains.flat();
+        const names = new Map(
+          (named.length === 0
+            ? []
+            : (
+                await sql<{ id: number; key: string; summary: string }>`
+                  SELECT k.id, t.key || '-' || k.number AS key, k.summary
+                    FROM ticket k JOIN track t ON t.id = k.track_id
+                   WHERE k.id = ANY(${named}::int[])`.execute(trx)
+              ).rows
+          ).map((r) => [r.id, r]),
+        );
+        const listedIds = (
+          await sql<{ id: number }>`
+            SELECT k.id FROM ticket k WHERE ${where} ORDER BY k.rank, k.id
+             LIMIT ${LISTED}`.execute(trx)
+        ).rows.map((r) => r.id);
+        return {
+          path,
+          bars,
+          chains,
+          names,
+          listedIds,
+          undated: rows.length - bars.length,
+          waiting,
+        };
+      });
+      if (answer === 'too_large') {
+        return reply.code(409).send({ error: 'plan_too_large', limit: MAX_OPEN_READ });
+      }
+      const { path } = answer;
+      const barOf = new Map(answer.bars.map((b) => [b.id, b]));
+      return {
+        plan,
+        ...inScenario,
+        planEnd: path.planEnd === null ? null : isoDay(path.planEnd),
+        chains: answer.chains.map((chain) => ({
+          tickets: chain.map((id) => {
+            const b = barOf.get(id) as { start: number; end: number };
+            const name = answer.names.get(id);
+            return {
+              id,
+              key: name?.key ?? '',
+              summary: name?.summary ?? '',
+              start: isoDay(b.start),
+              end: isoDay(b.end),
+              slack: path.slack.get(id) as number,
+            };
+          }),
+        })),
+        more: path.critical.length - answer.chains.reduce((n, c) => n + c.length, 0),
+        counts: {
+          critical: path.critical.length,
+          cycles: path.cycles.length,
+          undated: answer.undated,
+          waitsElsewhere: answer.waiting.size,
+        },
+        listed: answer.listedIds.flatMap((id) => {
+          const slack = path.slack.get(id);
+          return slack === undefined ? [] : [{ id, slack }];
+        }),
       };
     } catch (error) {
       return searchRefusal(reply as FastifyReply, error, timeoutMs);
