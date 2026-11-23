@@ -1,8 +1,8 @@
 ---
 title: "Single sign-on"
 audience: admins
-sources: apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/server/src/routes/sso.ts, apps/server/src/routes/saml.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/sso/oidc.ts, apps/server/src/sso/saml.ts, apps/server/src/sso/saml-provider.ts, apps/server/src/sso/sign-in.ts, apps/server/src/audit/record.ts, apps/server/src/config.ts, packages/db/src/migrations/0010_identity_providers.ts, packages/db/src/migrations/0020_saml.ts, apps/web/src/sso/IdentityProvidersPage.tsx, apps/web/src/sso/ProviderForm.tsx, apps/web/src/session/SignInForm.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/sso/draft.ts, apps/web/src/trackpeople/InvitationPage.tsx, docs/adr/0119-google-sign-in.md, apps/web/src/sso/RedirectUriField.tsx, apps/web/src/sso/GroupMapField.tsx, apps/web/src/session/GoogleSignInButton.tsx, apps/web/src/session/GoogleMark.tsx, apps/web/src/assets/google/google-g.svg, apps/web/src/fonts/OFL.txt, THIRD_PARTY_NOTICES, apps/web/src/styles/sso.css, docs/plan/decisions.csv, apps/web/src/shell/DangerAction.tsx, apps/web/src/people/PersonPage.tsx
-accessed: 2026-11-17
+sources: apps/server/src/outbound/guard.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/server/src/routes/sso.ts, apps/server/src/routes/saml.ts, apps/server/src/routes/session.ts, apps/server/src/routes/users.ts, apps/server/src/sso/oidc.ts, apps/server/src/sso/saml.ts, apps/server/src/sso/saml-provider.ts, apps/server/src/sso/sign-in.ts, apps/server/src/audit/record.ts, apps/server/src/config.ts, packages/db/src/migrations/0010_identity_providers.ts, packages/db/src/migrations/0020_saml.ts, apps/web/src/sso/IdentityProvidersPage.tsx, apps/web/src/sso/ProviderForm.tsx, apps/web/src/session/SignInForm.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/web/src/sso/draft.ts, apps/web/src/trackpeople/InvitationPage.tsx, docs/adr/0119-google-sign-in.md, apps/web/src/sso/RedirectUriField.tsx, apps/web/src/sso/GroupMapField.tsx, apps/web/src/session/GoogleSignInButton.tsx, apps/web/src/session/GoogleMark.tsx, apps/web/src/assets/google/google-g.svg, apps/web/src/fonts/OFL.txt, THIRD_PARTY_NOTICES, apps/web/src/styles/sso.css, docs/plan/decisions.csv, apps/web/src/shell/DangerAction.tsx, apps/web/src/people/PersonPage.tsx, apps/web/src/admin/BreakAtSlashes.tsx
+accessed: 2026-11-23
 attestation: own-words
 ---
 # Single sign-on
@@ -65,9 +65,11 @@ with **Create accounts at a first sign-in** on, anyone with such an address coul
 ## Adding an OpenID Connect provider
 
 1. At the provider, create a client (an application) using the authorization code flow.
-   Register the **Redirect URI** shown at the top of the Single sign-on page; the field grows
-   to the whole address, which wraps on a phone so all of it shows, and **Copy** copies it. It is the same
-   for every OpenID Connect provider:
+   Register the **Redirect URI** shown at the top of the Single sign-on page. The whole address
+   shows, read-only; on a phone its lines end only after a `/`, so no part of it is cut in two.
+   Clicking it, or reaching it with Tab, selects all of it, and **Copy** copies it (when the browser
+   cannot copy, the address is selected for you to copy). It is the same for every OpenID Connect
+   provider:
 
    ```text
    https://taskmoor.example.com/api/v1/auth/oidc/callback

@@ -901,7 +901,8 @@ test('[IAM-003] [IAM-004] the administrator adds an identity provider; people si
   await page.getByRole('link', { name: 'Single sign-on' }).click();
   await expect(heading(page)).toHaveText('Single sign-on');
   // The address to register at the provider comes from the backend's public URL.
-  await expect(page.getByRole('textbox', { name: 'Redirect URI to register' })).toHaveValue(
+  // A read-only text block that breaks only after a '/' (AD-9): its text, not a field's value.
+  await expect(page.getByRole('textbox', { name: 'Redirect URI to register' })).toHaveText(
     'http://localhost:4173/api/v1/auth/oidc/callback',
   );
 
