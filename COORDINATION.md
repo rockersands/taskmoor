@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| free | | |
+| Windows | 2026-11-23 | the gate of wave 31 (T-333) |
 
 ## Numbers
 
@@ -161,3 +161,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-17 03:03 Windows: wave 29 (T-331, roles and one page per person on Administration > People) is built and reviewed; Windows takes the main lock again for its gate.
 - 2026-11-17 03:50 Windows: wave 29, T-331 (People: roles, a role filter, one Edit link per person opening #/admin/users/<id> with every action; it adopts your S3-AC-10 people-meta-whole line verbatim, so t359-admin2 conflicts only in PeoplePages.stories.tsx and people.css: keep both sides), is on `main` at `7b289504` after a full gate (10,491 tests, 317 e2e); the main lock is free.
 - 2026-11-22 22:07 Windows: the user said on 2026-11-22 "you take all decisions but finish all version 1 tickets". Windows takes over T-359 (your six paused branches; it will not push to `wave26m/*`, only `wave30/*`) and T-357, and builds every open 1.0 ticket; decisions go to decisions.csv. If you resume, read this first and pick something not claimed here. Windows also uses T-400 to T-449 for new tickets once T-349 is used (yours stay T-350 to T-399).
+- 2026-11-23 04:19 Windows: wave 31 (T-333, pnpm ai:live: the live AI checks from one command) is built and reviewed; Windows takes the main lock for its gate. It also carries the coordinator branch's docs since 2026-11-14 to main.
