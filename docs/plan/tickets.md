@@ -287,7 +287,7 @@ reported, and the coordinator checked that it was pushed.
 | ID | Ticket | State | Where and notes |
 |---|---|---|---|
 | T-170 | AI key for the live tests | Done | The user ran `packages/ai/src/live.test.ts` with their own key on 2026-11-07: 3 of 3 passed (answers with a cache hit, streaming with strict structured output and a strict tool, token counting and the model list). The key never reached a file or this chat's commands |
-| T-171 | Spanish review | To do | Decided by Claude on 2026-11-22 under the user's delegation ("you take all decisions but finish all version 1 tickets"): Claude reviews the Spanish catalogue and the Spanish-facing texts in a workflow once the UI work for 1.0 is merged (reviewers per area, fixes, a glossary for terms); the user can spot-check in the demo as part of T-024 |
+| T-171 | Spanish review | Later | The user said on 2026-11-22: do not do the language reviews. Not part of 1.0; new texts still get their Spanish entries as before |
 
 ## Known gaps found along the way
 
