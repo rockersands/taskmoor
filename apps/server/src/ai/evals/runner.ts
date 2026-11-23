@@ -247,7 +247,7 @@ export function formatRun(run: EvalRun, failures = 10, candidate?: string): stri
   }
   for (const r of run.injection) {
     out.push(
-      `injection   ${r.candidate}: ${r.passed}/${r.total} cases hold through every feature, ${pct(r.score)}${meets(r.score, THRESHOLDS.injection)}`,
+      `injection   ${r.candidate}: ${r.passed}/${r.total} cases hold through every feature, ${pct(r.score)}${meets(r.score, THRESHOLDS.injection)}; the model answered ${r.answered} of ${r.asked} requests`,
     );
     for (const f of r.failures.slice(0, failures)) out.push(`  ${f.id}: ${f.problems.join('; ')}`);
   }

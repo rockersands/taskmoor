@@ -131,3 +131,31 @@ summary passing both graders, duplicates recall@3 80%, injection 100%) are measu
   events, so end-to-end tests run every feature with no network (`e2e/ai-features-fake.spec.ts`).
 - Images in drafts (AI-015 "or images") need image content parts in the gateway first.
 - Triage suggestions (AI-017) and natural-language automation rules (AI-018) are M2.
+
+## The live run (T-333, 2026-11-22)
+
+The checks that need a real model run from one command the user runs once in their own
+terminal: `pnpm ai:live` (`apps/server/src/ai/evals/live/`; how to run it: `docs/ai/README.md`).
+In order, each whatever the one before did: M1-073's smoke test and M1-074's cache read
+(`packages/ai/src/live.test.ts`, the cache read now a test of its own); the injection corpus
+against the live model (`packages/ai/src/injection/live.test.ts`: the offline test's agent run
+and its definition of holding, `harness.ts`, with the obedient fake replaced by the model, and a
+case holding only once the model has answered); then `pnpm eval all` with `candidates/live.ts`.
+
+- **The key** comes from `TASKMOOR_AI_KEY` (or the older `TASKMOOR_AI_TEST_KEY` and
+  `TASKMOOR_AI_EVAL_KEY`), or from a terminal question that shows nothing, so it never reaches
+  the screen or the shell's history. It stays in the command's memory and reaches each child only
+  through that child's environment; every line printed, logged or written is scrubbed of it
+  (`[key]`), and a line holding 16 characters of it is left out.
+- **Before spending:** a free model-list call checks the key and the model; then the plan with a
+  rough cost from the corpora's sizes at the price table's list price, and a y/N question
+  (`--yes` skips it).
+- **After:** `.verify/ai-live.json` and `docs/ai/live-checks.md` (date, model, each check with
+  its threshold, measured value and result, and which of M1-073, M1-074 and M1-079 it closes;
+  no key, header or prompt), the coordinator's lines at the end, exit code 0, 1 when a check
+  fails, 2 when it could not run.
+- **What the injection run counts:** a feature that fails holds too, so `injection-eval.ts` now
+  counts the requests the model answered (`answered` of `asked`, a refusal counting as an
+  answer), and the live check fails a case no feature got an answer for. Duplicates have no such
+  count: where the re-ranking fails, the embedding order stands, so recall@3 measures the
+  feature as people get it.

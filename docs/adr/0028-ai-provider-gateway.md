@@ -186,3 +186,13 @@ API has no embeddings endpoint. Bulk jobs on providers without batches go throug
   stores them as `openai-compatible` at those addresses (no new provider id, no migration); the
   live eval candidate takes `TASKMOOR_AI_EVAL_PROVIDER=openai|gemini`. Tested against recorded
   request shapes only: no OpenAI or Gemini key was available.
+- 2026-11-22 (T-333), the model ids checked against the current Claude models (the claude-api
+  skill) before the first live run: every default is current and nothing changed. Every feature,
+  the live eval candidate and the live tests use `claude-opus-5-5`; `claude-sonnet-5-5` and
+  `claude-haiku-5-5` are the current Sonnet and Haiku; requests follow the current rules
+  (adaptive thinking, explicit effort, strict tools with automatic choice, `fallbacks: "default"`
+  under `server-side-fallback-2026-07-01`). The one choice with a successor is
+  `claude-fable-5-1`, which an administrator may pick: `claude-fable-5-2` replaces it at $8 and
+  $40 per million tokens (cache reads $0.20). Offering it takes a price row, the fallback and
+  task-budget model sets and the manual, and is left to a ticket of its own; settings that name
+  `claude-fable-5-1` keep working, as the API still serves it.

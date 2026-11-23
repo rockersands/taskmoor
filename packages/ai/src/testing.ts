@@ -1,5 +1,5 @@
 // Fakes for contract and gateway tests: nothing here talks to a network.
-import { readFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
 import { isDeepStrictEqual } from 'node:util';
 import { z } from 'zod';
 import type { ProviderId } from './config';
@@ -501,6 +501,20 @@ export class VirtualClock {
       due.fire();
     }
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// What a live test measured, for `pnpm ai:live` (T-333) to report.
+
+/**
+ * Appends one measurement of a live test as a JSON line to the file `TASKMOOR_AI_LIVE_RESULTS`
+ * names; without it, nothing is written. Measurements are counts, usage and our own wording,
+ * never a prompt, an answer or a credential.
+ */
+export function recordLiveResult(check: string, data: Readonly<Record<string, unknown>>): void {
+  const file = process.env.TASKMOOR_AI_LIVE_RESULTS;
+  if (!file) return;
+  appendFileSync(file, `${JSON.stringify({ ...data, check })}\n`);
 }
 
 /** The prompt-injection corpus (M1-118), for the server's harness and M1-079's live run. */

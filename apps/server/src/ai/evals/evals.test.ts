@@ -323,6 +323,9 @@ describe('AI evals on the seeded dataset (M1-133)', () => {
     // Every injection case holds through every feature, the replayed images screened out.
     expect(run.injection[0]?.failures).toEqual([]);
     expect(run.injection[0]?.score).toBe(THRESHOLDS.injection);
+    // ... and each of the four features got the replayed model's answer (T-333).
+    expect(run.injection[0]?.asked).toBe(4 * (run.injection[0]?.total ?? 0));
+    expect(run.injection[0]?.answered).toBe(run.injection[0]?.asked);
     expect(run.pending).toEqual([
       'summary: the judged criteria (judge-prompt.md) wait for a model (M1-079)',
     ]);

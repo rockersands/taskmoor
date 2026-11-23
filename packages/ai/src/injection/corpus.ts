@@ -2,10 +2,11 @@
  * A prompt-injection corpus (M1-118; IAM-023; ADR-104): synthetic ticket texts, comments and
  * field values, written in our own words, that try to turn an AI feature against the person
  * using it or against other people's data. Each case says what it tries and what a model that
- * fell for it would then do (`attempt`); the harness (`injection.test.ts` here and
- * `apps/server/src/ai/injection.test.ts`) plays that model with the fake provider and checks
- * that the defences which work without a model hold. M1-079 runs the same corpus against a
- * live model (ADR-104, "What M1-079 adds").
+ * fell for it would then do (`attempt`); the harnesses (`harness.ts` with `injection.test.ts`
+ * here, and `apps/server/src/ai/injection.test.ts`) play that model with the fake provider and
+ * check that the defences which work without a model hold. M1-079 runs the same corpus against
+ * a live model (ADR-104, "What M1-079 adds"): `live.test.ts` here and the eval's injection run,
+ * both from `pnpm ai:live` (T-333).
  *
  * No case holds a real credential or anything shaped like one; values to redact are built at
  * run time by the harness.
