@@ -2,12 +2,14 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
 import { cellText, records } from '@taskmoor/server/testing';
+import { detectDelimiter } from '@taskmoor/webconfig';
 
 /**
  * Search results (M1-042; QRY-014, QRY-015): columns chosen, moved and kept after a reload, a
  * summary and labels edited in place through the ticket route, a refused edit shown on its
- * cell, and the results downloaded as CSV in the shown columns. No serious axe issue, no
- * sideways page scroll. It uses the attachments database (preview 4174) and its ATT track.
+ * cell, and the results downloaded as CSV in the shown columns; in a browser set to Spanish
+ * (Spain), with semicolons (T-263). No serious axe issue, no sideways page scroll. It uses the
+ * attachments database (preview 4174) and its ATT track.
  */
 const BASE = 'http://localhost:4174';
 const ADMIN = { email: 'ada@attach.test', password: process.env.TASKMOOR_E2E_ATTACH_PASSWORD };
@@ -142,4 +144,46 @@ test('[QRY-014] [QRY-015] columns, edits in place and a CSV export of the result
   expect(back[1]?.[0]).toBe(ticket.key);
   expect(back[1]).toContain('alpha; beta');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test.describe('in a browser set to Spanish (Spain)', () => {
+  // The account keeps Automatic, so the browser's language decides (T-263).
+  test.use({ locale: 'es-ES' });
+
+  test('[QRY-015] [NFR-006] downloads the results with semicolons, the mark first and once (T-263)', async ({
+    page,
+  }, testInfo) => {
+    const signIn = await page.request.post(`${BASE}/api/v1/session`, {
+      data: { email: ADMIN.email, password: ADMIN.password },
+    });
+    expect(signIn.status()).toBe(200);
+    const preferences = await page.request.get(`${BASE}/api/v1/account/preferences`);
+    test.skip(
+      (await preferences.json()).preferences.csvSeparator !== null,
+      'the account has a CSV choice of its own',
+    );
+    const word = `numbat${testInfo.project.name}${Date.now()}`;
+    const made = await page.request.post(`${BASE}/api/v1/tickets`, {
+      data: { track: 'ATT', summary: `Uno; dos, ${word}` },
+    });
+    expect(made.status()).toBe(201);
+    const ticket = (await made.json()).ticket as { key: string };
+
+    await page.goto(`${BASE}/#/search?q=${encodeURIComponent(`text ~ "${word}"`)}`);
+    const results = page.getByRole('region', { name: 'Results' });
+    await expect(results.getByRole('link', { name: ticket.key, exact: true })).toBeVisible();
+    const downloading = page.waitForEvent('download');
+    await page.getByRole('link', { name: 'Export CSV' }).click();
+    const bytes = readFileSync((await (await downloading).path()) as string);
+    expect([...bytes.subarray(0, 4)]).toEqual([0xef, 0xbb, 0xbf, 'k'.charCodeAt(0)]);
+    expect(bytes.indexOf(Buffer.from([0xef, 0xbb, 0xbf]), 3)).toBe(-1);
+    const lines = bytes.toString('utf8').slice(1).trim().split('\r\n');
+    expect(lines[0]).toMatch(/^key;summary;/);
+    expect(lines[0]).not.toContain(',');
+    expect(lines[1]).toContain(`${ticket.key};"Uno; dos, ${word}";`);
+    // The importer finds the semicolons and reads the file back as written.
+    expect(detectDelimiter(bytes)).toBe(';');
+    const back = [...records(bytes, ';')].map((r) => r.fields.map(cellText));
+    expect(back[1]?.slice(0, 2)).toEqual([ticket.key, `Uno; dos, ${word}`]);
+  });
 });

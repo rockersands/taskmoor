@@ -1,5 +1,6 @@
 import { api, openSocket } from '../api/client';
 import { everyTrack } from '../api/tracks';
+import { addDaysTo, instantOf, wallTime, weekdayOf } from '../i18n/zone';
 
 /** One inbox item, as `GET /api/v1/inbox` gives it (M1-058; NTF-003). */
 export interface InboxItem {
@@ -186,15 +187,14 @@ export const inboxClient: InboxClient = {
   subscribe: subscribeSocket,
 };
 
-/** When "Snooze" options end, in the reader's own time: in an hour, tomorrow and next week. */
+/**
+ * When "Snooze" options end, on the reader's own clock (their account's zone, else their
+ * device's; T-280): in an hour, tomorrow at nine and next Monday at nine.
+ */
 export function snoozeTimes(now: Date): { hour: Date; tomorrow: Date; nextWeek: Date } {
   const hour = new Date(now.getTime() + 60 * 60 * 1000);
-  const tomorrow = new Date(now);
-  tomorrow.setDate(now.getDate() + 1);
-  tomorrow.setHours(9, 0, 0, 0);
-  const nextWeek = new Date(now);
-  // Next Monday at nine; a Monday goes to the one after.
-  nextWeek.setDate(now.getDate() + ((8 - now.getDay()) % 7 || 7));
-  nextWeek.setHours(9, 0, 0, 0);
-  return { hour, tomorrow, nextWeek };
+  const today = wallTime(now);
+  const atNine = (days: number) => instantOf({ ...addDaysTo(today, days), hour: 9, minute: 0 });
+  // Next Monday; a Monday goes to the one after.
+  return { hour, tomorrow: atNine(1), nextWeek: atNine((8 - weekdayOf(today)) % 7 || 7) };
 }

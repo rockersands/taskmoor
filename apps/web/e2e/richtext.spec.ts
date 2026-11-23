@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { type APIRequestContext, expect, type Locator, type Page, test } from '@playwright/test';
+import { chooseTrack } from './pickers';
 
 /**
  * Rich text end to end (M1-017): two browsers co-editing one description, opening one without
@@ -188,6 +189,8 @@ test('[NTF-006] the create form writes rich text with Markdown shortcuts and the
 }) => {
   await signIn(page.request);
   await page.goto(`${BASE}/#/create`);
+  // Other tests add tracks on this site, some listed before ATT: the form starts on the first.
+  await chooseTrack(page, 'ATT');
   await page.getByLabel('Summary (required)').fill('Created with rich text');
   const description = page.getByRole('textbox', { name: 'Description' });
   await description.click();

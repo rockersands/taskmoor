@@ -1,4 +1,6 @@
+import type { CsvSeparator } from '@taskmoor/webconfig';
 import { API_BASE, ApiError, api } from '../api/client';
+import { everyTeam } from '../api/teams';
 import { everyTrack } from '../api/tracks';
 import { type CalendarClient, type CalendarTicket, calendarClient } from '../calendar/client';
 import type {
@@ -240,6 +242,30 @@ export interface PlanTimeline extends Omit<Timeline, 'track' | 'items'> {
   sameSprint?: boolean;
 }
 
+/**
+ * The critical path (PLN-011; ADR-122 stage 9) over the plan's open dated tickets the viewer is
+ * shown, never narrowed by the filters; `listed` gives the slack of the tickets the Timeline lists
+ * with the same filters. Days are `YYYY-MM-DD`; slack is in calendar days, 0 or less on the path.
+ */
+export interface PlanCriticalPath {
+  scenario?: ScenarioInView;
+  planEnd: string | null;
+  chains: {
+    tickets: {
+      id: number;
+      key: string;
+      summary: string;
+      start: string;
+      end: string;
+      slack: number;
+    }[];
+  }[];
+  /** Critical tickets past the 500 the chains name. */
+  more: number;
+  counts: { critical: number; cycles: number; undated: number; waitsElsewhere: number };
+  listed: { id: number; slack: number }[];
+}
+
 export interface PlanCalendar {
   query: string | null;
   /** The scenario read, when one was asked for: its drafts are in the tickets' days. */
@@ -320,7 +346,14 @@ export type PlanDuplicated =
 export interface PlanListFile {
   filters: PlanFilters;
   columns: readonly string[];
-  sort: 'created' | 'updated' | 'due' | 'priority';
+  /**
+   * The field the List is ordered by, as the query language names it (`created`, `key`, `cf[40]`),
+   * and which way (T-330).
+   */
+  sort: string;
+  order: 'asc' | 'desc';
+  /** Commas or semicolons, as the person's spreadsheet opens them (T-263); commas if left out. */
+  separator?: CsvSeparator;
 }
 
 export interface PlanClient {
@@ -355,6 +388,8 @@ export interface PlanClient {
     exporting?: boolean,
     scenario?: number,
   ): Promise<PlanCalendar>;
+  /** The critical path (PLN-011); the filters choose only which tickets `listed` gives. */
+  criticalPath?(id: number, filters: PlanFilters, scenario?: number): Promise<PlanCriticalPath>;
   /** Work per team and person in `periods` periods from the one holding `from` (PLN-005). */
   capacity(
     id: number,
@@ -436,11 +471,13 @@ export const planClient: PlanClient = {
       return { ok: false, error: error.code ?? String(error.status), fields: body?.fields ?? {} };
     }
   },
-  exportHref: (id, { filters, columns, sort }) => {
+  exportHref: (id, { filters, columns, sort, order, separator }) => {
     const params = filterParams(filters);
     params.set('format', 'csv');
     params.set('columns', ['key', ...columns].join(','));
     params.set('sort', sort);
+    params.set('order', order);
+    if (separator === 'semicolon') params.set('separator', separator);
     return `${API_BASE}/plans/${id}/export?${params}`;
   },
   choices: (id) => api<PlanChoices>(`/plans/${id}/choices`),
@@ -463,6 +500,8 @@ export const planClient: PlanClient = {
         ...inScenario(scenario),
       }),
     ),
+  criticalPath: (id, filters, scenario) =>
+    api<PlanCriticalPath>(withFilters(`/plans/${id}/critical-path`, filters, inScenario(scenario))),
   capacity: (id, filters, from, periods, scenario) =>
     api<PlanCapacity>(
       withFilters(`/plans/${id}/capacity`, filters, {
@@ -481,9 +520,11 @@ export const planClient: PlanClient = {
     }
   },
   teamOptions: async () =>
-    (await api<{ teams: { id: number; name: string; memberCount: number }[] }>('/teams')).teams.map(
-      (t) => ({ id: t.id, name: t.name, memberCount: t.memberCount }),
-    ),
+    (await everyTeam<{ id: number; name: string; memberCount: number }>()).map((t) => ({
+      id: t.id,
+      name: t.name,
+      memberCount: t.memberCount,
+    })),
   linkTypeOptions: async () =>
     (await api<{ linkTypes: LinkTypeOption[] }>('/link-types')).linkTypes.map((l) => ({
       id: l.id,

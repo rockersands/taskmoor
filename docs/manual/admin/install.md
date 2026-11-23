@@ -2,7 +2,7 @@
 title: "Installing Taskmoor"
 audience: admins
 sources: deploy/README.md, deploy/compose/README.md, deploy/compose/docker-compose.yml, deploy/compose/docker-compose.external.yml, deploy/compose/.env.example, deploy/compose/install.sh, deploy/compose/install.ps1, deploy/allinone/Dockerfile, deploy/allinone/entrypoint.sh, Dockerfile, package.json, apps/server/src/config.ts, apps/server/src/security-headers.ts, apps/server/src/frontend.ts, apps/server/src/main.ts, apps/web/src/api/client.ts, packages/webconfig/src/config.ts, docs/adr/0021-delivery-and-images.md, docs/adr/0066-frontend-artefact-and-runtime-config.md, docs/specs/05b-administration-security-and-self-hosting.md, docs/plan/decisions.csv, packages/builder-core/src/postgres-tls.ts, deploy/compose/upgrade.sh, docs/adr/0111-personal-data-and-database-tls.md
-accessed: 2026-11-14
+accessed: 2026-11-16
 attestation: own-words
 ---
 # Installing Taskmoor
@@ -58,14 +58,14 @@ the versions are the ones the source's lockfile names, and each package is check
 
 | Build argument | Default | What it does |
 |---|---|---|
-| `PNPM_INSTALL_TIMEOUT` | `1800` (30 minutes) | Stops the whole install after this many seconds, with a message saying what to change |
+| `PNPM_INSTALL_TIMEOUT` | `3600` (60 minutes) | Stops the whole install after this many seconds, with a message saying what to change |
 | `PNPM_INSTALL_FETCH_TIMEOUT` | `60` | Drops a download that receives nothing for this many seconds and tries it again |
 | `PNPM_INSTALL_FETCH_RETRIES` | `5` | How many more times a failed download is tried, after a pause of 10 seconds growing to 2 minutes |
 | `PNPM_INSTALL_NETWORK_CONCURRENCY` | `8` | How many downloads run at once |
 
-If the install stops after 30 minutes on a slow connection, build again: what it downloaded is
+If the install stops after 60 minutes on a slow connection, build again: what it downloaded is
 kept in Docker's build cache, outside the image, so the next build fetches only the rest. Give it
-longer with `--build-arg PNPM_INSTALL_TIMEOUT=3600`, or, if the connection is thin rather than
+longer with `--build-arg PNPM_INSTALL_TIMEOUT=7200`, or, if the connection is thin rather than
 slow to answer, fewer downloads at once with `--build-arg PNPM_INSTALL_NETWORK_CONCURRENCY=4`.
 Changing these arguments runs the install again but keeps the build's earlier steps cached.
 

@@ -1,3 +1,4 @@
+import type { CsvSeparator } from '@taskmoor/webconfig';
 import { api } from '../api/client';
 import type { SessionUser } from '../session/SessionProvider';
 import type { TotpSetupStart } from '../twofactor/types';
@@ -41,10 +42,27 @@ export interface ProfileChanges {
   appearance?: string;
 }
 
+/** Personal settings, as `GET /api/v1/account/preferences` gives them (CORE-019; T-263). */
+export interface AccountPreferences {
+  autoFollow: boolean;
+  /** How their CSV files are written; null is Automatic, from their region. */
+  csvSeparator: CsvSeparator | null;
+}
+
+/** The settings from an answer; an answer without them is a failure, not empty settings. */
+function preferencesOf(body: { preferences?: AccountPreferences } | null): AccountPreferences {
+  if (!body?.preferences) throw new Error('no preferences in the answer');
+  return body.preferences;
+}
+
 /** The signed-in person's own endpoints. Stories and some tests pass their own. */
 export interface AccountClient {
   /** PATCH /api/v1/account (IAM-008); resolves to the updated user. */
   updateProfile: (changes: ProfileChanges) => Promise<SessionUser>;
+  /** GET /api/v1/account/preferences. */
+  preferences: () => Promise<AccountPreferences>;
+  /** PATCH /api/v1/account/preferences; resolves to the settings as saved. */
+  updatePreferences: (changes: Partial<AccountPreferences>) => Promise<AccountPreferences>;
   /** PUT /api/v1/account/password (IAM-001); resolves to the number of sessions signed out. */
   changePassword: (currentPassword: string, newPassword: string) => Promise<number>;
   listSessions: () => Promise<AccountSession[]>;
@@ -70,6 +88,15 @@ export interface AccountClient {
 export const accountClient: AccountClient = {
   updateProfile: async (changes) =>
     (await api<{ user: SessionUser }>('/account', { method: 'PATCH', body: changes })).user,
+  preferences: async () =>
+    preferencesOf(await api<{ preferences?: AccountPreferences }>('/account/preferences')),
+  updatePreferences: async (changes) =>
+    preferencesOf(
+      await api<{ preferences?: AccountPreferences }>('/account/preferences', {
+        method: 'PATCH',
+        body: changes,
+      }),
+    ),
   changePassword: async (currentPassword, newPassword) =>
     (
       await api<{ signedOutSessions: number }>('/account/password', {

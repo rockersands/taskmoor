@@ -1,8 +1,8 @@
 ---
 title: "Permissions and access"
 audience: admins
-sources: apps/web/src/admin/sections.ts, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/permissions/visibilityClient.ts, apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx, apps/server/src/authz/track-admins.ts, apps/server/src/authz/create-tracks.ts, apps/server/src/routes/setup.ts, docs/adr/0118-track-invitations.md, apps/web/src/admin/NewButton.tsx
-accessed: 2026-11-14
+sources: apps/web/src/admin/sections.ts, apps/web/src/permissions/VisibilityPage.tsx, apps/web/src/permissions/PermissionExplainerPage.tsx, apps/web/src/permissions/visibilityClient.ts, apps/server/src/authz/permissions.ts, apps/server/src/authz/authorizer.ts, apps/server/src/authz/visibility.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/visibility.ts, apps/server/src/routes/tracks.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/saved-searches.ts, apps/server/src/routes/bulk.ts, apps/server/src/routes/dashboards.ts, apps/server/src/sharing/shares.ts, apps/server/src/guardrails/model.ts, apps/server/src/auth.ts, packages/db/src/migrations/0004_authorization.ts, packages/db/src/migrations/0029_visibility_levels.ts, apps/web/src/permissions/PermissionsPage.tsx, apps/web/src/shell/DangerAction.tsx, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/tickets/view/TicketPage.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0012-authorization-engine.md, docs/adr/0051-configuration-guardrails.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/network/allowlist.ts, apps/server/src/routes/ip-allowlist.ts, apps/web/src/admin/NetworkAccessPage.tsx, apps/server/src/authz/track-admins.ts, apps/server/src/authz/create-tracks.ts, apps/server/src/routes/setup.ts, docs/adr/0118-track-invitations.md, apps/web/src/admin/NewButton.tsx, apps/web/src/permissions/client.ts, apps/server/src/routes/fields.ts, apps/web/src/configuration/TrackSetsPage.tsx, apps/web/src/sets/trackScope.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/server/src/fields/values.ts, apps/server/src/routes/ticket-templates.ts, apps/server/src/authz/person-roles.ts
+accessed: 2026-11-17
 attestation: own-words
 ---
 # Permissions and access
@@ -24,20 +24,23 @@ Groups and people are managed on [People and groups](people-and-groups.md).
 - **Administration** > **Tracks** > **Manage** shows "Who does what in" the track: the people and
   groups in each role.
 - **Administration** > **Visibility policies** (`#/admin/visibility`) manages policies and their
-  levels; see [Visibility levels](#visibility-levels).
+  levels; a local-mode track's own policies are on a page of that track. See
+  [Visibility levels](#visibility-levels).
 - **Administration** > **Permission explainer** (`#/admin/permission-explainer`) says who can do what
   and why; see [How Taskmoor decides](#how-taskmoor-decides).
 
 [Administration](administration.md) is for site administrators. A configuration administrator
-sees its **Tracks and setup** pages and does that work in the web app; the rest of what they may do
-(roles, access policies, visibility policies) has its pages among those of site administrators, and
-stays in the API for them.
+sees its **Tracks and setup** pages and **Visibility policies**, and does that work in the web app;
+the rest of what they may do (roles and access policies) has its pages among those of site
+administrators, and stays in the API for them.
 
 ## Site and configuration administrators
 
 - A **site administrator** holds every global permission and every track permission in every
-  track. A person becomes one through the flag on the **People** page, or through the global
-  permission **Run the site** given to them or to one of their groups.
+  track. A person becomes one through the mark on their page under **People** (**Make site
+  administrator**), or through the global permission **Run the site** given to them or to one of
+  their groups. Each row on **People** names the administrator roles the person holds, and their
+  page says where each comes from.
 - A **configuration administrator** holds **Change configuration**. They manage roles, access
   policies, visibility policies, workflows, workflow maps, ticket types, layouts and the other
   shared configuration, and hold **Run the track**, **Change layouts**,
@@ -50,17 +53,23 @@ stays in the API for them.
 
 On **Global permissions**, **New global permission** opens the form above the list: **Give** it
 to **A group**, **A person** or **Anyone signed in**. **Remove**, in the danger colour, takes one
-back.
+back after asking: the question says who loses which permission across the whole site.
 
 | Permission | Code | What it allows | Given by default to |
 |---|---|---|---|
 | **Run the site** | `site_admin` | Everything, see above | (the flag on the first account) |
 | **Change configuration** | `configuration_admin` | Configuration, see above | Nobody |
-| **See people and groups** | `browse_users` | Look people up, for example to mention them | Anyone signed in |
+| **See people and groups** | `browse_users` | Look people up, for example to mention them or fill a custom person field. It also covers group names in group fields and the list of people a person field with no limit offers | Anyone signed in |
 | **Share saved searches** | `share_saved_searches` | Share saved searches and dashboards beyond "only me" | Anyone signed in |
 | **Subscribe groups to searches** | `manage_group_subscriptions` | Subscribe a group to a saved search | Nobody |
 | **Change many tickets at once** | `bulk_change` | Bulk operations | Anyone signed in |
 | **Create tracks with their own configuration** | `create_local_tracks` | Create local-mode tracks | Nobody on a new site; anyone signed in on a site set up with an earlier version, until you remove that grant |
+
+Without **See people and groups**, two pickers still work. **Assignee** finds people for whoever
+may assign tickets in the track: by name only, once something is typed, and only people who may
+be given tickets there and can see the track. A person field limited to a group's or a role's
+people offers that list to anyone who can fill the field. If you take the permission away, limit
+any person field that people must fill, or they cannot fill it.
 
 Site administrators hold every global permission, so they always create tracks. Besides this page,
 **Create tracks with their own configuration** reaches people through a track: whoever gives
@@ -117,11 +126,15 @@ A policy is a list of grants: a permission and who gets it.
 | Everyone, also anonymous visitors | **Anyone, signed in or not** |
 | The ticket's requester | **The requester** |
 | The ticket's assignee | **The assignee** |
-| People in a user field of the ticket | **People in field** (API only) |
-| Groups in a group field of the ticket | **Groups in field** (API only) |
+| People in a user field of the ticket | **People in field** and the field's name |
+| Groups in a group field of the ticket | **Groups in field** and the field's name |
 
 The last four are decided per ticket: they grant on tickets that name the person, never on
-the whole track.
+the whole track. A field grantee names a user field (for People in field) or a group field (for
+Groups in field) that exists: a shared one, or in a local-mode track's own policy also one of
+that track's fields. Anything else is refused (`400` with `detail: "fieldKey"`), and the page
+says: "That field is gone, or not of this kind. Choose another." A grant whose field has since
+been deleted shows the field's key, such as `cf[12]`, in place of its name.
 
 To work with policies under **Access policies**:
 
@@ -129,16 +142,23 @@ To work with policies under **Access policies**:
    policy's grants, or **No grants**, then **Add an access policy**.
 2. **Manage** a policy to see its grants by permission and the tracks it is **Used by**.
 3. **New permission in** the policy's name opens the form above its grants, as on **Global
-   permissions**: choose the **Permission** and who it goes **To**, then **Give**. **Remove**
-   takes a grant away.
+   permissions**: choose the **Permission** and who it goes **To**, then **Give**. For **People in
+   a user field**, choose the **User field**; for **Groups in a group field**, the **Group field**.
+   They list the site's shared fields of that kind by name, or say **No field of this kind yet**.
+   Global permissions have no ticket, so they offer no field. **Remove**, in the danger colour,
+   takes a grant away after asking: one grant can reach a whole role, group or everyone, so the
+   question names who loses which permission and the tracks that use the policy.
 4. **Delete policy** works only when no track uses it. Like **Delete** on a role, it is in the
    danger colour and asks first, saying what will happen.
 
 One permission may go to at most 50 grantees in one policy. The **Guardrails** page changes
 that limit (`grants_per_permission`).
 
-A shared-mode track switches policy with `PATCH /api/v1/tracks/:id` and `accessPolicyId`, by a
-site or configuration administrator.
+Site and configuration administrators switch a shared-mode track's policy on
+[Which sets a track uses](fields.md#which-sets-a-track-uses), under **Access policy**, which lists
+the shared policies. Once saved, the new policy applies at once to everyone in the track. Through
+the API it is `PATCH /api/v1/tracks/:id` with `accessPolicyId`. A local-mode track keeps its own
+policy, and the page says so.
 
 ### Track permissions
 
@@ -182,7 +202,8 @@ The ticket view shows **Visibility level** ("Everyone" when there is none).
 
 ### Managing policies and levels
 
-Site administrators open **Administration** > **Visibility policies**:
+Site and configuration administrators open **Administration** > **Visibility policies**, under
+**People and access**; a configuration administrator sees only this page of that group:
 
 1. **New visibility policy**, at the top of the page, opens the form: give a **Policy name** and
    choose **Add a visibility policy**.
@@ -191,7 +212,10 @@ Site administrators open **Administration** > **Visibility policies**:
 3. **New tickets take** chooses the default level, or **No level**. A ticket moved into the track takes
    it too.
 4. On a level, choose **Who** and press **Add** to add a member: a role, a group, a person, the track's
-   owner, the requester, the assignee, anyone signed in, or anyone. **Remove** takes a member away.
+   owner, the requester, the assignee, the people in a user field or the groups in a group field
+   of the ticket (choose the **User field** or **Group field** by name), anyone signed in, or
+   anyone. **Remove** takes a member away. A field member shows as **People in field** or
+   **Groups in field** and the field's name.
 5. **Delete level**, in the danger colour, asks first. When tickets are at that level, the page then says how many and asks where they go,
    under **Move them to**: another level, or no level, which shows them to everyone who sees the track.
    The ticket's history records it.
@@ -201,9 +225,19 @@ Site administrators open **Administration** > **Visibility policies**:
 A track chooses its policy on [Which sets a track uses](fields.md#which-sets-a-track-uses), which
 configuration administrators can use too.
 
-People and groups named in a field of the ticket can be members only through the API. So can a
-local-mode track's own policy. A configuration administrator may also change policies through the
-API; the page is for site administrators.
+A local-mode track's own policies are on its own **Visibility policies** page: on
+**Administration** > **Tracks you run**, **Manage** the track, then **Visibility policies** under
+**Its own configuration** (the address ends in `/manage/tracks/<id>/visibility-policies`).
+Whoever runs the track works there as above, on the policies the track owns and no other. A
+level's members may also be the people or groups in the track's own user and group fields, and
+**Find a person** looks among the people who may be named in the track. Site and configuration
+administrators, who need no role in the track, find anyone on the site instead, and only they are
+offered groups. The page says which policy the track uses, or that
+it uses a shared one or none. **Use this policy for** the track makes it use one of its own:
+tickets at a level that policy lacks take its default level, or none, so some may become visible
+to more people. Giving it a shared policy, or none, again is for site and configuration
+administrators. On the shared page, someone who runs tracks but is no administrator sees only
+links to the tracks they run that have their own configuration.
 
 The same through the API:
 

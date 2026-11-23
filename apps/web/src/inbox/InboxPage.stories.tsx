@@ -138,6 +138,7 @@ export const ChecklistChanged: Story = {
 
 /** A finger reaches each ticket, with its key and summary running as one text (ADR-033). */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findAllByRole('listitem');

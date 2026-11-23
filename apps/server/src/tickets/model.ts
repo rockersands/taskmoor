@@ -1,5 +1,5 @@
 import type { JsonValue } from '@taskmoor/db';
-import { docShapeProblem, schema } from '@taskmoor/richtext';
+import { docShapeProblem, schema, withSafeColors } from '@taskmoor/richtext';
 import { looksLikeKey, normalizeKey } from '../tracks/model';
 
 /**
@@ -52,7 +52,9 @@ export type RichTextProblem = 'invalid' | 'too_long';
 /**
  * A rich text value as stored: the document normalised through the shared schema (ADR-014),
  * or null for an empty one. Anything the schema does not accept is refused, so the editor and
- * the importer always read back a document they know.
+ * the importer always read back a document they know. A text colour that is not a safe value is
+ * taken off its text rather than refused (NTF-014, T-318), so a document stored before colours
+ * were checked still saves.
  */
 export function checkRichText(
   value: unknown,
@@ -63,7 +65,7 @@ export function checkRichText(
   if (docShapeProblem(value) !== null) return { ok: false, problem: 'invalid' };
   if (JSON.stringify(value).length > RICH_TEXT_MAX_BYTES) return { ok: false, problem: 'too_long' };
   try {
-    const node = schema.nodeFromJSON(value);
+    const node = schema.nodeFromJSON(withSafeColors(value));
     if (node.type.name !== 'doc') return { ok: false, problem: 'invalid' };
     // A document with no blocks at all (the other format's empty document) is no text.
     if (node.childCount === 0) return { ok: true, doc: null };

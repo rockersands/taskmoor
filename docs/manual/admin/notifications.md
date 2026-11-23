@@ -1,8 +1,8 @@
 ---
 title: "Email and notification policies"
 audience: admins
-sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/email/transport.ts, apps/server/src/email/deliver.ts, apps/server/src/email/render.ts, apps/server/src/routes/email.ts, apps/server/src/routes/setup.ts, apps/server/src/notifications/model.ts, apps/server/src/notifications/subscriber.ts, apps/server/src/routes/notifications.ts, apps/server/src/routes/tracks.ts, apps/server/src/audit/subscriber.ts, packages/db/src/migrations/0030_notifications.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/account/AccountPage.tsx, deploy/README.md, deploy/compose/docker-compose.yml, deploy/helm/taskmoor/values.yaml, docs/adr/0041-notification-recipients.md, docs/specs/01c-core-work-tracking.md, apps/server/src/email/smtp.ts, apps/server/src/notifications/checklists.ts, packages/db/src/migrations/0103_checklist_notices.ts, docs/adr/0120-ticket-tools.md
-accessed: 2026-11-04
+sources: apps/server/src/config.ts, apps/server/src/main.ts, apps/server/src/email/transport.ts, apps/server/src/email/deliver.ts, apps/server/src/email/render.ts, apps/server/src/routes/email.ts, apps/server/src/routes/setup.ts, apps/server/src/notifications/model.ts, apps/server/src/notifications/subscriber.ts, apps/server/src/routes/notifications.ts, apps/server/src/routes/tracks.ts, apps/server/src/audit/subscriber.ts, packages/db/src/migrations/0030_notifications.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/account/AccountPage.tsx, deploy/README.md, deploy/compose/docker-compose.yml, deploy/helm/taskmoor/values.yaml, docs/adr/0041-notification-recipients.md, docs/specs/01c-core-work-tracking.md, apps/server/src/email/smtp.ts, apps/server/src/notifications/checklists.ts, packages/db/src/migrations/0103_checklist_notices.ts, docs/adr/0120-ticket-tools.md, apps/web/src/notifications/NotificationPoliciesPage.tsx, apps/web/src/notifications/policiesClient.ts, apps/web/src/admin/EmailSettingsPage.tsx, apps/web/src/admin/sections.ts, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/server/src/workflows/model.ts
+accessed: 2026-11-16
 attestation: own-words
 ---
 # Email and notification policies
@@ -53,8 +53,9 @@ set `TASKMOOR_SMTP_PASSWORD` for it.
 
 Taskmoor has no test-mail button or command yet. To check the settings:
 
-1. `GET /api/v1/admin/email-settings` answers `smtpConfigured: true` when the server read an
-   SMTP address.
+1. **Administration** > **System** > **Email** shows **Mail server: Set up** when the server read
+   an SMTP address (`smtpConfigured: true` from `GET /api/v1/admin/email-settings`), and **Not set
+   up** otherwise.
 2. On your own Account page, keep email **At once** and turn on **Tell me about changes I
    make myself**. Then change a ticket assigned to you in a track that uses the default
    policy.
@@ -70,8 +71,9 @@ round.
 - **At once** (each person's default): one email per ticket once its oldest unsent change is
   as old as the batch window. Five edits within the window make one email listing all five.
 - **Daily digest** and **Weekly digest**: one email with everything, at the digest hour in
-  each person's own time zone; the weekly one on Mondays.
-- **Quiet hours** hold a person's email until they end, in their time zone.
+  the time zone saved on each person's account; the weekly one on Mondays. For a person whose
+  time zone is set to **Automatic**, that is UTC: no device is there when email is sent.
+- **Quiet hours** hold a person's email until they end, in the same time zone.
 - Just before sending, Taskmoor checks again that the person may still see each ticket and
   read each comment; anything they may not is dropped. Notifications already read in the
   inbox are not emailed, and deactivated people get nothing.
@@ -84,8 +86,23 @@ round.
 
 Saved-search subscriptions are emailed through the same SMTP server.
 
-Site administrators set the batch window and the digest hour through the API; the web app has
-no page for them yet:
+### The Email page
+
+Site administrators set the batch window and the digest hour on **Administration** > **System** >
+**Email** (`#/admin/email`). The page has:
+
+- **Outgoing mail**: **Mail server** is **Set up** or **Not set up**, with what that means. The
+  server's address, its user name and its password are never shown or asked for here: they stay
+  where Taskmoor runs (see above).
+- **Wait before emailing a ticket's changes, in minutes**: the batch window, from 0 to 60. A part of
+  a minute is kept, so a window set through the API in seconds, such as 90, shows as 1.5.
+- **Digest hour**: the hour daily digests go out in the time zone saved on each person's account
+  (UTC for anyone on **Automatic**), and weekly ones on Mondays, from 00:00 to 23:00.
+- **Save email settings** saves both and says so; a number of minutes outside 0 to 60 is refused
+  on the page.
+
+Configuration administrators and everyone else see only that the page is for site administrators.
+Through the API it is the same setting:
 
 ```http
 PUT /api/v1/admin/email-settings HTTP/1.1
@@ -98,7 +115,7 @@ Content-Type: application/json
 | Setting | Range | Default |
 |---|---|---|
 | `batchWindowSeconds` | 0 to 3,600 seconds | 120 |
-| `digestHour` | 0 to 23, in each person's time zone | 8 |
+| `digestHour` | 0 to 23, in each person's saved time zone (UTC on Automatic) | 8 |
 
 ## Notification policies
 
@@ -179,11 +196,48 @@ it.
 
 ## Managing policies
 
-Taskmoor has no page for notification policies yet; manage them through the API.
+Site and configuration administrators manage the shared policies on **Administration** >
+**Tracks and setup** > **Notification policies** (`#/admin/notification-policies`). The page lists
+every shared policy, the default first, each with its description, the tracks that use it (the
+default's line says that tracks naming no other policy use it) and how many rules it has.
+
+- **New policy** opens a form above the list: **Policy name**, **Description** and **Start with**,
+  which offers **No rules** or the rules of any listed policy and starts from the default's. The
+  new policy opens once it is added.
+- **Manage** a policy to open it. Under **Who hears of what in** the policy, its rules are grouped
+  by event, in the order of the table above, then the events transitions fire; each recipient has
+  **Remove**. A rule names the person, group, role or field it points at by name. Deleting a
+  group or role takes its rules with it; deleting a field leaves its rules, which then
+  reach nobody and read "something since deleted". The policy says so, and the next change to its
+  rules (adding or removing any rule) removes them, as a copy of the policy leaves them out.
+- **Add a rule**: choose the **Event**, **Who hears of it**, and, for a recipient type that names
+  one, the person (found by name; emptying the search leaves no one chosen), group, track role, user
+  field or group field. **Events that
+  transitions fire** lists the events of the published workflows; **Another transition event…**
+  takes a name you type, checked as the API checks it. A recipient type with nothing to choose from,
+  such as group fields on a site with none, is not offered. A rule the policy has already is
+  refused before anything is sent. Each rule saves at once.
+- **Name and description** of the policy, with **Save name and description**.
+- **Delete** a policy no track uses: the page asks first and says what is lost. The default policy
+  and a policy tracks use have no **Delete**; the page says why. Choose another policy for those
+  tracks on [Which sets a track uses](fields.md#which-sets-a-track-uses), which the page links to.
+
+A local-mode track's own policies are on its own page, `#/manage/tracks/<id>/notification-policies`,
+linked from the track's **Manage** page under **Its own configuration** (see [A track's own
+sets](fields.md#a-tracks-own-sets)). The people who run the track, and site and configuration
+administrators, see there only the policies the track owns, a line saying which policy the track
+uses, and the same controls. A new policy there belongs to the track, its rules may name the track's
+own fields and its workflows' events, and **Use this policy for** the track makes the track follow
+it. Someone who runs tracks but is no administrator is offered, on the shared page, links to the
+tracks they run with their own configuration, and nothing else. Groups are listed for site and
+configuration administrators only, so on a track's own page someone who is neither cannot add a
+rule naming a group; a rule that names one already still shows it.
+
+The same through the API:
 
 | Task | API |
 |---|---|
-| The events, recipient types and channels | `GET /api/v1/notification-events` |
+| The events, recipient types and channels | `GET /api/v1/notification-events`; `customEvents` lists the events published transitions fire (`custom:<name>`) for site and configuration administrators, and with `?trackId=<id>` a local-mode track's own too, for those who may change its policy; anyone else gets none |
 | List shared policies, or a local-mode track's own | `GET /api/v1/notification-policies` (add `?trackId=<id>` for a track's own) |
 | Read one | `GET /api/v1/notification-policies/<id>` |
 | Create one | `POST /api/v1/notification-policies` |
@@ -213,6 +267,8 @@ A new policy, for example:
   rule a group field.
 - Every answer lists the tracks that use the policy (`usedBy`). A policy in use cannot be
   deleted (`409 in_use`, with the tracks), nor can the default one (`409 default_policy`).
+- Each rule in an answer also names what it points at: `userName`, `groupName`, `roleName` and
+  `fieldName`, null when the rule names nothing of that kind.
 - Changes take effect for the next event; nothing already sent changes.
 
 ### Who may change policies
@@ -220,7 +276,8 @@ A new policy, for example:
 - Shared policies: site administrators and configuration administrators. Choosing a shared
   policy for a track needs one of those and the right to administer the track.
 - A local-mode track's own policy, and choosing it for that track: also the track's
-  administrators. Create it with `"trackId": <id>` in the body.
+  administrators, on the track's own page or through the API. Create it with `"trackId": <id>` in
+  the body.
 - For shared policies, an API token needs the `admin` scope besides `read` or `write`, because
   a token without it leaves its owner's administrator permissions behind (see
   [API tokens and service accounts](api-tokens.md)).

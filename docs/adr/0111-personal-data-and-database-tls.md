@@ -77,9 +77,9 @@ administrators only, in one transaction, emitting `user.erased`:
   empties those notes in the plans' `plan.capacity_set` events (T-089j).
 - Kept: tickets, comments, time, attachments, group and team memberships, grants, saved searches
   and dashboards they own, all attributed to the placeholder. The exception is a permission to
-  create tracks that came with a role, which goes as on any deactivation, from the person and from
-  anyone whose last role their shares took back; `user.erased` lists it
-  (`createTracksGrantsRemoved`; ADR-118, T-087b).
+  create tracks that came with a role, which goes as with the last role, from the person (erased,
+  they run no track; deactivation alone keeps it since T-259) and from anyone whose last role their
+  shares took back; `user.erased` lists it (`createTracksGrantsRemoved`; ADR-118, T-087b).
 - Domain events about the person (created, updated, provisioned) have the old name and email
   replaced in their payload, in the same transaction, while the old values are still known.
 - Names copied into other records are replaced by a job (`privacy.scrub`), which finds them by
@@ -106,6 +106,17 @@ plan: they are shown empty (T-089j), there and in the `audit.ndjson` of anyone's
 (`audit/query.ts` `withoutErasedCapacityNotes`). This is the
 exception GDPR article 17 (3) allows for records kept for security and legal claims; the
 manual says so.
+
+**Capacity notes never reach the audit log** (T-259, answered on 2026-11-16, the critic's
+correction of keeping them as built). The T-089j decision was that an erasure must not leave
+a person's words behind, yet the stored records kept a capacity note for as long as retention
+kept the record (for good with retention 0), and the syslog worker sends each record soon after
+it is written, before any erasure. Since T-259 the audit subscriber leaves the notes' words out
+of `plan.capacity_set` details when it writes the record (`audit/subscriber.ts` `auditDetails`):
+the record keeps the actor, the plan, whose capacity, the period and the amounts before and after,
+so who changed what stays; the plan's own events keep the notes, and the erasure empties them
+there. Records written before keep the words and stay masked when read. What a syslog server
+received before T-259, and database backups, hold what they held; the manual tells the operator.
 
 ### TLS to the bundled PostgreSQL
 

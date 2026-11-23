@@ -8,9 +8,10 @@ import type { AiClient } from '../../ai/client';
 import { SummaryPanel } from '../../ai/SummaryPanel';
 import { ApiError } from '../../api/client';
 import { AttachmentPanel } from '../../attachments/AttachmentPanel';
-import { type AttachmentClient, attachmentClient } from '../../attachments/client';
-import { FileDropProvider, useTicketFileDrop } from '../../attachments/FileDrop';
+import { type Attachment, type AttachmentClient, attachmentClient } from '../../attachments/client';
+import { type AttachTarget, FileDropProvider, useTicketFileDrop } from '../../attachments/FileDrop';
 import type { CommentClient } from '../../comments/client';
+import { numberText } from '../../fields/numberFormat';
 import { useT } from '../../i18n/I18nProvider';
 import { CollaborativeEditor, type Connect } from '../../richtext/CollaborativeEditor';
 import {
@@ -116,28 +117,30 @@ const NO_COMMANDS: Command[] = [];
  * What the blocks of a ticket's description and comments reach (NTF-013, NTF-014): the ticket's
  * files, read once per page unless the menu asks again, and tickets through search. A read that
  * failed is not kept, so the next reference asks again rather than showing bare names until a
- * reload.
+ * reload. With the Attachments panel's offer (`target`), a file can be uploaded from the editor
+ * through the panel's own upload while the person may add files (T-120); the files are read
+ * again after it.
  */
 export function ticketEditorTools(
   files: AttachmentClient,
   tools: Pick<TicketToolsClient, 'pick'>,
+  target?: () => AttachTarget | null,
 ): EditorTools {
   let read: Promise<EditorAttachment[]> | null = null;
+  const shown = (file: Attachment): EditorAttachment => ({
+    name: file.name,
+    image: file.kind === 'image',
+    href: files.urls.content(file),
+    thumbnail: file.thumbnail ? files.urls.thumbnail(file) : null,
+    sha256: file.sha256,
+    size: file.size,
+    createdAt: file.createdAt,
+    author: file.author?.name ?? null,
+  });
   return {
     attachments: (fresh) => {
       if (fresh || !read) {
-        const asked = files.list().then(({ attachments: list }) =>
-          list.map((file) => ({
-            name: file.name,
-            image: file.kind === 'image',
-            href: files.urls.content(file),
-            thumbnail: file.thumbnail ? files.urls.thumbnail(file) : null,
-            sha256: file.sha256,
-            size: file.size,
-            createdAt: file.createdAt,
-            author: file.author?.name ?? null,
-          })),
-        );
+        const asked = files.list().then(({ attachments: list }) => list.map(shown));
         asked.catch(() => {
           if (read === asked) read = null;
         });
@@ -149,6 +152,24 @@ export function ticketEditorTools(
       const query = pickerQuery(typed);
       return query ? tools.pick(query) : Promise.resolve([]);
     },
+    ...(target
+      ? {
+          uploader: () => {
+            const panel = target();
+            if (!panel?.ready) return null;
+            return {
+              limit: panel.limit,
+              upload: async (file: File) => {
+                const { added, problems } = await panel.attach([file], { quiet: true });
+                // The ticket has another file: references read the list again.
+                if (added.length > 0) read = null;
+                const first = added[0];
+                return { file: first ? shown(first) : null, problems };
+              },
+            };
+          },
+        }
+      : {}),
   };
 }
 
@@ -379,6 +400,7 @@ export function TicketView({
   const shownKey = state.status === 'loaded' ? state.ticket.key : null;
   // Files dropped anywhere on the ticket go to its attachments (T-162).
   const fileDrop = useTicketFileDrop(shownKey);
+  const attachTarget = fileDrop.target;
   const shownSummary = state.status === 'loaded' ? state.ticket.summary : null;
   // biome-ignore lint/correctness/useExhaustiveDependencies: told when the name changes
   useEffect(() => {
@@ -392,8 +414,8 @@ export function TicketView({
     () =>
       ticketId === null
         ? {}
-        : ticketEditorTools(attachments ?? attachmentClient(ticketId), toolsClient),
-    [ticketId, attachments, toolsClient],
+        : ticketEditorTools(attachments ?? attachmentClient(ticketId), toolsClient, attachTarget),
+    [ticketId, attachments, toolsClient, attachTarget],
   );
 
   // A change made elsewhere reaches the local copy through the socket (NTF-008): when this
@@ -1404,6 +1426,9 @@ function NumberFact({
   const saved = typeof value === 'number' ? String(value) : '';
   const [draft, setDraft] = useState<string | null>(null);
   const name = fieldName(t, field.name);
+  // How the saved value reads by the field's settings, when they change how it reads.
+  const shown =
+    field.show && typeof value === 'number' ? numberText(intl, value, field.show) : null;
   const save = () => {
     if (draft === null || draft === saved) {
       setDraft(null);
@@ -1416,7 +1441,11 @@ function NumberFact({
     return (
       <div>
         <dt>{name}</dt>
-        <dd>{typeof value === 'number' ? intl.formatNumber(value) : t('ticketView.none')}</dd>
+        <dd>
+          {typeof value === 'number'
+            ? numberText(intl, value, field.show ?? null)
+            : t('ticketView.none')}
+        </dd>
       </div>
     );
   }
@@ -1438,6 +1467,8 @@ function NumberFact({
             id={id}
             type="number"
             step="any"
+            // A format, a currency or set decimals show under the box (T-320).
+            aria-describedby={shown ? `${id}-shown` : undefined}
             // Empty reads as the other empty fields do (PL-44).
             placeholder={t('ticketView.none')}
             value={draft ?? saved}
@@ -1455,6 +1486,11 @@ function NumberFact({
             }}
           />
         </form>
+        {shown && (
+          <p id={`${id}-shown`} className="form-hint">
+            {shown}
+          </p>
+        )}
       </dd>
     </div>
   );

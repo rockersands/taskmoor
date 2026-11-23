@@ -7,7 +7,8 @@ import { I18nProvider } from '../i18n/I18nProvider';
 import type { Locale } from '../i18n/locale';
 import { messagesEn } from '../i18n/messages.en';
 import { messagesEs } from '../i18n/messages.es';
-import { type EditorTools, EditorToolsProvider } from './EditorTools';
+import { setAccountTimeZone } from '../i18n/zone';
+import { type EditorTools, EditorToolsProvider, type EditorUpload } from './EditorTools';
 import { RichTextEditor, type RichTextEditorProps } from './RichTextEditor';
 import { RichTextView } from './RichTextView';
 import { matchingTools, SLASH_TOOLS } from './slashTools';
@@ -52,6 +53,15 @@ function renderEditor(
 }
 
 const menu = () => screen.findByRole('listbox', { name: 'Blocks to add' });
+/** Tools the menu offers only inside columns or a table. */
+const INSIDE_ONLY = [
+  'columnWidths',
+  'tableAddRow',
+  'tableAddColumn',
+  'tableDeleteRow',
+  'tableDeleteColumn',
+  'tableDelete',
+];
 const blockTypes = (doc: PmJson | null | undefined) => doc?.content?.map((n) => n.type);
 
 /** Opens the menu, narrows it, and takes the first entry. */
@@ -71,9 +81,9 @@ describe('the slash menu (NTF-013)', () => {
     await user.click(textbox);
     await user.keyboard('/');
     const list = await menu();
-    // Everything but the widths of columns, which only shows inside them.
+    // Everything but the widths of columns and the table's edits, which show only inside them.
     expect(within(list).getAllByRole('option').length).toBe(
-      SLASH_TOOLS.filter((tool) => tool.id !== 'columnWidths').length,
+      SLASH_TOOLS.filter((tool) => !INSIDE_ONLY.includes(tool.id)).length,
     );
     await user.keyboard('hea');
     await waitFor(() =>
@@ -163,6 +173,11 @@ describe('the slash menu (NTF-013)', () => {
       'columns-3',
       'columnWidths',
       'table',
+      'tableAddRow',
+      'tableAddColumn',
+      'tableDeleteRow',
+      'tableDeleteColumn',
+      'tableDelete',
       'rule',
       'link',
       'mention',
@@ -371,6 +386,24 @@ describe('the slash menu (NTF-013)', () => {
     }
   });
 
+  it('[NTF-013] offers today on the zone saved on the account, not the device’s (T-280)', async () => {
+    // 19:00 on 3 November on a device in Mexico City; the account says Tokyo, where it is
+    // already 10:00 on 4 November.
+    vi.stubEnv('TZ', 'America/Mexico_City');
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-04T01:00:00Z'));
+    setAccountTimeZone('Asia/Tokyo');
+    try {
+      const { textbox } = renderEditor();
+      await choose(textbox, 'date');
+      expect(await screen.findByLabelText('Date')).toHaveValue('2026-11-04');
+    } finally {
+      setAccountTimeZone(null);
+      vi.useRealTimers();
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('[NTF-013] finds an emoji by name, by keyboard', async () => {
     const user = userEvent.setup();
     const { textbox, changes } = renderEditor();
@@ -450,6 +483,82 @@ describe('the slash menu (NTF-013)', () => {
         .getAllByRole('option')
         .map((o) => o.textContent),
     ).toEqual(['image.png (file 1)', 'image.png (file 2)']);
+  });
+
+  it('[NTF-013] [CORE-021] uploads a file from the file prompt and puts it in at once (T-120)', async () => {
+    const user = userEvent.setup();
+    const sent: File[] = [];
+    let answer: (outcome: EditorUpload) => void = () => {};
+    const tools: EditorTools = {
+      attachments: async () => [],
+      uploader: () => ({
+        limit: '1 GB',
+        upload: (file) => {
+          sent.push(file);
+          return new Promise((resolve) => {
+            answer = resolve;
+          });
+        },
+      }),
+    };
+    const { textbox, changes } = renderEditor({}, tools);
+    await choose(textbox, 'image');
+    // A new ticket has no files yet: the prompt offers one.
+    expect(await screen.findByText('No file of this ticket matches.')).toBeVisible();
+    const chooser = screen.getByLabelText('Upload a file');
+    expect(chooser).toHaveAccessibleDescription('Up to 1 GB. It is also listed under Attachments.');
+    await user.upload(chooser, new File(['png'], 'shot.png', { type: 'image/png' }));
+    expect(screen.getByText('Uploading shot.png…')).toHaveAttribute('role', 'status');
+    expect(chooser).toBeDisabled();
+    await act(async () =>
+      answer({
+        file: {
+          name: 'shot.png',
+          image: true,
+          href: 'https://files.example.test/9',
+          thumbnail: null,
+          sha256: 'd'.repeat(64),
+        },
+        problems: [],
+      }),
+    );
+    await waitFor(() =>
+      expect(changes.at(-1)?.content?.[0]).toMatchObject({
+        type: 'attachmentRef',
+        attrs: { name: 'shot.png', image: true, digest: 'd'.repeat(16) },
+      }),
+    );
+    expect(sent.map((file) => file.name)).toEqual(['shot.png']);
+    expect(screen.queryByLabelText('Upload a file')).toBeNull();
+  });
+
+  it('[CORE-021] says in the prompt why a file was not added, and stays open (T-120)', async () => {
+    const user = userEvent.setup();
+    const refusal = 'big.zip is larger than the 1 GB limit for one file.';
+    const tools: EditorTools = {
+      ...TOOLS,
+      uploader: () => ({
+        limit: '1 GB',
+        upload: async () => ({ file: null, problems: [refusal] }),
+      }),
+    };
+    const { textbox, changes } = renderEditor({}, tools);
+    await choose(textbox, 'image');
+    await user.upload(await screen.findByLabelText('Upload a file'), new File(['z'], 'big.zip'));
+    expect(await screen.findByRole('alert')).toHaveTextContent(refusal);
+    // The ticket's other files can still be picked.
+    expect(screen.getByRole('combobox', { name: 'Image or file from this ticket' })).toBeVisible();
+    expect(JSON.stringify(changes.at(-1) ?? null)).not.toContain('attachmentRef');
+  });
+
+  it('[NTF-013] offers no upload where the person may not add files (T-120)', async () => {
+    for (const tools of [TOOLS, { ...TOOLS, uploader: () => null }]) {
+      const { textbox } = renderEditor({}, tools);
+      await choose(textbox, 'image');
+      await screen.findByRole('combobox', { name: 'Image or file from this ticket' });
+      expect(screen.queryByLabelText('Upload a file')).toBeNull();
+      document.body.innerHTML = '';
+    }
   });
 
   it('[NTF-013] offers common languages for a code block, narrowed as you type (TT-8)', async () => {
@@ -586,6 +695,63 @@ describe('the slash menu (NTF-013)', () => {
     const { textbox } = renderEditor();
     await user.click(textbox);
     await user.keyboard('/width');
+    expect(await screen.findByText('No block matches.')).toBeVisible();
+  });
+
+  it('[NTF-013] offers the table’s edits only inside a table, and never to delete its last row or column (T-120)', async () => {
+    const user = userEvent.setup();
+    const { textbox } = renderEditor();
+    await choose(textbox, 'table');
+    // Rows and cells as the editor shows them: a table of empty cells is an empty document.
+    const table = () => textbox.querySelector('table');
+    const shape = () => {
+      const rows = table()?.querySelectorAll('tr') ?? [];
+      return [rows.length, rows[0]?.children.length ?? 0];
+    };
+    expect(shape()).toEqual([3, 3]);
+    /** Opens the menu in the cell the caret is in and takes the edit named. */
+    const edit = async (query: string, name: string) => {
+      await user.keyboard(`/${query}`);
+      await user.click(within(await menu()).getByRole('option', { name }));
+    };
+    await user.keyboard('/');
+    const list = await menu();
+    const names = within(list)
+      .getAllByRole('option')
+      .map((o) => o.textContent);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'Add a row below',
+        'Add a column to the right',
+        'Delete this row',
+        'Delete this column',
+        'Delete the table',
+      ]),
+    );
+    // No table goes inside a table.
+    expect(names).not.toContain('Table');
+    await user.click(within(list).getByRole('option', { name: 'Add a row below' }));
+    expect(shape()).toEqual([4, 3]);
+    await edit('column', 'Add a column to the right');
+    expect(shape()).toEqual([4, 4]);
+    for (const left of [3, 2, 1]) {
+      await edit('row', 'Delete this row');
+      expect(shape()).toEqual([left, 4]);
+    }
+    for (const left of [3, 2, 1]) {
+      await edit('column', 'Delete this column');
+      expect(shape()).toEqual([1, left]);
+    }
+    // The last row and column go only with the table.
+    await user.keyboard('/delete');
+    const last = within(await menu())
+      .getAllByRole('option')
+      .map((o) => o.textContent);
+    expect(last).toEqual(['Delete the table']);
+    await user.keyboard('{Enter}');
+    expect(table()).toBeNull();
+    // Outside a table there is none.
+    await user.keyboard('/row');
     expect(await screen.findByText('No block matches.')).toBeVisible();
   });
 

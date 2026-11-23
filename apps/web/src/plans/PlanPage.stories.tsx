@@ -5,6 +5,7 @@ import { ApiError } from '../api/client';
 import { fakeListClient, fakeListSearch } from '../list/fixtures';
 import { expectWithinBudget } from '../test/budget';
 import { asOnATouchScreen, notSized, onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
+import { withCriticalPath } from '../timeline/criticalFixtures';
 import type { PlanTimelineItem } from './client';
 import { fakePlanClient, manyPlanItems, planItems } from './fixtures';
 import { PlanPage } from './PlanPage';
@@ -124,6 +125,38 @@ export const TimelineDependencies: Story = {
   },
 };
 
+/**
+ * The critical path on (PLN-011; ADR-122 stage 9): the toggle is pressed, SHOP-2 and SHOP-3 are
+ * marked as on the path, OPS-4 says its two days of slack, and the path is given in words below.
+ */
+export const TimelineCriticalPath: Story = {
+  args: { section: 'timeline', client: withCriticalPath(fakePlanClient()) },
+  beforeEach: () => {
+    window.location.hash = '#/plans/12/timeline?critical=1';
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(
+      await canvas.findByRole('button', { name: 'Critical path', pressed: true }),
+    ).toBeVisible();
+    const onPath = await canvas.findByRole('button', {
+      name: 'SHOP-3: Nov 9, 2026 to Nov 20, 2026',
+      description: /On the critical path$/,
+    });
+    await expect(onPath).toHaveClass('is-critical');
+    await expect(
+      canvas.getByRole('button', {
+        name: 'OPS-4: Nov 12, 2026 to Nov 18, 2026',
+        description: /2 days of slack$/,
+      }),
+    ).not.toHaveClass('is-critical');
+    const list = canvas.getByRole('region', { name: 'Critical path' });
+    await expect(
+      within(list).getByText('2 tickets are on the critical path. The plan ends Nov 20, 2026.'),
+    ).toBeVisible();
+  },
+};
+
 /** SHOP-9, all of it long before the days in view: its row has an "Earlier" marker. */
 const earlyItem = (): PlanTimelineItem => ({
   id: 9,
@@ -148,6 +181,7 @@ const earlyItem = (): PlanTimelineItem => ({
  * plan-timeline--375--dark).
  */
 export const TimelineEdgeOverTodaysLine: Story = {
+  tags: ['touch'],
   args: { section: 'timeline', client: fakePlanClient({ items: [...planItems(), earlyItem()] }) },
   beforeEach: () => {
     window.location.hash = '#/plans/12/timeline';
@@ -194,6 +228,7 @@ export const Calendar: Story = {
  * sweep's plan-calendar--375).
  */
 export const CalendarChipsOnATouchScreen: Story = {
+  tags: ['touch'],
   args: { section: 'calendar' },
   beforeEach: () => {
     window.location.hash = '#/plans/12/calendar';
@@ -355,6 +390,7 @@ export const SettingsDeletingALongNameOnAPhone: Story = {
  * plan-settings--375: the boxes were 28 x 44).
  */
 export const SettingsBoxesOnATouchScreen: Story = {
+  tags: ['touch'],
   args: { section: 'settings' },
   beforeEach: () => {
     window.location.hash = '#/plans/12/settings';
@@ -528,6 +564,7 @@ export const TimelineInAScenario: Story = {
 
 /** The Calendar in a scenario on a phone's touch screen: a drafted entry begins with "Draft". */
 export const CalendarInAScenarioOnATouchScreen: Story = {
+  tags: ['touch'],
   args: { section: 'calendar', ...inFaster() },
   beforeEach: () => {
     window.location.hash = '#/plans/12/calendar?scenario=2';

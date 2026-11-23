@@ -1,5 +1,7 @@
 import { ApiError } from '../api/client';
-import type { Named } from './client';
+import type { RunTrack, ScopeTrack } from '../sets/trackScope';
+import type { FieldChoice, Named } from './client';
+import { FIELD_CHOICES } from './fixtures';
 import type {
   ExplainClient,
   Explanation,
@@ -27,7 +29,46 @@ const level = (id: number, name: string, fields: Partial<VisibilityLevel> = {}) 
   ...fields,
 });
 
-/** Synthetic policies: one in use with two levels, one no track uses. */
+/**
+ * SHOP is in shared mode and uses Company levels; OPS has its own configuration, a policy of its
+ * own and uses none yet (T-322).
+ */
+export const VISIBILITY_TRACKS: ScopeTrack[] = [
+  {
+    id: 3,
+    key: 'SHOP',
+    name: 'Shop',
+    mode: 'shared',
+    archived: false,
+    typeSetId: 1,
+    fieldRuleSetId: null,
+    layoutSetId: null,
+    visibilityPolicyId: 1,
+  },
+  {
+    id: 4,
+    key: 'OPS',
+    name: 'Operations',
+    mode: 'local',
+    archived: false,
+    typeSetId: 30,
+    fieldRuleSetId: null,
+    layoutSetId: null,
+    visibilityPolicyId: null,
+  },
+];
+const RUNS: RunTrack[] = VISIBILITY_TRACKS.map(({ id, key, name, mode }) => ({
+  id,
+  key,
+  name,
+  mode,
+}));
+/** OPS's own user field: only its own policies may name it (T-322). */
+const OPS_FIELD: FieldChoice = { key: 'cf[44]', name: 'On call', type: 'user', trackId: 4 };
+/** The people who may be named in OPS (`GET /people/mentionable`). */
+const OPS_PEOPLE: Named[] = [{ id: 9, name: 'Ola Night' }];
+
+/** Synthetic policies: one in use with two levels, one no track uses, and one of OPS's own. */
 const POLICIES: VisibilityPolicy[] = [
   {
     id: 1,
@@ -47,6 +88,15 @@ const POLICIES: VisibilityPolicy[] = [
             group: null,
             user: null,
             fieldKey: null,
+          },
+          // Whoever the ticket's Reviewer field names (T-320).
+          {
+            id: 102,
+            grantee: 'user_field',
+            role: null,
+            group: null,
+            user: null,
+            fieldKey: 'cf[31]',
           },
         ],
       }),
@@ -75,6 +125,15 @@ const POLICIES: VisibilityPolicy[] = [
     levels: [],
     usedBy: [],
   },
+  {
+    id: 3,
+    name: 'Night desk',
+    description: '',
+    trackId: 4,
+    defaultLevelId: null,
+    levels: [level(31, 'Responders')],
+    usedBy: [],
+  },
 ];
 
 export interface FakeCall {
@@ -85,6 +144,7 @@ export interface FakeCall {
 /** The policies in memory, behaving like the server's refusals. */
 export function fakeVisibilityClient(
   start: VisibilityPolicy[] = POLICIES,
+  options: { runs?: RunTrack[] } = {},
 ): VisibilityClient & { calls: FakeCall[] } {
   const calls: FakeCall[] = [];
   let policies = structuredClone(start);
@@ -97,7 +157,14 @@ export function fakeVisibilityClient(
   };
   return {
     calls,
-    policies: async () => structuredClone(policies),
+    track: async (id) => {
+      const track = VISIBILITY_TRACKS.find((t) => t.id === id);
+      if (!track) throw new ApiError(404, { error: 'not_found' });
+      return structuredClone(track);
+    },
+    managedTracks: async () => structuredClone(options.runs ?? RUNS),
+    // The shared policies, or one track's own (`?trackId=`), as the server lists them.
+    policies: async (trackId) => structuredClone(policies.filter((p) => p.trackId === trackId)),
     createPolicy: async (body) => {
       log('createPolicy', body);
       if (policies.some((p) => p.name === body.name)) {
@@ -107,7 +174,7 @@ export function fakeVisibilityClient(
         id: next++,
         name: body.name,
         description: body.description ?? '',
-        trackId: null,
+        trackId: body.trackId ?? null,
         defaultLevelId: null,
         levels: [],
         usedBy: [],
@@ -156,7 +223,7 @@ export function fakeVisibilityClient(
         role: member.roleId ? (ROLES.find((r) => r.id === member.roleId) ?? null) : null,
         group: member.groupId ? (GROUPS.find((g) => g.id === member.groupId) ?? null) : null,
         user: member.userId ? (PEOPLE.find((p) => p.id === member.userId) ?? null) : null,
-        fieldKey: null,
+        fieldKey: member.fieldKey ?? null,
       });
     },
     removeMember: async (policyId, levelId, memberId) => {
@@ -164,10 +231,22 @@ export function fakeVisibilityClient(
       const found = policyOf(policyId).levels.find((l) => l.id === levelId);
       if (found) found.members = found.members.filter((m) => m.id !== memberId);
     },
+    // A track uses one of its own policies; the others no longer serve it (T-322).
+    chooseFor: async (trackId, policyId) => {
+      log('chooseFor', trackId, policyId);
+      const track = VISIBILITY_TRACKS.find((t) => t.id === trackId) as ScopeTrack;
+      for (const p of policies) p.usedBy = p.usedBy.filter((u) => u.id !== trackId);
+      policyOf(policyId).usedBy.push({ id: track.id, key: track.key, name: track.name });
+    },
     roles: async () => ROLES,
     groups: async () => GROUPS,
-    findPeople: async (query) =>
-      PEOPLE.filter((p) => p.name.toLowerCase().includes(query.toLowerCase())),
+    findPeople: async (query, track) =>
+      (track === null ? PEOPLE : OPS_PEOPLE).filter((p) =>
+        p.name.toLowerCase().includes(query.toLowerCase()),
+      ),
+    // The shared fields, and on a track's own page its own too.
+    fields: async (track) =>
+      structuredClone(track === null ? FIELD_CHOICES : [...FIELD_CHOICES, OPS_FIELD]),
   };
 }
 

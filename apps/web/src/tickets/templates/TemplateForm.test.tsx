@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { ApiError } from '../../api/client';
 import { I18nProvider } from '../../i18n/I18nProvider';
 import type { Locale } from '../../i18n/locale';
-import { untranslated, visibleTexts } from '../../test/backend';
+import { stubBackend, untranslated, visibleTexts } from '../../test/backend';
+import { jsonResponse } from '../../test/setup';
 import type { FieldRule, SavedTemplate, TemplateClient, TemplateOptions } from './client';
 import {
   bodyOf,
@@ -168,17 +169,45 @@ describe('the ticket template form names why a save was refused (CORE-029, T-291
     expect(within(form).getByRole('textbox', { name: 'Name' })).not.toHaveAttribute('aria-invalid');
   });
 
-  it('[CORE-029] reads the API’s refusals by body path', () => {
+  it('[CORE-029] [CORE-015] [CORE-016] reads the API’s refusals by body path, naming a release or area (T-286)', () => {
     const draft = draftOf(RELEASE_TEMPLATE, TEMPLATE_OPTIONS.fields);
     const refused = (fields: Record<string, string>) =>
-      saveRefusalOf(new ApiError(400, { error: 'invalid_fields', fields }), draft);
+      saveRefusalOf(
+        new ApiError(400, { error: 'invalid_fields', fields }),
+        draft,
+        TEMPLATE_OPTIONS.fields,
+      );
     expect(refused({ 'defaults.areaIds.1': 'archived', 'ticketTypeIds.0': 'not_found' })).toEqual({
       message: 'tickets.templates.problem.marked',
       at: { areaIds: 'tickets.error.archived', ticketTypeIds: 'tickets.error.notFound' },
     });
-    expect(refused({ 'defaults.fields.12.0': 'not_in_track' }).at).toEqual({
-      'field:12': 'tickets.error.notInTrack',
+    // A release or area the track does not have says which it is; a choice list's does not
+    // (T-286).
+    expect(
+      refused({
+        'defaults.fields.12.0': 'not_in_track',
+        'defaults.areaIds.0': 'not_in_track',
+        'defaults.targetReleaseIds.1': 'not_in_track',
+        'defaults.fields.7': 'not_in_track',
+        'defaults.priorityId': 'not_in_track',
+      }).at,
+    ).toEqual({
+      'field:12': 'tickets.error.releaseNotInTrack',
+      areaIds: 'tickets.error.areaNotInTrack',
+      targetReleaseIds: 'tickets.error.releaseNotInTrack',
+      'field:7': 'tickets.error.notInTrack',
+      priority: 'tickets.error.notInTrack',
     });
+    // Without the fields' types, a custom one keeps the general words.
+    expect(
+      saveRefusalOf(
+        new ApiError(400, {
+          error: 'invalid_fields',
+          fields: { 'defaults.fields.12.0': 'not_in_track' },
+        }),
+        draft,
+      ).at,
+    ).toEqual({ 'field:12': 'tickets.error.notInTrack' });
     expect(refused({ 'subtickets.5.summary': 'invalid' })).toEqual({
       message: 'tickets.templates.problem.invalid',
       at: {},
@@ -819,5 +848,83 @@ describe('the ticket template form adds custom person, group and team values (CO
     ];
     const texts = visibleTexts(form).filter((t) => !data.some((d) => t === d || t === `[${d}]`));
     expect(untranslated(texts)).toEqual([]);
+  });
+});
+
+describe('the ticket template form’s assignee (CORE-029, T-269, T-283)', () => {
+  it('[CORE-029] [CORE-008] finds the assignee among those who may be given tickets in the track', async () => {
+    const user = userEvent.setup();
+    const { client, form } = renderForm(null);
+    await user.type(within(form).getByRole('searchbox', { name: 'Assignee' }), 'an');
+    await within(form).findByRole('button', { name: 'Ana Ortiz' });
+    expect(client.searched).toEqual(['assignable:SHOP:an']);
+  });
+
+  it('[CORE-029] [IAM-009] shows an assignee it may not name by number, and keeps it on save', async () => {
+    const user = userEvent.setup();
+    const hidden: SavedTemplate = { ...RELEASE_TEMPLATE, assignee: null };
+    const { client, form } = renderForm(hidden);
+    const assignee = within(form).getByRole('list', { name: 'Assignee' });
+    expect(within(assignee).getByText('Person 21, hidden from you or gone')).toBeVisible();
+    await user.click(within(form).getByRole('button', { name: 'Save the template' }));
+    await waitFor(() => expect(client.saved).toHaveLength(1));
+    expect(client.saved[0]?.body.defaults.assigneeId).toBe(21);
+    // Removed, it goes from the draft, and the assignee search takes its place.
+    cleanup();
+    const removed = renderForm(hidden);
+    await user.click(
+      within(removed.form).getByRole('button', {
+        name: 'Remove Person 21, hidden from you or gone as assignee',
+      }),
+    );
+    expect(within(removed.form).getByRole('searchbox', { name: 'Assignee' })).toBeVisible();
+    const fields = TEMPLATE_OPTIONS.fields;
+    const draft = { ...draftOf(hidden, fields), assignee: null };
+    expect(bodyOf(draft, hidden, fields, 'SHOP').defaults.assigneeId).toBeUndefined();
+    expect(bodyOf(draftOf(hidden, fields), hidden, fields, 'SHOP').defaults.assigneeId).toBe(21);
+  });
+});
+
+describe('the blocks of a template’s description (NTF-013, T-120)', () => {
+  it('[NTF-013] [CORE-029] links another ticket from the description, found by search, as its key only', async () => {
+    const user = userEvent.setup();
+    const calls = stubBackend({
+      'POST /search': () =>
+        jsonResponse(200, {
+          tickets: [
+            { id: 40, key: 'SHOP-4', summary: 'Retry a failed payment', status: { name: 'Open' } },
+          ],
+        }),
+    });
+    const { client, form } = renderForm(RELEASE_TEMPLATE);
+    const description = within(form).getByRole('textbox', { name: 'Description' });
+    await user.click(description);
+    await user.keyboard('See /another');
+    await screen.findByRole('listbox', { name: 'Blocks to add' });
+    await user.keyboard('{Enter}');
+    await screen.findByRole('combobox', { name: 'Another ticket' });
+    await user.keyboard('retry');
+    await user.click(await screen.findByRole('option', { name: /SHOP-4/ }));
+    expect(JSON.stringify(calls.find((c) => c.path === '/search')?.body)).toContain('retry');
+    // A template has no files of its own: the menu offers none.
+    await user.click(description);
+    await user.keyboard('/image');
+    expect(await screen.findByText('No block matches.')).toBeVisible();
+    await user.click(within(form).getByRole('button', { name: 'Save the template' }));
+    await waitFor(() => expect(client.saved).toHaveLength(1));
+    expect(client.saved[0]?.body.description).toMatchObject({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'See ' },
+            { type: 'ticketRef', attrs: { key: 'SHOP-4' } },
+            { type: 'text', text: ' /image' },
+          ],
+        },
+      ],
+    });
+    expect(JSON.stringify(client.saved[0]?.body)).not.toContain('Retry a failed payment');
   });
 });

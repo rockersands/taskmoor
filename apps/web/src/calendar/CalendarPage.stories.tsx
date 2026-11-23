@@ -161,6 +161,7 @@ export const EntryInHand: Story = {
  * day's whole width. A day with room, as a phone's single column, has the grip beside the name.
  */
 export const EntryOnATouchTablet: Story = {
+  tags: ['touch'],
   args: { client: fakeCalendarClient() },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
@@ -197,6 +198,7 @@ export const EntryOnATouchTablet: Story = {
  * to the page, and the flick picks nothing up.
  */
 export const FlickFromAGrip: Story = {
+  tags: ['touch'],
   args: { client: fakeCalendarClient() },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
@@ -251,6 +253,7 @@ export const AtPhoneWidth: Story = {
  * and each finger-tall chip has its text in the middle of its height, not at the top.
  */
 export const DayListOnATouchPhone: Story = {
+  tags: ['touch'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
@@ -373,6 +376,7 @@ export const GripsFitTheirChips: Story = {
  * top (T-274).
  */
 export const ChipsOnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
@@ -384,6 +388,7 @@ export const ChipsOnATouchScreen: Story = {
 
 /** AGL-017, ADR-033, D9: the same in a phone's list of days, every chip of it (T-274). */
 export const ChipsOnATouchPhone: Story = {
+  tags: ['touch'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {

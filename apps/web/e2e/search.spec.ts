@@ -59,7 +59,7 @@ test('[QRY-001] basic to advanced and back, with suggestions, errors and results
 
   // To the advanced mode: the same search as a query, and back to the same choices.
   await page.getByRole('button', { name: 'Advanced' }).click();
-  const query = page.getByRole('combobox', { name: 'Query' });
+  const query = page.getByRole('textbox', { name: 'Query' });
   await expect(query).toHaveValue(`track = ATT AND text ~ "${word}" ORDER BY updated DESC`);
   await page.getByRole('button', { name: 'Basic' }).click();
   await expect(basic.getByRole('checkbox', { name: /^ATT / })).toBeChecked();

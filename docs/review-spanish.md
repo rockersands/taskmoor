@@ -38,6 +38,9 @@ in a comment.
   search; try to save a form with a field missing; delete something and restore it from the trash.
 - Plurals and numbers ("1 ticket", "3 tickets"), dates and times.
 - The sample tickets' own text is English on purpose (it is data, not the interface).
+- A release's notes: **Copiar como Markdown** and **Descargar en Markdown** on a shipped release
+  write Spanish too. That text is written by the server, in
+  `apps/server/src/releases/notes-text.ts` (the dating sentence and the seeded types' names).
 
 ## Telling us what to change
 

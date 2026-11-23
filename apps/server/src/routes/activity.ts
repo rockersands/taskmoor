@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { type Kysely, type RawBuilder, sql } from 'kysely';
 import { z } from 'zod';
 import { requireUser } from '../auth';
+import { fieldReaderOf } from '../fields/access';
 import type { FieldCatalogs } from '../fields/catalog';
 import { historyFieldOf } from '../fields/values';
 import { commentText, onceAudience, readsComment } from '../tickets/comments';
@@ -171,9 +172,18 @@ export function registerActivityRoutes(
         readable.set(id, comment.deleted_at ? null : commentText(comment.body as JsonValue, 280));
       }
     }
-    // A custom field's change names the field and says how its values read (T-282).
+    // A custom field's change names the field and says how its values read (T-282), as a
+    // ticket's history does (T-283).
     const catalog = rows.some((r) => r.field.startsWith('cf['))
       ? await catalogs.get(request.workspaceId)
+      : null;
+    const reader = catalog
+      ? await fieldReaderOf(
+          request.authz,
+          request.user !== null,
+          catalog,
+          rows.map((r) => r.field),
+        )
       : null;
     const out: {
       changeSet: string;
@@ -200,11 +210,12 @@ export function registerActivityRoutes(
       const rich = RICH_TEXT.has(row.field);
       const change = {
         field: row.field,
-        ...(catalog
+        ...(catalog && reader
           ? historyFieldOf(
               catalog,
               { trackId: row.track_id, ticketTypeId: row.ticket_type_id },
               row.field,
+              reader,
             )
           : null),
         from: rich

@@ -29,7 +29,10 @@ both skins and identity that is never color alone.
   so logged work lowers the line. The sprint's own completion rows are ignored: completing a
   sprint ends the chart, it does not empty it.
 - **Days are the viewer's days.** Day ends are local midnights in the query's time zone, else the
-  person's, else UTC (`instantOf`, so half-hour and +14 zones work).
+  person's, else UTC (`instantOf`, so half-hour and +14 zones work). Answered on 2026-11-16
+  (T-280): the person's zone is the one saved on their account, else the device's the web app
+  sends; the account's now comes before the device's (`viewerTimeZone`, ADR-010 "One clock per
+  person").
 - **Visibility.** Only tickets the viewer can see count, in the burndown and in velocity, so a
   chart never leaks the size of hidden work.
 - **Velocity** reads `sprint_change` snapshots of the last N closed sprints (default 7, at most

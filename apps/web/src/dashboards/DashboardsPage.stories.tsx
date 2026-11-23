@@ -107,6 +107,7 @@ export const AtPhoneWidth: Story = {
 
 /** A finger reaches each dashboard's name and the box that puts it on the wallboard (ADR-033). */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findAllByRole('checkbox');

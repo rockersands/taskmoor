@@ -168,6 +168,7 @@ describe('copying, linking and downloading a plan (PLN-014)', () => {
     expect(url.pathname).toBe('/api/v1/plans/12/export');
     expect(url.searchParams.get('track')).toBe('SHOP');
     expect(url.searchParams.get('sort')).toBe('due');
+    expect(url.searchParams.get('order')).toBe('asc');
     expect(url.searchParams.get('columns')?.startsWith('key,')).toBe(true);
     expect(link).toHaveAttribute('download');
     expect(screen.getByText('The file holds every ticket of this plan you may see.')).toBeVisible();

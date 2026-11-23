@@ -191,6 +191,8 @@ describe('token scopes per route (IAM-007)', () => {
     expect(classes['GET /api/v1/plans/:id/summary']).toBe('read');
     expect(classes['GET /api/v1/plans/:id/timeline']).toBe('read');
     expect(classes['GET /api/v1/plans/:id/calendar']).toBe('read');
+    // The critical path (PLN-011): a read.
+    expect(classes['GET /api/v1/plans/:id/critical-path']).toBe('read');
     // Teams and capacity (PLN-005, PLN-009): the view reads, setting capacity writes.
     expect(classes['GET /api/v1/plans/:id/capacity']).toBe('read');
     expect(classes['PUT /api/v1/plans/:id/capacity']).toBe('write');
@@ -214,6 +216,20 @@ describe('token scopes per route (IAM-007)', () => {
     // [IAM-007] The auto-scheduler (PLN-004): readiness reads, a run writes its drafts.
     expect(classes['GET /api/v1/plans/:id/schedule']).toBe('read');
     expect(classes['POST /api/v1/plans/:id/schedule']).toBe('write');
+    // [IAM-007] Baselines (PLN-011): the list and the comparison read, the rest write.
+    expect(classes['GET /api/v1/plans/:id/baselines']).toBe('read');
+    expect(classes['POST /api/v1/plans/:id/baselines']).toBe('write');
+    expect(classes['PATCH /api/v1/plans/:id/baselines/:bid']).toBe('write');
+    expect(classes['DELETE /api/v1/plans/:id/baselines/:bid']).toBe('write');
+    expect(classes['GET /api/v1/plans/:id/baselines/:bid/compare']).toBe('read');
+    // [IAM-007] The Grid (PLN-010): structures and rows read, the rows in view too (a POST that
+    // changes nothing); saving, changing and deleting a structure write.
+    expect(classes['GET /api/v1/plans/:id/structures']).toBe('read');
+    expect(classes['POST /api/v1/plans/:id/structures']).toBe('write');
+    expect(classes['PATCH /api/v1/plans/:id/structures/:sid']).toBe('write');
+    expect(classes['DELETE /api/v1/plans/:id/structures/:sid']).toBe('write');
+    expect(classes['GET /api/v1/plans/:id/structures/:sid/rows']).toBe('read');
+    expect(classes['POST /api/v1/plans/:id/grid/tickets']).toBe('read');
     // [IAM-007] Releases across tracks (PLN-007): reads read, changes write.
     expect(classes['GET /api/v1/cross-track-releases']).toBe('read');
     expect(classes['GET /api/v1/cross-track-releases/candidates']).toBe('read');

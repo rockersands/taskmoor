@@ -256,6 +256,49 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
         updated_by: kalo,
       })
       .execute();
+    // [PLN-011] A baseline Kalo captured in Mi's plan, holding the ticket's days.
+    const baseline = await database.db
+      .insertInto('plan_baseline')
+      .values({
+        workspace_id: 1,
+        plan_id: plan.id,
+        name: 'Kick-off',
+        source: 'scenario',
+        scenario_name: 'Faster',
+        tickets: 1,
+        created_by: kalo,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    await database.db
+      .insertInto('plan_baseline_day')
+      .values({
+        workspace_id: 1,
+        plan_id: plan.id,
+        baseline_id: baseline.id,
+        ticket_id: ticket.id,
+        start_date: null,
+        due_date: '2027-01-15',
+        dated: 'own',
+        closed: false,
+      })
+      .execute();
+    // [PLN-010] A structure Kalo saved in Mi's plan's Grid, its step narrowed by a query.
+    const structure = await database.db
+      .insertInto('plan_structure')
+      .values({
+        workspace_id: 1,
+        plan_id: plan.id,
+        name: 'Kalo’s tree',
+        spec: JSON.stringify({
+          steps: [{ kind: 'insert', query: 'summary ~ "tray sentinel"' }],
+          columns: [],
+        }),
+        created_by: kalo,
+        updated_by: kalo,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
     const key = newObjectKey(1);
     const bytes = Buffer.from('a photo of the tray');
     const put = await store.put(key, Readable.from([bytes]), { maxBytes: 1000 });
@@ -334,6 +377,13 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
         created_by: kalo,
       })
       .execute();
+    // [NFR-006] How Kalo's CSV files are written (T-263): a setting of theirs, in the download.
+    const csv = await as('kalo', {
+      method: 'PATCH',
+      url: '/api/v1/account/preferences',
+      payload: { csvSeparator: 'semicolon' },
+    });
+    expect(csv.statusCode, csv.body).toBe(200);
     const asked = await post('kalo', '/api/v1/account/data-exports');
     expect(asked.statusCode, asked.body).toBe(202);
     const id = asked.json().export.id as string;
@@ -389,6 +439,7 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
     // [PLN-002] [PLN-003] The scenarios they made and the drafts they last changed, by ids: no
     // ticket key or summary, since the plan or the ticket may be hidden from them now.
     const preferences = JSON.parse(String(zip['preferences.json']));
+    expect(preferences).toMatchObject({ autoFollow: true, csvSeparator: 'semicolon' });
     expect(preferences.planScenarios).toEqual([
       {
         planId: plan.id,
@@ -411,6 +462,28 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
       },
     ]);
     expect(JSON.stringify(preferences.planDrafts)).not.toContain(ticket.key);
+    // [PLN-011] The baselines they captured, by ids, without days: the plan or its tickets may be
+    // hidden from them now.
+    expect(preferences.planBaselines).toEqual([
+      {
+        planId: plan.id,
+        baselineId: baseline.id,
+        name: 'Kick-off',
+        source: 'scenario',
+        createdAt: expect.any(String),
+      },
+    ]);
+    expect(JSON.stringify(preferences.planBaselines)).not.toContain('2027-01-15');
+    // [PLN-010] The structures they saved, by the plan's id and the name, without steps or columns.
+    expect(preferences.planStructures).toEqual([
+      {
+        planId: plan.id,
+        structureId: structure.id,
+        name: 'Kalo’s tree',
+        createdAt: expect.any(String),
+      },
+    ]);
+    expect(JSON.stringify(preferences.planStructures)).not.toContain('tray sentinel');
     // [PLN-007] Those they own: what they named them, not the work they hold.
     expect(JSON.parse(String(zip['preferences.json'])).crossTrackReleases).toEqual([
       expect.objectContaining({
@@ -655,7 +728,13 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
       body: mentionDoc(kalo, 'Kalo Example'),
     });
     expect(said.statusCode, said.body).toBe(201);
-    // Kalo has a second factor, a token and preferences.
+    // Kalo has a second factor, a token and preferences, how their CSV files are written among
+    // them (T-263).
+    await database.db
+      .insertInto('user_preference')
+      .values({ user_id: kalo, workspace_id: 1, csv_separator: 'semicolon' })
+      .onConflict((oc) => oc.column('user_id').doUpdateSet({ csv_separator: 'semicolon' }))
+      .execute();
     await database.db
       .insertInto('totp_credential')
       .values({ user_id: kalo, workspace_id: 1, secret_sealed: 'sealed' })
@@ -705,6 +784,31 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
         updated_by: kalo,
       })
       .execute();
+    // [PLN-011] A baseline Kalo captured in Mi's plan.
+    const baseline = await database.db
+      .insertInto('plan_baseline')
+      .values({
+        workspace_id: 1,
+        plan_id: plan.id,
+        name: 'Kalo’s baseline',
+        source: 'live',
+        created_by: kalo,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    // [PLN-010] A structure Kalo saved in Mi's plan's Grid.
+    const structure = await database.db
+      .insertInto('plan_structure')
+      .values({
+        workspace_id: 1,
+        plan_id: plan.id,
+        name: 'Kalo’s structure',
+        spec: JSON.stringify({ steps: [{ kind: 'insert' }], columns: [] }),
+        created_by: kalo,
+        updated_by: kalo,
+      })
+      .returning('id')
+      .executeTakeFirstOrThrow();
     await work();
     const before = await verifyChain(database.db, 1);
     expect(before.ok).toBe(true);
@@ -739,6 +843,8 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
       'personal_export',
       // [PLN-009] Their capacity in plans, notes and all; the plan stays.
       'plan_capacity',
+      // [NFR-006] Their settings, how their CSV files are written among them (T-263).
+      'user_preference',
     ] as const) {
       const left = await database.db
         .selectFrom(table)
@@ -765,6 +871,22 @@ describe('a person’s own data: download and erasure (ASVS 8.3.2, IAM-008)', ()
         .where('scenario_id', '=', scenario.id)
         .execute(),
     ).toEqual([{ updated_by: kalo }]);
+    // [PLN-011] Erasure rewrites no baseline either: its creator's id now names the placeholder.
+    expect(
+      await database.db
+        .selectFrom('plan_baseline')
+        .select(['name', 'created_by'])
+        .where('id', '=', baseline.id)
+        .execute(),
+    ).toEqual([{ name: 'Kalo’s baseline', created_by: kalo }]);
+    // [PLN-010] Erasure rewrites no structure: its maker's id now names the placeholder.
+    expect(
+      await database.db
+        .selectFrom('plan_structure')
+        .select(['name', 'created_by', 'updated_by'])
+        .where('id', '=', structure.id)
+        .execute(),
+    ).toEqual([{ name: 'Kalo’s structure', created_by: kalo, updated_by: kalo }]);
     // [PLN-007] Erasure keeps it: its owner's id now names the placeholder account.
     expect(
       await database.db

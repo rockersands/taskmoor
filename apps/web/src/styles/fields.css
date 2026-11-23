@@ -1,0 +1,39 @@
+/*
+ * Fields (T-320; CORE-011): the formula editor in a field's settings. The expression and the help
+ * take the whole width of their fieldset, whose other controls wrap beside each other; the help's
+ * names wrap as words do, so a phone never scrolls sideways. Only tokens.
+ */
+.formula-editor {
+  align-items: start;
+}
+
+.formula-expression,
+.formula-help {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.formula-expression textarea {
+  box-sizing: border-box;
+  width: 100%;
+  font-family: var(--font-mono);
+}
+
+.formula-help {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+.formula-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.formula-names code {
+  overflow-wrap: anywhere;
+}

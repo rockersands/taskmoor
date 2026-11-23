@@ -185,6 +185,7 @@ export const ManagingOnAPhone: Story = {
 
 /** A finger reaches every tool of the panel (ADR-033). */
 export const ManagingOnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   render: () => <Managed />,
   play: async ({ canvasElement }) => {

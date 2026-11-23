@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, type Page, test } from '@playwright/test';
+import { chooseTrack } from './pickers';
 
 /**
  * A ticket's whole life on the ticket view (M1-051): created in the form, opened, renamed,
@@ -43,6 +44,8 @@ test('[CORE-022] [AGL-018] a ticket from creation to Closed on the ticket view, 
 
   // Created in the form, then opened from its link.
   await page.goto(`${BASE}/#/create`);
+  // Other tests add tracks on this site, some listed before ATT: the form starts on the first.
+  await chooseTrack(page, 'ATT');
   await page.getByLabel('Summary (required)').fill(`Refund fails on ${testInfo.project.name}`);
   await page.getByRole('button', { name: 'Create', exact: true }).click();
   const made = page.getByText(/^ATT-\d+ was created\.$/);
@@ -133,6 +136,8 @@ test('[AGL-018] the command palette reaches 30 actions and runs them from the ke
   });
   expect(signIn.status()).toBe(200);
   await page.goto(`${BASE}/#/create`);
+  // Other tests add tracks on this site, some listed before ATT: the form starts on the first.
+  await chooseTrack(page, 'ATT');
   await page.getByLabel('Summary (required)').fill(`Palette check on ${testInfo.project.name}`);
   await page.getByRole('button', { name: 'Create', exact: true }).click();
   const made = page.getByText(/^ATT-\d+ was created\.$/);

@@ -24,6 +24,17 @@ export interface AdminCrumb {
   href?: string;
 }
 
+/** The address each list page last left, by the page's own route: its filters with it. */
+const pageAddresses = new Map<string, string>();
+
+/**
+ * A list page whose address keeps its filters (People's `?show=`, `?role=`) says where it is, so
+ * the breadcrumb's step back to it from a page below (a person) finds the list as it was left.
+ */
+export function keepPageAddress(page: string, route: string) {
+  pageAddresses.set(page, route);
+}
+
 const TrailContext = createContext<((trail: readonly AdminCrumb[] | null) => void) | null>(null);
 
 /**
@@ -232,7 +243,9 @@ export function AdminBreadcrumb({
       const more = trail && trail.length > 0;
       steps.push({
         label: t(place.page.labelId),
-        ...(more && groupAllowed ? { href: place.page.href } : {}),
+        ...(more && groupAllowed
+          ? { href: pageAddresses.get(place.page.href) ?? place.page.href }
+          : {}),
       });
       if (more) steps.push(...trail);
     }

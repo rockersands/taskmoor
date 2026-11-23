@@ -1,4 +1,5 @@
 import type { MessageId } from '../i18n/messages.en';
+import { instantOfLocalText } from '../i18n/zone';
 import type { Lock } from '../locks/useLockText';
 
 /**
@@ -40,6 +41,13 @@ export interface CustomField {
    * its picker asks the field for them. Absent in older fixtures.
    */
   restricted?: boolean;
+  /** Its type settings, such as how a number shows (T-320). Absent in older fixtures. */
+  config?: { format?: string; output?: string; decimals?: number; currency?: string };
+  /**
+   * The context's default, as REST shows a value (options and people with their names): the
+   * create form starts with it (T-320). Null or absent for none.
+   */
+  defaultValue?: unknown;
 }
 export interface TicketForm {
   layout: { operation: string; tabs: FormTab[] };
@@ -162,8 +170,8 @@ function customValue(
     case 'paragraph':
       return textDocument(raw) ?? undefined;
     case 'datetime':
-      // A local date and time from the browser, sent as the instant it names.
-      return new Date(raw).toISOString();
+      // A date and time as typed, on the person's own clock (T-280), sent as the instant it names.
+      return (instantOfLocalText(raw) ?? new Date(raw)).toISOString();
     case 'select':
     case 'user':
     case 'group':
@@ -188,6 +196,8 @@ function customValue(
 /**
  * The create request a form makes: values left empty are not sent. Rich text fields come as
  * the editor's documents (`rich`, by field key; null when empty), or as plain text in `values`.
+ * A custom field in `emptied` that has no value is sent as null: the person emptied the default it
+ * started with, and the server would fill that default in for a field left out (T-320).
  */
 export function createBody(
   track: string,
@@ -195,6 +205,7 @@ export function createBody(
   form: TicketForm,
   values: FormValues,
   rich: Readonly<Record<string, unknown>> = {},
+  emptied: ReadonlySet<string> = new Set(),
 ): Record<string, unknown> {
   const body: Record<string, unknown> = { track, ticketTypeId };
   const custom: Record<string, unknown> = {};
@@ -204,6 +215,7 @@ export function createBody(
       const field = form.customFields.find((f) => f.id === id);
       const value = field ? customValue(field, values, key.key, rich) : undefined;
       if (value !== undefined) custom[id] = value;
+      else if (emptied.has(key.key)) custom[id] = null;
       continue;
     }
     const name = SYSTEM_FIELDS[key.key]?.body ?? key.key;
@@ -259,21 +271,63 @@ const ERRORS: Record<string, MessageId> = {
   other_track: 'tickets.error.otherTrack',
   // A release or area archived since it was offered (the create route's placement check; T-276).
   archived: 'tickets.error.archived',
-  // A release or area of another track, in a field of its own or a custom one; a priority, ticket
-  // type or visibility level the track does not offer (T-282).
+  // A priority, ticket type or visibility level the track does not offer, or a release or area
+  // of another track where the page cannot tell which (T-282).
   not_in_track: 'tickets.error.notInTrack',
 };
-export const errorMessage = (code: string): MessageId =>
-  (Object.hasOwn(ERRORS, code) ? ERRORS[code] : undefined) ?? 'tickets.error.other';
+
+/** What a field holds that a refusal names by itself: a release or an area (T-286). */
+export type TrackThing = 'release' | 'area';
+
+/**
+ * The keys a form or a ticket route names the system release and area fields by: the create
+ * form's, the edit route's, and a transition screen's (`target-release`, `found-in-release`,
+ * `area`).
+ */
+const TRACK_THINGS: Readonly<Record<string, TrackThing>> = {
+  targetRelease: 'release',
+  foundInRelease: 'release',
+  area: 'area',
+  targetReleaseIds: 'release',
+  foundInReleaseIds: 'release',
+  areaIds: 'area',
+  'target-release': 'release',
+  'found-in-release': 'release',
+};
+
+/**
+ * Whether a field holds releases or areas (T-286): a system field by the key a form or a refusal
+ * names it by, a custom one by its type where the page knows it; null for any other field.
+ */
+export function trackThingOf(key: string, customType?: string): TrackThing | null {
+  if (customType === 'release' || customType === 'area') return customType;
+  return Object.hasOwn(TRACK_THINGS, key) ? (TRACK_THINGS[key] ?? null) : null;
+}
+
+const NOT_IN_TRACK: Readonly<Record<TrackThing, MessageId>> = {
+  release: 'tickets.error.releaseNotInTrack',
+  area: 'tickets.error.areaNotInTrack',
+};
+
+/**
+ * A field refusal's message. A release or area the track does not have says which it is
+ * (T-286), so the person knows what to choose again; any other refusal has its code's words.
+ */
+export const errorMessage = (code: string, thing: TrackThing | null = null): MessageId =>
+  code === 'not_in_track' && thing
+    ? NOT_IN_TRACK[thing]
+    : ((Object.hasOwn(ERRORS, code) ? ERRORS[code] : undefined) ?? 'tickets.error.other');
 
 /**
  * The message for a refusal outside the create form (the ticket page's edits, a bulk change's
  * tickets) whose fields name a choice the track does not offer or an archived release or area,
- * as the create form names them (T-287); null for any other refusal.
+ * as the create form names them (T-287), by the first such field (T-286); null for any other
+ * refusal.
  */
 export function placementRefusal(fields: Record<string, string> | undefined): MessageId | null {
-  const codes = Object.values(fields ?? {});
-  if (codes.includes('not_in_track')) return ERRORS.not_in_track ?? null;
-  if (codes.includes('archived')) return ERRORS.archived ?? null;
+  const refused = Object.entries(fields ?? {});
+  const notInTrack = refused.find(([, code]) => code === 'not_in_track');
+  if (notInTrack) return errorMessage('not_in_track', trackThingOf(notInTrack[0]));
+  if (refused.some(([, code]) => code === 'archived')) return ERRORS.archived ?? null;
   return null;
 }

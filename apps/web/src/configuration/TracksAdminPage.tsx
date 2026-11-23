@@ -5,19 +5,30 @@ import { ApiError } from '../api/client';
 import { useT } from '../i18n/I18nProvider';
 import { routeHref } from '../routing/router';
 import { useSessionExpiry } from '../session/useSessionExpiry';
+import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import { trackHref } from '../tracks/TrackLayout';
 import {
   type ConfigurationClient,
   configurationClient,
+  type MappingImpact,
   type Named,
   type RoleActors,
+  type StatusMigration,
   type Track,
   type TrackBoard,
+  type TypeStatusMapping,
   type WorkflowMapSummary,
 } from './client';
+import { DeleteTrack, TRASH_HREF, type TrackGone } from './DeleteTrack';
 import { NewTrackForm, trackRefusal } from './NewTrackForm';
+import {
+  MigrationProgress,
+  movedText,
+  needsMapping,
+  StatusMappingPanel,
+} from './StatusMappingPanel';
 
 export interface TracksAdminPageProps {
   /** Stories and tests pass their own backend; the page calls the API otherwise. */
@@ -26,14 +37,15 @@ export interface TracksAdminPageProps {
 
 /**
  * Tracks (CORE-001, CORE-025, WF-001), for administrators: add a track, rename it, choose its
- * workflow map, give roles to people and groups, archive and restore. A map change that would
- * leave tickets in statuses their new workflow lacks is refused here with the counts; the
- * mapping is given through the API (or a later version of this page).
+ * workflow map, give roles to people and groups, archive and restore, and delete it to the trash
+ * (T-322). A map change that would leave tickets in statuses their new workflow lacks asks first
+ * where they go (T-320).
  */
 export function TracksAdminPage({ client = configurationClient }: TracksAdminPageProps) {
   const t = useT();
   const expired = useSessionExpiry();
   const titleId = useId();
+  const title = useRef<HTMLHeadingElement>(null);
   const notAdmin = useNotSetupAdmin();
   const [state, setState] = useState<
     | { status: 'loading' }
@@ -47,6 +59,8 @@ export function TracksAdminPage({ client = configurationClient }: TracksAdminPag
   /** The board the last template made, to open from here (M1-054). */
   const [board, setBoard] = useState<{ id: number; key: string } | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  /** The key of the track just deleted, to restore from Trash (T-322). */
+  const [trashed, setTrashed] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -72,6 +86,7 @@ export function TracksAdminPage({ client = configurationClient }: TracksAdminPag
     <section aria-labelledby={titleId} className="page admin-page people-page">
       <PageHeader
         titleId={titleId}
+        titleRef={title}
         title={t('admin.tracks.title')}
         {...(state.status === 'forbidden'
           ? {}
@@ -126,6 +141,11 @@ export function TracksAdminPage({ client = configurationClient }: TracksAdminPag
               </a>
             </p>
           )}
+          {trashed && (
+            <p className="page-note">
+              <a href={routeHref(TRASH_HREF)}>{t('admin.tracks.trashLink', { key: trashed })}</a>
+            </p>
+          )}
           {problem && (
             <p role="alert" className="form-error">
               {problem}
@@ -172,6 +192,24 @@ export function TracksAdminPage({ client = configurationClient }: TracksAdminPag
                       client={client}
                       onChanged={said}
                       onProblem={(error) => setProblem(refusal(error))}
+                      onDeleted={() => {
+                        // The track's row goes: the page's heading takes the focus.
+                        setOpen(null);
+                        said(t('admin.tracks.deletedSaid', { key: track.key }));
+                        setTrashed(track.key);
+                        title.current?.focus();
+                      }}
+                      onDeleteRefused={(text, gone) => {
+                        setMessage('');
+                        setProblem(text);
+                        if (!gone) return;
+                        // Someone else deleted it meanwhile: show the list as it is now, and the
+                        // way to Trash when it waits there.
+                        setOpen(null);
+                        setTrashed(gone === 'trash' ? track.key : null);
+                        title.current?.focus();
+                        void load();
+                      }}
                     />
                   )}
                 </li>
@@ -316,16 +354,149 @@ function SprintsSetting({
   );
 }
 
-function TrackPanel({
+/**
+ * A shared-mode track's workflow map (WF-001; T-320). Picking another map reads first what the
+ * switch would do: with no ticket in a status the new workflows lack it switches at once;
+ * otherwise the status mapping step asks where those tickets go, then switches and moves them,
+ * showing their progress when some move in the background.
+ */
+function MapSwitch({
   track,
+  maps,
   client,
   onChanged,
   onProblem,
 }: {
   track: Track;
+  maps: WorkflowMapSummary[];
   client: ConfigurationClient;
   onChanged: (message: string) => void;
   onProblem: (error: unknown) => void;
+}) {
+  const t = useT();
+  const id = useId();
+  const current = track.workflowMapId ?? maps.find((m) => m.isDefault)?.id ?? '';
+  const [mapId, setMapId] = useState(current);
+  useEffect(() => setMapId(current), [current]);
+  /** The map picked, while its preview is read or its mapping step is open. */
+  const [picked, setPicked] = useState<WorkflowMapSummary | null>(null);
+  const [mapping, setMapping] = useState<{ impact: MappingImpact; changed: boolean } | null>(null);
+  const [migration, setMigration] = useState<StatusMigration | null>(null);
+  const busy = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const select = useRef<HTMLSelectElement>(null);
+  const target = (map: WorkflowMapSummary) => (map.isDefault ? null : map.id);
+
+  /** Closes the step, its focus back on the map's choice, and says why when it failed. */
+  const stop = (error?: unknown) => {
+    const open = mapping !== null;
+    setPicked(null);
+    setMapping(null);
+    if (open) select.current?.focus();
+    if (error !== undefined) onProblem(error);
+  };
+  const switchTo = async (map: WorkflowMapSummary, typeStatusMapping?: TypeStatusMapping) => {
+    if (busy.current) return;
+    busy.current = true;
+    setSaving(true);
+    try {
+      const { statusMigration } = await client.switchWorkflowMap(
+        track.id,
+        target(map),
+        typeStatusMapping,
+      );
+      setMapId(map.id);
+      stop();
+      setMigration(statusMigration && statusMigration.status !== 'done' ? statusMigration : null);
+      onChanged(
+        [
+          t('admin.tracks.mapSaved', { key: track.key, map: map.name }),
+          movedText(t, statusMigration),
+        ]
+          .filter(Boolean)
+          .join(' '),
+      );
+    } catch (error) {
+      if (!needsMapping(error)) stop(error);
+      else {
+        // Tickets changed since the preview: read it again and ask again.
+        await client.trackMapImpact(track.id, map.isDefault ? 'default' : map.id).then(
+          (impact) => setMapping({ impact, changed: true }),
+          (again) => stop(again),
+        );
+      }
+    } finally {
+      busy.current = false;
+      setSaving(false);
+    }
+  };
+  const pick = async (map: WorkflowMapSummary) => {
+    setPicked(map);
+    setMapping(null);
+    setMigration(null);
+    try {
+      const impact = await client.trackMapImpact(track.id, map.isDefault ? 'default' : map.id);
+      if (impact.ticketCount === 0) await switchTo(map);
+      else setMapping({ impact, changed: false });
+    } catch (error) {
+      stop(error);
+    }
+  };
+
+  return (
+    <>
+      <div className="form-field" data-tutorial="track-workflow-map">
+        <label htmlFor={`${id}-map`} className="form-label">
+          {t('admin.tracks.workflowMap')}
+        </label>
+        <select
+          ref={select}
+          id={`${id}-map`}
+          value={picked?.id ?? mapId}
+          onChange={(event) => {
+            const map = maps.find((m) => String(m.id) === event.target.value);
+            if (!map) return;
+            if (map.id === mapId) stop();
+            else void pick(map);
+          }}
+        >
+          {maps.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      {picked && mapping && (
+        <StatusMappingPanel
+          impact={mapping.impact}
+          title={t('admin.tracks.mappingTitle', { key: track.key, map: picked.name })}
+          confirmLabel={t('admin.tracks.mappingConfirm')}
+          changed={mapping.changed}
+          busy={saving}
+          onConfirm={(typeStatusMapping) => void switchTo(picked, typeStatusMapping)}
+          onCancel={() => stop()}
+        />
+      )}
+      {migration && <MigrationProgress migration={migration} read={client.statusMigration} />}
+    </>
+  );
+}
+
+function TrackPanel({
+  track,
+  client,
+  onChanged,
+  onProblem,
+  onDeleted,
+  onDeleteRefused,
+}: {
+  track: Track;
+  client: ConfigurationClient;
+  onChanged: (message: string) => void;
+  onProblem: (error: unknown) => void;
+  onDeleted: () => void;
+  onDeleteRefused: (text: string, gone: TrackGone) => void;
 }) {
   const t = useT();
   const id = useId();
@@ -338,7 +509,15 @@ function TrackPanel({
   const [search, setSearch] = useState('');
   const [found, setFound] = useState<Named[]>([]);
   const [group, setGroup] = useState('');
-  const [confirming, setConfirming] = useState(false);
+  /** The archive or restore button that takes the other's place gets the focus. */
+  const archiveActions = useRef<HTMLDivElement>(null);
+  const toggled = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once the track reads as changed
+  useEffect(() => {
+    if (!toggled.current) return;
+    toggled.current = false;
+    archiveActions.current?.querySelector('button')?.focus();
+  }, [track.archived]);
 
   const loadActors = useCallback(async () => {
     try {
@@ -423,32 +602,13 @@ function TrackPanel({
       </form>
 
       {track.mode === 'shared' && maps.length > 0 && (
-        <div className="form-field" data-tutorial="track-workflow-map">
-          <label htmlFor={`${id}-map`} className="form-label">
-            {t('admin.tracks.workflowMap')}
-          </label>
-          <select
-            id={`${id}-map`}
-            value={track.workflowMapId ?? maps.find((m) => m.isDefault)?.id ?? ''}
-            onChange={(event) => {
-              const picked = maps.find((m) => String(m.id) === event.target.value);
-              if (!picked) return;
-              void run(
-                () =>
-                  client.updateTrack(track.id, {
-                    workflowMapId: picked.isDefault ? null : picked.id,
-                  }),
-                t('admin.tracks.mapSaved', { key: track.key, map: picked.name }),
-              );
-            }}
-          >
-            {maps.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <MapSwitch
+          track={track}
+          maps={maps}
+          client={client}
+          onChanged={onChanged}
+          onProblem={onProblem}
+        />
       )}
 
       {!track.archived && track.features?.sprints !== undefined && (
@@ -617,46 +777,47 @@ function TrackPanel({
         </>
       )}
 
-      <div className="form-actions">
-        {confirming ? (
-          <>
-            <span className="people-confirm">
-              {t(track.archived ? 'admin.tracks.confirmRestore' : 'admin.tracks.confirmArchive', {
-                key: track.key,
-              })}
-            </span>
-            <button
-              type="button"
-              className="button-primary"
-              onClick={() =>
-                void client.archiveTrack(track.id, !track.archived).then(() => {
-                  setConfirming(false);
-                  onChanged(
-                    t(track.archived ? 'admin.tracks.restored' : 'admin.tracks.archivedSaid', {
-                      key: track.key,
-                    }),
-                  );
-                }, onProblem)
-              }
-            >
-              {t('admin.tracks.confirmYes')}
-            </button>
-            <button type="button" className="button-secondary" onClick={() => setConfirming(false)}>
-              {t('admin.tracks.confirmNo')}
-            </button>
-          </>
-        ) : (
+      <div ref={archiveActions} className="form-actions">
+        {track.archived ? (
+          // Restoring gives back and loses nothing: no question.
           <button
             type="button"
             className="button-secondary"
-            aria-label={t(track.archived ? 'admin.tracks.restoreOf' : 'admin.tracks.archiveOf', {
-              key: track.key,
-            })}
-            onClick={() => setConfirming(true)}
+            aria-label={t('admin.tracks.restoreOf', { key: track.key })}
+            onClick={() =>
+              void client.archiveTrack(track.id, false).then(() => {
+                toggled.current = true;
+                onChanged(t('admin.tracks.restored', { key: track.key }));
+              }, onProblem)
+            }
           >
-            {t(track.archived ? 'admin.tracks.restore' : 'admin.tracks.archive')}
+            {t('admin.tracks.restore')}
           </button>
+        ) : (
+          // Archiving locks everyone out of changing it: asked first (D13, T-267).
+          <DangerAction
+            label={t('admin.tracks.archive')}
+            name={t('admin.tracks.archiveOf', { key: track.key })}
+            outcome={t('admin.tracks.archiveOutcome', { key: track.key })}
+            confirmLabel={t('admin.tracks.archiveOf', { key: track.key })}
+            onConfirm={async () => {
+              try {
+                await client.archiveTrack(track.id, true);
+              } catch (error) {
+                onProblem(error);
+                throw error;
+              }
+              toggled.current = true;
+              onChanged(t('admin.tracks.archivedSaid', { key: track.key }));
+            }}
+          />
         )}
+        <DeleteTrack
+          track={track}
+          client={client}
+          onDeleted={onDeleted}
+          onProblem={onDeleteRefused}
+        />
       </div>
     </div>
   );

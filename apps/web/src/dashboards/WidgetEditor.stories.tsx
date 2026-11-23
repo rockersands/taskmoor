@@ -195,6 +195,7 @@ export const Phone: Story = {
  * grip is a finger's size (T-231).
  */
 export const GripsOnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
@@ -204,6 +205,7 @@ export const GripsOnATouchScreen: Story = {
 
 /** The same on a phone. */
 export const GripsOnATouchPhone: Story = {
+  tags: ['touch'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {

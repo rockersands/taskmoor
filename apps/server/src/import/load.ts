@@ -21,6 +21,7 @@ import { sequenceKey, sequenceValueOf } from '../tickets/rank';
 import { loadTicket, loadTickets, type TicketRow, ticketQuery } from '../tickets/store';
 import { keepRole, lockTracks } from '../trackgroups/access';
 import { checkKey } from '../tracks/model';
+import { fromDecimalComma } from './csv';
 import {
   type Command,
   type CommentCommand,
@@ -1237,7 +1238,7 @@ async function customFromTexts(
   creating: boolean,
 ): Promise<{ fields: Record<string, JsonValue>; labels: { fieldId: number; names: string[] }[] }> {
   const input: Record<string, unknown> = {};
-  for (const { fieldId, texts: values, separator } of texts) {
+  for (const { fieldId, texts: values, separator, decimalComma } of texts) {
     const field = ctx.catalog.fields.get(fieldId);
     const context = field ? ctx.catalog.contextOf(fieldId, at.trackId, at.typeId) : null;
     if (!field || !context) {
@@ -1285,6 +1286,14 @@ async function customFromTexts(
       input[fieldId] = given.flatMap((t) => t.split(/\s+/));
     } else if (field.type === 'paragraph') {
       input[fieldId] = fromMarkdown(given.join('\n\n'));
+    } else if (field.type === 'number' && decimalComma) {
+      // "2,5" and "1.234,5" in a semicolon file; "1.234" could be either, so it is left out.
+      const number = fromDecimalComma(given.join(' '));
+      if (number === null) {
+        ctx.warn({ code: 'value_invalid', detail: `cf[${fieldId}]` });
+        continue;
+      }
+      input[fieldId] = number;
     } else {
       input[fieldId] = given.join(' ');
     }

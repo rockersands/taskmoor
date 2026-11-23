@@ -544,6 +544,8 @@ export interface CustomText {
   /** The cells (a column may repeat); a field with several values splits them on `separator`. */
   texts: string[];
   separator: string;
+  /** A number is written with a decimal comma ("2,5"), as in a semicolon file (T-263). */
+  decimalComma?: boolean;
 }
 
 export interface TicketCommand {

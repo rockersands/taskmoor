@@ -63,8 +63,9 @@ the checks can be batched through the list predicate (`visibleTicketIds`).
   one twice), then: instant recipients get one email per ticket once the ticket's oldest unsent
   notification is as old as the workspace's batch window (two minutes by default), carrying
   every change since; daily and weekly recipients get one digest at the workspace's digest hour
-  in their own time zone (weekly on Mondays), at most once a day or a week; quiet hours hold
-  email until they end; `off` drops it (and the subscriber writes none). Who may see each ticket
+  (weekly on Mondays) in the time zone saved on their account, or UTC when it is Automatic as no
+  device is there to ask (T-280), at most once a day or a week; quiet hours hold email until they
+  end, in the same zone; `off` drops it (and the subscriber writes none). Who may see each ticket
   is checked again before the transaction (the rule that a transaction never waits for a second
   pooled connection); notifications about tickets now hidden are dropped. A failed send is
   recorded in `email_delivery` and retried on the next run.

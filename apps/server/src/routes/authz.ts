@@ -20,6 +20,7 @@ import {
   TRACK_PERMISSION_GROUPS,
 } from '../authz/permissions';
 import { mayGiveRole, roleRunsTrack, trackKeepsAdministrator } from '../authz/track-admins';
+import { fieldIdOf } from '../authz/visibility';
 import { effectiveMemberIds } from '../directory';
 import { diff, emit } from '../events/bus';
 import { enforceLimit } from '../guardrails/model';
@@ -133,6 +134,40 @@ export function registerAuthzRoutes(
       .where('workspace_id', '=', workspaceId)
       .executeTakeFirst();
     return row !== undefined;
+  }
+
+  /**
+   * Whether a field grantee's key (`cf[12]`) names a field of its kind that the policy may use: a
+   * user field for People in field, a group field for Groups in field, shared or of the policy's
+   * own local-mode track. A visibility level's member is checked the same way (T-320).
+   */
+  async function fieldFits(
+    workspaceId: number,
+    policyId: number,
+    grantee: string,
+    fieldKey: string,
+  ): Promise<boolean> {
+    const fieldId = fieldIdOf(fieldKey);
+    if (fieldId === null) return false;
+    const [field, policy] = await Promise.all([
+      db
+        .selectFrom('field')
+        .select(['type', 'track_id'])
+        .where('id', '=', fieldId)
+        .where('workspace_id', '=', workspaceId)
+        .executeTakeFirst(),
+      db
+        .selectFrom('access_policy')
+        .select('owner_track_id')
+        .where('id', '=', policyId)
+        .executeTakeFirst(),
+    ]);
+    const wanted = grantee === 'user_field' ? 'user' : 'group';
+    return (
+      field !== undefined &&
+      field.type === wanted &&
+      (field.track_id === null || field.track_id === (policy?.owner_track_id ?? null))
+    );
   }
 
   app.get('/api/v1/permissions/catalogue', async (request, reply) => {
@@ -552,6 +587,9 @@ export function registerAuthzRoutes(
       inWorkspace('app_user', ws, g.userId),
     ]);
     if (exist.includes(false)) return reply.code(404).send({ error: 'not_found' });
+    if (g.fieldKey !== undefined && !(await fieldFits(ws, params.data.id, g.grantee, g.fieldKey))) {
+      return invalid(reply, 'fieldKey');
+    }
     try {
       const grant = await db.transaction().execute(async (trx) => {
         // One grant list changes at a time, so two additions cannot both slip under the limit.

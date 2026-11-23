@@ -30,9 +30,10 @@ export { ERASED_DOMAIN, erasedEmail, erasedName } from './placeholder';
  *   rules of taking a share back (`trackgroups/privacy.ts`; ADR-121), except that a role one of
  *   their shares gave the only other person running a track stays with that person, as their own
  *   (T-205a): the erasure goes through, and the track keeps someone to run it.
- * - A permission to create tracks that came with a role goes, as on any deactivation, from the
- *   person and from anyone whose last role their shares took back (T-087b; IAM-033); `user.erased`
- *   lists it as `createTracksGrantsRemoved`.
+ * - A permission to create tracks that came with a role goes, as with the last role, from the
+ *   person (erased, they run no track, though deactivation alone keeps it; T-259) and from anyone
+ *   whose last role their shares took back (T-087b; IAM-033); `user.erased` lists it as
+ *   `createTracksGrantsRemoved`.
  * - Their capacity in plans goes with its notes (PLN-009), and the scrub job below clears those
  *   notes from the plans' `plan.capacity_set` events too (T-089j).
  * - Domain events about the person have their old name and email replaced in the payload.
@@ -226,7 +227,8 @@ export async function eraseUser(
   count('track_group', groups.groups);
   count('track_group_share', groups.sharesGiven + groups.sharesReceived);
   // A permission to create tracks that came with a role goes with the last one (T-087b; IAM-033):
-  // for those the person's shares had given it to, above, and for the person, deactivated now.
+  // for those the person's shares had given it to, above, and for the person, erased now, who
+  // runs no track whatever roles they held (deactivation alone keeps it; T-259).
   const lapsed = [...groups.lapsed, ...(await dropLapsedCreateTracks(trx, ws, [userId]))];
 
   // The old name and email in events about the person (created, updated, provisioned).

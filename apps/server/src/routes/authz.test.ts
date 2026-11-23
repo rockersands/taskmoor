@@ -303,6 +303,36 @@ describe('roles, access policies, global grants and track roles (M1-002)', () =>
     expect((await as('viewer', { method: 'GET', url: '/api/v1/users' })).statusCode).toBe(403);
   });
 
+  it("[IAM-010] lets a field grantee name a local-mode track's own field only in that track's policy (T-320)", async () => {
+    const local = await as('admin', {
+      method: 'POST',
+      url: '/api/v1/tracks',
+      payload: { key: 'OWNF', name: 'Own fields', mode: 'local' },
+    });
+    expect(local.statusCode, local.body).toBe(201);
+    const { id: trackId, accessPolicyId } = local.json().track as {
+      id: number;
+      accessPolicyId: number;
+    };
+    const made = await as('admin', {
+      method: 'POST',
+      url: '/api/v1/fields',
+      payload: { name: 'Own reviewer', type: 'user', trackId },
+    });
+    expect(made.statusCode, made.body).toBe(201);
+    const fieldKey = `cf[${made.json().field.id}]`;
+    const grant = (policyId: number) =>
+      as('admin', {
+        method: 'POST',
+        url: `/api/v1/access-policies/${policyId}/grants`,
+        payload: { permission: 'edit_tickets', grantee: 'user_field', fieldKey },
+      });
+    const shared = await grant(defaultPolicy);
+    expect(shared.statusCode).toBe(400);
+    expect(shared.json()).toEqual({ error: 'invalid_request', detail: 'fieldKey' });
+    expect((await grant(accessPolicyId)).statusCode).toBe(201);
+  });
+
   it('[IAM-010] manages policies and grants with their safety rules', async () => {
     const created = await as('admin', {
       method: 'POST',
@@ -328,16 +358,39 @@ describe('roles, access policies, global grants and track roles (M1-002)', () =>
     expect(
       (await add({ permission: 'browse_track', grantee: 'role', roleId: 999999 })).statusCode,
     ).toBe(404);
-    const ok = await add({
-      permission: 'browse_track',
-      grantee: 'user_field',
-      fieldKey: 'customfield_10',
-    });
+    // A field grantee names a field that exists and is of its kind (T-320), as a visibility
+    // level's member does.
+    const field = async (name: string, type: 'user' | 'group') => {
+      const made = await as('admin', {
+        method: 'POST',
+        url: '/api/v1/fields',
+        payload: { name, type },
+      });
+      expect(made.statusCode, made.body).toBe(201);
+      return `cf[${made.json().field.id}]`;
+    };
+    const reviewer = await field('Reviewer', 'user');
+    const approvers = await field('Approving group', 'group');
+    // An id above the integer range names no field; it is refused, not a server error.
+    for (const fieldKey of ['customfield_10', 'cf[999999]', 'cf[2147483648]', approvers]) {
+      const refused = await add({ permission: 'browse_track', grantee: 'user_field', fieldKey });
+      expect(refused.statusCode, fieldKey).toBe(400);
+      expect(refused.json()).toEqual({ error: 'invalid_request', detail: 'fieldKey' });
+    }
+    expect(
+      (await add({ permission: 'browse_track', grantee: 'group_field', fieldKey: reviewer }))
+        .statusCode,
+    ).toBe(400);
+    const ok = await add({ permission: 'browse_track', grantee: 'user_field', fieldKey: reviewer });
     expect(ok.statusCode).toBe(201);
     expect(
-      (await add({ permission: 'browse_track', grantee: 'user_field', fieldKey: 'customfield_10' }))
+      (await add({ permission: 'browse_track', grantee: 'user_field', fieldKey: reviewer }))
         .statusCode,
     ).toBe(409);
+    expect(
+      (await add({ permission: 'edit_tickets', grantee: 'group_field', fieldKey: approvers }))
+        .statusCode,
+    ).toBe(201);
 
     // A policy in use cannot go; neither can a role a policy grants.
     const inUse = await as('admin', {

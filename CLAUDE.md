@@ -126,7 +126,9 @@ on another disk (for example while a benchmark saturates this one).
   `apps/web/src/styles/tokens.css`; touch targets of at least 44px under `(pointer: coarse)`; no
   sideways scrolling. Component tests use `setViewportWidth()` for compact layouts.
 - Accessibility: semantic roles and names first; tests query by role and name. Every component
-  gets a story (`*.stories.tsx`); stories run in a real browser with axe (ADR-024).
+  gets a story (`*.stories.tsx`); stories run in a real browser with axe (ADR-024). A story that
+  measures on a touch screen has `tags: ['touch']` and `beforeEach: onARealTouchScreen`; it runs
+  in the `stories-touch` and `stories-dark-touch` projects, whose browser is one (ADR-030).
 - Strings: never literal UI text in components; add an ID to `apps/web/src/i18n/messages.en.ts`
   and read it with `useT()`, and give it a Spanish entry in `messages.es.ts` (a draft, typed
   against the English IDs: a missing one fails the typecheck). The `en-XA` pseudo-locale test

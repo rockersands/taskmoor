@@ -60,7 +60,9 @@ export const AddingASamlProvider: Story = {
     await userEvent.type(canvas.getByLabelText('Domain'), 'agency.example{Enter}');
     await userEvent.click(canvas.getByRole('button', { name: 'Add provider' }));
     await expect(await canvas.findByText('Added Agency.')).toBeVisible();
-    await expect(canvas.getByRole('link', { name: 'Taskmoor metadata for Agency' })).toBeVisible();
+    await expect(
+      canvas.getByRole('link', { name: /\(Taskmoor metadata for Agency\)$/ }),
+    ).toBeVisible();
   },
 };
 
