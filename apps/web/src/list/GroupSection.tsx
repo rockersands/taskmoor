@@ -28,6 +28,7 @@ export function GroupSection({
   emptyBody,
   readOnly = false,
   onSort,
+  momentsAsDays = false,
 }: {
   sectionKey: string;
   title: string | null;
@@ -48,6 +49,8 @@ export function GroupSection({
   readOnly?: boolean;
   /** Ordering by a column's heading (T-330): the column clicked. */
   onSort?: (column: string) => void;
+  /** Moments show their day, the time in their name and tooltip (a track's list, TR-8). */
+  momentsAsDays?: boolean;
 }) {
   const t = useT();
   const id = useId();
@@ -138,6 +141,7 @@ export function GroupSection({
           client={search}
           sort={sortOfQuery(query)}
           readOnly={readOnly}
+          momentsAsDays={momentsAsDays}
           {...(onSort ? { onSort } : {})}
           {...(title === null ? {} : { label: t('list.groupTable', { name: title }) })}
           {...(format ? { format } : {})}

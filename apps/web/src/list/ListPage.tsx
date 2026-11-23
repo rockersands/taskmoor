@@ -253,6 +253,7 @@ export function ListPage({ trackKey, client = listClient, search = searchClient 
       format={rules.length > 0 ? format : undefined}
       onTickets={onTickets}
       onSort={(column) => setSort(nextSort(sort, column))}
+      momentsAsDays
     />
   );
 

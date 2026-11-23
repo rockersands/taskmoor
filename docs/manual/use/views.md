@@ -89,15 +89,17 @@ A customized summary is not a dashboard: it belongs to the track, and it does no
 
 ## The list view
 
-**List** is titled **List**, with the track's name above it, and its help mark explains the page.
-It shows the track's tickets in a table, fifty at a time; **Show more** adds the next fifty. It
-is the search results table, so cells such as the summary, assignee, priority, labels and dates
-can be edited in place (see [search results](search.md#search-results)). The summary takes the
-width the other columns leave, and short values and dates stay on one line. A ticket with
-subtickets shows how many are closed under its key: the subticket icon and the numbers, for
-example **1/3**, with a small bar under them, so the key column stays narrow. Point at it for the
-words ("Subtickets: 1 of 3 closed"). The column the rows are sorted by carries an arrow in its
-heading.
+**List** is titled **List**, with the track's name above it, and its help mark explains the page. It
+shows the track's tickets in a table, fifty at a time; **Show more** adds the next fifty. It is the
+search results table, so cells such as the summary, assignee, priority, labels and dates can be
+edited in place (see [search results](search.md#search-results)). The summary takes the width the
+other columns leave, and short values and dates stay on one line. **Updated** (and **Created** or
+**Closed**, if you add them) shows the day only, on your own clock, so the summary keeps the room;
+point at it for the time, which a screen reader also reads. Search results keep the day and the
+time. A ticket with subtickets shows how many are closed under its key: the subticket icon and the
+numbers, for example **1/3**, with a small bar under them, so the key column stays narrow. Point at
+it for the words ("Subtickets: 1 of 3 closed"). The column the rows are sorted by carries an arrow
+in its heading.
 
 You can also sort by clicking a column's heading: the first click sorts by that column, a second
 click sorts it the other way. Each column starts its own way: dates in the past (created, updated,

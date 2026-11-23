@@ -266,6 +266,25 @@ describe('a track’s list (M1-049)', () => {
     );
   });
 
+  it('[AGL-016] [NFR-006] shows when a ticket was updated as its day on the person’s clock, the time in its name and tooltip (TR-8)', async () => {
+    const search = fakeListSearch();
+    render(
+      <I18nProvider locale="en" timeZone="Asia/Kolkata">
+        <SessionProvider session={MEMBER}>
+          <ListPage trackKey="SHOP" client={fakeListClient(search)} search={search} />
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    await screen.findByRole('link', { name: 'SHOP-41' });
+    const cell = rowOf('SHOP-41').querySelector<HTMLElement>('td[data-column="updatedAt"]');
+    if (!cell) throw new Error('No Updated cell');
+    // 08:00 UTC is 1:30 PM in Kolkata, half an hour off the hour: the person's own clock.
+    expect(within(cell).getByText('Oct 29, 2026')).toHaveAttribute('aria-hidden', 'true');
+    const whole = /^Oct 29, 2026, 1:30\sPM$/;
+    expect(cell.querySelector('.search-cell-value')?.getAttribute('title')).toMatch(whole);
+    expect(within(rowOf('SHOP-41')).getByRole('cell', { name: whole })).toBe(cell);
+  });
+
   it('[NFR-006] words its filter and groups from the catalogue, in the pseudo-locale too', async () => {
     const user = userEvent.setup();
     renderList('SHOP', 'en-XA');
@@ -276,8 +295,12 @@ describe('a track’s list (M1-049)', () => {
     await user.selectOptions(groupBy, 'priority');
     // The seeded priority's name goes through the catalogue inside the heading's own words.
     expect(await screen.findByRole('heading', { name: /^\[\[Ĥíğĥ~~\] / })).toBeVisible();
-    // Cell values are tickets' data, and so are the names of fields and values someone added.
-    for (const cell of page.querySelectorAll('.search-cell-value')) cell.textContent = '';
+    // Cell values are tickets' data (a moment's tooltip too), and so are the names of fields and
+    // values someone added.
+    for (const cell of page.querySelectorAll('.search-cell-value')) {
+      cell.textContent = '';
+      cell.removeAttribute('title');
+    }
     const data = new Set(['SHOP-41', 'SHOP-44', 'OPS-12', 'Customer', 'Team', 'Shop']);
     expect(untranslated(visibleTexts(page).filter((text) => !data.has(text)))).toEqual([]);
     expect(within(page).getByRole('heading', { name: /^\[Medium / })).toBeVisible();

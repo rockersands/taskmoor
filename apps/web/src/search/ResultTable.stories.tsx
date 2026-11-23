@@ -208,6 +208,49 @@ export const FitsTheCardAt1280: Story = {
 };
 
 /**
+ * A track's list at 1280 px (TR-8): Updated shows the day alone, the whole moment its name and
+ * tooltip, so the summary takes the width the time took. The search's own table beside it, at
+ * the same width, keeps the time and leaves the summary narrower.
+ */
+export const TrackListDatesAt1280: Story = {
+  args: { tickets: LONG, columns: DEFAULT_COLUMNS },
+  render: (args) => (
+    <>
+      <div style={{ width: 955 }}>
+        <ResultGrid {...args} label="Track list" momentsAsDays />
+      </div>
+      <div style={{ width: 955 }}>
+        <ResultGrid {...args} label="Search results" />
+      </div>
+    </>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const list = canvas.getByRole('region', { name: 'Track list' });
+    const search = canvas.getByRole('region', { name: 'Search results' });
+    const summaryWidth = (region: HTMLElement) =>
+      cellsOf(region, 'summary')[0]?.getBoundingClientRect().width ?? 0;
+    for (const cell of cellsOf(list, 'updatedAt')) {
+      const value = cell.querySelector('.search-cell-value');
+      if (!value) throw new Error('No Updated value');
+      const shown = value.querySelector('[aria-hidden="true"]');
+      await expect(shown?.textContent).toMatch(/^[A-Z][a-z]{2} \d{1,2}, 2026$/);
+      // The time is in the cell's name and tooltip.
+      await expect(value.getAttribute('title')).toMatch(/^[A-Z][a-z]{2} \d{1,2}, 2026, \d/);
+      await expect(value.querySelector('.visually-hidden')?.textContent).toBe(
+        value.getAttribute('title'),
+      );
+      await expect(oneLine(value)).toBe(true);
+    }
+    for (const value of search.querySelectorAll('td[data-column="updatedAt"] .search-cell-value')) {
+      await expect(value.textContent).toMatch(/, 2026, \d/);
+    }
+    await expect(list.scrollWidth).toBeLessThanOrEqual(list.clientWidth);
+    await expect(summaryWidth(list)).toBeGreaterThan(summaryWidth(search) + 40);
+  },
+};
+
+/**
  * Where the columns cannot fit, the table scrolls inside its card and the edge with more beyond it
  * fades (D2), instead of a date being cut at the card's edge with no cue.
  */

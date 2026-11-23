@@ -2,7 +2,7 @@ import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
 import { type NumberShow, numberText } from '../fields/numberFormat';
-import { dayText, isCalendarDay, isInstant, momentText } from '../i18n/days';
+import { dayText, isCalendarDay, isInstant, momentDayText, momentText } from '../i18n/days';
 import { useT } from '../i18n/I18nProvider';
 import { type Lock, useLockText } from '../locks/useLockText';
 import { routeHref } from '../routing/router';
@@ -65,6 +65,11 @@ export interface ResultTableProps {
    * each after its group: regions of one page need names of their own (axe landmark-unique).
    */
   label?: string;
+  /**
+   * Moments (created, updated, closed, a date-and-time field) show their day only, the whole
+   * moment their name and tooltip: a track's list, so the summary keeps the width (TR-8).
+   */
+  momentsAsDays?: boolean;
 }
 
 /**
@@ -190,6 +195,7 @@ export function ResultGrid({
   onSort,
   readOnly = false,
   label,
+  momentsAsDays = false,
 }: ResultTableProps) {
   const t = useT();
   const region = useRef<HTMLElement>(null);
@@ -256,6 +262,7 @@ export function ResultGrid({
                     columnName={nameOf(column)}
                     editor={readOnly ? null : cellEditor(column, fields)}
                     dateTime={isDateTimeColumn(column, fields)}
+                    dayOnly={momentsAsDays}
                     number={numberShowOfColumn(column, fields)}
                     priorities={priorities}
                     client={client}
@@ -329,6 +336,7 @@ export function Cell({
   columnName,
   editor,
   dateTime,
+  dayOnly = false,
   number = null,
   priorities,
   client,
@@ -341,6 +349,8 @@ export function Cell({
   editor: CellEditor | null;
   /** A moment (created, updated, closed or a custom datetime field), read in the locale. */
   dateTime: boolean;
+  /** A moment shows its day, the whole moment its name and tooltip (a track's list, TR-8). */
+  dayOnly?: boolean;
   /** How a number field's or formula's numbers show, by its settings (T-320). */
   number?: NumberShow | null;
   priorities: { id: number; name: string; level?: number }[] | null;
@@ -379,6 +389,8 @@ export function Cell({
   // A number as its field's settings show it (T-320).
   const text =
     number !== null && typeof value === 'number' ? numberText(intl, value, number) : shown;
+  // The day alone where the column is kept narrow; `text`, the whole moment, is its name (TR-8).
+  const day = dayOnly && dateTime && isInstant(value) ? momentDayText(intl, value) : null;
 
   const close = () => {
     setInput(null);
@@ -469,8 +481,18 @@ export function Cell({
         </form>
       ) : (
         <span className="search-cell-view">
-          <span className={unassigned ? 'search-cell-value search-cell-none' : 'search-cell-value'}>
-            <CellPicture column={column} value={value} shown={text} />
+          <span
+            className={unassigned ? 'search-cell-value search-cell-none' : 'search-cell-value'}
+            title={day === null ? undefined : text}
+          >
+            {day === null ? (
+              <CellPicture column={column} value={value} shown={text} />
+            ) : (
+              <>
+                <span aria-hidden="true">{day}</span>
+                <span className="visually-hidden">{text}</span>
+              </>
+            )}
           </span>
           {editor && (
             <button

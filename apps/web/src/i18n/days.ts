@@ -23,6 +23,13 @@ export const dayText = (intl: IntlShape, day: string) =>
 export const momentText = (intl: IntlShape, iso: string) =>
   intl.formatDate(iso, { dateStyle: 'medium', timeStyle: 'short' });
 
+/**
+ * The day a moment fell on, on the person's own clock: 'Oct 13, 2026' (TR-8, where a column has
+ * room for the day only and gives the whole `momentText` as its name and tooltip).
+ */
+export const momentDayText = (intl: IntlShape, iso: string) =>
+  intl.formatDate(iso, { dateStyle: 'medium' });
+
 /** Whether a value is an instant the API sends (ISO 8601) that a clock can read. */
 export const isInstant = (value: unknown): value is string =>
   typeof value === 'string' && !Number.isNaN(Date.parse(value));
