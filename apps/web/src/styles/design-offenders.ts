@@ -100,6 +100,18 @@ export const ALLOWED = {
   pagesWithoutHeader: {
     TicketPage: 'the title is the summary, edited in place; the user decides on its purpose line',
   },
+  /**
+   * Components: a route page whose header has no help mark (S3-WK-1). A page of its own before
+   * or outside the work, with one thing to do that its purpose line already says.
+   */
+  pagesWithoutHelp: {
+    TicketPage: 'draws its own title, the summary, with its own help mark beside it (about.ticket)',
+    SignInPage:
+      'a page of its own before the work, with one thing to do that its purpose line says',
+    NotFoundPage: 'a dead end: it says what is missing and links on, with nothing to explain',
+    ImportedLinkPage:
+      'a stop on the way from an earlier tracker’s link, which its purpose line explains whole',
+  } as Record<string, string>,
   /** `<file> <message ID>`: a "none" that is no empty list, or says more than an empty list would. */
   bareEmpties: {
     'admin/AiSettingsPage.tsx ai.keyStorageNone': 'a failure, in an alert: no key can be kept',
@@ -217,6 +229,8 @@ export const OFFENDERS = {
   /** Route pages with no PageHeader; a purpose is ready in messages.en.ts (`purpose.*`, an intro). */
   pagesWithoutHeader: [] as string[],
   noPurpose: {} as Ratchet,
+  /** Route pages whose header has no help mark beside the title (ADR-114 §6, S3-WK-1). */
+  pagesWithoutHelp: [] as string[],
   /** `<button>` or `<table>` with no class and no rule through a parent. */
   bareControls: {} as Ratchet,
   /** `<fieldset>` classes that no stylesheet names. */

@@ -12,7 +12,12 @@ export function SettingsPage() {
   const access = useAdminAccess();
   return (
     <section aria-labelledby={titleId} className="page">
-      <PageHeader titleId={titleId} title={t('nav.settings')} purpose={t('settings.purpose')} />
+      <PageHeader
+        titleId={titleId}
+        title={t('nav.settings')}
+        purpose={t('settings.purpose')}
+        about={t('about.settings')}
+      />
       <div className="glass-card admin-panel settings-section">
         <ul className="link-list">
           <li>

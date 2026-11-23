@@ -330,20 +330,14 @@
   font-size: var(--font-size-300);
 }
 
-.is-wallboard .dashboard-grid {
-  align-items: stretch;
-}
-
-.is-wallboard .dashboard-grid > .dashboard-column {
-  align-content: stretch;
-}
-
+/* Cards end at their content, as on a desk (PL-15): a card stretched to the screen's height was
+   mostly empty below one line of text or a ring. */
 .is-wallboard .dashboard-widget-title {
   font-size: var(--font-size-400);
 }
 
-/* A card's content starts at its top, under its title, rather than spread over its height
-   (PL-15): the card still fills the screen, the words and charts sit where the eye starts. */
+/* A card's content starts at its top, under its title, rather than spread over its height (PL-15):
+   the words and charts sit where the eye starts. */
 .is-wallboard .dashboard-widget {
   align-content: start;
 }

@@ -251,6 +251,13 @@ export function isDateTimeColumn(column: string, fields: readonly ColumnField[])
 }
 
 /**
+ * Whether a column is one of the ticket's own moments, created, updated or closed, which a table
+ * shows as a day, the time in the cell's words and tooltip (TR-8, PL-10). A custom date-and-time
+ * field keeps its time in view: its time is what someone chose.
+ */
+export const isTicketMomentColumn = (column: string): boolean => DATE_TIME_COLUMNS.has(column);
+
+/**
  * How a column's numbers show (T-320): a number field's format, decimals and currency, or a
  * formula's number, currency or percentage output; null for a column whose numbers read plainly.
  */

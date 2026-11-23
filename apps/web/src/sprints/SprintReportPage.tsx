@@ -376,6 +376,7 @@ export function SprintReportPage({
           titleId={`${id}-title`}
           title={title}
           purpose={t('purpose.sprintReport')}
+          about={t('about.sprintReport')}
           actions={toBacklog}
         />
       )}

@@ -47,7 +47,22 @@ test('[CORE-024] follows a bulk edit to the end and lists the ticket it could no
   const failures = page.getByRole('region', { name: 'Tickets that were not changed' });
   await expect(failures.getByRole('listitem')).toHaveCount(1);
   await expect(failures.getByText('ATT-999999')).toBeVisible();
-  await expect(failures.getByText('Not found, or you may not see it.')).toBeVisible();
+  await expect(failures.getByText('Not found, or you cannot see it.')).toBeVisible();
+
+  // The help mark beside the title, as on every page (S3-WK-1).
+  await expect(
+    page.getByRole('button', { name: 'What is Bulk edit of 4 tickets for?' }),
+  ).toBeVisible();
+  // Each changed ticket's key is a link a finger reaches on a touch screen (S3-WK-7).
+  const changed = page.getByRole('region', { name: 'Tickets that were changed' });
+  await expect(changed.getByRole('link')).toHaveCount(3);
+  if (await page.evaluate(() => matchMedia('(pointer: coarse)').matches)) {
+    for (const link of await changed.getByRole('link').all()) {
+      const box = await link.boundingBox();
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+      expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
+    }
+  }
 
   // Every ticket asked for got the label, through the ticket's own edit.
   for (const key of keys) {

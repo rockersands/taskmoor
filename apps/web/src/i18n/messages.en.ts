@@ -389,6 +389,27 @@ export const messagesEn = {
     'The status menu under the title moves the ticket through its workflow. Details, after the description and the ticket’s tools, are its fields: change one and it saves at once. Activity comes last, with the comments, the history of every change and the time recorded.',
   'about.list':
     'Each row is a ticket of this track, in the order Sort by sets; a pencil beside a value changes it in place. Group by splits the rows by a field and counts each group. Columns chooses what the rows show, and Format rules colour the tickets a condition finds. Columns and rules are kept in this browser. On a phone each ticket is a block: its key, its summary, then its status, assignee and priority.',
+  // The help mark beside the other pages' titles (ADR-114 §6, S3-WK-1).
+  'about.inbox':
+    'All shows every mention of you and every change to a ticket you follow. Priority keeps the direct asks: mentions of you and tickets assigned to you. Snoozed holds what you put off until later. Mark items read one at a time or all at once, and narrow the list by type or track.',
+  'about.search':
+    'Basic builds a search from filters; Advanced takes the query language, and a query too rich for Basic opens there. Save a search to run it again, share it, follow it by email or star it. Columns chooses what the results show, and Export downloads them.',
+  'about.createTicket':
+    'The track and the ticket type decide which fields the form asks for, and a field marked required must be filled before Create. Start from a ticket copies the fields of one you may see, so you change only what differs. Fields used less often wait under More fields.',
+  'about.bulk':
+    'A change to many tickets runs on the site, ticket by ticket, and this page follows it: you may leave and come back. A ticket is changed only where you may change it. Those that were not are listed with the reason, and those that were link to their tickets.',
+  'about.dashboards':
+    'Yours lists the dashboards you made, and Shared with you those others share with you. Name a new one, then add the widgets you need. Tick dashboards for the wallboard to show them in turn on a screen, each for the seconds you choose.',
+  'about.dashboard':
+    'Each widget sums up the tickets a search finds, and never shows a ticket you could not find yourself. Its owner edits it and chooses who sees it; Copy makes one of your own to change. Wallboard shows it full screen, for a screen everyone can read from afar.',
+  'about.settings':
+    'Settings keeps what is yours alone: your account, how Taskmoor looks for you and the tutorials. What applies to the whole site is in Administration, which the side bar shows to those allowed to use it.',
+  'about.account':
+    'Each tab keeps one part of your account. Profile: your name, time zone, language and look. Notifications: what Taskmoor tells you, and how. Security: your password, second factor and signed-in devices. API tokens: what your scripts use. Your data: a download of everything kept about you.',
+  'about.boardReports':
+    'Each report reads the tickets on this board over the period you choose. Cumulative flow shows where work piles up, the control chart and cycle time how long tickets take, and time in status where they wait. Charts and tables count only the tickets you may see.',
+  'about.sprintReport':
+    'Committed counts the tickets in the sprint when it started; Added and Removed what changed after the start. The lists below name the tickets completed, not completed and removed, with any estimate that changed along the way.',
   'about.plan':
     'Each tab shows this plan’s tickets its own way: Summary counts them, Timeline and Calendar place them on their dates, List gives them as rows, Capacity weighs the work against each team’s room in a period, and Releases and Program boards follow it across tracks. Choose a scenario to try changes as drafts before they reach the tickets. Everyone sees in a plan only the tickets they may see anyway.',
   'help.about': 'What is {name} for?',
@@ -4429,7 +4450,7 @@ export const messagesEn = {
   'ticketView.details': 'Details',
   'ticketView.none': 'None',
   'ticketView.unassigned': 'Unassigned',
-  'ticketView.everyone': 'Everyone who can browse the track',
+  'ticketView.everyone': 'Everyone who can see the track',
   'ticketView.hiddenParent': 'A ticket you cannot see',
   'ticketView.assignToMe': 'Assign to me',
   'ticketView.unassign': 'Unassign',
@@ -4598,7 +4619,7 @@ export const messagesEn = {
   'bulk.moreChanged': 'Show more',
   'bulk.backToSearch': 'Back to the search',
   'bulk.toSearch': 'Go to Search',
-  'bulk.reason.notFound': 'Not found, or you may not see it.',
+  'bulk.reason.notFound': 'Not found, or you cannot see it.',
   'bulk.reason.forbidden': 'You may not make this change to this ticket.',
   'bulk.reason.invalidFields': 'Some of the values do not fit this ticket.',
   'bulk.reason.transitionUnavailable':
@@ -5948,6 +5969,8 @@ export const messagesEn = {
   'dashboards.fullScreen': 'Full screen',
   'dashboards.leaveWallboard': 'Leave the wallboard',
   'dashboards.makeDefault': 'Make it everyone’s home',
+  // Beside 'Who sees it: Only me' the button says it shares the dashboard too (T-359).
+  'dashboards.makeDefaultAndShare': 'Share it and make it everyone’s home',
   'dashboards.madeDefault': 'It is everyone’s home dashboard now.',
   'dashboards.madeDefaultShared':
     'It is everyone’s home dashboard now, so everyone signed in sees it.',
@@ -7733,6 +7756,9 @@ export const messagesEn = {
   'ticketTools.checklists.edit': 'Edit {text}',
   'ticketTools.checklists.moveUp': 'Move up {text}',
   'ticketTools.checklists.moveDown': 'Move down {text}',
+  // On a phone an item's Edit, moves and Remove sit behind one button (PL-44).
+  'ticketTools.checklists.more': 'More',
+  'ticketTools.checklists.moreOf': 'More options for {text}',
   'ticketTools.checklists.removeItem': 'Remove {text}',
   'ticketTools.checklists.tooMany':
     'This has as many as it can hold: 20 checklists on a ticket, 200 items on a checklist.',

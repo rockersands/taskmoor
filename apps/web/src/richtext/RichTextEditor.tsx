@@ -332,7 +332,9 @@ export function RichTextEditor({
   // On a phone the toolbar keeps one row: the first tools and More, which shows the rest (PL-42).
   const narrow = useMediaQuery(NARROW_TOOLBAR);
   const [allTools, setAllTools] = useState(false);
-  const [fit, setFit] = useState(FIRST_TOOLS);
+  // Measured: how many tools fit before More. Unmeasured, a phone shows `FIRST_TOOLS` and a wider
+  // screen all of them.
+  const [fit, setFit] = useState<number | null>(null);
 
   const labels = {
     unknownBlock: t('richtext.unknownBlock'),
@@ -823,22 +825,24 @@ export function RichTextEditor({
         ]
       : []),
   ];
-  // How many tools fit the bar's row with More beside them, measured from a tool and the bar.
+  // How many tools fit the bar's row with More beside them, measured from a tool and the bar. On
+  // any screen: an editor narrower than its tools, such as a ticket's description beside Details
+  // at 1280 px, folds the rest behind More rather than leave one tool alone on a row (S3-WK-3).
   const hasBar = editable && Boolean(editor);
   // biome-ignore lint/correctness/useExhaustiveDependencies: the bar appears once the editor exists
   useLayoutEffect(() => {
     const bar = toolbarRef.current;
     const box = bar?.parentElement;
-    if (!narrow || !bar || !box) return;
+    if (!bar || !box) return;
     const measure = () => {
-      const tool = bar.querySelector<HTMLElement>('.rt-tool');
+      const tool = bar.querySelector<HTMLElement>('.rt-tool')?.getBoundingClientRect().width ?? 0;
       const boxStyle = getComputedStyle(box);
       const width =
         box.clientWidth -
         Number.parseFloat(boxStyle.paddingLeft || '0') -
         Number.parseFloat(boxStyle.paddingRight || '0');
       const gap = Number.parseFloat(getComputedStyle(bar).columnGap) || 0;
-      setFit(toolsThatFit(width, tool?.getBoundingClientRect().width ?? 0, gap));
+      setFit(width > 0 && tool > 0 ? toolsThatFit(width, tool, gap) : null);
     };
     measure();
     if (typeof ResizeObserver === 'undefined') return;
@@ -846,8 +850,9 @@ export function RichTextEditor({
     observer.observe(box);
     return () => observer.disconnect();
   }, [narrow, hasBar]);
-  const folded = narrow && buttons.length > fit + 1;
-  const shown = folded && !allTools ? buttons.slice(0, fit) : buttons;
+  const limit = fit ?? (narrow ? FIRST_TOOLS : buttons.length);
+  const folded = buttons.length > limit + 1;
+  const shown = folded && !allTools ? buttons.slice(0, limit) : buttons;
   // The More button, when there is one, is the last stop of the arrow keys.
   const stops = shown.length + (folded ? 1 : 0);
   const tabStop = Math.min(focusIndex, Math.max(0, stops - 1));

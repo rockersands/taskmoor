@@ -93,7 +93,11 @@ export function AccountPage({
 
   return (
     <div className="page account-page">
-      <PageHeader title={t('account.title')} purpose={t(shown.introId)} />
+      <PageHeader
+        title={t('account.title')}
+        purpose={t(shown.introId)}
+        about={t('about.account')}
+      />
       {/* The row stays across sections, so the link chosen keeps focus; the content changes. On a
           phone it wraps, so every section shows. */}
       <nav className="account-tabs" aria-label={t('account.sections')}>

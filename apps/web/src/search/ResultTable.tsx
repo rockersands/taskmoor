@@ -2,7 +2,7 @@ import { type FormEvent, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { ApiError } from '../api/client';
 import { type NumberShow, numberText } from '../fields/numberFormat';
-import { dayText, isCalendarDay, isInstant, momentText } from '../i18n/days';
+import { dayText, isCalendarDay, isInstant, momentDayText, momentText } from '../i18n/days';
 import { useT } from '../i18n/I18nProvider';
 import { type Lock, useLockText } from '../locks/useLockText';
 import { routeHref } from '../routing/router';
@@ -24,6 +24,7 @@ import {
   DATE_COLUMNS,
   editorStart,
   isDateTimeColumn,
+  isTicketMomentColumn,
   numberShowOfColumn,
   orderOfColumn,
   type TableSort,
@@ -373,6 +374,9 @@ export function Cell({
         : unassigned
           ? t('search.edit.unassigned')
           : valueText(value);
+  // The ticket's own moments show their day, so the summary keeps the room; the time stays in
+  // the cell's words and its tooltip (TR-8, PL-10).
+  const moment = dateTime && isTicketMomentColumn(column) && isInstant(value) ? value : null;
   // A number as its field's settings show it (T-320).
   const text =
     number !== null && typeof value === 'number' ? numberText(intl, value, number) : shown;
@@ -467,7 +471,14 @@ export function Cell({
       ) : (
         <span className="search-cell-view">
           <span className={unassigned ? 'search-cell-value search-cell-none' : 'search-cell-value'}>
-            <CellPicture column={column} value={value} shown={text} />
+            {moment !== null ? (
+              <time dateTime={moment} title={text}>
+                <span aria-hidden="true">{momentDayText(intl, moment)}</span>
+                <span className="visually-hidden">{text}</span>
+              </time>
+            ) : (
+              <CellPicture column={column} value={value} shown={text} />
+            )}
           </span>
           {editor && (
             <button

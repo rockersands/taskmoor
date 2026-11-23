@@ -106,8 +106,8 @@ export const Wallboard: Story = {
 };
 
 /**
- * Two widgets on a wall, each card the screen's height (PL-15): its title at its top, its content
- * right under it rather than spread over the card, and the ring grown to fill it.
+ * Two widgets on a wall (PL-15): each card's title at its top, its content right under it, the
+ * card ending at its content rather than at the screen's foot, and the ring grown with the screen.
  */
 export const WallboardFewWidgets: Story = {
   args: {
@@ -133,6 +133,9 @@ export const WallboardFewWidgets: Story = {
       await expect(title.getBoundingClientRect().top - top).toBeLessThanOrEqual(40);
       const gap = body.getBoundingClientRect().top - title.getBoundingClientRect().bottom;
       await expect(gap).toBeLessThanOrEqual(24);
+      // The card ends at its content, not at the screen's foot (PL-15).
+      const below = card.getBoundingClientRect().bottom - body.getBoundingClientRect().bottom;
+      await expect(below, card.textContent ?? '').toBeLessThanOrEqual(48);
     }
     // The ring grows with the screen rather than staying the size of a card on a desk.
     await expect(within(pie).getByRole('img').getBoundingClientRect().width).toBeGreaterThan(168);

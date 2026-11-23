@@ -29,7 +29,8 @@ Everyone who sees a dashboard can **Copy** it, which makes a dashboard of their 
 sharing, and open it as a **Wallboard**. Site administrators can **Make it everyone's home**:
 that dashboard is then marked as everyone's home dashboard and every signed-in person can see
 it. A dashboard that only its owner saw is then shared with **Everyone signed in**, so **Who
-sees it** says what is true.
+sees it** says what is true; beside **Only me** the button says so before you press it: **Share it
+and make it everyone's home**.
 
 ### Editing a dashboard
 
@@ -118,8 +119,9 @@ header, **Dashboard**, and says so under it.
 
 A wallboard is a dashboard laid out for a TV or a wall screen, read from across a room: it fills
 the window without the navigation, in large type, and reads its widgets again every five minutes.
-Each card's title sits at its top with its content right under it, and a pie chart's ring grows
-with the screen. It shows no controls: charts have no **Show the numbers**, and **Full screen**
+Each card's title sits at its top with its content right under it, the card ends at its content,
+and a pie chart's ring grows with the screen. It shows no controls: charts have no **Show the
+numbers**, and **Full screen**
 and **Leave the wallboard** stay hidden in the screen's top corner, taking no room, until you
 point at them or reach them with the keyboard. To show several
 dashboards in turn, tick **On the wallboard** beside each on the dashboards list, set **Seconds

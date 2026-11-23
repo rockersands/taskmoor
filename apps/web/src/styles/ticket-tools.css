@@ -222,8 +222,9 @@
   flex: 1 1 14rem;
 }
 
-/* Checklists: a row per item that wraps its controls on a phone. */
+/* Checklists: a row per item, whose controls go under its name where the list is narrow. */
 .checklist {
+  container: checklist / inline-size;
   display: grid;
   gap: var(--space-2);
   padding-top: var(--space-3);
@@ -262,8 +263,18 @@
   gap: var(--space-1);
 }
 
+/*
+ * The items share one set of columns (S3-WK-2): each row is a subgrid of the list, so the names
+ * have one width and every row's grip and state start at one line, whichever moves a row offers.
+ * The shared controls column is as wide as the widest row's, an item between two others with both
+ * moves: beside the names, in a ticket's main column at 1280 or 1440, it would leave them a few
+ * letters' width. So an item's controls take a row of their own under its name, which keeps the
+ * list's whole width, and go beside it only where the list is wide enough to leave the names at
+ * least 16rem. A read-only item's state is short and stays beside its name.
+ */
 .checklist-items {
   display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: var(--space-2);
   margin: 0;
   padding: 0;
@@ -272,9 +283,24 @@
 
 .checklist-item {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: var(--space-2);
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  row-gap: var(--space-2);
   align-items: center;
+}
+
+.checklist-item-controls {
+  grid-column: 2 / -1;
+}
+
+@container checklist (min-width: 52rem) {
+  .checklist-items {
+    grid-template-columns: auto minmax(16rem, 1fr) auto;
+  }
+
+  .checklist-item-controls {
+    grid-column: auto;
+  }
 }
 
 .checklist-item-text {
@@ -349,13 +375,18 @@
 }
 
 @media (max-width: 40rem) {
-  .checklist-item {
+  .checklist-items {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .checklist-item-controls,
   .checklist-item-state {
     grid-column: 2;
+  }
+
+  /* Grip, state and More (PL-44) on one row under the name, from the row's start: room for all
+     three on the narrowest phone. */
+  .checklist-item-controls {
+    grid-column: 1 / -1;
   }
 }
 

@@ -326,6 +326,7 @@ export function InboxPage({ client = inboxClient, now = () => new Date() }: Inbo
         title={t('inbox.title')}
         eyebrow={countText(unread.all)}
         purpose={t('purpose.inbox')}
+        about={t('about.inbox')}
       />
       <div className="inbox-toolbar">
         <fieldset className="filter-chips">

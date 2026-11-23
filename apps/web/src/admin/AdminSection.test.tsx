@@ -120,6 +120,24 @@ describe('Administration (ADR-114)', () => {
     expect(account).toHaveTextContent(/API tokens and a download of your data\.$/);
   });
 
+  it('[AGL-018] Settings’ help says the side bar shows Administration to those allowed, naming no one role', async () => {
+    stubBackend({ 'GET /*': () => jsonResponse(403, { error: 'forbidden' }) });
+    window.location.hash = '#/settings';
+    // A configuration administrator sees Administration too, as one who runs a track does.
+    render(<App session={CONFIG_ADMIN} />);
+    const page = screen.getByRole('region', { name: 'Settings' });
+    await userEvent.click(within(page).getByRole('button', { name: 'What is Settings for?' }));
+    const help = within(page).getByText(/^Settings keeps what is yours alone/);
+    expect(help).toHaveTextContent(
+      'What applies to the whole site is in Administration, which the side bar shows to those allowed to use it.',
+    );
+    expect(help).not.toHaveTextContent(/site administrators/);
+    expect(within(page).getByRole('link', { name: 'Administration' })).toHaveAttribute(
+      'href',
+      '#/admin',
+    );
+  });
+
   it('[AGL-018] shows a site administrator every group, and health, people and alerts', async () => {
     renderOverview(ADMIN);
     for (const name of [

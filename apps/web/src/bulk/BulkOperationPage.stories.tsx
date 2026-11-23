@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
+import { onARealTouchScreen, tooSmallForAFinger } from '../test/touch';
 import { BulkOperationPage } from './BulkOperationPage';
-import { fakeBulkClient, RUNNING } from './fixtures';
+import { FAILURES, fakeBulkClient, RUNNING } from './fixtures';
 
 /** The width of a small phone; nothing inside may stick out sideways. */
 const atPhoneWidth = (Story: () => ReactElement) => (
@@ -65,6 +66,51 @@ export const DoneWithFailures: Story = {
       /^The bulk edit finished with problems: 1,197 tickets were changed, and 3 tickets were not\./,
     );
     await expect(canvas.queryByText('Done.')).toBeNull();
+  },
+};
+
+/**
+ * On a touch screen a finger reaches each ticket key, the changed ones and those that were not
+ * (S3-WK-7, ADR-033): each stands alone on its line, so each is a finger's height.
+ */
+export const OnATouchScreen: Story = {
+  tags: ['touch'],
+  beforeEach: onARealTouchScreen,
+  decorators: [atPhoneWidth],
+  args: {
+    client: fakeBulkClient(
+      { ...RUNNING, status: 'done', succeeded: 2, failed: 1, pending: 0, total: 3 },
+      {
+        failures: FAILURES.slice(0, 1),
+        changed: [
+          {
+            position: 1,
+            ref: 'SHOP-41',
+            key: 'SHOP-41',
+            outcome: 'done',
+            statusCode: 200,
+            error: null,
+          },
+          {
+            position: 2,
+            ref: 'SHOP-42',
+            key: 'SHOP-42',
+            outcome: 'done',
+            statusCode: 200,
+            error: null,
+          },
+        ],
+      },
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('link', { name: 'SHOP-42' });
+    await canvas.findByRole('link', { name: 'SHOP-12' });
+    await expect(tooSmallForAFinger(canvasElement, ['.bulk-changed a', '.bulk-ticket a'])).toEqual(
+      [],
+    );
+    await fitsPhoneWidth(canvas);
   },
 };
 

@@ -253,6 +253,7 @@ export function DashboardPage({
         title={dashboard.name}
         // A wallboard is read from across a room: its title and its widgets, nothing about itself.
         purpose={wallboard ? undefined : t('purpose.dashboard')}
+        about={wallboard ? undefined : t('about.dashboard')}
         eyebrow={
           wallboard
             ? undefined
@@ -305,7 +306,12 @@ export function DashboardPage({
                   className="button-secondary"
                   onClick={() => void makeDefault()}
                 >
-                  {t('dashboards.makeDefault')}
+                  {/* Beside 'Who sees it: Only me' it says it shares the dashboard too. */}
+                  {t(
+                    dashboard.editable && visibility === 'private'
+                      ? 'dashboards.makeDefaultAndShare'
+                      : 'dashboards.makeDefault',
+                  )}
                 </button>
               )}
               {dashboard.editable && (

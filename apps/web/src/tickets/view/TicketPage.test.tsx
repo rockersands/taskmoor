@@ -110,6 +110,8 @@ describe('the ticket view (M1-051)', () => {
     expect(within(facts).getByText('Grace Hopper')).toBeVisible();
     expect(within(facts).getByRole('combobox', { name: 'Priority' })).toHaveTextContent('High');
     expect(within(facts).getByText('payments, checkout')).toBeVisible();
+    // With no visibility level, the words the rest of the app uses for the permission (S3-WK-6).
+    expect(within(facts).getByText('Everyone who can see the track')).toBeVisible();
     expect(within(facts).getByLabelText('Due date')).toHaveValue('2026-11-02');
     expect(within(facts).getByRole('link', { name: 'SHOP-40 Card payments' })).toHaveAttribute(
       'href',

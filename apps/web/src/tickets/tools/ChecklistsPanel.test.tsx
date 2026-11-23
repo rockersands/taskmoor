@@ -450,6 +450,100 @@ describe('ChecklistsPanel', () => {
     expect(await screen.findByRole('checkbox', { name: 'Print it' })).toBeVisible();
   });
 
+  it('[CORE-033] puts an item’s Edit, moves and Remove behind More on a phone, the focus kept (PL-44)', async () => {
+    setViewportWidth(360);
+    const user = userEvent.setup();
+    const { client } = renderPanel();
+    const more = await screen.findByRole('button', { name: 'More options for Write the notes' });
+    // Two rows to an item: its name, then its grip, its state and More; no row of buttons.
+    expect(screen.queryByRole('button', { name: 'Move down Write the notes' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Edit Write the notes' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove Write the notes' })).toBeNull();
+    await user.click(more);
+    const menu = screen.getByRole('menu', { name: 'More options for Write the notes' });
+    // The first item cannot go up.
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Edit', 'Move down', 'Remove']);
+    await user.click(within(menu).getByRole('menuitem', { name: 'Move down' }));
+    await waitFor(() =>
+      expect(client.calls).toContainEqual({
+        action: 'orderItems',
+        args: [41, 30, [301, 300, 302, 303, 304]],
+      }),
+    );
+    await waitFor(() => expect(more).toHaveFocus());
+    // Edit opens the same form, and the focus comes back to More when it closes.
+    await user.click(more);
+    await user.click(screen.getByRole('menuitem', { name: 'Edit' }));
+    const field = screen.getByRole('textbox', { name: 'Item' });
+    await waitFor(() => expect(field).toHaveFocus());
+    await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'More options for Write the notes' }),
+      ).toHaveFocus(),
+    );
+    // A wider screen has the buttons back.
+    act(() => setViewportWidth(1440));
+    expect(screen.getByRole('button', { name: 'Move up Write the notes' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: /^More options/ })).toBeNull();
+  });
+
+  it('[CORE-033] keeps the focus on More when an item’s Remove is refused on a phone, and hands it on when the item is gone', async () => {
+    setViewportWidth(360);
+    const user = userEvent.setup();
+    const client = fakeToolsClient();
+    const removeItem = client.removeItem;
+    renderPanel(client);
+    // A refusal that leaves the item where it was: the focus waits on More, beside the reason.
+    client.removeItem = async () => {
+      throw new Error('offline');
+    };
+    await user.click(await screen.findByRole('button', { name: 'More options for Print it' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Remove' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'That did not work. Try again in a moment.',
+    );
+    expect(screen.getByRole('checkbox', { name: 'Print it' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'More options for Print it' })).toHaveFocus();
+    // Someone else removed it first: the list read again no longer has it, and the focus goes to
+    // the field that adds an item, not to the page.
+    client.removeItem = async (...args) => {
+      await removeItem(...args);
+      throw new ApiError(404, { error: 'not_found' });
+    };
+    await user.click(screen.getByRole('button', { name: 'More options for Print it' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Remove' }));
+    await waitFor(() => expect(screen.queryByRole('checkbox', { name: 'Print it' })).toBeNull());
+    expect(screen.getByRole('alert')).toHaveTextContent('That is no longer there.');
+    expect(screen.getByRole('textbox', { name: 'Add an item to Before release' })).toHaveFocus();
+  });
+
+  it('[CORE-033] keeps a whole checklist’s Remove out of More on a phone, where it asks first (T-268, T-267)', async () => {
+    setViewportWidth(360);
+    const user = userEvent.setup();
+    const { client } = renderPanel();
+    // An item's Remove, from More, goes at once, as its button does on a wider screen.
+    await user.click(await screen.findByRole('button', { name: 'More options for Print it' }));
+    const menu = screen.getByRole('menu', { name: 'More options for Print it' });
+    await user.click(within(menu).getByRole('menuitem', { name: 'Remove' }));
+    await waitFor(() => expect(screen.queryByRole('checkbox', { name: 'Print it' })).toBeNull());
+    expect(client.calls.some((c) => c.action === 'removeItem')).toBe(true);
+    expect(screen.getByRole('textbox', { name: 'Add an item to Before release' })).toHaveFocus();
+    // The checklist's own Remove stays a button beside its name, in no menu, and asks first.
+    const trigger = screen.getByRole('button', { name: 'Remove the checklist Before release' });
+    expect(trigger.closest('[role="menu"]')).toBeNull();
+    expect(trigger.closest('.checklist-item')).toBeNull();
+    await user.click(trigger);
+    expect(
+      screen.getByRole('group', { name: /^Removing Before release deletes its 4 items/ }),
+    ).toBeVisible();
+    expect(client.calls.some((c) => c.action === 'removeChecklist')).toBe(false);
+  });
+
   it('[NFR-006] comes from the catalogue, in the pseudo-locale too', async () => {
     const { errors, container } = renderPanel(undefined, 'en-XA');
     await screen.findByRole('progressbar');

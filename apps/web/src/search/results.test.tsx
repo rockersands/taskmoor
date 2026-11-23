@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MEMBER } from '../admin/fixtures';
 import { I18nProvider } from '../i18n/I18nProvider';
+import type { Locale } from '../i18n/locale';
 import { type Session, SessionProvider } from '../session/SessionProvider';
 import { useTimeZone } from '../test/timeZone';
 import { setViewportWidth } from '../test/viewport';
@@ -17,10 +18,14 @@ import { SearchPage } from './SearchPage';
 /** The stylesheets, read from disk: the web project turns CSS imports off. */
 const STYLES = ['apps/web/src/styles', 'src/styles'].find((d) => existsSync(d)) ?? 'src/styles';
 
-function renderPage(initialQuery = 'track = SHOP', session: Session = MEMBER) {
+function renderPage(
+  initialQuery = 'track = SHOP',
+  session: Session = MEMBER,
+  locale: Locale = 'en',
+) {
   const client = fakeSearchClient();
   const view = render(
-    <I18nProvider locale="en">
+    <I18nProvider locale={locale}>
       <SessionProvider session={session}>
         <main>
           <SearchPage
@@ -331,6 +336,18 @@ describe('search results (M1-042)', () => {
     // A due date lies ahead as often as behind: "oldest" would not fit it.
     expect(screen.getByText('Sorted by Due date, earliest first')).toBeVisible();
   });
+
+  it('[QRY-014] reads a date order in Spanish as earliest or latest first too, never oldest or most recent (PL-11, S3-WK-8)', async () => {
+    const due = renderPage('track = SHOP ORDER BY due DESC', MEMBER, 'es');
+    await screen.findByRole('table');
+    // 'Más reciente' and 'más antiguo' speak of the past; a due date may be next month. The
+    // neuter 'lo' fits a feminine column (Fecha límite) and a masculine one (Creado) alike.
+    expect(screen.getByText('Ordenado por Fecha límite, lo más tardío primero')).toBeVisible();
+    due.unmount();
+    renderPage('track = SHOP ORDER BY created ASC', MEMBER, 'es');
+    await screen.findByRole('table');
+    expect(screen.getByText('Ordenado por Creado, lo más temprano primero')).toBeVisible();
+  });
 });
 
 // A start, due or custom date cell reads in the person's locale and on its calendar day, as the
@@ -383,6 +400,46 @@ describe('date cells in the person’s locale (T-240)', () => {
   it('[QRY-014] [NFR-006] in Spanish', () => {
     renderGrid('es');
     expect(cells()).toEqual(['1 oct 2026', '13 oct 2026', '2 nov 2026', '13 oct 2026, 2:00']);
+  });
+
+  // Created and Updated give the summary the room their time took (TR-8, PL-10); a custom
+  // date-and-time field keeps its time in view, since someone chose it.
+  it('[QRY-014] [NFR-006] shows a ticket’s Created and Updated as a day, the time in its words and tooltip (TR-8, PL-10)', () => {
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={MEMBER}>
+          <ResultGrid
+            tickets={[
+              {
+                ...(TICKETS[0] as SearchTicket),
+                createdAt: '2026-10-13T09:00:00Z',
+                // 05:30 on the 14th by UTC's clock is still the 13th in Los Angeles.
+                updatedAt: '2026-10-14T05:30:00Z',
+                fields: { '51': '2026-10-13T09:00:00Z' },
+              },
+            ]}
+            columns={['summary', 'createdAt', 'updatedAt', 'cf[51]']}
+            fields={[{ id: 51, name: 'Cut-over', type: 'datetime' }]}
+            client={fakeSearchClient()}
+            onSaved={() => {}}
+          />
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    const [created, updated, cutOver] = within(row('SHOP-41')).getAllByRole('cell').slice(1);
+    if (!created || !updated || !cutOver) throw new Error('Missing cells');
+    const shown = (cell: HTMLElement) =>
+      Array.from(cell.querySelectorAll('[aria-hidden="true"]'), (part) => part.textContent);
+    expect(shown(created)).toEqual(['Oct 13, 2026']);
+    expect(shown(updated)).toEqual(['Oct 13, 2026']);
+    // A screen reader hears the whole moment, and a pointer resting on the day shows it.
+    expect(within(updated).getByText('Oct 13, 2026, 10:30 PM')).toHaveClass('visually-hidden');
+    const moment = updated.querySelector('time');
+    expect(moment).toHaveAttribute('datetime', '2026-10-14T05:30:00Z');
+    expect(moment).toHaveAttribute('title', 'Oct 13, 2026, 10:30 PM');
+    expect(created.querySelector('time')).toHaveAttribute('title', 'Oct 13, 2026, 2:00 AM');
+    expect(cutOver.querySelector('.search-cell-value')).toHaveTextContent('Oct 13, 2026, 2:00 AM');
+    expect(cutOver.querySelector('time')).toBeNull();
   });
 });
 

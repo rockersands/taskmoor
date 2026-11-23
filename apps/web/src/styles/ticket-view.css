@@ -418,14 +418,22 @@
   outline-offset: -2px;
 }
 
-/* On a phone the tabs sit closer, so the four fit a phone's width in English. */
+/*
+ * On a phone the tabs sit closer, and a label of several words may take two lines rather than
+ * push the row past the card's edge, so the four fit in English and in Spanish and no whole label
+ * sits under the fade (T-359).
+ */
 @media (max-width: 767px) {
   .ticket-tabs {
     gap: 0;
   }
 
   .ticket-tab {
+    flex: 0 1 auto;
+    min-width: min-content;
     padding: 0 var(--space-2);
+    white-space: normal;
+    line-height: 1.2;
   }
 }
 

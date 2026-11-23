@@ -67,6 +67,7 @@ export function DashboardsPage({ client = dashboardClient }: DashboardsPageProps
         titleId={`${id}-title`}
         title={t('nav.dashboards')}
         purpose={t('purpose.dashboards')}
+        about={t('about.dashboards')}
       />
       <form
         className="glass-card reports-controls"

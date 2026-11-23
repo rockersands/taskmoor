@@ -351,7 +351,8 @@ shipped, to the release's name, with the notice under it. The page shows:
   tracks** with its date, each read in your language as the list reads it (**Dec 1, 2026**). A
   release shipped with no release date shipped on the day its shipping fell on your clock, the
   same day the list and its report say;
-- **Progress**: its tickets by stage, each number opening the search that finds them;
+- **Progress**: its tickets by stage, each number opening the search that finds them. A release
+  no ticket targets yet has no Progress: its Tickets say so;
 - **Warnings**, such as open tickets past the release date or open tickets nobody is assigned
   to, each with **Show these tickets**. When its date differs from its release across tracks' it
   says it is out of step, and the track's administrators get **Align to** that date, which is an

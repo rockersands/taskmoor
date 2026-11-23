@@ -185,6 +185,75 @@ test('[CORE-033] drags a checklist item by its grip to another place (TT-5)', as
   await expect.poll(order).toEqual(['Third', 'First', 'Second']);
 });
 
+test('[CORE-033] lines its items up, and on a phone gives each two rows with More (S3-WK-2, PL-44)', async ({
+  context,
+  page,
+}) => {
+  const here = await makeTicket(context.request, `Rows ${Date.now()}`);
+  await open(page, here.key);
+  const section = page.getByRole('region', { name: 'Checklists' });
+  await section.getByRole('button', { name: 'Add a checklist' }).click();
+  await page.keyboard.type('Before it ships');
+  await page.keyboard.press('Enter');
+  const field = section.getByRole('textbox', { name: 'Add an item to Before it ships' });
+  for (const text of ['Tried on an old phone', 'Tried with no connection', 'Tried offline']) {
+    await field.fill(text);
+    await page.keyboard.press('Enter');
+    await expect(section.getByRole('checkbox', { name: text })).toBeVisible();
+  }
+  const items = section.locator('.checklist-item');
+  const lefts = (selector: string) =>
+    items.evaluateAll(
+      (rows, inner) =>
+        rows.map((row) => Math.round(row.querySelector(inner)?.getBoundingClientRect().left ?? -1)),
+      selector,
+    );
+  // Every row's grip and state start at one line, whichever moves the row offers.
+  for (const selector of ['.checklist-grip', 'select']) {
+    expect(new Set(await lefts(selector)).size).toBe(1);
+  }
+  const phone = await page.evaluate(() => matchMedia('(max-width: 40rem)').matches);
+  if (!phone) {
+    await expect(
+      section.getByRole('button', { name: 'Move down Tried on an old phone' }),
+    ).toBeVisible();
+    // The names share one width, and the middle item's six controls leave none of them a few
+    // letters wide: they go under the names where the column is narrow.
+    const names = await items.evaluateAll((rows) =>
+      rows.map((row) =>
+        Math.round(row.querySelector('.checklist-item-text')?.getBoundingClientRect().width ?? 0),
+      ),
+    );
+    expect(new Set(names).size).toBe(1);
+    expect(Math.min(...names)).toBeGreaterThanOrEqual(16 * 16);
+    return;
+  }
+  // On a phone: the name, then grip, state and More on one row; the rest is in More.
+  await expect(section.getByRole('button', { name: /^Move / })).toHaveCount(0);
+  for (const row of await items.all()) {
+    const tops = await row.evaluate((li) =>
+      ['.checklist-grip', 'select', '.checklist-item-menu button'].map((s) =>
+        Math.round(li.querySelector(s)?.getBoundingClientRect().top ?? -1),
+      ),
+    );
+    expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(2);
+  }
+  const more = section.getByRole('button', { name: 'More options for Tried on an old phone' });
+  await more.click();
+  await page.getByRole('menuitem', { name: 'Move down' }).click();
+  await expect(more).toBeFocused();
+  const order = () =>
+    section
+      .getByRole('checkbox')
+      .evaluateAll((boxes) =>
+        boxes.map((box) => (box as HTMLInputElement).labels?.[0]?.textContent),
+      );
+  await expect
+    .poll(order)
+    .toEqual(['Tried with no connection', 'Tried on an old phone', 'Tried offline']);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test('[NTF-014] a section hides its text while a comment is written, and reads back closed (TT-1)', async ({
   context,
   page,

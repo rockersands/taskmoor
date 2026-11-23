@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
-import { gripsTooSmall, onARealTouchScreen } from '../../test/touch';
+import { gripsTooSmall, onARealTouchScreen, tooSmallForAFinger } from '../../test/touch';
 import { ChecklistsPanel } from './ChecklistsPanel';
 import { fakeToolsClient, STARTING_CHECKLISTS } from './fixtures';
 
@@ -131,6 +131,123 @@ export const GripsOnATouchScreen: Story = {
   play: async ({ canvasElement }) => {
     await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
     await expect(await gripsTooSmall(canvasElement, ['.checklist-grip'])).toEqual([]);
+  },
+};
+
+/** Where the left edge of each item's `selector` is, rounded to a pixel. */
+const lefts = (root: Element, selector: string) =>
+  Array.from(root.querySelectorAll('.checklist-item'), (row) =>
+    Math.round(row.querySelector(selector)?.getBoundingClientRect().left ?? -1),
+  );
+
+/**
+ * Every item's grip and state start at one line, and the names share one width of at least 16rem,
+ * never the few letters a middle item's buttons would leave them (S3-WK-2). `beside` says whether
+ * each item's controls sit beside its name, or on a row of their own under it.
+ */
+async function itemsLineUp(canvasElement: HTMLElement, beside: boolean) {
+  const canvas = within(canvasElement);
+  await canvas.findByRole('button', { name: 'Move down Write the notes' });
+  // The first has only Move down, the last only Move up, the others both.
+  await expect(canvas.getAllByRole('button', { name: /^Move (up|down) / })).toHaveLength(8);
+  for (const selector of ['.checklist-grip', 'select']) {
+    const found = lefts(canvasElement, selector);
+    await expect(found).toHaveLength(5);
+    await expect(new Set(found).size, `${selector}: ${found.join()}`).toBe(1);
+  }
+  const rows = Array.from(canvasElement.querySelectorAll('.checklist-item'), (row) => ({
+    name: (row.querySelector('.checklist-item-text') as Element).getBoundingClientRect(),
+    controls: (row.querySelector('.checklist-item-controls') as Element).getBoundingClientRect(),
+  }));
+  const widths = rows.map(({ name }) => Math.round(name.width));
+  await expect(new Set(widths).size, widths.join()).toBe(1);
+  await expect(Math.min(...widths), widths.join()).toBeGreaterThanOrEqual(16 * 16);
+  for (const { name, controls } of rows) {
+    if (beside) await expect(controls.top).toBeLessThan(name.bottom);
+    else await expect(controls.top).toBeGreaterThanOrEqual(Math.floor(name.bottom));
+  }
+}
+
+/**
+ * At a ticket's width on a desktop the items line up (S3-WK-2), and each item's controls take a
+ * row under its name, which keeps the list's whole width: beside the names, a middle item's six
+ * controls would leave them a few letters wide.
+ */
+export const ItemsInLine: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 600 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    await itemsLineUp(canvasElement, false);
+  },
+};
+
+/** Where the checklist is wide, the controls sit beside the names, still in line (S3-WK-2). */
+export const ItemsInLineWhenWide: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 960 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    await itemsLineUp(canvasElement, true);
+  },
+};
+
+/**
+ * On a phone an item takes two rows (PL-44, T-268): its name, then its grip, its state and More,
+ * which holds Edit, the moves and Remove; the checklist's own buttons stay beside its name. Every
+ * control is a finger's size, and nothing goes sideways.
+ */
+export const ItemsOnAPhone: Story = {
+  tags: ['touch'],
+  parameters: {
+    viewport: {
+      options: { phone360: { name: 'Phone', styles: { width: '360px', height: '740px' } } },
+    },
+  },
+  globals: { viewport: { value: 'phone360', isRotated: false } },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('button', { name: 'More options for Write the notes' });
+    await expect(window.innerWidth).toBe(360);
+    await expect(canvas.queryByRole('button', { name: /^Move / })).toBeNull();
+    for (const row of canvasElement.querySelectorAll('.checklist-item')) {
+      const name = (row.querySelector('.checklist-item-text') as Element).getBoundingClientRect();
+      const tops = ['.checklist-grip', 'select', '.checklist-item-menu button'].map((selector) =>
+        Math.round((row.querySelector(selector) as Element).getBoundingClientRect().top),
+      );
+      // One row of controls, under the name.
+      await expect(Math.max(...tops) - Math.min(...tops), tops.join()).toBeLessThanOrEqual(2);
+      await expect(Math.min(...tops)).toBeGreaterThanOrEqual(Math.floor(name.bottom));
+    }
+    await expect(
+      tooSmallForAFinger(canvasElement, [
+        '.checklist-item-menu button',
+        '.checklist-item select',
+        '.checklist-actions button',
+      ]),
+    ).toEqual([]);
+    // The checklist's own Remove stays beside its name, in no menu, since it asks first (T-268).
+    const remove = canvas.getByRole('button', { name: 'Remove the checklist Before release' });
+    await expect(remove.closest('.checklist-item, [role="menu"]')).toBeNull();
+    const page = canvasElement.ownerDocument.documentElement;
+    await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+    // More holds the rest, the first item's without Move up.
+    await userEvent.click(canvas.getByRole('button', { name: 'More options for Write the notes' }));
+    const menu = await canvas.findByRole('menu', { name: 'More options for Write the notes' });
+    await expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Edit', 'Move down', 'Remove']);
   },
 };
 

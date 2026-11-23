@@ -186,6 +186,16 @@ export const FitsTheCardAt1280: Story = {
       }
     }
     await expect(cellsOf(table, 'assignee')[2]).toHaveTextContent('Unassigned');
+    // Updated shows its day, so the summary has the room its time took; the whole moment is in
+    // the cell's words and its tooltip (TR-8, PL-10).
+    const updated = cellsOf(table, 'updatedAt')[0];
+    await expect(updated?.querySelector('[aria-hidden="true"]')).toHaveTextContent(
+      /^Aug 29, 2026$/,
+    );
+    await expect(updated?.querySelector('time')).toHaveAttribute(
+      'title',
+      expect.stringMatching(/^Aug 29, 2026, 12:00\sPM$/),
+    );
     // A pencil sits in its own cell with room before the next column's value.
     const pencil = canvas.getByRole('button', { name: 'Edit Assignee of MOB-2' });
     const next = cellsOf(table, 'priority')[0]?.querySelector('.search-cell-value');
@@ -193,6 +203,18 @@ export const FitsTheCardAt1280: Story = {
     await expect(
       next.getBoundingClientRect().left - pencil.getBoundingClientRect().right,
     ).toBeGreaterThanOrEqual(32);
+    // And it sits by the value it changes, not across the cell by the next column (PL-10).
+    for (const column of ['assignee', 'priority']) {
+      for (const cell of cellsOf(table, column)) {
+        const value = cell.querySelector('.search-cell-value');
+        const edit = cell.querySelector('.search-cell-edit');
+        if (!value || !edit) throw new Error(`No value or pencil in ${column}`);
+        await expect(
+          edit.getBoundingClientRect().left - value.getBoundingClientRect().right,
+          `${column}: ${value.textContent}`,
+        ).toBeLessThanOrEqual(12);
+      }
+    }
   },
 };
 

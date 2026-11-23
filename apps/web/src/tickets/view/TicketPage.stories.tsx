@@ -7,6 +7,7 @@ import * as Y from 'yjs';
 import { MEMBER } from '../../admin/fixtures';
 import { fakeAttachmentClient } from '../../attachments/fixtures';
 import { fakeCommentClient } from '../../comments/fixtures';
+import { I18nProvider } from '../../i18n/I18nProvider';
 import type { Connect } from '../../richtext/CollaborativeEditor';
 import { router } from '../../routing/router';
 import { SessionProvider } from '../../session/SessionProvider';
@@ -321,6 +322,56 @@ export const ActivityTabsOnOneRow: Story = {
     }
     await fitsPhoneWidth(canvas);
   },
+};
+
+/** A phone 360 px wide, the narrowest the app is made for (ADR-030). */
+const PHONE_360 = {
+  viewport: {
+    options: { phone360: { name: 'Phone', styles: { width: '360px', height: '740px' } } },
+  },
+};
+
+/** The Activity tabs fit the row, so none is cut and no whole label sits under the fade. */
+const tabsFit = async (canvasElement: HTMLElement, all: string) => {
+  const canvas = within(canvasElement);
+  await canvas.findByRole('tab', { name: all });
+  const strip = canvas.getByRole('tablist');
+  await expect(strip.scrollWidth).toBeLessThanOrEqual(strip.clientWidth);
+  await expect(strip).toHaveAttribute('data-more', 'none');
+  const right = strip.getBoundingClientRect().right;
+  for (const tab of canvas.getAllByRole('tab')) {
+    await expect(tab.getBoundingClientRect().right, tab.textContent ?? '').toBeLessThanOrEqual(
+      right + 0.5,
+    );
+  }
+};
+
+/**
+ * On a 360 px phone the four Activity tabs fit the card (the third sweep's phone Activity tabs):
+ * 'All' is whole and clear, not faded at the row's edge as if it were disabled.
+ */
+export const ActivityTabsFitAPhone: Story = {
+  tags: ['touch'],
+  parameters: PHONE_360,
+  globals: { viewport: { value: 'phone360', isRotated: false } },
+  beforeEach: onARealTouchScreen,
+  play: async ({ canvasElement }) => tabsFit(canvasElement, 'All'),
+};
+
+/** The same in Spanish, whose 'Registros de tiempo' takes two lines rather than run off the card. */
+export const ActivityTabsFitAPhoneInSpanish: Story = {
+  tags: ['touch'],
+  parameters: PHONE_360,
+  globals: { viewport: { value: 'phone360', isRotated: false } },
+  beforeEach: onARealTouchScreen,
+  decorators: [
+    (Story) => (
+      <I18nProvider locale="es">
+        <Story />
+      </I18nProvider>
+    ),
+  ],
+  play: async ({ canvasElement }) => tabsFit(canvasElement, 'Todo'),
 };
 
 /** The status menu says where the ticket is now, above the places it can go (PL-47). */

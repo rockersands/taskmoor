@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
+import { MEMBER } from '../admin/fixtures';
+import { SessionProvider } from '../session/SessionProvider';
 import { fakeSavedSearchClient } from './fixtures';
 import { SavedSearchBar } from './SavedSearchBar';
 
@@ -48,6 +50,38 @@ export const NothingOpen: Story = {
     await userEvent.selectOptions(list, '1');
     await userEvent.click(canvas.getByRole('button', { name: 'Open' }));
     await expect(args.onOpen).toHaveBeenCalled();
+  },
+};
+
+/**
+ * Starred and subscribed (PL-32): both buttons filled in the accent, with a filled star and a tick,
+ * so the state reads apart from the plain ✉ Subscribe and ☆ Star of a search that is neither.
+ */
+export const StarredAndSubscribed: Story = {
+  args: {
+    client: { ...client, subscribedTo: async () => true },
+    opened: client.saved[0] ?? null,
+  },
+  decorators: [
+    (Story) => (
+      <SessionProvider session={MEMBER}>
+        <Story />
+      </SessionProvider>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const subscribed = await canvas.findByRole('button', { name: 'Subscribed' });
+    const star = canvas.getByRole('button', { name: 'Star' });
+    const share = canvas.getByRole('button', { name: 'Share' });
+    for (const on of [subscribed, star]) {
+      await expect(on).toHaveAttribute('aria-pressed', 'true');
+      await expect(getComputedStyle(on).backgroundColor).not.toBe(
+        getComputedStyle(share).backgroundColor,
+      );
+    }
+    await expect(star).toHaveTextContent('★');
+    await expect(subscribed).toHaveTextContent('✓');
   },
 };
 

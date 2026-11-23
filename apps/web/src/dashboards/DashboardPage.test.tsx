@@ -413,7 +413,9 @@ describe('a dashboard (M1-064)', () => {
     });
     const who = await screen.findByRole('combobox', { name: 'Who sees it' });
     expect(who).toHaveDisplayValue('Only me');
-    await user.click(screen.getByRole('button', { name: 'Make it everyone’s home' }));
+    // Beside 'Only me', the button says before the press that it shares the dashboard.
+    expect(screen.queryByRole('button', { name: 'Make it everyone’s home' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Share it and make it everyone’s home' }));
     expect(await screen.findByRole('status')).toHaveTextContent(
       'It is everyone’s home dashboard now, so everyone signed in sees it.',
     );
@@ -434,7 +436,7 @@ describe('a dashboard (M1-064)', () => {
     // Its owner saves it in another tab meanwhile: the share goes out with a stale version.
     const stored = client.dashboards[0];
     if (stored) stored.version = 9;
-    await user.click(screen.getByRole('button', { name: 'Make it everyone’s home' }));
+    await user.click(screen.getByRole('button', { name: 'Share it and make it everyone’s home' }));
     expect(client.defaultId).toBe(5);
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Someone changed this dashboard meanwhile. Reload it and try again.',
