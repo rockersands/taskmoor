@@ -384,6 +384,46 @@ describe('date cells in the person’s locale (T-240)', () => {
     renderGrid('es');
     expect(cells()).toEqual(['1 oct 2026', '13 oct 2026', '2 nov 2026', '13 oct 2026, 2:00']);
   });
+
+  // Created and Updated give the summary the room their time took (TR-8, PL-10); a custom
+  // date-and-time field keeps its time in view, since someone chose it.
+  it('[QRY-014] [NFR-006] shows a ticket’s Created and Updated as a day, the time in its words and tooltip (TR-8, PL-10)', () => {
+    render(
+      <I18nProvider locale="en">
+        <SessionProvider session={MEMBER}>
+          <ResultGrid
+            tickets={[
+              {
+                ...(TICKETS[0] as SearchTicket),
+                createdAt: '2026-10-13T09:00:00Z',
+                // 05:30 on the 14th by UTC's clock is still the 13th in Los Angeles.
+                updatedAt: '2026-10-14T05:30:00Z',
+                fields: { '51': '2026-10-13T09:00:00Z' },
+              },
+            ]}
+            columns={['summary', 'createdAt', 'updatedAt', 'cf[51]']}
+            fields={[{ id: 51, name: 'Cut-over', type: 'datetime' }]}
+            client={fakeSearchClient()}
+            onSaved={() => {}}
+          />
+        </SessionProvider>
+      </I18nProvider>,
+    );
+    const [created, updated, cutOver] = within(row('SHOP-41')).getAllByRole('cell').slice(1);
+    if (!created || !updated || !cutOver) throw new Error('Missing cells');
+    const shown = (cell: HTMLElement) =>
+      Array.from(cell.querySelectorAll('[aria-hidden="true"]'), (part) => part.textContent);
+    expect(shown(created)).toEqual(['Oct 13, 2026']);
+    expect(shown(updated)).toEqual(['Oct 13, 2026']);
+    // A screen reader hears the whole moment, and a pointer resting on the day shows it.
+    expect(within(updated).getByText('Oct 13, 2026, 10:30 PM')).toHaveClass('visually-hidden');
+    const moment = updated.querySelector('time');
+    expect(moment).toHaveAttribute('datetime', '2026-10-14T05:30:00Z');
+    expect(moment).toHaveAttribute('title', 'Oct 13, 2026, 10:30 PM');
+    expect(created.querySelector('time')).toHaveAttribute('title', 'Oct 13, 2026, 2:00 AM');
+    expect(cutOver.querySelector('.search-cell-value')).toHaveTextContent('Oct 13, 2026, 2:00 AM');
+    expect(cutOver.querySelector('time')).toBeNull();
+  });
 });
 
 describe('result columns (M1-042)', () => {
