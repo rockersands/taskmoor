@@ -504,7 +504,18 @@ export class VirtualClock {
 }
 
 // ---------------------------------------------------------------------------------------------
-// What a live test measured, for `pnpm ai:live` (T-333) to report.
+// The live tests, which run only under `pnpm ai:live` (T-333), and what they measured.
+
+/**
+ * The key a live test runs with: `TASKMOOR_AI_TEST_KEY`, but only when `pnpm ai:live` started
+ * the run, which also names the file for its results (`TASKMOOR_AI_LIVE_RESULTS`). A key left
+ * in the environment alone never makes `pnpm verify` call a live model: only the command checks
+ * the key for free, prices the run and asks first.
+ */
+export function liveTestKey(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const key = env.TASKMOOR_AI_TEST_KEY;
+  return key && env.TASKMOOR_AI_LIVE_RESULTS ? key : undefined;
+}
 
 /**
  * Appends one measurement of a live test as a JSON line to the file `TASKMOOR_AI_LIVE_RESULTS`

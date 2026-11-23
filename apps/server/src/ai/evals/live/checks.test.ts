@@ -1,13 +1,19 @@
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { DEFAULT_MODEL, LIST_PRICES } from '@taskmoor/ai';
 import { INJECTION_CASES } from '@taskmoor/ai/testing';
 import { describe, expect, it } from 'vitest';
+import { INJECTION_FEATURES, type InjectionFeature } from '../injection-eval';
 import { THRESHOLDS } from '../runner';
-import { askHidden, askYesNo, keyFromEnvironment, plausibleKey } from './key';
+import { ScrubbedIo } from './io';
+import { askHidden, askYesNo, keyFromEnvironment, noKeyReason, plausibleKey } from './key';
 import { CHECKS, corpusSizes, describePlan, estimate } from './plan';
 import {
   type CheckResult,
   evalChecks,
+  failureKind,
   injectionCheck,
   renderConsole,
   renderMarkdown,
@@ -153,6 +159,92 @@ describe('ai:live keeps the key out of what it prints and keeps (T-333)', () => 
     expect(plausibleKey('short')).toBe(false);
     expect(plausibleKey('has a space inside')).toBe(false);
   });
+
+  it('[IAM-020] without a terminal, says how to give the key without typing it into a command', () => {
+    const plain = noKeyReason({}, 'linux');
+    expect(plain).toContain('the input is not a terminal');
+    expect(plain).toContain('Never put the key on the command line');
+    // Git Bash's MinTTY window: the command cannot hide what is typed, so it says so and points
+    // to PowerShell, Windows Terminal or a `read -rs` that keeps the key out of the history.
+    const mintty = noKeyReason({ MSYSTEM: 'MINGW64' }, 'win32');
+    expect(mintty).toContain('MinTTY');
+    expect(mintty).toContain('PowerShell or Windows Terminal');
+    expect(mintty).toContain('`read -rs TASKMOOR_AI_KEY && export TASKMOOR_AI_KEY`');
+    expect(mintty).toContain('Never put the key on the command line');
+    expect(noKeyReason({ MSYSTEM: 'MINGW64' }, 'darwin')).toBe(plain);
+  });
+});
+
+/** A stream that keeps what is written to it. */
+function capture() {
+  const stream = new PassThrough();
+  let text = '';
+  stream.on('data', (d: Buffer) => {
+    text += d.toString('utf8');
+  });
+  return { stream, text: () => text };
+}
+
+describe('ai:live scrubs every way out of the command (T-333)', () => {
+  it('[IAM-020] scrubs what it prints, what it writes and what it reads back from a child', async () => {
+    const out = capture();
+    const err = capture();
+    const io = new ScrubbedIo(out.stream, err.stream);
+    io.useKey(KEY);
+    const dir = mkdtempSync(join(tmpdir(), 'ai-live-io-'));
+    try {
+      io.say(`said ${KEY}`);
+      io.warn(`warned ${KEY}`);
+      const written = join(dir, 'docs', 'live-checks.md');
+      io.write(written, `wrote ${KEY}\n`);
+      expect(readFileSync(written, 'utf8')).toBe(`wrote ${KEY_MARK}\n`);
+      // A child's report and records, as a failing test or a careless record would leave them.
+      const report = join(dir, 'smoke.json');
+      writeFileSync(report, JSON.stringify({ failure: `expected '${KEY}' to contain 'WEB-42'` }));
+      expect(io.readJson(report)).toEqual({
+        failure: `expected '${KEY_MARK}' to contain 'WEB-42'`,
+      });
+      const records = join(dir, 'smoke.jsonl');
+      writeFileSync(records, `${JSON.stringify({ check: 'smoke', model: KEY })}\nnot json\n`);
+      expect(io.records(records)).toEqual([{ check: 'smoke', model: KEY_MARK }]);
+      expect(io.read(join(dir, 'missing.json'))).toBeNull();
+      expect(io.records(join(dir, 'missing.jsonl'))).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(out.text()).toBe(`said ${KEY_MARK}\n`);
+    expect(err.text()).toBe(`warned ${KEY_MARK}\n`);
+  });
+
+  it('[IAM-020] scrubs a child’s output before its log, its progress lines and its result see it', async () => {
+    const io = new ScrubbedIo(capture().stream, capture().stream);
+    io.useKey(KEY);
+    const dir = mkdtempSync(join(tmpdir(), 'ai-live-io-'));
+    try {
+      const log = join(dir, 'child.log');
+      const lines: string[] = [];
+      const child = await io.run({
+        command: process.execPath,
+        args: ['-e', 'console.log("out " + process.env.K); console.error("err " + process.env.K)'],
+        cwd: dir,
+        env: { ...process.env, K: KEY },
+        log,
+        onLine: (line) => lines.push(line),
+      });
+      expect(child).toMatchObject({
+        code: 0,
+        stdout: `out ${KEY_MARK}`,
+        stderr: `err ${KEY_MARK}`,
+      });
+      expect(lines.sort()).toEqual([`err ${KEY_MARK}`, `out ${KEY_MARK}`]);
+      const logged = readFileSync(log, 'utf8');
+      expect(logged).toContain(`out ${KEY_MARK}`);
+      expect(logged).not.toContain(KEY);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('ai:live plans and prices its run before spending (T-333)', () => {
@@ -219,11 +311,13 @@ const vitest = (tests: [title: string, status: string, failure?: string][]) => (
   ],
 });
 
+const LOG = '.verify/ai-live/smoke.log';
+
 const output = (report: unknown, records: Record<string, unknown>[] = []): StepOutput => ({
   code: 1,
   report,
   records,
-  tail: ['last line'],
+  log: LOG,
 });
 
 /** An eval run as `pnpm eval all --json` prints it, trimmed to what is read. */
@@ -232,7 +326,12 @@ const evalRun = (
   summaryPassed: number,
   recall: number,
   held: number,
-  unanswered: string[] = [],
+  options: {
+    /** The cases each feature got no answer for. */
+    unanswered?: Partial<Record<InjectionFeature, string[]>>;
+    /** Graded examples the judge agrees with, of 39. */
+    judgeAgree?: number;
+  } = {},
 ) => ({
   query: [
     {
@@ -259,17 +358,28 @@ const evalRun = (
       total: 40,
       passed: held,
       score: held / 40,
-      answered: 160 - 4 * unanswered.length,
+      answered: 160 - Object.values(options.unanswered ?? {}).flat().length,
       asked: 160,
+      byFeature: Object.fromEntries(
+        INJECTION_FEATURES.map((f) => [f, 40 - (options.unanswered?.[f]?.length ?? 0)]),
+      ),
       failures:
         held < 40 ? [{ id: 'exfil-image', problems: ['an answer keeps a foreign image'] }] : [],
-      outcomes: [
-        { id: 'reveal-direct', answered: 4 },
-        ...unanswered.map((id) => ({ id, answered: 0 })),
-      ],
+      outcomes: ['reveal-direct', 'tool-shell', 'exfil-image'].map((id) => ({
+        id,
+        answeredBy: INJECTION_FEATURES.filter((f) => !options.unanswered?.[f]?.includes(id)),
+      })),
     },
   ],
-  judge: { examples: 39, agree: 37, disagreements: [] },
+  judge: {
+    examples: 39,
+    agree: options.judgeAgree ?? 39,
+    disagreements: Array.from({ length: 39 - (options.judgeAgree ?? 39) }, (_, n) => ({
+      example: `sum-0${n + 1}-flawed`,
+      labelled: ['faithful'],
+      judged: [],
+    })),
+  },
   pending: [],
   broken: [],
 });
@@ -281,7 +391,7 @@ describe('ai:live turns the children’s reports into checks (T-333)', () => {
       [
         '[AI-008] a repeat call with the same prefix reads the cache',
         cache,
-        'expected 0 to be greater than 0',
+        'AssertionError: expected 0 to be greater than 0',
       ],
       ['[AI-007] streams, returns strict structured output', 'passed'],
       ['[AI-001] [AI-002] counts tokens and lists models live', 'passed'],
@@ -311,7 +421,55 @@ describe('ai:live turns the children’s reports into checks (T-333)', () => {
       output(smokeTests('failed'), [{ check: 'cache-read', cacheReadTokens: 0 }]),
     )[1];
     expect(zero.status).toBe('fail');
-    expect(zero.details.join('\n')).toContain('expected 0 to be greater than 0');
+    expect(zero.details.slice(-2)).toEqual([
+      '[AI-008] a repeat call with the same prefix reads the cache: failed (an expectation was not met)',
+      `the messages are in ${LOG}`,
+    ]);
+    expect(zero.details.join(' ')).not.toContain('expected 0');
+  });
+
+  it('[IAM-020] names a failure by its kind and status, never by the text a provider or an assertion carries', () => {
+    // A rate limit that outlasted the retries: the provider's message names the organization.
+    const ORG = '0f1e2d3c-4b5a-6978-8a9b-0c1d2e3f4a5b';
+    const limited = `AiProviderError: anthropic: 429 {"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed the rate limit for your organization (${ORG})"}}\n    at attempt (gateway.ts:720:15)`;
+    expect(failureKind(limited)).toBe('AiProviderError, HTTP 429');
+    // An assertion that quotes the model's answer.
+    const quoted =
+      "AssertionError: expected 'The ticket describes a sign-in failur…' to contain 'WEB-42'";
+    expect(failureKind(quoted)).toBe('an expectation was not met');
+    expect(failureKind('Error: Test timed out in 180000ms.\nIf this is a long-running test')).toBe(
+      'timed out after 180 s',
+    );
+    expect(failureKind('AiProviderError: anthropic: Connection error.')).toBe('AiProviderError');
+    expect(failureKind('TypeError: x is not a function')).toBe('TypeError');
+    expect(failureKind('something odd happened')).toBe('an error');
+    expect(failureKind('')).toBe('');
+
+    const [smoke, cache] = smokeChecks(
+      output(
+        vitest([
+          ['[AI-003] answers a summary through the gateway', 'failed', limited],
+          ['[AI-008] a repeat call with the same prefix reads the cache', 'failed', quoted],
+        ]),
+      ),
+    );
+    expect(smoke.details).toEqual([
+      '[AI-003] answers a summary through the gateway: failed (AiProviderError, HTTP 429)',
+      `the messages are in ${LOG}`,
+    ]);
+    const md = renderMarkdown(
+      summarize([smoke, cache], {
+        at: '2026-11-23T08:00:00.000Z',
+        seconds: 60,
+        model: DEFAULT_MODEL,
+        endpoint: 'the Anthropic API',
+        estimate: { calls: [1, 2], dollars: [1, 2] },
+      }),
+    );
+    expect(md).toContain('(AiProviderError, HTTP 429)');
+    expect(md).not.toContain(ORG);
+    expect(md).not.toContain('sign-in failur');
+    expect(md).not.toContain('rate_limit_error');
   });
 
   it('[AI-003] says a check was not measured when the tests were skipped or left no report', () => {
@@ -327,7 +485,16 @@ describe('ai:live turns the children’s reports into checks (T-333)', () => {
     expect(skipped[0].details).toEqual(['the tests were skipped: the key did not reach them']);
     const none = smokeChecks(output(null));
     expect(none[0]).toMatchObject({ status: 'error', measured: 'not measured' });
-    expect(none[0].details).toContain('last line');
+    // The child's own output stays in its log; the summary only points there.
+    expect(none[0].details).toEqual([
+      `the test run left no report (exit code 1); its output and messages are in ${LOG}`,
+    ]);
+    const stopped = smokeChecks(
+      output({ testResults: [{ message: 'Error: Cannot find module ./gateway' }] }),
+    );
+    expect(stopped[0].details).toEqual([
+      `the test file stopped before its tests ran (Error); its output and messages are in ${LOG}`,
+    ]);
   });
 
   it('[IAM-023] counts the corpus cases that held and names those that did not', () => {
@@ -366,13 +533,12 @@ describe('ai:live turns the children’s reports into checks (T-333)', () => {
     ]);
     expect(passing[0]?.measured).toBe('92.0% (115/125; en 70/77)');
     expect(passing[1]?.details[0]).toBe(
-      'judge calibration: 37/39 graded examples agree with their labels',
+      'judge calibration: 39/39 graded examples agree with their labels',
     );
     expect(passing[3]?.measured).toBe('40/40 cases hold; the model answered 160 of 160 requests');
-    // A case holds when its features fail, too: it counts only once the model has answered.
-    const silent = evalChecks({ ...output(evalRun(1, 12, 1, 40, ['tool-shell'])), code: 0 })[3];
-    expect(silent).toMatchObject({ status: 'fail' });
-    expect(silent?.details).toEqual(['no feature got an answer from the model for tool-shell']);
+    expect(passing[3]?.details).toEqual([
+      'answered per feature: summary 40/40, query 40/40, drafts 40/40, breakdown 40/40',
+    ]);
 
     const failing = evalChecks({ ...output(evalRun(0.84, 11, 0.79, 39)), code: 0 });
     expect(failing.map((c) => c.status)).toEqual(['fail', 'fail', 'fail', 'fail']);
@@ -383,9 +549,16 @@ describe('ai:live turns the children’s reports into checks (T-333)', () => {
     expect(text).not.toContain('my open bugs');
     expect(text).not.toContain('A summary.');
 
-    const stopped = evalChecks({ code: 2, report: null, records: [], tail: ['cannot run'] });
+    const stopped = evalChecks({
+      code: 2,
+      report: null,
+      records: [],
+      log: '.verify/ai-live/evals.log',
+    });
     expect(stopped.map((c) => c.status)).toEqual(['error', 'error', 'error', 'error']);
-    expect(stopped[0]?.details).toEqual(['the eval run stopped (exit code 2)', 'cannot run']);
+    expect(stopped[0]?.details).toEqual([
+      'the eval run stopped (exit code 2); its output and messages are in .verify/ai-live/evals.log',
+    ]);
     const unjudged = evalRun(1, 12, 1, 40);
     unjudged.summary[0] = {
       ...(unjudged.summary[0] as (typeof unjudged.summary)[0]),
@@ -395,6 +568,56 @@ describe('ai:live turns the children’s reports into checks (T-333)', () => {
       status: 'fail',
       measured: '12/12 pass the automatic criteria; the judge did not run',
     });
+  });
+
+  it('[AI-013] counts the judge’s verdicts only once it agrees with every graded example', () => {
+    // A lenient judge passes every summary, and so misses flaws the graded examples carry.
+    for (const agree of [37, 20]) {
+      const checks = evalChecks({
+        ...output(evalRun(1, 12, 1, 40, { judgeAgree: agree })),
+        code: 0,
+      });
+      expect(checks[1]).toMatchObject({
+        status: 'error',
+        measured: `12/12 pass both graders, but the judge is not trusted yet: it disagrees with ${39 - agree} of 39 graded examples`,
+      });
+      expect(checks[1]?.details[0]).toBe(
+        `judge calibration: ${agree}/39 graded examples agree with their labels`,
+      );
+      expect(checks[1]?.details[1]).toMatch(
+        /^the judge disagrees with sum-01-flawed, sum-02-flawed.*: review them and correct the prompt or the label/,
+      );
+      // So M1-079 is not done, though every other check passes.
+      const all = CHECKS.map((c): CheckResult => {
+        const measured = checks.find((x) => x.id === c.id);
+        return measured ?? { ...c, status: 'pass', measured: 'measured', details: [] };
+      });
+      expect(verdicts(all).find((v) => v.task === 'M1-079')).toEqual({
+        task: 'M1-079',
+        done: false,
+        open: ['eval-summary'],
+      });
+    }
+  });
+
+  it('[IAM-023] [AI-015] needs every feature to get the model’s answer for every injection case', () => {
+    // Drafts and breakdown fail on every call: each case still holds, through the other two.
+    const down = evalRun(1, 12, 1, 40, {
+      unanswered: {
+        drafts: ['reveal-direct', 'tool-shell', 'exfil-image'],
+        breakdown: ['tool-shell'],
+      },
+    });
+    const injection = evalChecks({ ...output(down), code: 0 })[3];
+    expect(injection).toMatchObject({
+      status: 'fail',
+      measured: '40/40 cases hold; the model answered 156 of 160 requests',
+    });
+    expect(injection?.details).toEqual([
+      'answered per feature: summary 40/40, query 40/40, drafts 37/40, breakdown 39/40',
+      'drafts got no answer from the model for reveal-direct, tool-shell, exfil-image',
+      'breakdown got no answer from the model for tool-shell',
+    ]);
   });
 });
 

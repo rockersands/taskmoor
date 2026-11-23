@@ -57,7 +57,7 @@ Admins may switch any feature to `claude-sonnet-5-5` or `claude-haiku-5-5`, or t
 
 ### 1.3 Default price table for cost tracking (admin-editable)
 
-Anthropic first-party list prices per million tokens, October 2026: `claude-opus-5-5` $4 input, $20 output, $0.20 cache read; `claude-sonnet-5-5` $2 input, $10 output, $0.20 cache read; `claude-haiku-5-5` $0.10 input, $0.50 output for prompts up to 100K tokens ($0.50 and $2.50 beyond). Batch requests cost half. Bedrock and Vertex AI price separately; admins enter their own rates. Treat all figures as defaults to verify at release.
+Anthropic first-party list prices per million tokens, October 2026: `claude-opus-5-5` $4 input, $20 output, $0.20 cache read; `claude-sonnet-5-5` $2 input, $10 output, $0.10 cache read; `claude-haiku-5-5` $0.10 input, $0.50 output for prompts up to 100K tokens ($0.50 and $2.50 beyond). Batch requests cost half. Bedrock and Vertex AI price separately; admins enter their own rates. Treat all figures as defaults to verify at release.
 
 ### 1.4 Gateway pipeline
 

@@ -146,16 +146,34 @@ case holding only once the model has answered); then `pnpm eval all` with `candi
   `TASKMOOR_AI_EVAL_KEY`), or from a terminal question that shows nothing, so it never reaches
   the screen or the shell's history. It stays in the command's memory and reaches each child only
   through that child's environment; every line printed, logged or written is scrubbed of it
-  (`[key]`), and a line holding 16 characters of it is left out.
+  (`[key]`), and a line holding 16 characters of it is left out. Printing, writing, reading a
+  child's files back and running a child all go through one object (`live/io.ts`) with one
+  scrubber, so no path can skip it. Where the input is not a terminal the command does not ask;
+  in Git Bash's MinTTY window, which cannot hide input from it, it says so and points to
+  PowerShell, Windows Terminal or `read -rs`, never to typing the key into a command.
+- **Only `pnpm ai:live` runs the live tests** (review of 2026-11-23): both live files run when
+  `TASKMOOR_AI_TEST_KEY` and `TASKMOOR_AI_LIVE_RESULTS` are set, which only the command does for
+  its children (`liveTestKey`). A key left in the environment no longer makes `pnpm verify` call
+  the API, which would skip the free key check, the estimate and the question.
+- **Ctrl+C** at any point ends with exit code 2 and the status in `.verify/ai-live.json`; before
+  the steps, nothing has been spent.
 - **Before spending:** a free model-list call checks the key and the model; then the plan with a
   rough cost from the corpora's sizes at the price table's list price, and a y/N question
   (`--yes` skips it).
 - **After:** `.verify/ai-live.json` and `docs/ai/live-checks.md` (date, model, each check with
   its threshold, measured value and result, and which of M1-073, M1-074 and M1-079 it closes;
-  no key, header or prompt), the coordinator's lines at the end, exit code 0, 1 when a check
-  fails, 2 when it could not run.
-- **What the injection run counts:** a feature that fails holds too, so `injection-eval.ts` now
-  counts the requests the model answered (`answered` of `asked`, a refusal counting as an
-  answer), and the live check fails a case no feature got an answer for. Duplicates have no such
-  count: where the re-ranking fails, the embedding order stands, so recall@3 measures the
-  feature as people get it.
+  no key, header, prompt, answer or error text: a failure is named by its kind and HTTP status,
+  since a provider's message can carry the organization's id and an assertion's can quote the
+  answer), the coordinator's lines at the end, exit code 0, 1 when a check fails, 2 when it could
+  not run. The steps' full output stays in `.verify/ai-live/*.log`, which git ignores.
+- **What the injection run counts:** a feature that fails holds too, so `injection-eval.ts`
+  records which features the model answered for each case (`answeredBy`, `byFeature`; a refusal
+  counts as an answer), and the live check fails unless every feature got an answer for every
+  case: otherwise the corpus never reached the model through that feature (drafts and breakdown
+  have no other live eval). Duplicates have no such count: where the re-ranking fails, the
+  embedding order stands, so recall@3 measures the feature as people get it.
+- **The judge is trusted only once calibrated:** the summary check counts the judge's verdicts
+  only when it agrees with every graded example (`judge-prompt.md`, "Calibrating the judge");
+  otherwise it is "not measured" and names the disagreements to review, so a lenient judge
+  cannot close M1-079. A judge call that fails is an unreadable verdict, not the end of the eval
+  run, so the measurements already paid for are kept.

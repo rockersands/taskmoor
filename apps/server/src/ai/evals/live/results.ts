@@ -1,3 +1,4 @@
+import { INJECTION_FEATURES } from '../injection-eval';
 import type { EvalRun } from '../runner';
 import { THRESHOLDS } from '../runner';
 import { CHECKS, type CheckId, type CheckSpec, type Task } from './plan';
@@ -5,8 +6,10 @@ import { CHECKS, type CheckId, type CheckSpec, type Task } from './plan';
 /**
  * What `pnpm ai:live` (T-333) makes of its children: each check passed, failed, or could not be
  * measured, with the measured value; which backlog items that closes; and the two written forms,
- * `.verify/ai-live.json` and `docs/ai/live-checks.md`. Built from counts, ids and our own wording
- * only: no prompt, no answer, no key and no request header.
+ * `.verify/ai-live.json` and `docs/ai/live-checks.md`, the second one committed. Built from
+ * counts, ids and our own wording only: no prompt, no answer, no key, no request header and no
+ * error text. A failure is named by its kind and HTTP status; its message, and a child's output,
+ * stay in the step's log under `.verify/ai-live/`, which git ignores.
  */
 
 export type Status = 'pass' | 'fail' | 'error';
@@ -24,8 +27,8 @@ export interface StepOutput {
   report: unknown;
   /** What its tests recorded (`recordLiveResult`), a record a line. */
   records: readonly Record<string, unknown>[];
-  /** The end of its output, scrubbed, for a check it could not measure. */
-  tail: readonly string[];
+  /** Its log (scrubbed, never committed), as the person finds it: where its messages are. */
+  log: string;
 }
 
 const spec = (id: CheckId) => CHECKS.find((c) => c.id === id) as CheckSpec;
@@ -38,10 +41,22 @@ const checkResult = (
 
 const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
 
-/** The first line of a message, at most `max` characters. */
-function short(text: string, max = 200): string {
-  const line = text.split('\n')[0]?.trim() ?? '';
-  return line.length > max ? `${line.slice(0, max - 1)}…` : line;
+/**
+ * A failure in our own words: what kind of error it was and its HTTP status, never its text.
+ * A provider's error message can carry the organization's id and an assertion's can quote the
+ * model's answer, so neither goes beyond the step's log.
+ */
+export function failureKind(message: string): string {
+  const first = message.split('\n')[0]?.trim() ?? '';
+  if (first === '') return '';
+  const timedOut = /^Error: Test timed out in (\d+)ms/.exec(first);
+  if (timedOut) return `timed out after ${Math.round(Number(timedOut[1]) / 1000)} s`;
+  const name = /^((?:[A-Z][A-Za-z]*)?(?:Error|Exception))\b/.exec(first)?.[1];
+  if (!name) return 'an error';
+  if (name === 'AssertionError') return 'an expectation was not met';
+  // The gateway's provider errors read `AiProviderError: <provider>: <status> ...`.
+  const status = /^\w+: [\w-]+: ([1-5]\d\d)\b/.exec(first)?.[1];
+  return status ? `${name}, HTTP ${status}` : name;
 }
 
 function listed(items: readonly string[], max = 15): string {
@@ -68,34 +83,45 @@ function vitestOutcomes(report: unknown): { tests: TestOutcome[]; fileErrors: st
   const tests: TestOutcome[] = [];
   const fileErrors: string[] = [];
   for (const file of files as VitestFile[]) {
-    if (file.message) fileErrors.push(short(file.message));
+    if (file.message) fileErrors.push(failureKind(file.message));
     for (const a of file.assertionResults ?? []) {
       tests.push({
         title: a.title ?? '',
         status: a.status ?? 'unknown',
-        failure: short(a.failureMessages?.[0] ?? ''),
+        failure: failureKind(a.failureMessages?.[0] ?? ''),
       });
     }
   }
   return { tests, fileErrors };
 }
 
+const seeLog = (out: StepOutput) => `its output and messages are in ${out.log}`;
+
 /** Why a group of tests measured nothing; null when it measured something. */
 function unmeasured(out: StepOutput, tests: TestOutcome[], fileErrors: string[]): string[] | null {
   if (out.report === null) {
-    return [`the test run left no report (exit code ${out.code ?? 'none'})`, ...out.tail];
+    return [`the test run left no report (exit code ${out.code ?? 'none'}); ${seeLog(out)}`];
   }
-  if (tests.length === 0) return fileErrors.length > 0 ? fileErrors : ['no test of this check ran'];
+  if (tests.length === 0) {
+    return [
+      fileErrors.length > 0
+        ? `the test file stopped before its tests ran (${fileErrors.join('; ')}); ${seeLog(out)}`
+        : 'no test of this check ran',
+    ];
+  }
   if (tests.every((t) => t.status === 'skipped' || t.status === 'pending')) {
     return ['the tests were skipped: the key did not reach them'];
   }
   return null;
 }
 
-const failed = (tests: TestOutcome[]) =>
-  tests
+/** The tests that did not pass, each with the kind of its failure, and where the messages are. */
+function failed(out: StepOutput, tests: TestOutcome[]): string[] {
+  const lines = tests
     .filter((t) => t.status !== 'passed')
-    .map((t) => `${t.title}: ${t.status}${t.failure ? `: ${t.failure}` : ''}`);
+    .map((t) => `${t.title}: ${t.status}${t.failure ? ` (${t.failure})` : ''}`);
+  return lines.length > 0 ? [...lines, `the messages are in ${out.log}`] : [];
+}
 
 /** M1-073's smoke test and M1-074's cache read, from `packages/ai/src/live.test.ts`. */
 export function smokeChecks(out: StepOutput): [CheckResult, CheckResult] {
@@ -120,7 +146,7 @@ export function smokeChecks(out: StepOutput): [CheckResult, CheckResult] {
       'smoke',
       passed === smoke.length ? 'pass' : 'fail',
       `${passed}/${smoke.length} tests pass${models.length > 0 ? `; answered by ${models.join(', ')}` : ''}`,
-      failed(smoke),
+      failed(out, smoke),
     );
   }
 
@@ -141,7 +167,7 @@ export function smokeChecks(out: StepOutput): [CheckResult, CheckResult] {
               `the first call wrote ${String(record.firstCacheWriteTokens)} and read ${String(record.firstCacheReadTokens)} cached tokens`,
             ]
           : []),
-        ...failed(cache),
+        ...failed(out, cache),
       ],
     );
   }
@@ -187,7 +213,7 @@ export function evalChecks(out: StepOutput): CheckResult[] {
   const run = out.report as Partial<EvalRun> | null;
   const ids: CheckId[] = ['eval-query', 'eval-summary', 'eval-duplicates', 'eval-injection'];
   if (!run || !Array.isArray(run.query)) {
-    const why = [`the eval run stopped (exit code ${out.code ?? 'none'})`, ...out.tail];
+    const why = [`the eval run stopped (exit code ${out.code ?? 'none'}); ${seeLog(out)}`];
     return ids.map((id) => checkResult(id, 'error', 'not measured', why));
   }
   const missing = (id: CheckId) => checkResult(id, 'error', 'not measured', ['no report']);
@@ -210,25 +236,48 @@ export function evalChecks(out: StepOutput): CheckResult[] {
 
   const s = run.summary?.[0];
   const judged = s?.judged === 'judged';
-  const summary = s
-    ? checkResult(
-        'eval-summary',
-        judged && s.score >= THRESHOLDS.summary && broken.length === 0 ? 'pass' : 'fail',
-        judged
-          ? `${s.passed}/${s.total} pass both graders`
-          : `${s.passed}/${s.total} pass the automatic criteria; the judge did not run`,
-        [
-          run.judge
-            ? `judge calibration: ${run.judge.agree}/${run.judge.examples} graded examples agree with their labels`
-            : 'the judge was not calibrated',
-          ...s.failures.map(
-            (f) => `${f.id}: fails ${f.failed.length > 0 ? f.failed.join(', ') : 'a criterion'}`,
-          ),
-          ...broken,
-          ...pending,
-        ],
-      )
-    : missing('eval-summary');
+  // The judge is trusted only once it agrees with every graded example (judge-prompt.md,
+  // "Calibrating the judge"; ADR-107): a lenient judge passes every summary and misses the flaws.
+  const calibration = run.judge ?? null;
+  const trusted =
+    calibration !== null && calibration.examples > 0 && calibration.agree === calibration.examples;
+  const summaryDetails = (): string[] => [
+    calibration
+      ? `judge calibration: ${calibration.agree}/${calibration.examples} graded examples agree with their labels`
+      : 'the judge was not calibrated',
+    ...(calibration && !trusted && calibration.disagreements.length > 0
+      ? [
+          `the judge disagrees with ${listed(calibration.disagreements.map((d) => d.example))}: review them and correct the prompt or the label, with the reason in ADR-107, before its verdicts count`,
+        ]
+      : []),
+    ...(s?.failures ?? []).map(
+      (f) => `${f.id}: fails ${f.failed.length > 0 ? f.failed.join(', ') : 'a criterion'}`,
+    ),
+    ...broken,
+    ...pending,
+  ];
+  const summary = !s
+    ? missing('eval-summary')
+    : !judged
+      ? checkResult(
+          'eval-summary',
+          'fail',
+          `${s.passed}/${s.total} pass the automatic criteria; the judge did not run`,
+          summaryDetails(),
+        )
+      : !trusted
+        ? checkResult(
+            'eval-summary',
+            'error',
+            `${s.passed}/${s.total} pass both graders, but the judge is not trusted yet: it disagrees with ${calibration ? calibration.examples - calibration.agree : 'some'} of ${calibration?.examples ?? 'the'} graded examples`,
+            summaryDetails(),
+          )
+        : checkResult(
+            'eval-summary',
+            s.score >= THRESHOLDS.summary && broken.length === 0 ? 'pass' : 'fail',
+            `${s.passed}/${s.total} pass both graders`,
+            summaryDetails(),
+          );
 
   const d = run.duplicates?.[0];
   const duplicates = d
@@ -246,18 +295,24 @@ export function evalChecks(out: StepOutput): CheckResult[] {
     : missing('eval-duplicates');
 
   const i = run.injection?.[0];
-  // A feature that failed holds too: a case counts once the model has answered at least once.
-  const unanswered = (i?.outcomes ?? []).filter((o) => o.answered === 0).map((o) => o.id);
+  // A feature that failed holds too, so each feature must have got the model's answer for each
+  // case: otherwise the corpus never reached the model through it.
+  const unanswered = INJECTION_FEATURES.map((feature) => ({
+    feature,
+    cases: (i?.outcomes ?? []).filter((o) => !o.answeredBy.includes(feature)).map((o) => o.id),
+  })).filter((gap) => gap.cases.length > 0);
   const injection = i
     ? checkResult(
         'eval-injection',
         i.score >= THRESHOLDS.injection && unanswered.length === 0 ? 'pass' : 'fail',
         `${i.passed}/${i.total} cases hold; the model answered ${i.answered} of ${i.asked} requests`,
         [
+          `answered per feature: ${INJECTION_FEATURES.map((f) => `${f} ${i.total - (unanswered.find((g) => g.feature === f)?.cases.length ?? 0)}/${i.total}`).join(', ')}`,
           ...i.failures.map((f) => `${f.id}: ${f.problems.join('; ')}`),
-          ...(unanswered.length > 0
-            ? [`no feature got an answer from the model for ${listed(unanswered)}`]
-            : []),
+          ...unanswered.map(
+            (gap) =>
+              `${gap.feature} got no answer from the model for ${gap.cases.length === i.total ? 'any case' : listed(gap.cases)}`,
+          ),
         ],
       )
     : missing('eval-injection');
@@ -340,8 +395,9 @@ export function renderMarkdown(s: LiveSummary): string {
     '# Live AI checks',
     '',
     'The last run of `pnpm ai:live` (T-333), written by the command: the checks of M1-073, M1-074',
-    'and M1-079 that need a real model. It holds no key, no request header and no prompt. How to',
-    'run it safely: [README.md](README.md).',
+    'and M1-079 that need a real model. It holds no key, no request header, no prompt, no answer',
+    'and no error text: a failure is named by its kind, and its message is in the step’s log under',
+    '`.verify/ai-live/`. How to run it safely: [README.md](README.md).',
     '',
     `- Run: ${s.at.slice(0, 16).replace('T', ' ')} UTC, took ${took(s.seconds)}`,
     `- Against: ${s.endpoint}, model \`${s.model}\``,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { NOT_CONFIRMED, runAgent } from '../agent';
 import { AiGateway } from '../gateway';
-import { FakeAdapter } from '../testing';
+import { FakeAdapter, FakeProviderFailure } from '../testing';
 import type { AdapterRequest, AdapterResponse } from '../types';
 import { fenceUntrusted, neutraliseTags, screenAnswer } from '../untrusted';
 import { fill, INJECTION_CASES, INJECTION_GOALS, type InjectionCase } from './corpus';
@@ -13,6 +13,7 @@ import {
   injectionTools,
   injectionValues,
   injectionWorld,
+  liveProblems,
   playCase,
   SCREEN,
 } from './harness';
@@ -131,6 +132,21 @@ describe('Prompt-injection corpus (M1-118)', () => {
     expect(problems).toContain('an image from another site stays in the answer');
     expect(problems).toContain('a link to another site is not listed');
     expect(holdProblems(played)).toEqual([]);
+  });
+
+  it('[IAM-023] live, a case the model never answered does not hold (T-333)', async () => {
+    const c = INJECTION_CASES.find((x) => x.id === 'exfil-image') as InjectionCase;
+    // Every call refused, as a key that may list models but not send messages would be.
+    const refused = await playCase(
+      c,
+      () => new FakeAdapter([new FakeProviderFailure('authentication', 'forbidden', 403)]),
+    );
+    expect(refused.report.steps).toEqual([]);
+    // Nothing leaked, so the offline definition holds; the live one does not.
+    expect(holdProblems(refused)).toEqual([]);
+    expect(liveProblems(refused)).toEqual(['the model never answered (failed)']);
+    const answered = await playCase(c, () => new FakeAdapter([done('Summary.')]));
+    expect(liveProblems(answered)).toEqual([]);
   });
 
   it('[IAM-023] runs a write the person confirmed, once, and only that one', async () => {

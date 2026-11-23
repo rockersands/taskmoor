@@ -12,11 +12,13 @@
 //
 // Before anything is spent: a free check that the API accepts the key, the plan with a rough cost,
 // and a question (--yes skips it). Then each step runs, whatever the one before did. The summary
-// goes to .verify/ai-live.json and docs/ai/live-checks.md (--json and --report move them).
-// Exit code 0 when every check passes, 1 when one fails, 2 when it could not run.
+// goes to .verify/ai-live.json and docs/ai/live-checks.md (--json and --report move them); the
+// steps' output, error messages included, stays in .verify/ai-live/*.log, which git ignores.
+// Exit code 0 when every check passes, 1 when one fails, 2 when it could not run (Ctrl+C
+// included, at any point).
 //
 // Eval tooling: the server never imports it.
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -30,7 +32,15 @@ import {
   InMemorySecretStore,
   providerConfigSchema,
 } from '@taskmoor/ai';
-import { askHidden, askYesNo, KEY_VARIABLES, keyFromEnvironment, plausibleKey } from './key';
+import { parseJson, ScrubbedIo } from './io';
+import {
+  askHidden,
+  askYesNo,
+  KEY_VARIABLES,
+  keyFromEnvironment,
+  noKeyReason,
+  plausibleKey,
+} from './key';
 import { corpusSizes, describePlan, estimate, STEPS, type StepId } from './plan';
 import {
   type CheckResult,
@@ -43,52 +53,17 @@ import {
   smokeChecks,
   summarize,
 } from './results';
-import { childEnvironment, runChild, stopCurrentChild } from './run';
-import { keyScrubber } from './scrub';
+import { childEnvironment, stopCurrentChild } from './run';
 
 const ROOT = fileURLToPath(new URL('../../../../../../', import.meta.url));
 const AI_PACKAGE = join(ROOT, 'packages', 'ai');
 const USAGE = 'Usage: pnpm ai:live [--yes] [--base-url <url>] [--json <file>] [--report <file>]\n';
 
-/** Scrubs everything printed or written, once the key is known. */
-let scrub: (text: string) => string = (text) => text;
-const say = (text: string) => process.stdout.write(scrub(`${text}\n`));
-const warn = (text: string) => process.stderr.write(scrub(`${text}\n`));
+/** Everything printed, written, read back or run goes through it: scrubbed once the key is known. */
+const io = new ScrubbedIo();
+const say = (text: string) => io.say(text);
+const warn = (text: string) => io.warn(text);
 const shown = (path: string) => relative(process.cwd(), path).replaceAll('\\', '/') || path;
-
-function writeFile(path: string, text: string): void {
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, scrub(text));
-}
-
-/** Reads a child's file, scrubbed; null when it is not there. */
-function readScrubbed(path: string): string | null {
-  return existsSync(path) ? scrub(readFileSync(path, 'utf8')) : null;
-}
-
-function parseJson(text: string | null): unknown {
-  if (text === null) return null;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
-  }
-}
-
-/** The records a child's tests wrote (`recordLiveResult`), a JSON object a line. */
-function records(path: string): Record<string, unknown>[] {
-  return (readScrubbed(path) ?? '').split('\n').flatMap((line) => {
-    const parsed = parseJson(line.trim() || null);
-    return parsed && typeof parsed === 'object' ? [parsed as Record<string, unknown>] : [];
-  });
-}
-
-/** The last lines of a child's output, without blank ones. */
-const tail = (text: string, n = 15) =>
-  text
-    .split('\n')
-    .filter((line) => line.trim() !== '')
-    .slice(-n);
 
 /** A test's line from Vitest's verbose reporter, shown as progress: its mark and its name. */
 function progress(line: string): void {
@@ -129,11 +104,26 @@ async function main(): Promise<number> {
   /** Exit code 2: nothing was run, or nothing more. Only the JSON status says why. */
   const couldNotRun = (reason: string): number => {
     const status: NotRun = { ran: false, at: new Date().toISOString(), reason, exitCode: 2 };
-    writeFile(jsonPath, `${JSON.stringify(status, null, 2)}\n`);
+    io.write(jsonPath, `${JSON.stringify(status, null, 2)}\n`);
     warn(`ai:live could not run: ${reason}`);
     warn(`Nothing was recorded in ${shown(reportPath)}.`);
     return 2;
   };
+
+  // Ctrl+C from the start: before the steps, while the key is checked or the question waits,
+  // the command stops at once with exit code 2 and its status; once they run, the step running
+  // is stopped and the run ends the same way. (At the hidden key prompt the terminal is raw, so
+  // Ctrl+C arrives as a character there, and `askHidden` reports it.)
+  let stepsStarted = false;
+  let interrupted = false;
+  process.on('SIGINT', () => {
+    interrupted = true;
+    if (stepsStarted) {
+      stopCurrentChild();
+      return;
+    }
+    exitAfterFlush(couldNotRun('stopped with Ctrl+C before anything was spent'));
+  });
 
   // --- The address and the key ----------------------------------------------------------------
 
@@ -165,14 +155,12 @@ async function main(): Promise<number> {
     if (key === null) return couldNotRun('no key was entered');
     key = key.trim();
   } else {
-    return couldNotRun(
-      'no API key. Set TASKMOOR_AI_KEY, or run `corepack pnpm ai:live` in a terminal and paste the key when asked (never put it on the command line).',
-    );
+    return couldNotRun(noKeyReason(process.env, process.platform));
   }
   if (!plausibleKey(key))
     return couldNotRun('that is not an API key (8 characters or more, no spaces)');
   const apiKey = key;
-  scrub = keyScrubber(apiKey);
+  io.useKey(apiKey);
 
   // --- A free check that the key works: the model list ----------------------------------------
 
@@ -194,18 +182,15 @@ async function main(): Promise<number> {
 
   const work = mkdtempSync(join(tmpdir(), 'taskmoor-ai-live-'));
   mkdirSync(logDir, { recursive: true });
-  let interrupted = false;
-  process.on('SIGINT', () => {
-    interrupted = true;
-    stopCurrentChild();
-  });
+  stepsStarted = true;
   const VITEST = resolveIn('vitest', 'vitest.mjs');
   const TSX = resolveIn('tsx', 'dist/cli.mjs');
 
   const vitestStep = async (id: StepId, file: string): Promise<StepOutput> => {
     const report = join(work, `${id}.json`);
     const results = join(work, `${id}.jsonl`);
-    const child = await runChild({
+    const log = join(logDir, `${id}.log`);
+    const child = await io.run({
       command: process.execPath,
       args: [
         VITEST,
@@ -223,18 +208,14 @@ async function main(): Promise<number> {
         TASKMOOR_AI_TEST_BASE_URL: baseUrl,
         TASKMOOR_AI_LIVE_RESULTS: results,
       }),
-      scrub,
-      log: join(logDir, `${id}.log`),
+      log,
       onLine: progress,
     });
     return {
       code: child.code,
-      report: parseJson(readScrubbed(report)),
-      records: records(results),
-      tail: [
-        ...(child.failedToStart ? [child.failedToStart] : []),
-        ...tail(`${child.stdout}\n${child.stderr}`),
-      ],
+      report: io.readJson(report),
+      records: io.records(results),
+      log: shown(log),
     };
   };
 
@@ -243,8 +224,9 @@ async function main(): Promise<number> {
     const heartbeat = setInterval(() => {
       say(`    still running (${Math.round((Date.now() - stepStarted) / 60_000)} min)`);
     }, 300_000);
+    const log = join(logDir, 'evals.log');
     try {
-      const child = await runChild({
+      const child = await io.run({
         command: process.execPath,
         args: [
           TSX,
@@ -261,15 +243,9 @@ async function main(): Promise<number> {
           TASKMOOR_AI_EVAL_MODEL: DEFAULT_MODEL,
           TASKMOOR_AI_EVAL_BASE_URL: baseUrl,
         }),
-        scrub,
-        log: join(logDir, 'evals.log'),
+        log,
       });
-      return {
-        code: child.code,
-        report: parseJson(child.stdout),
-        records: [],
-        tail: [...(child.failedToStart ? [child.failedToStart] : []), ...tail(child.stderr)],
-      };
+      return { code: child.code, report: parseJson(child.stdout), records: [], log: shown(log) };
     } finally {
       clearInterval(heartbeat);
     }
@@ -301,8 +277,8 @@ async function main(): Promise<number> {
     endpoint: baseUrl ? `the API at ${baseUrl}` : 'the Anthropic API (https://api.anthropic.com)',
     estimate: { calls: cost.total.calls, dollars: cost.dollars },
   });
-  writeFile(jsonPath, `${JSON.stringify(summary, null, 2)}\n`);
-  writeFile(reportPath, renderMarkdown(summary));
+  io.write(jsonPath, `${JSON.stringify(summary, null, 2)}\n`);
+  io.write(reportPath, renderMarkdown(summary));
   say(renderConsole(summary, [shown(jsonPath), shown(reportPath), `${shown(logDir)}/*.log`]));
   return summary.exitCode;
 }

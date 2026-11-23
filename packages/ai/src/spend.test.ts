@@ -55,6 +55,20 @@ describe('prices and cost (M1-077)', () => {
     expect(priceModelId('eu.anthropic.claude-sonnet-5-5')).toBe('claude-sonnet-5-5');
     expect(priceModelId('claude-haiku-5-5')).toBe('claude-haiku-5-5');
   });
+
+  it('[OPS-020] lists Claude Sonnet 5.5 at $2 in, $10 out and $0.10 a million cached tokens read', () => {
+    for (const provider of ['anthropic', 'foundry']) {
+      const sonnet = LIST_PRICES.find(
+        (p) => p.provider === provider && p.model === 'claude-sonnet-5-5',
+      );
+      expect(sonnet?.price, provider).toEqual({
+        inputNanos: 2_000,
+        outputNanos: 10_000,
+        cacheReadNanos: 100,
+        cacheWriteNanos: 2_500,
+      });
+    }
+  });
 });
 
 describe('spend limits (M1-077)', () => {

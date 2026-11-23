@@ -61,8 +61,9 @@ about the provider reaches the frontend bundle; the Builder (ADR-031) bakes no A
 Each adapter has contract tests that replay recorded fixtures: the request on the wire (URL,
 auth header, model spelling, exact body) is compared with the recording, and the recorded answer
 is fed back. They need no key and no network, so they run in `pnpm verify` and CI. A live smoke
-test runs when `TASKMOOR_AI_TEST_KEY` is set. Real-provider evals (quality, prompt-injection
-corpus) are nightly jobs from M1 and need the user's key with a spend cap.
+test runs under `pnpm ai:live` only (T-333; ADR-108), never from a key left in the environment.
+Real-provider evals (quality, prompt-injection corpus) run from the same command, once, with the
+user's key and a spend cap.
 
 ## Options considered
 
@@ -150,7 +151,7 @@ corpus) are nightly jobs from M1 and need the user's key with a spend cap.
   `FakeAdapter` scripts answers for gateway tests and for packages that use the gateway. Policy
   tests include property tests (no generated request ever carries a forced tool choice; tool
   order never changes the prefix). `live.test.ts` covers the Anthropic API end to end, including
-  a repeated call that must read the cache, and is skipped without `TASKMOOR_AI_TEST_KEY`.
+  a repeated call that must read the cache, and runs only under `pnpm ai:live` (T-333).
 
 Decisions made while building:
 
@@ -196,3 +197,7 @@ API has no embeddings endpoint. Bulk jobs on providers without batches go throug
   $40 per million tokens (cache reads $0.20). Offering it takes a price row, the fallback and
   task-budget model sets and the manual, and is left to a ticket of its own; settings that name
   `claude-fable-5-1` keep working, as the API still serves it.
+- 2026-11-23 (T-333 review), the list price of `claude-sonnet-5-5` corrected: cache reads cost
+  $0.10 per million tokens, half of Claude Sonnet 5's, not $0.20 (`spend.ts` and spec 02c
+  section 1.3, checked against the claude-api skill). Price rows an administrator saved are
+  theirs and are not changed.

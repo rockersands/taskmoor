@@ -72,7 +72,8 @@ export function runChild(options: {
   const stderr = new LineScrubber(options.scrub, keep(err));
   const done = (code: number | null, failedToStart: string | null): Promise<ChildResult> =>
     new Promise((resolve) =>
-      log.end(() =>
+      // Why it could not start goes to the log too: the summary only points there.
+      log.end(failedToStart ? `could not start: ${failedToStart}\n` : '', () =>
         resolve({
           code,
           stdout: out.join('\n'),

@@ -1,9 +1,9 @@
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { FakeProviderServer } from '@taskmoor/ai/testing';
 import { testPgAdminUrl } from '@taskmoor/testkit/pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -14,8 +14,8 @@ import type { LiveSummary, NotRun } from './results';
  * `pnpm ai:live` as a whole (T-333; IAM-020): the real command and its real children (the
  * Vitest live files and the eval CLI), pointed at the fake provider with a made-up key. The key
  * must not appear in anything the command prints or keeps, the summary must hold every check,
- * a failing check must fail the command, and without a key and a terminal it must say so and
- * stop with exit code 2.
+ * a failing check must fail the command, and without a key and a terminal, or on Ctrl+C, it must
+ * say so and stop with exit code 2.
  */
 
 // Made up for this file: not a key, and not shaped like one. Never in a fixture.
@@ -46,32 +46,54 @@ function filesUnder(dir: string): string[] {
   );
 }
 
-/** The command in a fresh output folder, with only `env` added to a clean environment. */
-function runCommand(env: Record<string, string>, args: string[] = []): Promise<Ran> {
+/**
+ * The command in a fresh output folder, with only `env` added to a clean environment. stdin is
+ * not a terminal, so the command never asks for the key; with `preload`, a module loaded into
+ * the command before it starts (to play the person at the question), stdin is a pipe left open.
+ */
+function runCommand(
+  env: Record<string, string>,
+  args: string[] = [],
+  preload?: string,
+): Promise<Ran> {
   const out = mkdtempSync(join(tmpdir(), 'ai-live-test-'));
   const json = join(out, '.verify', 'ai-live.json');
   const report = join(out, 'docs', 'ai', 'live-checks.md');
   const base = Object.fromEntries(
     Object.entries(process.env).filter(
-      ([name]) => !/^(VITEST|TASKMOOR_AI_)/.test(name) && name !== 'TASKMOOR_TEST_DATABASE_URL',
+      ([name]) =>
+        !/^(VITEST|TASKMOOR_AI_)/.test(name) &&
+        // Git Bash's window gets advice of its own (checks.test.ts); these runs are plain.
+        name !== 'MSYSTEM' &&
+        name !== 'TASKMOOR_TEST_DATABASE_URL',
     ),
   );
+  let hooks: Record<string, string> = {};
+  if (preload) {
+    const file = join(out, 'preload.mjs');
+    writeFileSync(file, preload);
+    const options = `${base.NODE_OPTIONS ?? ''} --import=${pathToFileURL(file).href}`;
+    hooks = { NODE_OPTIONS: options.trim() };
+  }
   return new Promise((resolve) => {
-    const child = spawn(
-      process.execPath,
-      [TSX, CLI, '--json', json, '--report', report, ...args],
-      // stdin is not a terminal: the command can never ask.
-      { cwd: ROOT, env: { ...base, ...env }, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true },
-    );
+    const child = spawn(process.execPath, [TSX, CLI, '--json', json, '--report', report, ...args], {
+      cwd: ROOT,
+      env: { ...base, ...hooks, ...env },
+      stdio: [preload ? 'pipe' : 'ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+    });
+    // Never left waiting on a question nobody answers.
+    const stop = setTimeout(() => child.kill(), 150_000);
     let stdout = '';
     let stderr = '';
-    child.stdout.setEncoding('utf8').on('data', (d: string) => {
+    child.stdout?.setEncoding('utf8').on('data', (d: string) => {
       stdout += d;
     });
-    child.stderr.setEncoding('utf8').on('data', (d: string) => {
+    child.stderr?.setEncoding('utf8').on('data', (d: string) => {
       stderr += d;
     });
     child.on('close', (code) => {
+      clearTimeout(stop);
       const files = new Map(filesUnder(out).map((f) => [f, readFileSync(f, 'utf8')]));
       rmSync(out, { recursive: true, force: true });
       resolve({ code, stdout, stderr, files, json, report });
@@ -109,9 +131,11 @@ describe('pnpm ai:live (T-333)', () => {
   }, async () => {
     const ran = await runCommand({});
     expect(ran.code).toBe(2);
-    expect(ran.stderr).toContain('ai:live could not run: no API key');
+    expect(ran.stderr).toContain(
+      'ai:live could not run: no API key, and the input is not a terminal, so the command cannot ask for one.',
+    );
     expect(ran.stderr).toContain('TASKMOOR_AI_KEY');
-    expect(ran.stderr).toContain('never put it on the command line');
+    expect(ran.stderr).toContain('Never put the key on the command line');
     const status = JSON.parse(ran.files.get(ran.json) ?? '{}') as NotRun;
     expect(status).toMatchObject({ ran: false, exitCode: 2 });
     expect(ran.files.has(ran.report)).toBe(false);
@@ -132,6 +156,36 @@ describe('pnpm ai:live (T-333)', () => {
     expect(ran.files.has(ran.report)).toBe(false);
   });
 
+  it('[OPS-020] Ctrl+C at the question stops with exit code 2 and its status, and nothing is spent', {
+    timeout: 180_000,
+  }, async () => {
+    const before = fake.requests.length;
+    // The person presses Ctrl+C when asked whether to go on.
+    const ctrlC = [
+      'const write = process.stderr.write.bind(process.stderr);',
+      'process.stderr.write = (chunk, ...rest) => {',
+      "  if (String(chunk).includes('Go on? [y/N]')) setImmediate(() => process.emit('SIGINT'));",
+      '  return write(chunk, ...rest);',
+      '};',
+    ].join('\n');
+    const ran = await runCommand({ TASKMOOR_AI_KEY: KEY }, ['--base-url', url], ctrlC);
+    expect(ran.stderr).toContain('Go on? [y/N]');
+    expect(ran.code).toBe(2);
+    expect(ran.stderr).toContain(
+      'ai:live could not run: stopped with Ctrl+C before anything was spent',
+    );
+    const status = JSON.parse(ran.files.get(ran.json) ?? '{}') as NotRun;
+    expect(status).toMatchObject({
+      ran: false,
+      exitCode: 2,
+      reason: 'stopped with Ctrl+C before anything was spent',
+    });
+    expect(ran.files.has(ran.report)).toBe(false);
+    expect(fake.requests.slice(before).map((r) => `${r.method} ${r.path}`)).toEqual([
+      'GET /v1/models',
+    ]);
+  });
+
   it('[IAM-020] [AI-003] [AI-008] [IAM-023] runs every check against the provider, keeps the key out of all it writes, and fails on a failing check', {
     timeout: 900_000,
   }, async () => {
@@ -142,7 +196,8 @@ describe('pnpm ai:live (T-333)', () => {
     );
     const output = everything(ran);
     expect(output).not.toContain(KEY);
-    // The key was there to scrub: the eval run printed the fake model's answers.
+    // The key was there to scrub: the eval run printed the fake model's answers. (Every other
+    // way out of the command is scrubbed by the same object, tested in checks.test.ts.)
     expect(ran.files.get(join(dirname(ran.json), 'ai-live', 'evals.log'))).toContain('[key]');
 
     expect(ran.stdout).toContain('Rough cost:');
@@ -153,23 +208,41 @@ describe('pnpm ai:live (T-333)', () => {
     expect(status.smoke).toBe('pass');
     expect(status['cache-read']).toBe('fail');
     expect(status['injection-corpus']).toBe('pass');
-    for (const id of ['eval-query', 'eval-summary', 'eval-duplicates', 'eval-injection']) {
+    for (const id of ['eval-query', 'eval-duplicates', 'eval-injection']) {
       expect(status[id], id).not.toBe('error');
     }
     expect(status['eval-query']).toBe('fail');
-    // Every case got the summary's answer at least; the structured features fail on the fake.
-    expect(status['eval-injection']).toBe('pass');
-    expect(summary.checks.find((c) => c.id === 'eval-injection')?.measured).toMatch(
-      /^40\/40 cases hold; the model answered \d+ of 160 requests$/,
+    const check = (id: string) => summary.checks.find((c) => c.id === id);
+    // The fake's answers are no verdicts: the judge disagrees with every graded example, so its
+    // verdicts do not count and the summaries are not measured.
+    expect(status['eval-summary']).toBe('error');
+    expect(check('eval-summary')?.measured).toMatch(
+      /^\d+\/12 pass both graders, but the judge is not trusted yet: it disagrees with 39 of 39 graded examples$/,
     );
+    // Every case holds, but only the summary and the query got answers: the fake's answer does
+    // not fit the drafts' and the breakdown's schemas, so those features failed on every case.
+    expect(status['eval-injection']).toBe('fail');
+    expect(check('eval-injection')?.measured).toBe(
+      '40/40 cases hold; the model answered 80 of 160 requests',
+    );
+    expect(check('eval-injection')?.details).toEqual([
+      'answered per feature: summary 40/40, query 40/40, drafts 0/40, breakdown 0/40',
+      'drafts got no answer from the model for any case',
+      'breakdown got no answer from the model for any case',
+    ]);
     expect(summary).toMatchObject({ ran: true, ok: false, exitCode: 1, model: 'claude-opus-5-5' });
     expect(ran.code).toBe(1);
     expect(summary.tasks.find((t) => t.task === 'M1-073')?.done).toBe(true);
     expect(summary.tasks.find((t) => t.task === 'M1-074')?.done).toBe(false);
+    expect(summary.tasks.find((t) => t.task === 'M1-079')?.done).toBe(false);
 
     const report = ran.files.get(ran.report) ?? '';
     for (const c of CHECKS) expect(report).toContain(`| ${c.title} | ${c.task} |`);
     expect(report).toContain('- M1-074: not yet (cache-read fail).');
+    // The cache test's failure by its kind; its message stays in the step's log.
+    expect(report).toContain('(an expectation was not met)');
+    expect(report).toContain('the messages are in ');
+    expect(report).not.toContain('expected 0 to be greater than 0');
     expect(ran.stdout).toContain('What the coordinator records in docs/plan/progress.csv:');
     // No request header and no prompt is kept.
     expect(output.toLowerCase()).not.toContain('x-api-key:');

@@ -1,7 +1,12 @@
+import type { AdapterRequest } from '@taskmoor/ai';
+import { INJECTION_CASES } from '@taskmoor/ai/testing';
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { stableJson } from '@taskmoor/testkit/golden';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { candidate as replay } from './candidates/replay';
+import { BREAKDOWN_SYSTEM, DRAFTS_SYSTEM } from '../features/drafts';
+import { featureCandidate } from './candidates/features';
+import { ReplayAdapter, candidate as replay } from './candidates/replay';
+import { runInjectionEval } from './injection-eval';
 import { QUERY_PAIRS } from './query-corpus';
 import { type QueryCandidate, referenceCandidate, runAs, runQueryEval } from './query-eval';
 import { FEATURES, formatRun, runEvals, THRESHOLDS } from './runner';
@@ -324,13 +329,56 @@ describe('AI evals on the seeded dataset (M1-133)', () => {
     expect(run.injection[0]?.failures).toEqual([]);
     expect(run.injection[0]?.score).toBe(THRESHOLDS.injection);
     // ... and each of the four features got the replayed model's answer (T-333).
-    expect(run.injection[0]?.asked).toBe(4 * (run.injection[0]?.total ?? 0));
+    const total = run.injection[0]?.total ?? 0;
+    expect(run.injection[0]?.asked).toBe(4 * total);
     expect(run.injection[0]?.answered).toBe(run.injection[0]?.asked);
+    expect(run.injection[0]?.byFeature).toEqual({
+      summary: total,
+      query: total,
+      drafts: total,
+      breakdown: total,
+    });
     expect(run.pending).toEqual([
       'summary: the judged criteria (judge-prompt.md) wait for a model (M1-079)',
     ]);
     const text = formatRun(run, 3, replay.name);
     expect(text).toContain('125/125 exact-result match, 100.0%');
+    expect(text).toContain(
+      `the model answered ${4 * total} of ${4 * total} requests (summary ${total}/${total}, query ${total}/${total}, drafts ${total}/${total}, breakdown ${total}/${total})`,
+    );
     process.stdout.write(text);
   }, 900_000);
+
+  // Also adds tickets to the dataset.
+  it('[IAM-023] [AI-015] records which features the model answered for each case, so a feature that always fails shows (T-333)', async () => {
+    // The replayed model, except that drafts and breakdowns fail on every call.
+    class DraftsDown extends ReplayAdapter {
+      override async generate(request: AdapterRequest) {
+        if (request.system === DRAFTS_SYSTEM || request.system === BREAKDOWN_SYSTEM) {
+          throw new Error('overloaded');
+        }
+        return super.generate(request);
+      }
+    }
+    const partial = featureCandidate('drafts and breakdown down', (w) => new DraftsDown(w));
+    const app = await partial.featureApp?.(world);
+    if (!app) throw new Error('no feature app');
+    try {
+      const cases = INJECTION_CASES.slice(0, 2);
+      const report = await runInjectionEval(world, app, partial.name, cases);
+      // A failed feature leaks nothing, so every case holds; the counts show what was asked.
+      expect(report.failures).toEqual([]);
+      expect(report.outcomes.map((o) => o.answeredBy)).toEqual([
+        ['summary', 'query'],
+        ['summary', 'query'],
+      ]);
+      expect(report).toMatchObject({
+        answered: 4,
+        asked: 8,
+        byFeature: { summary: 2, query: 2, drafts: 0, breakdown: 0 },
+      });
+    } finally {
+      await app.close();
+    }
+  }, 300_000);
 });

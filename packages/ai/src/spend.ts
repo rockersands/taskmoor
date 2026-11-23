@@ -61,7 +61,8 @@ const CLAUDE_LIST: readonly { model: string; price: ModelPrice }[] = [
   },
   {
     model: 'claude-sonnet-5-5',
-    price: list({ input: 2, output: 10, cacheRead: 0.2, cacheWrite: 2.5 }),
+    // Cache reads at $0.10, half of Claude Sonnet 5's (T-333 review, 2026-11-23).
+    price: list({ input: 2, output: 10, cacheRead: 0.1, cacheWrite: 2.5 }),
   },
   {
     model: 'claude-haiku-5-5',

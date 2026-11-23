@@ -46,6 +46,31 @@ export function plausibleKey(key: string): boolean {
   return /^\S{8,}$/.test(key);
 }
 
+const NEVER_ON_THE_COMMAND_LINE =
+  'Never put the key on the command line: not as an argument, and not as TASKMOOR_AI_KEY=... typed at a prompt, which the shell keeps in its history.';
+
+/**
+ * Why the command cannot ask for the key when its input is not a terminal, and how to give the
+ * key without typing it into a command. Git Bash's own window (MinTTY, `MSYSTEM` set) hands a
+ * program like this one a pipe, not a terminal, so nothing typed there could be hidden: there
+ * the obvious next step, `export TASKMOOR_AI_KEY=...`, would put the key in the history.
+ */
+export function noKeyReason(env: NodeJS.ProcessEnv, platform: NodeJS.Platform): string {
+  if (platform === 'win32' && env.MSYSTEM) {
+    return [
+      'no API key, and this window cannot ask for one: Git Bash’s MinTTY window hands programs a pipe, not a terminal, so what you type could not be hidden.',
+      'Run `corepack pnpm ai:live` from PowerShell or Windows Terminal instead, or set the key in this shell without typing it into a command:',
+      'run `read -rs TASKMOOR_AI_KEY && export TASKMOOR_AI_KEY`, paste the key and press Enter (nothing is shown), then `corepack pnpm ai:live`, and `unset TASKMOOR_AI_KEY` afterwards.',
+      NEVER_ON_THE_COMMAND_LINE,
+    ].join(' ');
+  }
+  return [
+    'no API key, and the input is not a terminal, so the command cannot ask for one.',
+    'Run `corepack pnpm ai:live` in a terminal window and paste the key when asked, or set TASKMOOR_AI_KEY without typing the key into a command (for example from a password manager).',
+    NEVER_ON_THE_COMMAND_LINE,
+  ].join(' ');
+}
+
 /** Terminal escape sequences: arrow keys, and the markers some terminals put around a paste. */
 // biome-ignore lint/suspicious/noControlCharactersInRegex: matching terminal escape codes is the point
 const ESCAPES = /\u001b\[[0-9;?]*[ -/]*[@-~]/g;

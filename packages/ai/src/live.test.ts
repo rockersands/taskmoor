@@ -1,16 +1,16 @@
-// Live smoke test against the Anthropic API (M1-073) and the cache read of M1-074. Skipped unless
-// TASKMOOR_AI_TEST_KEY holds a key (use a key with a spend limit); `pnpm ai:live` (T-333) runs it
-// with the key it asked for and reports what each test measured. The key comes from the
-// environment only; it is never written anywhere, and the gateway scrubs it from errors.
+// Live smoke test against the Anthropic API (M1-073) and the cache read of M1-074. It runs only
+// under `pnpm ai:live` (T-333), which hands it the key it asked for and reports what each test
+// measured; anywhere else, `pnpm verify` included, it is skipped, a key in the environment or not
+// (`liveTestKey`). The key is never written anywhere, and the gateway scrubs it from errors.
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { DEFAULT_MODEL, providerConfigSchema } from './config';
 import { createProviderAdapter } from './factory';
 import { AiGateway } from './gateway';
 import { InMemorySecretStore } from './secrets';
-import { recordLiveResult } from './testing';
+import { liveTestKey, recordLiveResult } from './testing';
 
-const key = process.env.TASKMOOR_AI_TEST_KEY;
+const key = liveTestKey();
 /** Another address for the API, such as the fake provider in `pnpm ai:live`'s own test. */
 const baseUrl = process.env.TASKMOOR_AI_TEST_BASE_URL;
 
@@ -34,7 +34,7 @@ const summary = {
   ],
 };
 
-describe.skipIf(!key)('live Anthropic API (TASKMOOR_AI_TEST_KEY)', () => {
+describe.skipIf(!key)('live Anthropic API (pnpm ai:live)', () => {
   async function gateway() {
     const adapter = await createProviderAdapter(
       providerConfigSchema.parse({

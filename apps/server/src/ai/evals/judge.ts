@@ -54,13 +54,22 @@ export function judgePrompt(c: SummaryCase, summary: string): string {
   return JUDGE_PROMPT.replace('{ticket}', judgeTicket(c)).replace('{summary}', summary);
 }
 
-/** The judged criteria a summary fails, or null when the judge's answer is unreadable. */
+/**
+ * The judged criteria a summary fails, or null when there is no readable verdict: an answer
+ * that is not the verdict's JSON, or a call that failed (an outage that outlasted the retries).
+ * A failed call costs one verdict, never the run and the measurements already paid for (T-333).
+ */
 export async function judgeSummary(
   judge: Judge,
   c: SummaryCase,
   summary: string,
 ): Promise<CriterionId[] | null> {
-  const raw = await judge(judgePrompt(c, summary));
+  let raw: string;
+  try {
+    raw = await judge(judgePrompt(c, summary));
+  } catch {
+    return null;
+  }
   const json = /\{[\s\S]*\}/.exec(raw)?.[0];
   if (!json) return null;
   let parsed: z.infer<typeof judgeAnswer>;
