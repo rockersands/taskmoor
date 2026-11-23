@@ -18,8 +18,8 @@
   },
   "dependencies": {
     "embedded-postgres": "16.14.0-beta.17",
-    "fast-check": "^4.10.2",
-    "kysely": "^0.28.17",
+    "fast-check": "^4.10.3",
+    "kysely": "^0.29.9",
     "pg": "^8.23.1",
     "pg-copy-streams": "^7.0.0"
   },
