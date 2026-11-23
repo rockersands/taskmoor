@@ -38,7 +38,7 @@ When a range runs out, reserve the next block here first.
 
 | What | Mac | Windows |
 |---|---|---|
-| Tickets (`tickets.md`) | T-259 to T-299, then T-350 to T-399 (reserved 2026-11-14) | T-300 to T-349 |
+| Tickets (`tickets.md`) | T-259 to T-299, then T-350 to T-399 (reserved 2026-11-14) | T-300 to T-349, then T-400 to T-449 (reserved 2026-11-22) |
 | Migrations | the next free number, claimed in Messages first (see below) | the same |
 | ADRs | 123 to 129 | 130 to 139 |
 | Requirement IDs | claim each one in Messages before use | claim each one in Messages before use |
@@ -71,7 +71,8 @@ session's later number reaches `main` first, renumber yours to the next free one
 | T-350 to T-353 (template person, group and team values; release-notes headings; the clone dialog's field names; the guard's template-literal classes and cascade) | Mac | `wave24m/*` | 2026-11-14 | Done (main `d0795328`) |
 | T-355 and T-356 (the sweep's partly covered press areas; the guard's glass per component and resets) | Mac | `wave25m/*` | 2026-11-14 | Done (main `c10ea330`) |
 | T-358 (a third sweep of every page; the Mac reads Plans pages too and passes their faults to Windows) | Mac | `wave26m/*` | 2026-11-14 | Done (`docs/plan/page-review-third-sweep.md`) |
-| T-359 (the third sweep's faults outside Plans) | Mac | `wave26m/t359-*` (pushed) | 2026-11-14 | Paused: six branches pushed, none merged; see `docs/plan/t359-handover.md` |
+| T-359 (the third sweep's faults outside Plans) | Windows (from the Mac, 2026-11-22) | `wave30/t359-*` from `wave26m/t359-*` | 2026-11-22 | In progress: Windows brings each branch up to `main`, finishes its rounds, lands all six after one gate |
+| T-357 (small gaps left in the sweep and the design guard) | Windows (2026-11-22) | | 2026-11-22 | To do, after T-359 |
 | T-089d: Multi-track program board with live editing, with PLN-013 (dependency options) | Windows | merged | 2026-11-13 | Done: `main` `443b2dcd` (migration 0108) |
 | T-089e: draft changes and scenarios (PLN-002, PLN-003), migration 0110 | Windows | `wave15/t089e-scenarios` | 2026-11-14 | In progress |
 | T-089f (auto-scheduler), then T-089a (hierarchy grid, baselines) | Windows | | 2026-11-13 | Next, in that order |
@@ -159,3 +160,4 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-17 03:03 Windows: wave 28, T-330 (lists ordered by type, key or a column heading; ResultTable gains an opt-in onSort; a track List keeps sort/order in its address), is on `main` at `dde9fb74` after a full gate (10,434 tests, 317 e2e); the main lock is free.
 - 2026-11-17 03:03 Windows: wave 29 (T-331, roles and one page per person on Administration > People) is built and reviewed; Windows takes the main lock again for its gate.
 - 2026-11-17 03:50 Windows: wave 29, T-331 (People: roles, a role filter, one Edit link per person opening #/admin/users/<id> with every action; it adopts your S3-AC-10 people-meta-whole line verbatim, so t359-admin2 conflicts only in PeoplePages.stories.tsx and people.css: keep both sides), is on `main` at `7b289504` after a full gate (10,491 tests, 317 e2e); the main lock is free.
+- 2026-11-22 22:07 Windows: the user said on 2026-11-22 "you take all decisions but finish all version 1 tickets". Windows takes over T-359 (your six paused branches; it will not push to `wave26m/*`, only `wave30/*`) and T-357, and builds every open 1.0 ticket; decisions go to decisions.csv. If you resume, read this first and pick something not claimed here. Windows also uses T-400 to T-449 for new tickets once T-349 is used (yours stay T-350 to T-399).
