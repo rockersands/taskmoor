@@ -540,6 +540,60 @@ export const CarriedDeepIntoALongColumnOnAPhone: Story = {
 };
 
 /**
+ * The same phone board with the page scrolled only so far that the long To do's head is half way
+ * down the screen and its foot below the screen's, as near the page's top, a card pressed in it
+ * and carried to that foot (M1-046, NFR-007; T-359): the column scrolls to its last card, then
+ * the page scrolls on, so the column's lower part and what lies below it come under the finger.
+ */
+export const PressedDeepInALongColumnOnAPhone: Story = {
+  args: { client: fakeBoardClient({ cards: longColumn(16, 2), lanes: ONE_LANE }) },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    window.scrollTo(0, 0);
+    const todo = await canvas.findByRole('list', { name: 'To do' });
+    await waitFor(() => expect(todo.scrollHeight).toBeGreaterThan(todo.clientHeight * 2));
+    window.scrollTo(0, Math.max(0, todo.getBoundingClientRect().top - window.innerHeight / 2));
+    // The column's foot lies below the screen's.
+    await expect(todo.getBoundingClientRect().bottom).toBeGreaterThan(window.innerHeight);
+    const page = window.scrollY;
+    const grip = within(todo)
+      .getAllByRole('button', { name: /^Move SHOP-/ })
+      .find((button) => {
+        const box = button.getBoundingClientRect();
+        return box.top >= 0 && box.bottom <= window.innerHeight;
+      });
+    if (!grip) throw new Error('No grip of To do on the screen');
+    const from = grip.getBoundingClientRect();
+    const a = { x: from.left + from.width / 2, y: from.top + from.height / 2 };
+    grip.dispatchEvent(pointer('pointerdown', a));
+    window.dispatchEvent(pointer('pointermove', { x: a.x, y: a.y + 12 }));
+    // The finger at the screen's foot, over the column's middle, clear of its sides.
+    const box = todo.getBoundingClientRect();
+    const middle = Math.min(Math.max(box.left + box.width / 2, 80), window.innerWidth - 80);
+    window.dispatchEvent(pointer('pointermove', { x: middle, y: window.innerHeight - 8 }));
+    await waitFor(
+      () =>
+        expect(todo.scrollTop + todo.clientHeight).toBeGreaterThanOrEqual(todo.scrollHeight - 1),
+      { timeout: 10000 },
+    );
+    // The column has no more to give: the page scrolls on until its last card is on the screen.
+    const last = within(todo).getAllByRole('listitem').at(-1);
+    if (!last) throw new Error('No last card');
+    await waitFor(
+      () => expect(last.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight),
+      { timeout: 10000 },
+    );
+    await expect(window.scrollY).toBeGreaterThan(page);
+    // Taken back: nothing moves.
+    window.dispatchEvent(pointer('pointercancel', { x: middle, y: window.innerHeight - 8 }));
+    await expect(args.client).toHaveProperty('moves', []);
+    todo.scrollTop = 0;
+    window.scrollTo(0, 0);
+  },
+};
+
+/**
  * A Scrum board with an active sprint, for someone who manages its sprints (T-106; AGL-010):
  * Complete sprint opens a pop-up that counts its done and open tickets from the board.
  */

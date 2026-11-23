@@ -1,7 +1,7 @@
 ---
 title: "Boards, sprints and the backlog"
 audience: users
-sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/styles/boards.css, apps/web/src/shell/ModalDialog.tsx, apps/web/src/boards/touch.ts, apps/web/src/shell/NotFoundPage.tsx, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, docs/plan/decisions.csv, apps/web/src/boards/BoardPeopleFilter.tsx, apps/web/src/shell/Popover.tsx, apps/web/src/tracks/trackSections.ts, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/CompleteSprint.tsx, apps/server/src/routes/sprints.ts, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/ReleaseState.tsx, apps/web/src/releases/StageProgress.tsx, apps/server/src/routes/cross-track-releases.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, packages/db/src/migrations/0093_board_card_defaults.ts, apps/server/src/boards/model.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/boards/CardTitleEditor.tsx, apps/server/src/routes/tracks.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/boards/BoardCell.tsx, apps/web/src/boards/BoardCard.tsx, apps/web/src/shell/AppShell.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/days.ts, apps/server/src/routes/release-hub.ts, apps/web/src/releases/client.ts, apps/server/src/reports/zone.ts, apps/web/src/shell/seededNames.ts, apps/server/src/releases/notes-text.ts, apps/web/src/i18n/zone.ts, apps/web/src/shell/DangerAction.tsx, apps/server/src/workflows/board-managed.ts
+sources: docs/adr/0116-one-place-per-track.md, apps/web/src/tracks/TrackLayout.tsx, apps/server/src/routes/boards.ts, apps/web/src/boards/BoardPage.tsx, apps/web/src/styles/boards.css, apps/web/src/shell/ModalDialog.tsx, apps/web/src/boards/touch.ts, apps/web/src/shell/NotFoundPage.tsx, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, docs/plan/decisions.csv, apps/web/src/boards/BoardPeopleFilter.tsx, apps/web/src/shell/Popover.tsx, apps/web/src/tracks/trackSections.ts, apps/server/src/boards/data.ts, apps/web/src/boards/BoardSettingsPage.tsx, apps/web/src/boards/client.ts, apps/web/src/sprints/BacklogPage.tsx, apps/web/src/sprints/CompleteSprint.tsx, apps/server/src/routes/sprints.ts, apps/web/src/sprints/PlanningPanels.tsx, apps/web/src/sprints/SprintSettingsSection.tsx, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/releases/ReleasePage.tsx, apps/web/src/releases/ReleaseState.tsx, apps/web/src/releases/StageProgress.tsx, apps/server/src/routes/cross-track-releases.ts, apps/web/src/i18n/messages.en.ts, apps/server/src/routes/releases.ts, apps/server/src/sprints/lifecycle.ts, docs/adr/0049-boards.md, docs/adr/0054-sprints.md, docs/adr/0061-releases-hub.md, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, packages/db/src/migrations/0093_board_card_defaults.ts, apps/server/src/boards/model.ts, apps/web/src/shell/TicketIcons.tsx, apps/web/src/boards/CardTitleEditor.tsx, apps/server/src/routes/tracks.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/boards/BoardCell.tsx, apps/web/src/boards/BoardCard.tsx, apps/web/src/shell/AppShell.tsx, apps/web/src/shell/MoveMenu.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/days.ts, apps/server/src/routes/release-hub.ts, apps/web/src/releases/client.ts, apps/server/src/reports/zone.ts, apps/web/src/shell/seededNames.ts, apps/server/src/releases/notes-text.ts, apps/web/src/i18n/zone.ts, apps/web/src/shell/DangerAction.tsx, apps/server/src/workflows/board-managed.ts, apps/web/src/areas/AreasPage.tsx
 accessed: 2026-11-23
 attestation: own-words
 ---
@@ -16,9 +16,10 @@ all, and changing the board's kind brings it back or takes it away at once.
 
 Every page of a track sits under the track's tab bar, titled by its section with the track's name
 above it: **Board** under the track's name, **Board settings**, **Releases**, a release's own
-name. The release pages and the track's **Ticket templates** keep the tab bar too, with **Releases**
-marked on a release and **Summary**, which leads to them, on the ticket templates. On a phone the tab bar scrolls sideways inside itself: the current tab is
-brought into view, and the edge past which more tabs wait fades. A track that does not exist, or
+name. The release pages and the track's **Ticket templates** and **Areas** keep the tab bar too,
+with **Releases** marked on a release and **Summary**, which leads to them, on the ticket templates
+and the areas. On a phone the tab bar scrolls sideways inside itself: the current tab is brought
+into view, and the edge past which more tabs wait fades. A track that does not exist, or
 that you may not see, shows a **Track not found** page with no tabs and the way to **Home** and to
 **Search**; so does a board (**Board not found**, naming the board's number), a release or a
 dashboard that is not there. A board you administer on
@@ -130,8 +131,10 @@ While you drag, the column and the place the card would land are outlined, the c
 was and a label with its key and title follows the pointer. Hold it near the left or right edge of
 the columns and they scroll along, so a column off the screen can be reached on a phone; near the
 top or bottom of the screen, the page scrolls. On a phone, near the top or bottom of a long column
-that scrolls inside itself, that column scrolls, so the card can go deep into it. **Escape** puts the card back where it was, and so
-does letting go outside the columns. A screen reader hears what is in hand and what happened.
+that scrolls inside itself, that column scrolls first, so the card can go deep into it; once the
+column reaches its first or last card, or you move on to another column, the page scrolls on, as
+it does when you scroll with your finger. **Escape** puts the card back where it was, and so does
+letting go outside the columns. A screen reader hears what is in hand and what happened.
 
 Only a rule someone put on the workflow, or one that came with an import, can ask for more. Then a
 move brings up a form, or a refusal in plain words, such as **PAY-42 cannot go to Done: its workflow

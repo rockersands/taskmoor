@@ -107,6 +107,12 @@ const canScrollBy = (scroller: Element, step: number) =>
     ? scroller.scrollTop > 0
     : scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight - 1;
 
+/** Whether the pointer is to the left or right of an area: over another column, not this one. */
+const beside = (scroller: Element, x: number) => {
+  const box = scroller.getBoundingClientRect();
+  return x < box.left || x > box.right;
+};
+
 /**
  * Follows one press into a drag with pointer events, so a mouse, a pen and a finger work alike
  * (T-162; ADR-114, section 12; the Tracks page's groups work the same way, CORE-034). The press
@@ -118,7 +124,8 @@ const canScrollBy = (scroller: Element, step: number) =>
  *   edge of an area that scrolls sideways (a board's columns) scrolls that, so a place off the
  *   screen can be reached with a finger, whose drag cannot scroll the page itself; over another
  *   area that scrolls up and down inside the page (a phone board's column, T-359), near its top or
- *   bottom, that area scrolls while it can;
+ *   bottom, that area scrolls while it can; an area that has reached its end, or that the pointer
+ *   has left sideways, leaves the scroll to the page;
  * - the page carries `is-pointer-dragging`, so no text is selected on the way.
  *
  * A release the page never heard of ends the press with nothing moved: a mouse let go in another
@@ -156,17 +163,27 @@ export function followPointerDrag(
   let cancelled = false;
   let frame = 0;
   /**
-   * This frame's scroll along each axis, from where the pointer is, and what it scrolls: up and
-   * down, another area that scrolls inside the page under the pointer while it can (a phone
-   * board's column the card is carried into), else the area the press began in.
+   * This frame's scroll along each axis, from where the pointer is, and what it scrolls. Up and
+   * down it is the first of these that the pointer is near the top or bottom of and that can
+   * still move that way: another area that scrolls inside the page under the pointer (a phone
+   * board's column the card is carried into); the area the press began in, unless the pointer is
+   * beside it, over another column; then the page, near the top or bottom of the screen. So a
+   * drag that begins deep in a long column scrolls that column to its first or last card, and
+   * then the page on, as a finger's own scroll does (T-359).
    */
   const steps = () => {
+    const page = document.scrollingElement;
     const inner = innerScrollerAt(at.x, at.y);
-    const innerStep = inner && inner !== scrollers.y ? edgeStep(inner, at.y, 'y') : 0;
-    const y =
-      inner && innerStep !== 0 && canScrollBy(inner, innerStep)
-        ? { scroller: inner, step: innerStep }
-        : { scroller: scrollers.y, step: edgeStep(scrollers.y, at.y, 'y') };
+    const own =
+      scrollers.y && scrollers.y !== page && !beside(scrollers.y, at.x) ? scrollers.y : null;
+    let y = { scroller: page, step: edgeStep(page, at.y, 'y') };
+    for (const area of [inner === scrollers.y ? null : inner, own]) {
+      const step = area ? edgeStep(area, at.y, 'y') : 0;
+      if (area && step !== 0 && canScrollBy(area, step)) {
+        y = { scroller: area, step };
+        break;
+      }
+    }
     return { y, x: { scroller: scrollers.x, step: edgeStep(scrollers.x, at.x, 'x') } };
   };
 

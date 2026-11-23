@@ -110,12 +110,15 @@ test('[CORE-015] [IAM-030] a track’s administrator keeps its areas, and its me
     expect(given.status()).toBe(204);
   }
 
-  // The runner, from the track's Summary to its areas, which keep the track's tab bar.
+  // The runner, from the track's Summary to its areas, which keep the track's tab bar, Summary
+  // marked as where they are (TR-27).
   await signInAs(api, runner.email, PASSWORD);
   await visit(page, `#/tracks/${key}`);
   await page.getByRole('link', { name: 'Areas', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Areas' })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: `Sections of ${key}` })).toBeVisible();
+  const tabs = page.getByRole('navigation', { name: `Sections of ${key}` });
+  await expect(tabs).toBeVisible();
+  await expect(tabs.getByRole('link', { name: 'Summary' })).toHaveAttribute('aria-current', 'true');
   await expect(page.getByText('No areas yet')).toBeVisible();
 
   // The first area, owned by the runner, its new tickets going to its owner.

@@ -95,8 +95,9 @@ search results table, so cells such as the summary, assignee, priority, labels a
 edited in place (see [search results](search.md#search-results)). The summary takes the width the
 other columns leave, and short values and dates stay on one line. **Updated** (and **Created** or
 **Closed**, if you add them) shows the day only, on your own clock, so the summary keeps the room;
-point at it for the time, which a screen reader also reads. Search results keep the day and the
-time. A ticket with subtickets shows how many are closed under its key: the subticket icon and the
+point at it for the time, which a screen reader also reads. A date-and-time field you add as a
+column keeps its time, since someone chose it, and search results keep the day and the time of
+every moment. A ticket with subtickets shows how many are closed under its key: the subticket icon and the
 numbers, for example **1/3**, with a small bar under them, so the key column stays narrow. Point at
 it for the words ("Subtickets: 1 of 3 closed"). The column the rows are sorted by carries an arrow
 in its heading.

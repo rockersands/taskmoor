@@ -24,6 +24,7 @@ import {
   DATE_COLUMNS,
   editorStart,
   isDateTimeColumn,
+  isTicketMomentColumn,
   numberShowOfColumn,
   orderOfColumn,
   type TableSort,
@@ -66,8 +67,9 @@ export interface ResultTableProps {
    */
   label?: string;
   /**
-   * Moments (created, updated, closed, a date-and-time field) show their day only, the whole
-   * moment their name and tooltip: a track's list, so the summary keeps the width (TR-8).
+   * The moments a ticket keeps by itself (created, updated, closed) show their day only, the whole
+   * moment their name and tooltip: a track's list, so the summary keeps the width (TR-8). A
+   * date-and-time field keeps its time, which someone chose.
    */
   momentsAsDays?: boolean;
 }
@@ -262,7 +264,7 @@ export function ResultGrid({
                     columnName={nameOf(column)}
                     editor={readOnly ? null : cellEditor(column, fields)}
                     dateTime={isDateTimeColumn(column, fields)}
-                    dayOnly={momentsAsDays}
+                    dayOnly={momentsAsDays && isTicketMomentColumn(column)}
                     number={numberShowOfColumn(column, fields)}
                     priorities={priorities}
                     client={client}
@@ -349,7 +351,10 @@ export function Cell({
   editor: CellEditor | null;
   /** A moment (created, updated, closed or a custom datetime field), read in the locale. */
   dateTime: boolean;
-  /** A moment shows its day, the whole moment its name and tooltip (a track's list, TR-8). */
+  /**
+   * A moment shows its day, the whole moment its name and tooltip (created, updated or closed on
+   * a track's list, TR-8).
+   */
   dayOnly?: boolean;
   /** How a number field's or formula's numbers show, by its settings (T-320). */
   number?: NumberShow | null;

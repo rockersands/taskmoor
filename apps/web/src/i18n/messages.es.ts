@@ -6797,7 +6797,7 @@ export const messagesEs: Record<MessageId, string> = {
   'sprints.settings.notANumberField': 'Este campo no es numérico, o ya no existe. Elige otro.',
   'sprints.settings.timeTracking': 'Registro de tiempo',
   'sprints.settings.timeTracking.none': 'Ninguno',
-  'sprints.settings.timeTracking.remainingEstimate': 'Tiempo restante y dedicado',
+  'sprints.settings.timeTracking.remainingEstimate': 'Estimación restante y tiempo',
   'sprints.settings.parallel': 'Permitir varios sprints activos a la vez',
   'sprints.settings.cycle': 'Encadenar los sprints automáticamente',
   'sprints.settings.cycleHint':

@@ -251,6 +251,13 @@ export function isDateTimeColumn(column: string, fields: readonly ColumnField[])
 }
 
 /**
+ * Whether a column holds a moment the ticket keeps by itself (created, updated, closed), which a
+ * track's list may show as its day (TR-8). A date-and-time field holds a time someone chose, so it
+ * keeps its time everywhere.
+ */
+export const isTicketMomentColumn = (column: string): boolean => DATE_TIME_COLUMNS.has(column);
+
+/**
  * How a column's numbers show (T-320): a number field's format, decimals and currency, or a
  * formula's number, currency or percentage output; null for a column whose numbers read plainly.
  */

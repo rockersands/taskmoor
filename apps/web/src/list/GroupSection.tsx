@@ -49,7 +49,10 @@ export function GroupSection({
   readOnly?: boolean;
   /** Ordering by a column's heading (T-330): the column clicked. */
   onSort?: (column: string) => void;
-  /** Moments show their day, the time in their name and tooltip (a track's list, TR-8). */
+  /**
+   * Created, updated and closed show their day, the time in their name and tooltip (a track's
+   * list, TR-8); a date-and-time field keeps its time.
+   */
   momentsAsDays?: boolean;
 }) {
   const t = useT();
