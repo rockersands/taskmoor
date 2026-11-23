@@ -22,7 +22,36 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: the live AI checks from one command (2026-11-23, Windows)
+### Latest: Taskmoor is public (2026-11-23, Windows)
+
+`https://github.com/Rockersands/taskmoor` is a new public repository with the rewritten history (T-005, T-031);
+`main` is `d1419956`. The old private repository is `Rockersands/taskmoor-archive`.
+
+- **Every clone made before 2026-11-23 has the old history.** Never push an old branch or commit to the new
+  repository: it would bring the old address back. Clone again, or fetch and reset onto the new `origin/main`.
+  This PC's coordinator branch was moved onto the new `main`; the old worktrees (`G:/tm-w21` to `G:/tm-w31`)
+  and their local branches are old history and are only for reading.
+- The commit hashes the docs cite were mapped to the new ones; hashes of commits that never reached `main`
+  (the Mac's `wave26m/*` work, old branches) now exist only in the archive.
+- Private vulnerability reporting is on (T-035). GitHub Actions stay manual-only until M1 is finished.
+- `pnpm dco` on a clone with no `origin/main` reads every commit and overflows Node's 1 MB buffer; the first
+  push went in two halves. T-341 fixes the buffer.
+
+### Earlier: the third sweep's faults, finished from the Mac's branches (2026-11-23, Windows)
+
+On `main` at `2b61099a` after a full gate (10,653 tests, 320 e2e). No migration (the next is 0114).
+
+- T-359: the six `wave26m/t359-*` branches were finished on `wave30/t359-*` and integrated on `wave30/t359`
+  (decisions of 2026-11-22 in decisions.csv). The Mac's branches are superseded; nothing was pushed to them.
+- Shared changes to know: ResultTable shows a ticket's created, updated and closed as a day everywhere
+  (`i18n/days.ts` `momentDayText`, a `<time>` with the whole moment as tooltip and name); the track key cell
+  carries the subticket progress icon (S3-TR-3); `backups/schedule.ts` declines restore drills without a backup
+  directory; `SecurityAlertsForm.tsx` exports `alertWindow`; the SSO redirect address is a read-only text
+  block with a Copy button (`setup.spec.ts` reads it with toHaveText); phone kanban columns are capped and scroll.
+- T-268 (checklist More menu on phones) landed with it.
+- Next: T-332 (phone breadcrumb), T-337 to T-340 (follow-ups), then the rest of the 1.0 list in the resume plan.
+
+### Earlier: the live AI checks from one command (2026-11-23, Windows)
 
 On `main` at `e62e769d` after a full gate (10,523 tests, 317 e2e). No migration (the next is 0114). This
 wave also carried the coordinator branch's docs from 2026-11-14 onwards to `main`.

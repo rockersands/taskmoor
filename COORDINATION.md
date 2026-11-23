@@ -29,7 +29,7 @@ something. `HANDOFF.md` still says what was done; this file says who is doing wh
 
 | Held by | Since | For |
 |---|---|---|
-| Windows | 2026-11-23 | the gate of wave 30 (T-359) |
+| free | | |
 
 ## Numbers
 
@@ -71,7 +71,7 @@ session's later number reaches `main` first, renumber yours to the next free one
 | T-350 to T-353 (template person, group and team values; release-notes headings; the clone dialog's field names; the guard's template-literal classes and cascade) | Mac | `wave24m/*` | 2026-11-14 | Done (main `26a338c7`) |
 | T-355 and T-356 (the sweep's partly covered press areas; the guard's glass per component and resets) | Mac | `wave25m/*` | 2026-11-14 | Done (main `bb8dc3a6`) |
 | T-358 (a third sweep of every page; the Mac reads Plans pages too and passes their faults to Windows) | Mac | `wave26m/*` | 2026-11-14 | Done (`docs/plan/page-review-third-sweep.md`) |
-| T-359 (the third sweep's faults outside Plans) | Windows (from the Mac, 2026-11-22) | `wave30/t359-*` from `wave26m/t359-*` | 2026-11-22 | In progress: Windows brings each branch up to `main`, finishes its rounds, lands all six after one gate |
+| T-359 (the third sweep's faults outside Plans) | Windows (from the Mac, 2026-11-22) | merged | 2026-11-22 | Done: `main` `2b61099a` |
 | T-357 (small gaps left in the sweep and the design guard) | Windows (2026-11-22) | | 2026-11-22 | To do, after T-359 |
 | T-089d: Multi-track program board with live editing, with PLN-013 (dependency options) | Windows | merged | 2026-11-13 | Done: `main` `f401346a` (migration 0108) |
 | T-089e: draft changes and scenarios (PLN-002, PLN-003), migration 0110 | Windows | `wave15/t089e-scenarios` | 2026-11-14 | In progress |
@@ -164,3 +164,5 @@ Newest at the bottom. One line each: date, time (UTC), session, then the message
 - 2026-11-23 04:19 Windows: wave 31 (T-333, pnpm ai:live: the live AI checks from one command) is built and reviewed; Windows takes the main lock for its gate. It also carries the coordinator branch's docs since 2026-11-14 to main.
 - 2026-11-23 11:33 Windows: wave 31 (T-333, pnpm ai:live) is on `main` at `e62e769d` after a full gate (10,523 tests, 317 e2e), with the coordinator's docs since 2026-11-14; the main lock is free.
 - 2026-11-23 11:33 Windows: wave 30 (T-359, the third sweep's faults from the Mac's six branches) is built, reviewed and integrated; Windows takes the main lock for its gate.
+- 2026-11-23 11:57 Windows: wave 30 (T-359, the third sweep's faults outside Plans, finished from the Mac's six branches) is on `main` at `2b61099a` after a full gate (10,653 tests, 320 e2e); the main lock is free. Your wave26m/t359-* branches are superseded; please do not merge them.
+- 2026-11-23 12:30 Windows: **Taskmoor is public, as a new repository with rewritten history** (the user's choice of 2026-11-22). `Rockersands/taskmoor` is now the new public repository, `main` at `d1419956`; the old one is `Rockersands/taskmoor-archive` (private). Mac: your clone has the old history, and its remote URL now points at the new repository. Do NOT push any old branch or commit (it would bring the Gmail address and the session links back). Clone again from `https://github.com/Rockersands/taskmoor.git` and read HANDOFF's latest section before anything else. Your `wave26m/*` work is on `main` through T-359; nothing of yours is lost.
