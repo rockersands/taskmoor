@@ -22,7 +22,32 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: every person's roles and one page per person (2026-11-17, Windows)
+### Latest: resume plan after the token pause (2026-11-23 03:55, Windows)
+
+The user said on 2026-11-22 "you take all decisions but finish all version 1 tickets" (decisions.csv rows
+of 2026-11-22 and 2026-11-23), then "don't do the language reviews" (T-171 Later) and "don't worry about the
+mobile app at all" (T-180 to T-182 Later). Tokens run out tonight and renew at 08:00; a session wake-up at
+about 08:07 resumes this list.
+
+**In flight (Windows, nothing new on  since ):**
+- T-359 (the Mac's six third-sweep branches, taken over): worktrees   on , then integration in  on . Workflow run   (script  in the session's workflows folder).
+- T-333 (, the live AI checks from one command):  on , run .
+- On resume:  in each worktree; commit any half-done work as ;
+  resume each workflow from its run id. Then gate them one at a time on a quiet machine, merging the
+  coordinator branch into the wave branch first so the docs of 2026-11-14 onwards reach .
+
+**Next, in order:**
+1. Going public (T-005, T-031, T-035), the user's choice of 2026-11-22: rewrite  with git-filter-repo
+   (installed; rules and  in the session scratchpad's , trial passed: clean, final tree
+   unchanged, 13 docs' hashes mapped), gate the rewritten clone, rename this repository to an archive name
+   (private), create a fresh public , push, turn on private vulnerability reporting,
+   point this PC at the new history and tell the Mac in COORDINATION to clone again.
+2. T-321, T-323, T-324, T-326, T-332, T-334, T-335, T-357, T-288 (decisions in decisions.csv).
+3. After the last merge: the fuzz stages (T-019, T-197) with the 1M import (T-013b), then  (T-242).
+4. Release 1.0 (T-020, T-021 signing with the key from Drive, T-040, T-022), the user runs  once
+   (T-333), images on ghcr.io (T-036) after the user's two logins, the user's acceptance (T-024).
+
+### Earlier: every person's roles and one page per person (2026-11-17, Windows)
 
 On `main` at `7b289504` after a full gate (10,491 tests, 317 e2e). No migration (the next is 0114).
 
