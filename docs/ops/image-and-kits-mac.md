@@ -142,8 +142,8 @@ limit, its message and the settings pnpm receives are shown by
 
 | Script | Result | Time | What it showed |
 |---|---|---|---|
-| `bash tools/image/smoke.sh` at `c4c09a3c` | Passed | 58 s | The install step ran (its text had changed): 820 packages, none from the empty store, downloaded in 15.7 s. Image 269 MB unpacked, as before; the version in the server and the frontend artefact; both routing modes; all roles next to PostgreSQL 16; the amd64 image under emulation, every builder step cached. pnpm printed a notice that a newer pnpm exists, a request to the registry the build does not need, so the next commit turned the notifier off |
-| `bash tools/image/smoke.sh` at `8ab9088f` | Passed | 31 s | The install step ran again (its text had changed once more) and took everything from the store: "reused 816, downloaded 0", done in 3 s, with no notice. The same checks passed. The store's cache mount held 697.6 MB afterwards |
+| `bash tools/image/smoke.sh` at `29755114` | Passed | 58 s | The install step ran (its text had changed): 820 packages, none from the empty store, downloaded in 15.7 s. Image 269 MB unpacked, as before; the version in the server and the frontend artefact; both routing modes; all roles next to PostgreSQL 16; the amd64 image under emulation, every builder step cached. pnpm printed a notice that a newer pnpm exists, a request to the registry the build does not need, so the next commit turned the notifier off |
+| `bash tools/image/smoke.sh` at `44d94afe` | Passed | 31 s | The install step ran again (its text had changed once more) and took everything from the store: "reused 816, downloaded 0", done in 3 s, with no notice. The same checks passed. The store's cache mount held 697.6 MB afterwards |
 
 The second run is what a build stopped by the limit, or one whose install layer Docker lost (as
 in the second run of 2026-11-05), now does: it takes from the store what an earlier build
@@ -184,7 +184,7 @@ and the script was run again.
   connection failed the build (once here) and a slow link could stall it. The Dockerfile now
   fetches pnpm in a step of its own: four attempts, each stopped after `PNPM_FETCH_TIMEOUT`
   seconds (300 unless raised), with corepack's signature check kept and its network switched
-  off afterwards. `smoke.sh` passed with it at `98cb9df7`, both architectures, in 4,042 s; that
+  off afterwards. `smoke.sh` passed with it at `3e07ca0f`, both architectures, in 4,042 s; that
   step took 1.1 s.
 - **Bounded by T-247 (2026-11-14): the dependency install could stall over a slow, unreliable
   link**, as in the second run and again in T-236's run: with the install layer rebuilt (the new

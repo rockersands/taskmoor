@@ -1,16 +1,16 @@
 # T-359 hand-over: the third sweep's fixes, stopped mid-wave (2026-11-14, the Mac)
 
 The user asked to wrap up while the six fix groups were running. The work is saved on six pushed
-branches, none merged to `main`, none through the full gate. Each branch starts from `fc5d4e41`.
+branches, none merged to `main`, none through the full gate. Each branch starts from `52ba3c1c`.
 
 | Branch | Tip | State | What is left |
 |---|---|---|---|
-| `wave26m/t359-admin2` (System status, account, settings, admin m to z) | `81bebda7` | Built, reviewed, fixed, re-checked: ready to merge | Nothing in review; see the notes below for follow-ups |
-| `wave26m/t359-statistics` | `e11e96bf` | Built; review stopped before it finished | Review, fix, re-check |
-| `wave26m/t359-states` (stand-alone pages, pop-up, print) | `ab268e29` | Built; review stopped before it finished | Review, fix, re-check |
-| `wave26m/t359-work` (help marks, bulk link, your work) | `d8e877d9` | The build was stopped while its tests ran: 8 commits, the builder's report never came | Check the branch against its section (S3-WK and S3-AC-8), run its tests, then review |
-| `wave26m/t359-track` | `905cd2d5` | Built and reviewed; the fix round was stopped: its last commit is work in progress, untested | Finish the fix round (TR-8, the kanban phone page height, S3-TR-9's breadcrumb), test, re-check |
-| `wave26m/t359-admin1` | `e8bf2495` | Built and reviewed; the fix round was stopped: its last commit is work in progress, untested | Finish the fix round (AD-9's SSO address on phones, a time-zone-safe audit test, `audit.syslog_test` words, the layout preview's custom release and area rows), test, re-check |
+| `wave26m/t359-admin2` (System status, account, settings, admin m to z) | `af1cca7a` | Built, reviewed, fixed, re-checked: ready to merge | Nothing in review; see the notes below for follow-ups |
+| `wave26m/t359-statistics` | `3c4d9d77` | Built; review stopped before it finished | Review, fix, re-check |
+| `wave26m/t359-states` (stand-alone pages, pop-up, print) | `4ee6cd04` | Built; review stopped before it finished | Review, fix, re-check |
+| `wave26m/t359-work` (help marks, bulk link, your work) | `5ffbadb1` | The build was stopped while its tests ran: 8 commits, the builder's report never came | Check the branch against its section (S3-WK and S3-AC-8), run its tests, then review |
+| `wave26m/t359-track` | `6e43a6b4` | Built and reviewed; the fix round was stopped: its last commit is work in progress, untested | Finish the fix round (TR-8, the kanban phone page height, S3-TR-9's breadcrumb), test, re-check |
+| `wave26m/t359-admin1` | `bd248be6` | Built and reviewed; the fix round was stopped: its last commit is work in progress, untested | Finish the fix round (AD-9's SSO address on phones, a time-zone-safe audit test, `audit.syslog_test` words, the layout preview's custom release and area rows), test, re-check |
 
 To finish: for each branch, run the review and fix rounds as in the earlier waves; then merge all
 six on an integration branch from `origin/main`, take the main lock in `COORDINATION.md`, run the
@@ -19,7 +19,7 @@ full `pnpm verify --e2e`, fast-forward `main`, free the lock, and mark T-359 Don
 ## The builders' and reviewers' notes
 
 ### build:t359-admin2
-sha ce38e0bb
+sha 0b3f6753
 NOTDONE: Not done:
 - S3-AC-8 (the help mark on Settings and Account) was left to the work group, as asked.
 - The earlier faults marked 'Not pictured' (the sticky admin side list, AC-19, AC-20, AC-1) were not reworked: the sweep cannot show them.
@@ -72,7 +72,7 @@ ok False
 ### recheck:t359-admin2:1
 ok True
 ### build:t359-admin1
-sha d654971b
+sha 707b7991
 NOTDONE: AD-9 (Still there) is not fixed: the SSO redirect address still breaks inside 'v1' on a phone. The address is in a read-only textarea, and Chromium does not break a line after '/' on its own. I tried removing `word-break: break-all`, and a story measuring where the lines break showed breaks after 'a' and 'c' instead, so I took the change out. A real fix means swapping the textarea for a text block with `<wbr>` (BreakAtSlashes) that can still be focused and selected. That changes its role and value, so IdentityProvidersPage.test.tsx and setup.spec.ts:904 (which use toHaveValue on a textbox) would need changing too. Suggested follow-up: T-360.
 
 Not pictured in the sweep, so I left them alone: AD-23 (the type set form's checkboxes) and whether the side list stays in place while scrolling. The source already makes it sticky.
@@ -94,7 +94,7 @@ ok False
  - low apps/web/src/admin/audit/words.test.ts 599 {'file': 'apps/web/src/admin/audit/words.test.ts', 'line': 599, 'severity': 'low', 'summary': "S3-AD-1 asked for a test that every action code the server can write has words. SERVER_ACTIONS reads only AUDITED_EVENTS, AUDIT_ACTIONS and REFUSALS_AUDIT_ACTION. It misses 'audit.syslog_test', which apps/server/src/routes/audit.ts:413 writes as a literal through appendAudit, so that code is not covered.", 'scenario': "Remove 'syslog_test' from AUDIT_VERBS in words.ts, or a new literal action is written beside it. words.test.ts still passes, and the audit page shows the raw 'audit.syslog_test' after 
  - low apps/web/src/layouts/LayoutPreview.tsx 56 {'file': 'apps/web/src/layouts/LayoutPreview.tsx', 'line': 56, 'severity': 'low', 'summary': "ONLY_WHEN_LISTED keys only the built-in fields targetRelease, foundInRelease and area. CreateTicketPage also drops optional custom fields of type 'release' or 'area' when the track has none (listKindOf → list?.length === 0 && !field.required). The preview still shows those custom rows with no hint, so the Changed fault 'the preview may still show rows the form leaves out' remains for them.", 'scenario': "An admin places an optional custom field of type release (say 'Shipped in') on a Create layout and
 ### build:t359-states
-sha ab268e29
+sha 4ee6cd04
 NOTDONE: Not done, or left to someone else:
 
 1. Workflow-not-found's sidebar (Changed): I changed nothing. The original fault is gone: the app sidebar and the admin list now both mark nothing, as the not-found rule in PL-43 asks. What the sweep still describes is the breadcrumb "Administration › Tracks and setup › Workflows › Workflow not found" and the admin list left open at Tracks and setup. Question for the user: should a not-found page under Administration drop its breadcrumb and fold the list, or is the breadcrumb a welcome way back?
@@ -112,7 +112,7 @@ NOTDONE: Not done, or left to someone else:
    - S3-SP-9 is checked on the 320-px story phone (the actions follow the status menu) and by the e2e runs on mobile. Nothing measures the row count at exactly 375 px.
 7. Not run, per the rules: a full `pnpm verify` and `pnpm verify --e2e`; the coordinator's gate covers them.
 ### build:t359-statistics
-sha e11e96bf
+sha 3c4d9d77
 NOTDONE: Not done, or left on purpose:
 
 1. **The reports' day against the calendar's 'today' (earlier fault): not pictured.** It can't be judged from a morning capture; it needs a sweep taken in the evening. I made no change.

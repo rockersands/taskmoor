@@ -44,7 +44,7 @@ TT-8), the subticket status menu (TT-6), the checklist drag (TT-5), then the e2e
 manual and ADR-120. The new Markdown and wiki forms have not been through `pnpm fuzz` (T-197 should
 cover them with the slash menu's blocks). Only TT-7 waits, on the user's answer.
 
-**Where it stands (2026-11-03).** All four parts are committed, and `origin/main` (at `6015efc`, with
+**Where it stands (2026-11-03).** All four parts are committed, and `origin/main` (at `4714f69`, with
 the ticket pop-up and migrations through 0095) is merged into this branch. Nothing is known to fail.
 It has not been through `pnpm verify`.
 

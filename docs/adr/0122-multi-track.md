@@ -997,7 +997,7 @@ touch drags), and how the image looks, which needs a person to look at it.
 
 ### Stage 5 (T-089d): the program board and dependency options
 
-**Designed and built on 2026-11-13; on `main` at `443b2dcd` (2026-11-14).** PLN-008 and PLN-013 move to M1 with this stage, reworded to what is
+**Designed and built on 2026-11-13; on `main` at `f401346a` (2026-11-14).** PLN-008 and PLN-013 move to M1 with this stage, reworded to what is
 built (the wordings are under "Tests"). The user decided on 2026-11-13 (`decisions.csv`, rows on
 T-089i and T-241) to build PLN-013 with the program board in 1.0, that blockers outside the plan
 stay a count only, that the section is called **Plans** and that the interface says **site**. The
@@ -2656,7 +2656,7 @@ for stored copies of days, never for the main scenario.
 #### What is stored (migration: the next free number, 0111 today)
 
 One migration, numbered when built: the next free number, claimed in `COORDINATION.md` Messages
-first (0111 on `main` at 91a354b0; the Mac's next would also be 0111, so the claim decides). The
+first (0111 on `main` at bcbc4f24; the Mac's next would also be 0111, so the claim decides). The
 critical path and evening out store nothing.
 
 - **`plan_baseline` (new):** `id` serial; `workspace_id`; `plan_id` references `plan` ON DELETE

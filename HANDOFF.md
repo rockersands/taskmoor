@@ -24,7 +24,7 @@ handoff, tickets and decisions; the coordinator branch is `main` again after eac
 
 ### Latest: the live AI checks from one command (2026-11-23, Windows)
 
-On `main` at `a03ad4d8` after a full gate (10,523 tests, 317 e2e). No migration (the next is 0114). This
+On `main` at `e62e769d` after a full gate (10,523 tests, 317 e2e). No migration (the next is 0114). This
 wave also carried the coordinator branch's docs from 2026-11-14 onwards to `main`.
 
 - T-333: `pnpm ai:live` (`apps/server/src/ai/evals/live/`: cli, key, scrub, io, run, results). It replaces the
@@ -42,7 +42,7 @@ of 2026-11-22 and 2026-11-23), then "don't do the language reviews" (T-171 Later
 mobile app at all" (T-180 to T-182 Later). Tokens run out tonight and renew at 08:00; a session wake-up at
 about 08:07 resumes this list.
 
-**In flight (Windows, nothing new on `main` since `7b289504`):**
+**In flight (Windows, nothing new on `main` since `2b474b95`):**
 - T-359 (the Mac's six third-sweep branches, taken over): worktrees `G:/tm-w30-admin2`, `-statistics`,
   `-states`, `-work`, `-track` and `-admin1` on `wave30/t359-*`, then integration in `G:/tm-w30` on
   `wave30/t359`. Workflow run `wf_a4be309e-8b7` (script `wave30-t359-takeover-wf_a4be309e-8b7.js` in the
@@ -67,7 +67,7 @@ about 08:07 resumes this list.
 
 ### Earlier: every person's roles and one page per person (2026-11-17, Windows)
 
-On `main` at `7b289504` after a full gate (10,491 tests, 317 e2e). No migration (the next is 0114).
+On `main` at `2b474b95` after a full gate (10,491 tests, 317 e2e). No migration (the next is 0114).
 
 - T-331: `apps/server/src/authz/person-roles.ts` (`rolesOf`, `tracksRunBy`, `roleCondition`: a constant number of
   statements per page, tested at 3,000 people); `GET /users` takes `role=` and returns `roles` and `tracksRun`;
@@ -81,7 +81,7 @@ On `main` at `7b289504` after a full gate (10,491 tests, 317 e2e). No migration 
 
 ### Earlier: lists ordered by type, key or a heading (2026-11-17, Windows)
 
-On `main` at `dde9fb74` after a full gate (10,434 tests, 317 e2e). No migration (the next is 0114).
+On `main` at `4159be8f` after a full gate (10,434 tests, 317 e2e). No migration (the next is 0114).
 
 - T-330: `apps/web/src/list/order.ts` (one order model: column plus direction; `nextSort`, `usableSort`),
   `list/SortMenu.tsx`, ResultTable's opt-in `onSort` (Search does not pass it), `GroupSection` keeps its table
@@ -90,7 +90,7 @@ On `main` at `dde9fb74` after a full gate (10,434 tests, 317 e2e). No migration 
 
 ### Earlier: close_reason.created on every path (2026-11-17, Windows)
 
-On `main` at `05d682b0` after a full gate (10,404 tests, 315 e2e). No migration (the next is 0114).
+On `main` at `b44c946a` after a full gate (10,404 tests, 315 e2e). No migration (the next is 0114).
 
 - T-325: `apps/server/src/workflows/close-reasons.ts` `createCloseReason` takes the list lock, inserts and
   emits `close_reason.created`; the close reasons route and `completedReasonId` (workflows, the
@@ -103,7 +103,7 @@ On `main` at `05d682b0` after a full gate (10,404 tests, 315 e2e). No migration 
 
 ### Earlier: story tests run axe again (2026-11-16, Windows)
 
-On `main` at `d6200bf7` after a full gate (10,398 tests, 315 e2e). No migration (the next is 0114).
+On `main` at `45e82ce4` after a full gate (10,398 tests, 315 e2e). No migration (the next is 0114).
 
 - T-327: `.storybook/vitest.setup.ts` passes `@storybook/addon-a11y/preview` to `setProjectAnnotations`
   (it had been missing since 2026-10-12, so no story ran axe). Any violation fails a story, whatever its
@@ -127,7 +127,7 @@ On `main` at `d6200bf7` after a full gate (10,398 tests, 315 e2e). No migration 
 
 ### Earlier: touch stories in their own projects (2026-11-16, Windows)
 
-On `main` at `98dfd0f5` after a full gate (10,396 tests, 315 e2e).
+On `main` at `b98f8308` after a full gate (10,396 tests, 315 e2e).
 
 - T-328: stories that need a touch screen carry a literal tags: ['touch'] and run in stories-touch and
   stories-dark-touch (Playwright context with hasTouch; one page each). The mid-story CDP toggle that stalled
@@ -136,7 +136,7 @@ On `main` at `98dfd0f5` after a full gate (10,396 tests, 315 e2e).
 
 ### Earlier: Google's button as Google draws it (2026-11-16, Windows)
 
-On `main` at `083f806a` after a full gate (10,389 tests, 315 e2e). No migration (the next is 0114).
+On `main` at `eae01a7b` after a full gate (10,389 tests, 315 e2e). No migration (the next is 0114).
 
 - T-262 (with T-317, the user's OK to download): `apps/web/src/assets/google/google-g.svg` is the G from Google's
   signin-assets.zip, cropped, shown by `GoogleMark` as an image; `apps/web/src/fonts/` holds Google Sans 500
@@ -148,7 +148,7 @@ On `main` at `083f806a` after a full gate (10,389 tests, 315 e2e). No migration 
 
 ### Earlier: Administration controls beyond the UI-T21 list (2026-11-16, Windows)
 
-On `main` at `f0239053` after a full gate (10,380 tests, 315 e2e). No migration (the next is 0114).
+On `main` at `32ab6aa7` after a full gate (10,380 tests, 315 e2e). No migration (the next is 0114).
 
 - T-322 (T-155): `configuration/DeleteTrack.tsx` (Delete track, a DangerAction, to the trash; refusals
   re-read the list); Which sets a track uses chooses a shared-mode track's access policy and type set
@@ -165,7 +165,7 @@ On `main` at `f0239053` after a full gate (10,380 tests, 315 e2e). No migration 
 
 ### Earlier: Administration pages for what was API-only, wave 1 (2026-11-16, Windows)
 
-On `main` at `fa27710c` after a full gate (10,234 tests, 300 e2e). No migration of its own (wave 21 used 0113; the next is 0114).
+On `main` at `6d4d6797` after a full gate (10,234 tests, 300 e2e). No migration of its own (wave 21 used 0113; the next is 0114).
 
 - T-320 (UI-T21 wave 1, T-155): new pages `#/admin/priorities` (`apps/web/src/priorities/`: priorities,
   priority sets, close reasons), `#/admin/ticket-types` (`apps/web/src/tickettypes/`: levels and types;
@@ -190,7 +190,7 @@ On `main` at `fa27710c` after a full gate (10,234 tests, 300 e2e). No migration 
 
 ### Earlier: the user's answers of 2026-11-16, built (2026-11-16, Windows)
 
-On `main` at `50f67f02` after a full gate (9,864 tests, 276 e2e). Migration 0113 (`user_preference.csv_style`, T-263); the next is 0114.
+On `main` at `fdc01906` after a full gate (9,864 tests, 276 e2e). Migration 0113 (`user_preference.csv_style`, T-263); the next is 0114.
 
 - Done: T-259, T-260, T-263, T-264, T-267, T-269, T-278, T-279, T-280, T-283, T-284, T-286, T-120, T-318
   (tickets.md has what each became). T-268 waits for the Mac's t359-work.
@@ -218,7 +218,7 @@ On `main` at `50f67f02` after a full gate (9,864 tests, 276 e2e). Migration 0113
 
 ### Earlier: the hierarchy grid (2026-11-15, Windows)
 
-On `main` at `152f666b` after a full gate (9,718 tests, 271 e2e). Migration 0112; the next is 0113.
+On `main` at `43b32dfb` after a full gate (9,718 tests, 271 e2e). Migration 0112; the next is 0113.
 
 - ADR-122 stage 10 (T-089a, PLN-010): a plan's Grid section. A structure (`plan_structure`, up to
   20 a plan) holds steps and columns, never tickets; the tree is built per viewer
@@ -236,7 +236,7 @@ On `main` at `152f666b` after a full gate (9,718 tests, 271 e2e). Migration 0112
 
 ### Earlier: baselines, the critical path and evening out load (2026-11-15, Windows)
 
-On `main` at `9201af30` after a full gate (9,575 tests, 270 e2e). Migration 0111; the next is 0112 (claimed for stage 10).
+On `main` at `dadb44fc` after a full gate (9,575 tests, 270 e2e). Migration 0111; the next is 0112 (claimed for stage 10).
 
 - ADR-122 stage 9 (T-089a, PLN-011): a plan's Baselines section captures up to 10 baselines from Live
   or a scenario (`routes/plan-baselines.ts`, tables `plan_baseline` and `plan_baseline_day`) and
@@ -255,8 +255,8 @@ On `main` at `9201af30` after a full gate (9,575 tests, 270 e2e). Migration 0111
 
 ### Earlier: wrapping up for the day; T-359 half-done on six branches (2026-11-14, the Mac)
 
-The Mac's last push to `main` was `c10ea330` (T-355 and T-356, full gate: 9,257 tests, 266 e2e);
-Windows has pushed since (`91a354b0`). The main lock is free and nothing of the Mac's is running.
+The Mac's last push to `main` was `bb8dc3a6` (T-355 and T-356, full gate: 9,257 tests, 266 e2e);
+Windows has pushed since (`bcbc4f24`). The main lock is free and nothing of the Mac's is running.
 
 - T-358, the third page sweep, is done: `docs/plan/page-review-third-sweep.md` (166 routes, 1,219
   pictures; of the second sweep's open faults 86 fixed, 29 still there or changed; 66 new faults,
@@ -275,7 +275,7 @@ Windows has pushed since (`91a354b0`). The main lock is free and nothing of the 
 
 ### Earlier: the auto-scheduler (2026-11-14, Windows)
 
-On `main` at `91a354b0` after a full gate (9,404 tests, 268 e2e). No migration; the next is 0111.
+On `main` at `bcbc4f24` after a full gate (9,404 tests, 268 e2e). No migration; the next is 0111.
 
 - T-089f (ADR-122 stage 7, PLN-004 now M1): **Auto-schedule** on a plan's scenario bar (the plan's
   owner and site administrators). A run proposes start and due days for the plan's open level-0
@@ -298,7 +298,7 @@ On `main` at `91a354b0` after a full gate (9,404 tests, 268 e2e). No migration; 
 
 ### Earlier: T-355 and T-356 (2026-11-14, the Mac)
 
-On `main` at `c10ea330` after a full gate (9,257 tests, 266 e2e).
+On `main` at `bb8dc3a6` after a full gate (9,257 tests, 266 e2e).
 
 - T-355: the sweep's probe judges the uncovered part of a press area; the phone sweep of the
   timeline no longer lists the key link.
@@ -310,7 +310,7 @@ On `main` at `c10ea330` after a full gate (9,257 tests, 266 e2e).
 
 ### Earlier: T-350 to T-353 (2026-11-14, the Mac)
 
-On `main` at `d0795328` after a full gate (9,249 tests, 266 e2e; the local-embedding speed limit
+On `main` at `26a338c7` after a full gate (9,249 tests, 266 e2e; the local-embedding speed limit
 missed on this Mac, not enforced, benchmarking set aside).
 
 - T-350: the template form adds person, group and team values with the create form's searches.
@@ -327,7 +327,7 @@ missed on this Mac, not enforced, benchmarking set aside).
 
 ### Earlier: T-296 to T-299 (2026-11-14, the Mac)
 
-On `main` at `e9adbd70` after a full gate (9,226 tests, 264 e2e), with Windows' T-287 part,
+On `main` at `a06c4f68` after a full gate (9,226 tests, 264 e2e), with Windows' T-287 part,
 T-289's last four and T-307 to T-311 already there.
 
 - T-296: the sweep's probe counts a positioned ::before or ::after as part of a press area (the
@@ -344,7 +344,7 @@ T-289's last four and T-307 to T-311 already there.
 
 ### Earlier: lists that stop early, releases on your own day (2026-11-14, Windows)
 
-On `main` at `68a5d2d3` after a full gate (9,192 tests, 262 e2e). No migration; the next is 0111.
+On `main` at `330d50a4` after a full gate (9,192 tests, 262 e2e). No migration; the next is 0111.
 
 - T-287 (Windows' part): releases across tracks, their linked releases and a plan's Releases tab
   turn overdue at the viewer's midnight (`viewerDay`); `releaseView(r, today)` needs the day.
@@ -363,7 +363,7 @@ On `main` at `68a5d2d3` after a full gate (9,192 tests, 262 e2e). No migration; 
 
 ### Earlier: T-291 to T-295 (2026-11-14, the Mac)
 
-On `main` at `ee89136d` after a full gate (9,138 tests, 262 e2e).
+On `main` at `f60f2130` after a full gate (9,138 tests, 262 e2e).
 
 - T-291: the ticket template form shows the server's reason under the field it belongs to and
   shows custom release and area values by name, with a way to remove one. Its "None: saving
@@ -382,7 +382,7 @@ On `main` at `ee89136d` after a full gate (9,138 tests, 262 e2e).
 
 ### Earlier: T-287's Mac parts, T-289 outside releases and Plans, T-290 (2026-11-14, the Mac)
 
-On `main` at `0f1a4e11` after a full gate (9,107 tests, 262 e2e; one speed limit missed on this
+On `main` at `c5968c63` after a full gate (9,107 tests, 262 e2e; one speed limit missed on this
 Mac, not enforced, and benchmarking is set aside for now).
 
 - T-287 (the Mac's parts): a ticket template refuses an archived release or area named anew with
@@ -402,13 +402,13 @@ Mac, not enforced, and benchmarking is set aside for now).
 
 ### Earlier: the phone and accessibility pass closed (2026-11-14, the Mac)
 
-- **On `main` (`77c00547`, full gate: 9,078 tests, 262 e2e):** T-222, T-226, T-228, T-229 and T-231,
+- **On `main` (`e3709204`, full gate: 9,078 tests, 262 e2e):** T-222, T-226, T-228, T-229 and T-231,
   closing T-164 (the wave 8 phone pass). New: T-288 (for the user: try the calendar grip on real
   phones), T-289, T-290.
 
 ### Earlier: lists read past their first page; plans.css at full lint (2026-11-14, Windows)
 
-- **On `main` (`ee3aed97`, full gate on Windows: 9,035 tests, 262 e2e):** T-305 (every list read
+- **On `main` (`790bde3a`, full gate on Windows: 9,035 tests, 262 e2e):** T-305 (every list read
   for "all" follows its pages: track pickers and lists, a ticket's work log, the Jira-compatible
   project list, MCP `list_tracks`, a track's waiting invitations) and T-285 (plans.css passes
   Biome with no override; a calendar grip fits its chip). Reviewed: 6 faults fixed with tests.
@@ -417,13 +417,13 @@ Mac, not enforced, and benchmarking is set aside for now).
 
 ### Earlier: T-282 and the wave 8 phone tickets checked (2026-11-14, the Mac)
 
-- **On `main` (`34a7bb37`, full gate: 9,004 tests, 262 e2e):** T-282's small follow-ups. The wave 8
+- **On `main` (`0bdf3332`, full gate: 9,004 tests, 262 e2e):** T-282's small follow-ups. The wave 8
   phone tickets came back from Windows: T-212 and T-221 are done; T-222, T-226, T-228, T-229 and
   T-231 are the Mac's next. New: T-286 (for the user) and T-287.
 
 ### Earlier: draft changes and scenarios on main (2026-11-14, Windows)
 
-- **On `main` (`8e0d4c9c`, full gate on Windows: 9,001 tests, 262 e2e):** T-089e, draft changes
+- **On `main` (`418eb875`, full gate on Windows: 9,001 tests, 262 e2e):** T-089e, draft changes
   and scenarios (ADR-122 stage 6, PLN-002 and PLN-003 now M1, migration 0110). A plan's editors
   draft start and due days and the Team value in named scenarios, compare two of them, and apply
   the main scenario's drafts ticket by ticket with the applier's permissions. A review found 22
@@ -439,20 +439,20 @@ Mac, not enforced, and benchmarking is set aside for now).
 
 ### Earlier: template pickers, dates in history, a strict lint step (2026-11-14, the Mac)
 
-- **On `main` (`4155d809`, full gate: 8,876 tests, 260 e2e):** T-276, T-277 and T-281. **The lint step
+- **On `main` (`b617456f`, full gate: 8,876 tests, 260 e2e):** T-276, T-277 and T-281. **The lint step
   now fails on any Biome warning**; plans.css's warnings are lowered to info for that file until
   T-285. New: T-282 to T-285 (T-283 for the user).
 
 ### Earlier: the create form, one date format and the demo loader (2026-11-14, the Mac)
 
-- **On `main` (`89c4433b`, full gate: 8,862 tests, 260 e2e):** T-265 (the create form sets every field
+- **On `main` (`5f57c1ff`, full gate: 8,862 tests, 260 e2e):** T-265 (the create form sets every field
   it lists), T-240 (one date format in the person's locale; TR-29 gone), T-239 (`pnpm demo
   --tickets` loads tickets.md into a demo), T-247 (the image's install is bounded) and T-270.
   New: T-276 to T-281 (T-278 to T-280 for the user). Windows: T-089e (migration 0110).
 
 ### Earlier: Plans' confirmations and the sweep's Plans rows on main (2026-11-14, Windows)
 
-- **On `main` (`72db5a6e`, full gate on Windows: 8,790 tests, 258 e2e):** T-266 (Plans ask in the
+- **On `main` (`fcc50536`, full gate on Windows: 8,790 tests, 258 e2e):** T-266 (Plans ask in the
   page before deleting or clearing capacity) and T-304 (the `plan-` rows of the second sweep), with
   a review's six findings fixed; T-303 (the MCP command broke mid-setting on Windows).
 - **In progress on Windows:** T-089e, draft changes and scenarios (ADR-122 stage 6, migration 0110)
@@ -461,15 +461,15 @@ Mac, not enforced, and benchmarking is set aside for now).
 
 ### Earlier: the second sweep fixed (2026-11-14, the Mac)
 
-- **On `main` (`1bf593c9`, full gate: 8,758 tests, 256 e2e):** T-258 (a fresh sweep of every route:
+- **On `main` (`666fef95`, full gate: 8,758 tests, 256 e2e):** T-258 (a fresh sweep of every route:
   `docs/plan/page-review-second-sweep.md`, 119 of 151 faults fixed, 69 new), T-271 (its faults
   outside Plans, six groups) and T-272 (reports bucket days by the person's own day). Printing a
   ticket switches to the light skin (`printInLightSkin` in `skins/skins.ts`). Next for the Mac:
-  T-273 to T-275 (on `main` at 07a56b32 too). Windows has T-089e (migration 0110).
+  T-273 to T-275 (on `main` at a30af0dc too). Windows has T-089e (migration 0110).
 
 ### Earlier: the program board and eleven bugs on main (2026-11-14, Windows)
 
-- **On `main` (`443b2dcd`, full gate on Windows: 8,615 tests, 255 e2e):** T-089d, program boards
+- **On `main` (`f401346a`, full gate on Windows: 8,615 tests, 255 e2e):** T-089d, program boards
   (ADR-122 stage 5, PLN-008, PLN-013, migration 0108), reviewed by a panel (17 faults fixed with
   tests); and the bugs T-203 (migration 0109), T-223, T-224, T-225, T-227, T-230, T-235, T-243,
   T-244, T-245 and T-249, reviewed too (10 faults fixed). New helper: `apps/web/e2e/unique.ts`
@@ -482,7 +482,7 @@ Mac, not enforced, and benchmarking is set aside for now).
 
 ### Earlier: wave 12's follow-ups on main (2026-11-14, the Mac)
 
-- **On `main` (`488632e0`, full gate: 8,526 tests, 254 e2e):** T-253 (the create form sets assignee,
+- **On `main` (`c048b749`, full gate: 8,526 tests, 254 e2e):** T-253 (the create form sets assignee,
   release, area, parent and person fields; Track is an icon select), T-254 (one confirmation,
   `shell/DangerAction`, for every destructive action outside Plans), T-255 (small leftovers) and
   T-257 (`pnpm sweep` merged with tests; phone routes captured by the window with touch kept).
@@ -492,7 +492,7 @@ Mac, not enforced, and benchmarking is set aside for now).
 
 ### Wave 13 on main (2026-11-14, the Mac)
 
-- **On `main` (`d9061d06`, full gate: 8,416 tests, 250 e2e):** the tickets the user answered on
+- **On `main` (`3c5ef3ec`, full gate: 8,416 tests, 250 e2e):** the tickets the user answered on
   2026-11-13: T-053, T-061, T-075a, T-082, T-087b, T-088a, T-089j's erasure part, T-205a, T-217,
   T-246 (migration 0107), T-248, T-252, T-256 ('site' and 'Plans' in the interface). Questions the
   builders raised are T-259 to T-264 for the user.
@@ -504,7 +504,7 @@ Mac, not enforced, and benchmarking is set aside for now).
 
 ### The page review fixed (2026-11-13, the Mac)
 
-- **On `main` (`bff9aa24`, full gate: 8,299 tests, 250 e2e):** wave 12, the page review's fixes.
+- **On `main` (`b8aba5af`, full gate: 8,299 tests, 250 e2e):** wave 12, the page review's fixes.
   The user answered all 38 questions of direction, the design tickets marked You and T-241's
   17 Multi-track questions on 2026-11-13 (decisions.csv, from "Phone ticket table"). 147 of 151
   faults were fixed in six groups (stand-alone and not-found pages; administration; tickets,
@@ -525,12 +525,12 @@ Mac, not enforced, and benchmarking is set aside for now).
 
 ### The Mac, after the Windows wrap-up (2026-11-08)
 
-- **On `main` (`819c5ae4`, full gate on the Mac: 8,048 tests, 248 e2e):** the Windows work below
+- **On `main` (`ed382304`, full gate on the Mac: 8,048 tests, 248 e2e):** the Windows work below
   plus wave 10: T-013a (the retries were an already-fixed board race; two flaky specs fixed),
   T-208 (story dependencies listed up front), T-232, T-233, T-236, T-237 (`cli.mjs workflow-moves
   [--repair]`), T-238. New tickets T-243 to T-249; T-246 and T-248 are questions for the user.
 - **The Mac's demo** runs again at `http://localhost:8080` from `.claude/worktrees/tm-demo` (now at
-  `3d009636`), with the tickets up to T-242 and the user's own site-administrator account; its link
+  `1826ea6a`), with the tickets up to T-242 and the user's own site-administrator account; its link
   is in that worktree's `.cache/demo-user.txt`. A restart makes new one-time links.
 - **Next:** the page review (T-220) and its fixes, starting by merging `main` into
   `wave8/t164-phone-accessibility` and reviewing the sweep tool; then the list below.
@@ -543,7 +543,7 @@ while the Windows session built Multi-track. Work from one device at a time: `gi
 this file before anything else. The Mac took T-235 to T-238; the Windows session's two new tickets
 became T-240 and T-241 (the Mac took T-239 too). T-242 lists the speed limits this machine missed; T-170 is done (the live AI tests passed with the user's own key).
 
-- **On `main` now (`3d009636`, after a full gate on Windows):** Multi-track's releases across
+- **On `main` now (`1826ea6a`, after a full gate on Windows):** Multi-track's releases across
   tracks (T-089c, ADR-122 stage 4, PLN-007, migration 0106) and a plan's copy, link, CSV and
   Timeline image (T-089g, stage 8, PLN-014), with the independent review's repairs; the generated
   SDK; a CSV cell with a semicolon is now quoted; a test race on the refused layouts page; and the
@@ -553,7 +553,7 @@ became T-240 and T-241 (the Mac took T-239 too). T-242 lists the speed limits th
   (`pnpm sweep`, `tools/sweep/`, one CLAUDE.md row): it starts a private demo on port 8090, signs in
   with a password made at run time and captures every route (163 entries, 686 images) at 1280 and
   375 px in both skins, with measurements (sideways scroll, small targets, axe, names). It has no
-  tests of its own and no review yet. The branch is from `3e59102`: merge `main` into it first.
+  tests of its own and no review yet. The branch is from `65ae8ea`: merge `main` into it first.
 - **The page review (T-220) is a quarter done.** A reader went through the track sections only and
   found 34 faults and 11 questions of direction: `docs/plan/page-review-findings.md`. The other three
   groups were cut off twice by the usage limit. Lesson: one reader per group reading all four images
@@ -575,7 +575,7 @@ became T-240 and T-241 (the Mac took T-239 too). T-242 lists the speed limits th
 
 ### Where things are
 
-- **T-089c is built, not merged** (2026-11-04, on `wave8/multi-track-stages`, from `3e59102`):
+- **T-089c is built, not merged** (2026-11-04, on `wave8/multi-track-stages`, from `65ae8ea`):
   releases across tracks (ADR-122 stage 4, PLN-007 moved to M1, migration 0106). Next free
   migration is 0107. It needs the full gate, an independent review and the 100,000-ticket bar
   (`TASKMOOR_LARGE_PLANS=1`), none of them run. ADR-122 holds eight questions for the user; the
@@ -626,11 +626,11 @@ became T-240 and T-241 (the Mac took T-239 too). T-242 lists the speed limits th
   its first real touch run found a real bug, fixed) and T-163b (layouts for a local-mode track's own
   administrators). The last gate had 7,436 tests and 244 e2e. Finger drags were only run in
   Chromium's simulated touch, not yet on a real phone.
-- **The glass pass is on `main` (`3e59102`, 2026-11-05):** T-143 and T-144, glass and one design on
+- **The glass pass is on `main` (`65ae8ea`, 2026-11-05):** T-143 and T-144, glass and one design on
   every route, with shared styles (`shared.css`) and a guard (`styles/design.test.ts`). Its gate found
   that a drag start moved the calendar and backlog under the finger (fixed). Gate: 7,714 tests, 244
   e2e. It has only been seen as stories and signed-out pages; T-220 sees it signed in.
-- **Wave 9 is on `main` (`82311c66`, 2026-11-06, on the Mac, each reviewed, fixed and re-checked,
+- **Wave 9 is on `main` (`74c9431d`, 2026-11-06, on the Mac, each reviewed, fixed and re-checked,
   then gated):** T-032 (no real secret in 816 commits; `pnpm secrets` with `.gitleaks.toml`;
   `docs/security/secret-scan.md`), T-195 (a backup's queries read the field its own Points became,
   in a dry run too), T-211 (`pnpm demo` rebuilds an old frontend), T-209, T-210 and T-234 (free-moving
@@ -638,14 +638,14 @@ became T-240 and T-241 (the Mac took T-239 too). T-242 lists the speed limits th
   and T-023 (every image and kit script passes on the Mac with Colima, both architectures, the offline
   bundle for either, the fresh machine to sign-in in 23 s; `docs/ops/image-and-kits-mac.md`). New
   follow-ups: T-032a (yours), T-235 to T-238. Last gate: 7,778 tests and 243 e2e. No migrations.
-- **In progress, a merge wave (both from `3e59102`, merged together when both are done):** the route
+- **In progress, a merge wave (both from `65ae8ea`, merged together when both are done):** the route
   sweep and phone pass (T-220, T-164, T-212, T-221, T-222, T-226, T-228, T-229, T-231) in
   `G:/tm-t164` on `wave8/t164-phone-accessibility`; Multi-track's T-089c and T-089g in `G:/tm-plans`
   on `wave8/multi-track-stages`.
 - **Chrome's window minimized:** the tab has a zero-size viewport, draws no frames and screenshots
   time out, while scripts still run. That looks like a frozen page and is not one.
 - **The demo** runs on the Mac from the worktree `.claude/worktrees/tm-demo` (detached at `main`
-  `82311c66`, 2026-11-06) at `http://localhost:8080`, started by the browser pane's launcher
+  `74c9431d`, 2026-11-06) at `http://localhost:8080`, started by the browser pane's launcher
   (`.claude/launch.json` in the main checkout, excluded locally). It holds only the Backend (BE, 85),
   Front (FE, 133) and Flutter (FL, 3) tracks with every ticket of `tickets.md` (states as statuses;
   `needs-you` and `later` labels); the four sample tracks are in the trash. Its database is in
@@ -789,7 +789,7 @@ section is the whole handoff: read it, then `CLAUDE.md` and `STATUS.md`.
 
 | # | Workstream | Branch | Task file | Numbers | State on 2026-11-03 |
 |---|---|---|---|---|---|
-| 1 | **M1 finish** (coordinator) | `claude/api-key-upload-prevention-9ucz4x` | `docs/plan/progress.csv` | ADR-117 and up, migration 0086 and up | `main` was fast-forwarded to `3ad14a3` on 2026-11-03 after a green gate, with one e2e test (AI settings, Strict mode) passing only on its retry. |
+| 1 | **M1 finish** (coordinator) | `claude/api-key-upload-prevention-9ucz4x` | `docs/plan/progress.csv` | ADR-117 and up, migration 0086 and up | `main` was fast-forwarded to `37c0288` on 2026-11-03 after a green gate, with one e2e test (AI settings, Strict mode) passing only on its retry. |
 | 2 | **Ticket templates** (for 1.0) | merged | `docs/plan/ticket-templates-tasks.md` | ADR-113, migration 0085, CORE-029 and CORE-030 | On `main`. |
 | 3 | **UI overhaul and tutorial** | `claude/ui-overhaul`, merged so far | `docs/plan/ui-overhaul-tasks.md` | ADR-114 to 116, ADR-121 for track groups | The work so far is on `main`. The rest waits as tickets. |
 | 4 | **Flutter mobile app** (stopped) | `claude/flutter-mobile-app` | `apps/mobile/TASKS.md` (its own Handoff section) | ADR-112 | Stopped by the user on 2026-11-03, pushed at `8540a0a`. Do not resume it unless the user asks; merge after M1. |
@@ -847,7 +847,7 @@ final code (the user's decision).
    With this PC's cores, the 1M run is worth trying too.
 4. **M1-118, fuzzing:** `bash tools/fuzz/staged.sh` (stages of 1, 2, 4 and 8 hours, every target
    clean at each; about 15 hours). Any failure: reproduce alone with its seed, fix it with a
-   regression test (as in 6b0522c), delete that stage's folder, run again. Then copy the 8-hour
+   regression test (as in 446535c), delete that stage's folder, run again. Then copy the 8-hour
    reports into `docs/security/fuzz-results.json` (`pnpm gate M1` reads it).
 5. **Merge workstream 2** (ticket templates) when its gate is green.
 6. **M1-120, the release:** 1.0 is LTS (24 months).
@@ -971,7 +971,7 @@ a layout editor and easier board columns; then asked to wrap up.
   component tests (`--project=web`, 782 passed); the stories and tests of `shell`, `home`,
   `tutorial`, `boards` and `tickets` in both skins (190 passed); `docs-check` and `next-task`
   tests; `pnpm i18n:check`; `pnpm run docs`. Not run to the end: the full `pnpm verify --e2e`. It
-  started on fe9066d and the cloud container was killed partway (exit 137, likely memory), so
+  started on 5b51335 and the cloud container was killed partway (exit 137, likely memory), so
   the database suites, the other stories and Playwright e2e are unverified. Run the full gate
   first in the local session, before anything goes to `main`.
 - **Running the demo here (root container):** `service postgresql start`, a password for the
@@ -1047,7 +1047,7 @@ a layout editor and easier board columns; then asked to wrap up.
   `fuzz/staged.sh`: it leaves `stage-<h>h/done` or `failed`, copies each `.verify/fuzz-<t>.json`
   there, and on a restart resumes at the interrupted stage (run it again; it skips finished
   stages). When stage 8 h is done, copy its reports into `docs/security/fuzz-results.json`.
-  Runs under an hour found two real bugs, fixed on main (6b0522c).
+  Runs under an hour found two real bugs, fixed on main (446535c).
 - **Next:** M1-120 (release) once the fuzzers are clean and the user has answered: is 1.0 an LTS
   release, does the repository go public, the storage quota default (off, CORE-021 reworded),
   the ghcr.io token and network access, the AI key; M1-091's 1M-issue run last, on a machine
@@ -1156,7 +1156,7 @@ The user answered the open questions on 2026-10-31 (rows in `docs/plan/decisions
 
 All on `main`, each push after a green `pnpm verify --e2e`:
 
-- **Fixes** (commits `314f4de`, `7e60c86` and `7e34932`):
+- **Fixes** (commits `3b008ee`, `8cba3cc` and `d954058`):
   - **Backend-kit test:** the "Docker missing" case no longer finds a real `/usr/bin/docker`
     (`packages/devtools/src/backend-kit.test.ts`).
   - **Upgrade rollback:** it now drops foreign keys a newer migration added before
@@ -1522,7 +1522,7 @@ All on `main`, each push after a green `pnpm verify --e2e`:
     sandbox's Postgres 16 has 0.6.0; the Mac's embedded Postgres has none, so that test skips).
   - The Compose kit and the Builder backend kit now use `pgvector/pgvector:0.8.1-pg16-trixie`.
     `CLAUDE.md`'s CLI list does not name `embeddings` yet (the manual's CLI page does).
-  - The Dockerfile carries M1-113's build-secret change (same lines as `ad68952`), so the
+  - The Dockerfile carries M1-113's build-secret change (same lines as `485a6b1`), so the
     merge with that branch should be clean.
   - Next (M1-079): the duplicate-suggestion and similar-ticket UI on these two routes, and
     model re-ranking when a provider is set (AI-016).
@@ -1626,8 +1626,8 @@ real phones, backup and restore of the full-text columns (no `pg_dump` on this M
 ## Earlier: what changed on 2026-10-30 (cloud session, with the user)
 
 The user worked with a cloud session while this Mac was busy. Pull first, then read the three
-sections below this one. See every change with `git log --stat 62b5a68..3182b16` (four commits:
-4f3d4b5, 31e075a, 0d633ad, 3182b16). Where to look:
+sections below this one. See every change with `git log --stat 8c75140..4f07b56` (four commits:
+84dbb92, f91a64b, fb78237, 4f07b56). Where to look:
 
 | What | Where |
 |---|---|
@@ -1648,14 +1648,14 @@ Asked for by the cloud session with the user. Colima, Docker (with the Compose a
 plugins), kind, Helm and kubectl (`kubernetes-cli`; Colima ships no kubectl) are installed with
 Homebrew. `~/.docker/config.json` names `/opt/homebrew/lib/docker/cli-plugins`. The VM runs with
 `colima start --vm-type vz --vz-rosetta --cpu 4 --memory 8 --disk 60`, and `hello-world` ran.
-Results at 15d2659, from a clean worktree of main:
+Results at 71fb340, from a clean worktree of main:
 
 | Check | Result |
 |---|---|
 | `tools/image/smoke.sh` | Passed in 37 s. Image 77 MB; web-only with hash routing and clean URLs, all roles next to Postgres 16, arm64. This Mac is arm64, so amd64 was not exercised |
 | `tools/image/smoke-kits.sh` | Passed in 27 s: the bundled-Postgres and external-Postgres Compose kits reach `/ready` |
 | `tools/image/drill-backup.sh` | Passed in 21 s: backup, restore, table checksums equal, the restored administrator signs in |
-| `tools/helm/kind-test.sh` | Failed first: `helm test` ran two seconds after the pods started, before the new cluster routed the Service ("fetch failed"). Fixed in 63c7e79 (the probe retries for a minute). Then passed in 224 s: `helm test` ok, a rolling upgrade under load with 47,733 requests and none failed |
+| `tools/helm/kind-test.sh` | Failed first: `helm test` ran two seconds after the pods started, before the new cluster routed the Service ("fetch failed"). Fixed in 47381e5 (the probe retries for a minute). Then passed in 224 s: `helm test` ok, a rolling upgrade under load with 47,733 requests and none failed |
 
 ## Backlog review applied (2026-10-30)
 
@@ -3650,7 +3650,7 @@ status page. Boards, items and queries arrive with M1.
   real drill.
 - Python's `Path.write_text` on Windows writes CRLF: Biome's format check then fails and git
   shows whole-file diffs. Open files with `newline='\n'` or run `sed -i 's/\r$//'` afterwards.
-- Commit 5ffe3ad carries the message of the commit before it; it holds the upgrade harness and
+- Commit 81e43e6 carries the message of the commit before it; it holds the upgrade harness and
   the operator CLI (M0-029). Noted in the body of the commit that followed.
 - `pnpm gate` only counts a full `pnpm verify`: a run narrowed with `--only`, `--changed` or a
   filter writes `partial: true` into `.verify/summary.json` and the gate reports it.

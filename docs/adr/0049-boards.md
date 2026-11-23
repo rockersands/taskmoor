@@ -173,7 +173,7 @@ project, 1440 by 900, `e2e/board-large.spec.ts`, `TASKMOOR_LARGE_BOARD=1`; the b
 multiplied into 5,000 cards in its first column in the browser's network layer, moves answered as
 the server would, so the numbers are the page's own; three runs before, six after):
 
-| | Before (main at `4bd9c564`) | After |
+| | Before (main at `a061e811`) | After |
 |---|---|---|
 | Cards on the page | 5,000 | 13 at the top of the board |
 | Scrolling 60 px a frame for 3 s | 41.1 to 42.1 frames a second | 50.1 to 54.7 frames a second |

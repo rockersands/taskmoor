@@ -51,17 +51,17 @@ for an example, and none of them ever guarded anything real. The exact values ar
 
 | File (findings) | Commits | What it is |
 |---|---|---|
-| `.github/workflows/ci.yml` (5) | `e25bdfd1`, `c9203bea`, `0cb1fc9d`, `7e56a288` (2026-10-12) | The default password of the CI job's Postgres service container, reachable only inside the job |
-| `apps/server/src/config.test.ts` (3) | `e25bdfd1`, `7e56a288` (2026-10-12) | Connection strings that `loadConfig` must accept, and one it must reject without repeating the password |
-| `apps/server/src/backups/schedule.test.ts` (1) | `13ce14df` (2026-10-28) | A failed `pg_dump` line whose password the backup record must never keep (OPS-008) |
-| `apps/server/src/email/smtp.test.ts` (1) | `ccec462a` (2026-10-30) | The placeholder database URL of the mail server tests |
-| `apps/server/src/fuzz/targets.test.ts` (1) | `9f9c2077` (2026-11-01) | An address with a user and password in the OAuth address checks |
-| `apps/server/src/webhooks/webhooks.test.ts` (1) | `383dc41c` (2026-10-29) | A webhook URL with credentials, which the webhook form must refuse |
-| `deploy/compose/.env.example` (2), `deploy/compose/docker-compose.external.yml` (2) | `97251a8e`, `7e56a288` (2026-10-12) | The placeholder in the Compose kit's external-database example |
-| `docs/manual/admin/install.md` (2) | `aed7bb35` (2026-10-30) | The example connection string on the installation page |
-| `tools/helm/postgres.yaml` (2) | `50ffbbc9`, `7e56a288` (2026-10-12) | The password of the Postgres in the kind cluster that tests the Helm chart |
-| `tools/image/smoke.sh` (1) | `6004f5b4` (2026-10-12) | The password of the image smoke test's throwaway Postgres container |
-| `tools/sweep/plan.test.mjs` (1), `tools/sweep/redact.mjs` (1) | `20c08a70` (2026-11-13) | A made-up token the sweep must never repeat from its command line, and the word "password" in a comment's example address (the comment no longer has one). Found after the table above was counted |
+| `.github/workflows/ci.yml` (5) | `9b084b9b`, `9499e6a4`, `7fdc4a18`, `9914634c` (2026-10-12) | The default password of the CI job's Postgres service container, reachable only inside the job |
+| `apps/server/src/config.test.ts` (3) | `9b084b9b`, `9914634c` (2026-10-12) | Connection strings that `loadConfig` must accept, and one it must reject without repeating the password |
+| `apps/server/src/backups/schedule.test.ts` (1) | `1b156fb8` (2026-10-28) | A failed `pg_dump` line whose password the backup record must never keep (OPS-008) |
+| `apps/server/src/email/smtp.test.ts` (1) | `e797aa3a` (2026-10-30) | The placeholder database URL of the mail server tests |
+| `apps/server/src/fuzz/targets.test.ts` (1) | `b2be3f16` (2026-11-01) | An address with a user and password in the OAuth address checks |
+| `apps/server/src/webhooks/webhooks.test.ts` (1) | `3568a60c` (2026-10-29) | A webhook URL with credentials, which the webhook form must refuse |
+| `deploy/compose/.env.example` (2), `deploy/compose/docker-compose.external.yml` (2) | `016d46f4`, `9914634c` (2026-10-12) | The placeholder in the Compose kit's external-database example |
+| `docs/manual/admin/install.md` (2) | `dadc9550` (2026-10-30) | The example connection string on the installation page |
+| `tools/helm/postgres.yaml` (2) | `251a877f`, `9914634c` (2026-10-12) | The password of the Postgres in the kind cluster that tests the Helm chart |
+| `tools/image/smoke.sh` (1) | `d99b3b7b` (2026-10-12) | The password of the image smoke test's throwaway Postgres container |
+| `tools/sweep/plan.test.mjs` (1), `tools/sweep/redact.mjs` (1) | `6b7fc678` (2026-11-13) | A made-up token the sweep must never repeat from its command line, and the word "password" in a comment's example address (the comment no longer has one). Found after the table above was counted |
 
 The other test credentials never enter the history as values. FakeS3 creates its access key and
 secret at run time (`packages/storage/src/fake-s3.ts`). The e2e seed's passphrases are ordinary
@@ -74,10 +74,10 @@ word like token or secret.
 
 | File (findings) | Commit | What it is |
 |---|---|---|
-| `apps/server/src/import/cloud/__fixtures__/compat-source.json` (8) | `3b28a19e` (2026-10-31) | `nextPageToken` page cursors recorded from Taskmoor's own synthetic server. Each of the 4 distinct values decodes to `{"s":...,"v":[...],"i":...}` (base64). The allowlist accepts only that shape, and only in this file |
-| `packages/db/src/upgrade-fixtures.ts` (1) | `27aedead` (2026-10-28) | A storage key of the upgrade seed: an object name made of hex digits in order |
-| `apps/web/src/account/fixtures.ts` (1) | `113f30b1` (2026-10-12) | The synthetic authenticator setup of the account stories: ASCII text encoded in base32 |
-| `apps/server/src/routes/identity.test.ts` (1) | `9fa52ce5` (2026-10-12) | A common password that the password policy must refuse |
+| `apps/server/src/import/cloud/__fixtures__/compat-source.json` (8) | `e7b7be0a` (2026-10-31) | `nextPageToken` page cursors recorded from Taskmoor's own synthetic server. Each of the 4 distinct values decodes to `{"s":...,"v":[...],"i":...}` (base64). The allowlist accepts only that shape, and only in this file |
+| `packages/db/src/upgrade-fixtures.ts` (1) | `ca13c2c0` (2026-10-28) | A storage key of the upgrade seed: an object name made of hex digits in order |
+| `apps/web/src/account/fixtures.ts` (1) | `b26d2520` (2026-10-12) | The synthetic authenticator setup of the account stories: ASCII text encoded in base32 |
+| `apps/server/src/routes/identity.test.ts` (1) | `9c91bed2` (2026-10-12) | A common password that the password policy must refuse |
 
 ## The sweep beside gitleaks
 
