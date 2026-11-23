@@ -120,6 +120,14 @@
   }
 
   /*
+   * No glass on paper: the rim each card draws round itself (surfaces.css) goes with its edge and
+   * shadow, or the Description, Details and Activity print in faint frames (T-359).
+   */
+  .ticket-page :is(.ticket-text, .ticket-details, .ticket-activity, .glass-card)::before {
+    content: none;
+  }
+
+  /*
    * A field edited in place prints as its value (PL-27): flush with the other values, at their
    * height, and an empty one says "None" in the values' own colour, not a placeholder's grey.
    */

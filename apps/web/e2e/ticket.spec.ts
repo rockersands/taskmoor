@@ -200,7 +200,7 @@ test('[AGL-018] the command palette reaches 30 actions and runs them from the ke
   await expect(page.getByRole('option', { name: 'No matching commands' })).toBeVisible();
 });
 
-test('[CORE-022] [NFR-005] a ticket prints across the paper, readable, its fields as values (S3-SP-2, S3-SP-3, S3-SP-4, PL-27)', async ({
+test('[CORE-022] [NFR-005] a ticket prints across the paper, readable, its fields as values, its cards unframed (S3-SP-2, S3-SP-3, S3-SP-4, PL-27, T-359)', async ({
   page,
 }, testInfo) => {
   const signIn = await page.request.post(`${BASE}/api/v1/session`, {
@@ -241,21 +241,27 @@ test('[CORE-022] [NFR-005] a ticket prints across the paper, readable, its field
       (dd) => !dd.querySelector('input, select, button, a') && dd.textContent?.trim(),
     ) as HTMLElement;
     const bars = [...page.querySelectorAll<HTMLElement>('.ticket-text .rt-bar')];
+    const cards = [
+      ...page.querySelectorAll<HTMLElement>('.ticket-text, .ticket-details, .ticket-activity'),
+    ];
     return {
       title: left('h1'),
       description: left('.ticket-text'),
       bar: bars.some((bar) => bar.getBoundingClientRect().height > 0),
       dateIndent: Math.round(wordsAt(date) - wordsAt(value)),
+      rims: cards.map((card) => getComputedStyle(card, '::before').content),
     };
   });
   // The sidebar's column goes with the sidebar: the ticket starts at the paper's edge (S3-SP-3).
   // No line is left over from the editor's hidden toolbar above the description (S3-SP-4), and a
-  // date edited in place starts its words where the other values do (PL-27).
+  // date edited in place starts its words where the other values do (PL-27). The Description,
+  // Details and Activity cards print without the glass rim round them (T-359).
   expect(printed).toEqual({
     title: expect.any(Number),
     description: expect.any(Number),
     bar: false,
     dateIndent: 0,
+    rims: ['none', 'none', 'none'],
   });
   expect(printed.title).toBeLessThan(40);
   expect(printed.description).toBeLessThan(40);

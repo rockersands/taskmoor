@@ -185,6 +185,8 @@ export const Printed: Story = {
     const dialog = await canvas.findByRole('dialog', { name: NAME });
     const ticket = within(dialog);
     await expect(await ticket.findByRole('heading', { level: 1 })).toBeVisible();
+    // As a browser does, so the paper is checked as it prints, in the light skin (D37).
+    startPrinting();
     await expect(getComputedStyle(dialog).position).toBe('static');
     // The page beneath is not printed, nor the pop-up's bar or the ticket's buttons.
     await expect(
@@ -194,6 +196,11 @@ export const Printed: Story = {
       ticket.getByRole('link', { name: 'Open full page', hidden: true }),
     ).not.toBeVisible();
     await expect(dialog.querySelector('.ticket-toolbar')).not.toBeVisible();
+    // No glass on paper: the Description, Details and Activity cards print with no rim (T-359).
+    for (const name of ['Description', 'Details', 'Activity']) {
+      const card = await ticket.findByRole('region', { name });
+      await expect(getComputedStyle(card, '::before').content, name).toBe('none');
+    }
   },
 };
 
@@ -248,6 +255,13 @@ export const PrintedOnWhite: Story = {
     await expect(contrastOnWhite(getComputedStyle(crumbs as Element).color)).toBeGreaterThanOrEqual(
       4.5,
     );
+    // A number edited in place prints as a value: flush with the others, and an empty one's
+    // "None" in the values' own colour, not a placeholder's grey (PL-27).
+    const points = await ticket.findByRole('spinbutton', { name: 'Points' });
+    await expect(getComputedStyle(points).paddingInlineStart).toBe('0px');
+    await expect(getComputedStyle(points, '::placeholder').color).toBe(
+      getComputedStyle(points).color,
+    );
     // The tones too: a high priority's glyph prints dark on white, its tint stays pale.
     const page = dialog.querySelector('.ticket-page') ?? dialog;
     for (const tone of ['danger', 'warning', 'success', 'blue', 'blush', 'butter']) {
@@ -262,5 +276,8 @@ export const PrintedOnWhite: Story = {
     }
     window.dispatchEvent(new Event('afterprint'));
     await expect(document.documentElement.dataset.skin).toBe(skin);
+    // Printing again, so the checks after the story (axe) read the paper as it prints; the
+    // story's cleanup ends it.
+    startPrinting();
   },
 };

@@ -487,7 +487,8 @@ description and its comments, in one column, dark on white whatever the skin; co
 such as a high priority's icon, print in the light skin's colours, which read on white paper. A value chosen from
 a menu, such as the priority, prints as its name. The top bar, the navigation, the toolbars, the
 comment box, the buttons, the editor's save note and the date fields' calendar buttons are left
-out, and the ticket uses the paper's whole width. Dates and numbers you can change in place print
+out, and the ticket uses the paper's whole width. The description, the details and the activity
+print without the frames round them on screen. Dates and numbers you can change in place print
 as plain values, in line with the others, and the quieter text, such as the track and type above
 the title, prints in a grey dark enough to read. With a ticket open in its pop-up, printing gives that
 ticket the same way, without the page beneath it or the pop-up's bar.
