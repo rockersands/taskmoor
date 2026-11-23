@@ -10,6 +10,8 @@ import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import {
   type Catalogue,
+  type FieldChoice,
+  fieldName,
   type Grant,
   type Grantee,
   type Named,
@@ -26,7 +28,7 @@ export interface PermissionsPageProps {
   client?: PermissionsClient;
 }
 
-/** Grantees a policy grant can name from this page; field grantees go through the API. */
+/** Grantees a policy grant can name from this page, the people and groups in a field too (T-320). */
 const POLICY_GRANTEES: readonly Grantee[] = [
   'role',
   'group',
@@ -34,10 +36,21 @@ const POLICY_GRANTEES: readonly Grantee[] = [
   'track_owner',
   'requester',
   'assignee',
+  'user_field',
+  'group_field',
   'any_user',
   'anyone',
 ];
 const GLOBAL_GRANTEES: readonly Grantee[] = ['group', 'user', 'any_user'];
+
+/** What the choice of a grantee that names something is called. */
+const TARGET_LABELS: Partial<Record<Grantee, MessageId>> = {
+  role: 'admin.permissions.pickRole',
+  group: 'admin.permissions.pickGroup',
+  user: 'admin.permissions.pickPerson',
+  user_field: 'admin.permissions.pickUserField',
+  group_field: 'admin.permissions.pickGroupField',
+};
 
 type Translate = ReturnType<typeof useT>;
 
@@ -45,8 +58,10 @@ function permissionName(t: Translate, permission: string): string {
   return t(`permission.${permission}` as MessageId);
 }
 
-function granteeName(t: Translate, grant: Grant): string {
-  const name = grant.roleName ?? grant.groupName ?? grant.userName ?? grant.fieldKey ?? '';
+/** Who a grant names, a field grantee by its field's name (T-320). */
+function granteeName(t: Translate, grant: Grant, fields: readonly FieldChoice[]): string {
+  const name =
+    grant.roleName ?? grant.groupName ?? grant.userName ?? fieldName(fields, grant.fieldKey);
   return t(`admin.permissions.grantee.${grant.grantee}` as MessageId, { name });
 }
 
@@ -61,8 +76,8 @@ function byPermission(grants: Grant[], order: string[]): [string, Grant[]][] {
 
 /**
  * Permissions (IAM-009 to IAM-012), for site administrators: roles, access policies and their
- * grants, and global permissions. Grants to people in a field of the ticket are given through
- * the API for now.
+ * grants, and global permissions. A grant may go to the people or groups a field of the ticket
+ * names (T-320).
  */
 export function PermissionsPage({ client = permissionsClient }: PermissionsPageProps) {
   const t = useT();
@@ -79,6 +94,7 @@ export function PermissionsPage({ client = permissionsClient }: PermissionsPageP
         policies: PolicySummary[];
         global: Grant[];
         groups: Named[];
+        fields: FieldChoice[];
       }
     | { status: 'failed' }
     | { status: 'forbidden' }
@@ -88,14 +104,15 @@ export function PermissionsPage({ client = permissionsClient }: PermissionsPageP
 
   const load = useCallback(async () => {
     try {
-      const [catalogue, roles, policies, global, groups] = await Promise.all([
+      const [catalogue, roles, policies, global, groups, fields] = await Promise.all([
         client.catalogue(),
         client.roles(),
         client.policies(),
         client.globalGrants(),
         client.groups(),
+        client.fields(),
       ]);
-      setState({ status: 'loaded', catalogue, roles, policies, global, groups });
+      setState({ status: 'loaded', catalogue, roles, policies, global, groups, fields });
     } catch (error) {
       if (expired(error)) return;
       if (error instanceof ApiError && error.status === 403) setState({ status: 'forbidden' });
@@ -117,6 +134,7 @@ export function PermissionsPage({ client = permissionsClient }: PermissionsPageP
       if (body?.detail === 'administration cannot go to everyone') {
         return t('admin.permissions.problem.everyone');
       }
+      if (body?.detail === 'fieldKey') return t('admin.permissions.problem.field');
       if (error.status === 403) return t('admin.permissions.problem.forbidden');
       return t('admin.permissions.problem.other');
     },
@@ -166,6 +184,7 @@ export function PermissionsPage({ client = permissionsClient }: PermissionsPageP
                 catalogue={state.catalogue}
                 roles={state.roles}
                 groups={state.groups}
+                fields={state.fields}
                 policies={state.policies}
                 said={said}
                 failed={failed}
@@ -174,6 +193,7 @@ export function PermissionsPage({ client = permissionsClient }: PermissionsPageP
                 client={client}
                 catalogue={state.catalogue}
                 groups={state.groups}
+                fields={state.fields}
                 grants={state.global}
                 said={said}
                 failed={failed}
@@ -374,6 +394,7 @@ function PoliciesSection({
   catalogue,
   roles,
   groups,
+  fields,
   policies,
   said,
   failed,
@@ -382,6 +403,7 @@ function PoliciesSection({
   catalogue: Catalogue;
   roles: Role[];
   groups: Named[];
+  fields: FieldChoice[];
   policies: PolicySummary[];
 }) {
   const t = useT();
@@ -505,6 +527,7 @@ function PoliciesSection({
                 catalogue={catalogue}
                 roles={roles}
                 groups={groups}
+                fields={fields}
                 said={said}
                 failed={failed}
                 onDeleted={async (deleted) => {
@@ -527,6 +550,7 @@ function PolicyPanel({
   catalogue,
   roles,
   groups,
+  fields,
   said,
   failed,
   onDeleted,
@@ -536,6 +560,7 @@ function PolicyPanel({
   catalogue: Catalogue;
   roles: Role[];
   groups: Named[];
+  fields: FieldChoice[];
   onDeleted: (name: string) => Promise<void>;
 }) {
   const t = useT();
@@ -569,6 +594,8 @@ function PolicyPanel({
           grantees={POLICY_GRANTEES}
           roles={roles}
           groups={groups}
+          // This page holds shared policies, which may name only shared fields.
+          fields={fields.filter((f) => f.trackId === null)}
           client={client}
           onCancel={giving.close}
           onGive={(grant, grantee) =>
@@ -588,17 +615,30 @@ function PolicyPanel({
       <GrantList
         grants={policy.grants}
         order={order}
-        onRemove={(grant) =>
-          client.removeGrant(id, grant.id).then(() => {
-            void reload();
-            said(
-              t('admin.permissions.removed', {
-                grantee: granteeName(t, grant),
-                permission: permissionName(t, grant.permission),
-              }),
-            );
-          }, failed)
+        fields={fields}
+        outcome={(grant) =>
+          t('admin.permissions.removeOutcome', {
+            grantee: granteeName(t, grant, fields),
+            permission: permissionName(t, grant.permission),
+            count: policy.tracks.length,
+            tracks: policy.tracks.map((tr) => tr.key).join(', '),
+          })
         }
+        onRemove={async (grant) => {
+          try {
+            await client.removeGrant(id, grant.id);
+          } catch (error) {
+            failed(error);
+            throw error;
+          }
+          void reload();
+          said(
+            t('admin.permissions.removed', {
+              grantee: granteeName(t, grant, fields),
+              permission: permissionName(t, grant.permission),
+            }),
+          );
+        }}
       />
       {policy.tracks.length > 0 && (
         <p className="page-note">
@@ -633,6 +673,7 @@ function GlobalSection({
   client,
   catalogue,
   groups,
+  fields,
   grants,
   said,
   failed,
@@ -640,6 +681,7 @@ function GlobalSection({
   client: PermissionsClient;
   catalogue: Catalogue;
   groups: Named[];
+  fields: FieldChoice[];
   grants: Grant[];
 }) {
   const t = useT();
@@ -669,6 +711,7 @@ function GlobalSection({
           grantees={GLOBAL_GRANTEES}
           roles={[]}
           groups={groups}
+          fields={[]}
           client={client}
           onCancel={giving.close}
           onGive={(grant, grantee) =>
@@ -687,32 +730,52 @@ function GlobalSection({
       <GrantList
         grants={grants}
         order={catalogue.global}
-        onRemove={(grant) =>
-          client.removeGlobalGrant(grant.id).then(
-            () =>
-              said(
-                t('admin.permissions.removed', {
-                  grantee: granteeName(t, grant),
-                  permission: permissionName(t, grant.permission),
-                }),
-              ),
-            failed,
-          )
+        fields={fields}
+        outcome={(grant) =>
+          t('admin.permissions.removeGlobalOutcome', {
+            grantee: granteeName(t, grant, fields),
+            permission: permissionName(t, grant.permission),
+          })
         }
+        onRemove={async (grant) => {
+          try {
+            await client.removeGlobalGrant(grant.id);
+          } catch (error) {
+            failed(error);
+            throw error;
+          }
+          said(
+            t('admin.permissions.removed', {
+              grantee: granteeName(t, grant, fields),
+              permission: permissionName(t, grant.permission),
+            }),
+          );
+        }}
       />
     </section>
   );
 }
 
-/** Grants by permission, each grantee with a remove button. */
+/**
+ * Grants by permission, each grantee with a remove button. One grant reaches a whole role, group or
+ * everyone, across every track of the policy or the whole site, and the row does not say who that
+ * is, so removing asks first (D13, T-267), saying who loses what and where.
+ */
 function GrantList({
   grants,
   order,
+  fields,
+  outcome,
   onRemove,
 }: {
   grants: Grant[];
   order: string[];
-  onRemove: (grant: Grant) => void;
+  /** Names a field grantee by its field. */
+  fields: readonly FieldChoice[];
+  /** What removing the grant takes away, and from whom. */
+  outcome: (grant: Grant) => string;
+  /** Rejects when it was refused, so the question stays open. */
+  onRemove: (grant: Grant) => Promise<void>;
 }) {
   const t = useT();
   if (grants.length === 0) return <EmptyState compact title={t('admin.permissions.noGrants')} />;
@@ -723,20 +786,20 @@ function GrantList({
           <dt>{permissionName(t, permission)}</dt>
           {list.map((grant) => (
             <dd key={grant.id} className="people-sublist-row">
-              <span>{granteeName(t, grant)}</span>
-              {/* The danger look every removing action has (D13); whether it asks first waits
-                  on T-267. */}
-              <button
-                type="button"
-                className="button-danger-quiet people-action"
-                aria-label={t('admin.permissions.removeOf', {
-                  grantee: granteeName(t, grant),
+              <span>{granteeName(t, grant, fields)}</span>
+              <DangerAction
+                label={t('admin.permissions.remove')}
+                name={t('admin.permissions.removeOf', {
+                  grantee: granteeName(t, grant, fields),
                   permission: permissionName(t, permission),
                 })}
-                onClick={() => onRemove(grant)}
-              >
-                {t('admin.permissions.remove')}
-              </button>
+                outcome={outcome(grant)}
+                confirmLabel={t('admin.permissions.removeOf', {
+                  grantee: granteeName(t, grant, fields),
+                  permission: permissionName(t, permission),
+                })}
+                onConfirm={() => onRemove(grant)}
+              />
             </dd>
           ))}
         </div>
@@ -745,13 +808,17 @@ function GrantList({
   );
 }
 
-/** Give a permission to a role, a group, a person or one of the fixed grantees. */
+/**
+ * Give a permission to a role, a group, a person, the people or groups in a field of the ticket,
+ * or one of the fixed grantees.
+ */
 function GrantForm({
   label,
   permissions,
   grantees,
   roles,
   groups,
+  fields,
   client,
   onGive,
   onCancel,
@@ -761,6 +828,8 @@ function GrantForm({
   grantees: readonly Grantee[];
   roles: Role[];
   groups: Named[];
+  /** The fields a field grantee may name. */
+  fields: readonly FieldChoice[];
   client: PermissionsClient;
   onGive: (grant: NewGrant, granteeName: string) => void;
   /** When a New button opened the form: closes it again. */
@@ -771,8 +840,16 @@ function GrantForm({
   const first = Object.values(permissions).flat()[0] ?? '';
   const [permission, setPermission] = useState(first);
   const [grantee, setGrantee] = useState<Grantee>(grantees[0] as Grantee);
+  const ofKind = (of: Grantee) =>
+    fields.filter((f) => f.type === (of === 'user_field' ? 'user' : 'group'));
   const firstTarget = (of: Grantee) =>
-    of === 'role' ? String(roles[0]?.id ?? '') : of === 'group' ? String(groups[0]?.id ?? '') : '';
+    of === 'role'
+      ? String(roles[0]?.id ?? '')
+      : of === 'group'
+        ? String(groups[0]?.id ?? '')
+        : of === 'user_field' || of === 'group_field'
+          ? (ofKind(of)[0]?.key ?? '')
+          : '';
   const [target, setTarget] = useState(() => firstTarget(grantee));
   const [query, setQuery] = useState('');
   const [people, setPeople] = useState<Named[]>([]);
@@ -797,8 +874,15 @@ function GrantForm({
     };
   }, [client, grantee, query]);
 
-  const targets: Named[] = grantee === 'role' ? roles : grantee === 'group' ? groups : people;
-  const needsTarget = grantee === 'role' || grantee === 'group' || grantee === 'user';
+  const byField = grantee === 'user_field' || grantee === 'group_field';
+  // Every target as a value and a name: a field's value is its key.
+  const targets: { value: string; name: string }[] = byField
+    ? ofKind(grantee).map((f) => ({ value: f.key, name: f.name }))
+    : (grantee === 'role' ? roles : grantee === 'group' ? groups : people).map((x) => ({
+        value: String(x.id),
+        name: x.name,
+      }));
+  const needsTarget = grantee === 'role' || grantee === 'group' || grantee === 'user' || byField;
   return (
     <form
       className="people-inline"
@@ -806,13 +890,14 @@ function GrantForm({
       onSubmit={(event) => {
         event.preventDefault();
         if (!permission || (needsTarget && !target)) return;
-        const picked = targets.find((x) => String(x.id) === target);
+        const picked = targets.find((x) => x.value === target);
         const grant: NewGrant = {
           permission,
           grantee,
           ...(grantee === 'role' ? { roleId: Number(target) } : {}),
           ...(grantee === 'group' ? { groupId: Number(target) } : {}),
           ...(grantee === 'user' ? { userId: Number(target) } : {}),
+          ...(byField ? { fieldKey: target } : {}),
         };
         const name = t(`admin.permissions.grantee.${grantee}` as MessageId, {
           name: picked?.name ?? '',
@@ -884,13 +969,7 @@ function GrantForm({
       {needsTarget && (
         <div className="form-field">
           <label htmlFor={`${formId}-target`} className="form-label">
-            {t(
-              grantee === 'role'
-                ? 'admin.permissions.pickRole'
-                : grantee === 'group'
-                  ? 'admin.permissions.pickGroup'
-                  : 'admin.permissions.pickPerson',
-            )}
+            {t(TARGET_LABELS[grantee] ?? 'admin.permissions.pickPerson')}
           </label>
           <select
             id={`${formId}-target`}
@@ -898,10 +977,16 @@ function GrantForm({
             onChange={(event) => setTarget(event.target.value)}
           >
             {targets.length === 0 && (
-              <option value="">{t('admin.permissions.pickPersonEmpty')}</option>
+              <option value="">
+                {t(
+                  byField
+                    ? 'admin.permissions.pickFieldEmpty'
+                    : 'admin.permissions.pickPersonEmpty',
+                )}
+              </option>
             )}
             {targets.map((x) => (
-              <option key={x.id} value={x.id}>
+              <option key={x.value} value={x.value}>
                 {x.name}
               </option>
             ))}

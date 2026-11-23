@@ -32,11 +32,18 @@ const meta = {
   component: TrackPeoplePage,
   args: { trackId: 3, client: fakeTrackPeopleClient() },
   decorators: [
-    (Story) => (
+    // The app's own main around a track's pages. The invitation page is not drawn inside the app's
+    // frame but in a frame of its own with its own main (App.tsx), so its stories go without
+    // this one: a main inside a main is two main landmarks (axe landmark-no-duplicate-main, T-327).
+    (Story, context) => (
       <SessionProvider session={MEMBER}>
-        <main>
+        {context.parameters.ownFrame ? (
           <Story />
-        </main>
+        ) : (
+          <main>
+            <Story />
+          </main>
+        )}
       </SessionProvider>
     ),
   ],
@@ -48,11 +55,30 @@ type Story = StoryObj<typeof meta>;
 export const Manager: Story = {};
 
 /**
+ * Withdrawing an invitation asks first, in words that never tell whether the address has an
+ * account (D13, T-267); at a phone's width the question takes the row and nothing sticks out.
+ */
+export const WithdrawingAtPhoneWidth: Story = {
+  args: { client: fakeTrackPeopleClient() },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Withdraw the invitation to nia@example.com' }),
+    );
+    const question = canvas.getByRole('group', { name: /^The link sent to nia@example\.com/ });
+    await expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/**
  * On a phone the link inside a note keeps the line's height, its 44 px press area reaching above
  * and below it: the line holding 'Open Permissions' sat about 31 px under the line above, against
  * 18 px elsewhere (T-226).
  */
 export const InlineLinkOnAPhone: Story = {
+  tags: ['touch'],
   args: { client: fakeTrackPeopleClient({ invitingGiven: false }) },
   decorators: [
     atPhoneWidth,
@@ -279,6 +305,7 @@ export const ChecklistNoticesRefused: Story = {
  * through its label (ADR-033).
  */
 export const ChecklistNoticesAtPhoneWidth: Story = {
+  tags: ['touch'],
   // A client of its own: the default one is shared, and another story may have turned it on.
   args: { client: fakeTrackPeopleClient() },
   decorators: [
@@ -339,6 +366,7 @@ const anonymous = (children: React.ReactNode) => (
   <SessionProvider session={{ status: 'anonymous' }}>{children}</SessionProvider>
 );
 const invited = {
+  parameters: { ownFrame: true },
   beforeEach: () => {
     window.sessionStorage.clear();
     window.location.hash = '#/invite?token=story-token';
@@ -504,6 +532,7 @@ export const AnswerBesideTheRow: Story = {
  * pressed, with nothing sideways, and the buttons still take a finger (ADR-033).
  */
 export const AnswerBesideTheRowAtPhoneWidth: Story = {
+  tags: ['touch'],
   args: { client: fakeTrackPeopleClient({ crowd: 12 }) },
   decorators: [
     atPhoneWidth,
@@ -552,6 +581,7 @@ export const InvitationAnswerInItsRow: Story = {
 
 /** A new link at a small phone's width, as on a touch screen: in its own row, fitting. */
 export const InvitationAnswerInItsRowAtPhoneWidth: Story = {
+  tags: ['touch'],
   args: { client: twoWaiting() },
   decorators: [atPhoneWidth],
   beforeEach: onARealTouchScreen,

@@ -72,9 +72,64 @@ export const SprintsNeedScrum: Story = {
   },
 };
 
-/** A map switch that leaves tickets behind is refused with the count. */
+/** A map switch that leaves tickets behind asks where they go, then moves them (T-320). */
 export const MappingNeeded: Story = {
   args: { client: fakeConfigurationClient({ refuseMapping: true }) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage track SHOP' }));
+    await userEvent.selectOptions(
+      await canvas.findByRole('combobox', { name: 'Workflow map' }),
+      'Bugs apart',
+    );
+    const step = await canvas.findByRole('form', { name: 'Switch SHOP to Bugs apart' });
+    await expect(
+      within(step).getByRole('combobox', { name: 'Move the 12 Bug tickets in In review to' }),
+    ).toBeVisible();
+  },
+};
+
+/** Tickets moving in the background after a switch, with their progress (T-320). */
+export const MappingMoving: Story = {
+  // A client of its own each time: the switch changes it, and the story runs in both skins.
+  render: () => (
+    <TracksAdminPage client={fakeConfigurationClient({ refuseMapping: true, moving: true })} />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage track SHOP' }));
+    await userEvent.selectOptions(
+      await canvas.findByRole('combobox', { name: 'Workflow map' }),
+      'Bugs apart',
+    );
+    const step = await canvas.findByRole('form', { name: 'Switch SHOP to Bugs apart' });
+    for (const box of within(step).getAllByRole('combobox')) {
+      await userEvent.selectOptions(box, 'Open');
+    }
+    await userEvent.click(
+      within(step).getByRole('button', { name: 'Switch and move the tickets' }),
+    );
+    await expect(
+      await canvas.findByRole('progressbar', { name: 'Tickets moved: 0 of 15' }),
+    ).toBeVisible();
+  },
+};
+
+/** The same step when a map that a track uses changes its workflows (T-320). */
+export const MapMappingAtPhoneWidth: Story = {
+  decorators: [atPhoneWidth],
+  render: () => <WorkflowMapsPage client={fakeConfigurationClient({ refuseMapping: true })} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Manage Default workflow map' }),
+    );
+    await userEvent.click(await canvas.findByRole('button', { name: 'Save the map' }));
+    await expect(
+      await canvas.findByRole('form', { name: 'Save Default workflow map' }),
+    ).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
 };
 
 /** Workflow maps, one open with a type that has its own workflow. */
@@ -102,6 +157,20 @@ export const TracksAtPhoneWidth: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Manage track SHOP' }));
     await expect(await canvas.findByText(/^Add tracks, choose/)).toBeVisible();
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+/** Archiving asks first, saying what it locks (D13, T-267); on a phone nothing sticks out. */
+export const ArchiveAsksAtPhoneWidth: Story = {
+  args: { client: fakeConfigurationClient() },
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('button', { name: 'Manage track SHOP' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Archive track SHOP' }));
+    const question = canvas.getByRole('group', { name: /^Nobody can change the tickets of SHOP/ });
+    await expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
     await fitsPhoneWidth(canvas);
   },
 };

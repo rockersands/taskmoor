@@ -67,4 +67,23 @@ describe('the editor words server refusals (M1-030)', () => {
     expect(refused({ error: 'something_else' })).toBeNull();
     expect(refusalMessage(t, new Error('network'), names)).toBeNull();
   });
+
+  it('[WF-008] explains a publish free moves cannot give any move, with the fixes that work (T-260)', () => {
+    const said = refusalMessage(
+      t,
+      new ApiError(400, { error: 'invalid_request', detail: { problem: 'no_moves' } }),
+      names,
+    );
+    expect(said).toBe(messages['workflow.problem.no_moves']);
+    // A close reason named Completed, the default workflow, a status outside the closed stage,
+    // or the transitions drawn by hand: never just "add a close reason".
+    for (const fix of [
+      'a close reason named Completed',
+      'the default workflow set a reason',
+      'a status outside the closed stage',
+      'draw the transitions yourself',
+    ]) {
+      expect(said).toContain(fix);
+    }
+  });
 });

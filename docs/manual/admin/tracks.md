@@ -1,8 +1,8 @@
 ---
 title: "Tracks"
 audience: admins
-sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/client.ts, apps/web/src/configuration/NewTrackForm.tsx, apps/web/src/tracks/TracksPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/web/src/tickets/templates/draft.ts, apps/web/src/tickets/templates/client.ts, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/form.ts, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md, apps/server/src/sprints/lifecycle.ts, apps/server/src/tracks/membership.ts, apps/server/src/routes/track-groups.ts, apps/server/src/trackgroups/access.ts, apps/web/src/trackgroups/TrackArrangement.tsx, apps/web/src/trackgroups/ShareGroupDialog.tsx, packages/db/src/migrations/0100_track_groups.ts, docs/adr/0121-personal-track-groups.md, apps/server/src/notifications/track-groups.ts, apps/server/src/trackgroups/privacy.ts, packages/db/src/migrations/0103_checklist_notices.ts, apps/server/src/notifications/checklists.ts, apps/web/src/tracks/NewTrackDialog.tsx, apps/web/src/shell/ModalDialog.tsx, apps/server/src/api/operations.ts, apps/web/src/admin/NewButton.tsx, apps/web/src/tickets/pickerSources.ts, apps/web/src/tickets/PersonPicker.tsx, apps/server/src/routes/fields.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/users.ts, apps/server/src/routes/teams.ts
-accessed: 2026-11-14
+sources: apps/server/src/routes/tracks.ts, apps/server/src/tracks/model.ts, apps/server/src/tracks/templates.ts, apps/server/src/routes/authz.ts, apps/server/src/routes/releases.ts, apps/server/src/routes/workflow-maps.ts, apps/server/src/routes/guardrails.ts, apps/server/src/guardrails/model.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/policy.ts, apps/server/src/trash/purge.ts, apps/server/src/tokens/scopes.ts, apps/server/src/cli.ts, apps/web/src/configuration/TracksAdminPage.tsx, apps/web/src/configuration/client.ts, apps/web/src/configuration/NewTrackForm.tsx, apps/web/src/tracks/TracksPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/guardrails/GuardrailsPage.tsx, apps/web/src/guardrails/StorageQuotas.tsx, apps/server/src/attachments/quota.ts, apps/server/src/routes/attachments.ts, docs/adr/0110-outbound-guard-archive-limits-storage-quotas.md, apps/web/src/releases/ReleasesPage.tsx, apps/web/src/i18n/messages.en.ts, packages/db/src/migrations/0004_authorization.ts, docs/adr/0009-configuration-model.md, docs/adr/0051-configuration-guardrails.md, docs/adr/0062-track-templates.md, docs/specs/01a-core-work-tracking.md, apps/server/src/routes/setup.ts, apps/server/src/authz/create-tracks.ts, docs/adr/0118-track-invitations.md, apps/web/src/tickets/templates/TicketTemplatesPage.tsx, apps/web/src/tickets/templates/TemplateForm.tsx, apps/web/src/tickets/templates/draft.ts, apps/web/src/tickets/templates/client.ts, apps/web/src/tickets/CreateTicketPage.tsx, apps/web/src/tickets/form.ts, apps/server/src/routes/ticket-templates.ts, apps/server/src/templates/model.ts, docs/adr/0113-ticket-templates.md, apps/server/src/sprints/lifecycle.ts, apps/server/src/tracks/membership.ts, apps/server/src/routes/track-groups.ts, apps/server/src/trackgroups/access.ts, apps/web/src/trackgroups/TrackArrangement.tsx, apps/web/src/trackgroups/ShareGroupDialog.tsx, packages/db/src/migrations/0100_track_groups.ts, docs/adr/0121-personal-track-groups.md, apps/server/src/notifications/track-groups.ts, apps/server/src/trackgroups/privacy.ts, packages/db/src/migrations/0103_checklist_notices.ts, apps/server/src/notifications/checklists.ts, apps/web/src/tracks/NewTrackDialog.tsx, apps/web/src/shell/ModalDialog.tsx, apps/server/src/api/operations.ts, apps/web/src/admin/NewButton.tsx, apps/web/src/tickets/pickerSources.ts, apps/web/src/tickets/PersonPicker.tsx, apps/server/src/routes/fields.ts, apps/server/src/routes/rich-text.ts, apps/server/src/routes/users.ts, apps/server/src/routes/teams.ts, apps/web/src/configuration/StatusMappingPanel.tsx, apps/web/src/areas/AreasPage.tsx, apps/web/src/areas/client.ts, apps/server/src/tickets/fields.ts, apps/web/src/tracks/TrackSummaryPage.tsx, apps/web/src/trackpeople/TrackPeoplePage.tsx, apps/web/src/configuration/DeleteTrack.tsx, apps/web/src/configuration/TrackSetsPage.tsx, apps/server/src/fields/values.ts, apps/web/src/shell/DangerAction.tsx
+accessed: 2026-11-16
 attestation: own-words
 ---
 # Tracks
@@ -16,8 +16,9 @@ tracks, see [concepts and terms](../concepts.md).
 
 Site and configuration administrators manage tracks in the web app under **Administration**, **Tracks**. The page adds
 tracks, renames them, chooses their workflow map, turns their sprints on or off, gives roles to
-people and groups, and archives and restores them. With no track yet, it says so and what a track
-is.
+people and groups, archives and restores them, and deletes them to the trash. A shared-mode
+track's access policy and type set, and every track's other sets, are chosen on **Which sets a
+track uses**. With no track yet, it says so and what a track is.
 
 Everything else is done through the [REST API](rest-api.md) under `/api/v1/tracks`.
 `GET /api/v1/tracks/:id` takes a track's id or key; the routes that change a track take its id. A token that changes shared configuration needs the
@@ -288,8 +289,9 @@ like any other. Giving them that role here makes it theirs, so taking the share 
 
 ### Configuration sets
 
-A track names the configuration sets it uses. `null` means the site's default. Layouts, priorities,
-visibility policy and notifications are chosen on [Which sets a track uses](fields.md#which-sets-a-track-uses).
+A track names the configuration sets it uses. `null` means the site's default. A shared-mode
+track's access policy and type set, and every track's layouts, priorities, visibility policy and
+notifications, are chosen on [Which sets a track uses](fields.md#which-sets-a-track-uses).
 
 | API field | What it chooses | Who may change it |
 |---|---|---|
@@ -305,11 +307,20 @@ In the web app, **Manage** on a shared-mode track offers **Workflow map**. Some 
 tickets:
 
 - **Workflow map**: tickets in statuses that the new workflows lack must be given new statuses.
-  The web app refuses such a switch and says how many tickets are affected; send
-  `statusMapping` with the change through the API. See
+  Choosing another map first reads what the switch would do. When no ticket needs a new status,
+  the track switches at once. Otherwise a step opens under the choice, named after the switch
+  (for example **Switch SHOP to Bugs apart**): it says how many tickets are affected, and for each
+  ticket type and status asks where they go, from the statuses of that type's new workflow.
+  Nothing is chosen for you. **Switch and move the tickets** switches the map and moves them;
+  **Cancel** keeps the map the track has. See
   [migrating tickets between workflows](workflows.md#migrating-tickets-between-workflows).
 - **Type set**: tickets of types the new set lacks need `ticketTypeMapping`, from old type id to
-  a new type at the same level. Without it the change answers `type_in_use`.
+  a new type at the same level. Without it the change answers `type_in_use`. On **Which sets a
+  track uses**, **Save** then says so, and a question opens under **Type set**: how many tickets
+  have a type the new set lacks, and for each such type, **Tickets of** the type **become** one of
+  the new set's types at its level. A type with no type of its level in the new set says it has
+  nowhere to go. Choose, then **Save** again; the line says how many tickets took another type.
+  Choosing another type set drops the question.
 - **Visibility policy**: tickets at a level the new policy lacks take its default level, or
   none.
 
@@ -317,17 +328,49 @@ A ticket keeps a priority its track stops offering until someone changes it.
 
 ### Areas
 
-There is no web page for areas yet. A track's administrators manage them through the API:
+An area is a part of a track's work, such as "API" or "Billing" (see
+[concepts](../concepts.md#areas)). A track's areas are on its page **Areas** (the address ends in
+`/tracks/KEY/areas`), linked from the track's summary and from its page under **Tracks you run**.
+It sits under the track's tab bar, titled **Areas** under the track's name. Everyone who can see
+the track reads it: each area with its description, its owner, its owner team and who gets its new
+tickets, and the archived ones apart under **Archived areas**. The track's administrators
+("Administer track"), and site and configuration administrators, change them. Anyone else reads
+**Only the administrators of this track can change its areas.**, and on an archived track the
+page says its areas cannot change.
 
-- `GET` and `POST /api/v1/tracks/:id/areas`, with `name`, `description`, `ownerId`,
-  `ownerTeamId` (the [team](people-and-groups.md#teams) that owns the area) and
-  `defaultAssignee`: `area_owner`, `track_owner` or `unassigned` (the default).
+**New area**, under the page's title and its line, opens the form above the list; **Change** on
+an area opens the same form for it, and Cancel or saving gives the focus back to that **Change**.
+The form asks for:
+
+| Field | What it does |
+|---|---|
+| **Name** | Required; unique among the track's areas, ignoring case |
+| **Description** | What the area covers |
+| **Owner** | A person found by name, those who can see the track first; **Remove** takes them off |
+| **Owner team** | A [team](people-and-groups.md#teams) found by name |
+| **New tickets with no assignee go to** | **The area owner**, **The track owner**, or **Nobody: they stay unassigned** (the default) |
+
+When a new ticket names no assignee, the first of its areas whose rule names someone decides: the
+ticket goes to that person if they may be given tickets in the track, and stays unassigned if not.
+An area whose rule names its owner but that has none names nobody, and the form says so.
+
+**Archive** moves an area under **Archived areas**: it stays on its tickets but is not offered
+anew. **Restore** brings it back. A track holds as many areas that are not archived as the
+`areas_per_track` [guardrail](#configuration-guardrails) allows; past it the form says so.
+
+**Delete**, in the danger colour, asks first: an area cannot be brought back. When tickets are in
+it, the row then says how many, links to them in search, and asks where they go: **Move them to**
+another area of the track that is not archived, or **No area**, which takes the area off them.
+The ticket history records the change.
+
+Through the API:
+
+- `GET` and `POST /api/v1/tracks/:id/areas` (`?archived=include` or `only` lists archived ones),
+  with `name`, `description`, `ownerId`, `ownerTeamId` and `defaultAssignee`: `area_owner`,
+  `track_owner` or `unassigned` (the default).
 - `PATCH /api/v1/areas/:id`, and `POST /api/v1/areas/:id/archive` or `/restore`.
 - `DELETE /api/v1/areas/:id`: an area tickets use needs `replacementId` or
-  `removeFromTickets=true`.
-
-When a new ticket names no assignee, the first of its areas whose rule names someone who may be
-assigned gives it that person. Archived areas stay on tickets but are not offered anew.
+  `removeFromTickets=true`; without either it answers `409 in_use` with the `ticketCount`.
 
 ### Releases
 
@@ -364,11 +407,11 @@ there while a template is being changed. It asks for:
 | **Name** | Required; unique among the templates of that track, or among those for every track, ignoring case |
 | **What it is for** | Shown beside the template when someone chooses it |
 | **Ticket types it fits** | The types that offer it; none means every type |
-| **Summary** | A pattern: `{date}` becomes today in the person's time zone, `{track}` the track's key, `{user}` the person's name |
+| **Summary** | A pattern: `{date}` becomes today on the person's clock (the time zone saved in their account, else their device's), `{track}` the track's key, `{user}` the person's name |
 | **Description** | An outline in rich text |
 | **Priority**, **Labels** | Default values |
 | **Start date** and **Due date**, **in days from today** | Counted from the day the ticket is made; negative numbers count back |
-| **Assignee**, **Areas**, **Target releases**, **Found in releases** | Default values; track templates only |
+| **Assignee**, **Areas**, **Target releases**, **Found in releases** | Default values; track templates only. **Assignee** finds people as the create form does: only those who may be given tickets in the track |
 | **Custom fields** | Add a value for a field; text, number, date, URL, choice, label, person, group and team fields, and on a track's template release and area fields |
 | **Subtickets** | Up to 50, each a summary pattern and, when the track has several subticket types, a type; otherwise the track's first subticket type |
 
@@ -399,15 +442,19 @@ holds a single value offers it once its value is removed. It looks where the cre
 
 One you may not see (people and groups need "Browse users and groups"), or one that is gone, is
 named by its number, for example "Group 52, hidden from you or gone", and saving keeps it unless
-you remove it. Other custom field types, and an assignee on a template for every track, are set
-through the API. An archived release or area the template already holds also stays chosen,
+you remove it. The **Assignee** follows the same rule: one you may not see, or whose account is
+deactivated, shows as "Person 21, hidden from you or gone" with **Remove**; saving keeps one you
+may not see, and refuses a deactivated one until you remove it. Other custom field types, and an
+assignee on a template for every track, are set through the API. An archived release or area the template already holds also stays chosen,
 marked, in **Areas**, **Target releases** and **Found in releases**. For the other types, and for
 a value it cannot read as ids, the form says how many values it cannot show, and saving keeps them
 as they are.
 
 When a save is refused over a value, the reason shows under that value, in the words the create
-form uses (for example "This release or area is archived. Choose another." or "This track does not
-offer this choice. Choose one of its own."), and the line above **Save the template** says to look
+form uses (for example "This release or area is archived. Choose another.", "This release is not
+in this track. Choose one of its releases." for a release field, or "This track does not offer
+this choice. Choose one of its own." for a priority or a choice list), and the line above **Save
+the template** says to look
 under each value. A reason goes as soon as you change its value, and the line goes with the last
 one. A refused value the form does not show keeps the general line, which says to check the days,
 the fields and the subtickets.
@@ -426,7 +473,13 @@ Every ticket made records its template in its `ticket.created` event, as `templa
 changing or deleting a template is in the audit log. The API is `/api/v1/ticket-templates`, with
 `POST /api/v1/ticket-templates/:id/tickets` to make a ticket from one. Reading one,
 `GET /api/v1/ticket-templates/:id` also gives `names`: the names of the people, groups and teams its
-custom values name, by body key (`fields.12`), as far as the reader may see them.
+custom values name, by body key (`fields.12`), as far as the reader may see them. With `track`, it
+also takes `ticketTypeId`, the type of the ticket being made (otherwise the template's first type
+when it fits only some): a person field limited to a group or a role then names exactly the active
+people its own list offers for that type, to anyone, and a type the template does not fit is
+refused. Lists and reads name the template's `assignee` only to readers with "Browse users and
+groups", and only an active person; otherwise `assignee` is null and `defaults.assigneeId` keeps
+the id.
 
 ### Categories
 
@@ -436,8 +489,10 @@ category leaves its tracks without one.
 
 ## Archiving a track
 
-On **Administration**, **Tracks**, open **Manage** and press **Archive track**, then **Yes**. **Restore
-track** brings it back. Only site and configuration administrators archive and restore
+On **Administration**, **Tracks**, open **Manage** and press **Archive track**, in the danger colour.
+It asks first: nobody can change the track's tickets until it is restored, and search leaves them
+out. **Archive track** and its key archives it; **Cancel**, which has the focus, or Escape keeps it.
+**Restore track** brings it back at once, since restoring loses nothing. Only site and configuration administrators archive and restore
 (`POST /api/v1/tracks/:id/archive` and `/restore`).
 
 An archived track keeps everything and changes nothing: its tickets stay readable by link, but
@@ -446,14 +501,20 @@ lists show it only to administrators who ask for archived tracks.
 
 ## Deleting a track and the trash
 
-The web app has no delete button for tracks yet. Site and configuration administrators delete a
-track with `DELETE /api/v1/tracks/:id`. It goes to the trash with its tickets, releases and areas.
+Site and configuration administrators delete a track on **Administration**, **Tracks**: open
+**Manage** and press **Delete track**. It is in the danger colour and asks first, saying that the
+track goes to the trash with its tickets, releases and areas, that its key stays taken, and that
+it can be restored from **Trash** until its time there is up; **Delete track** and the key does
+it, **Cancel** keeps it. An archived track can be deleted too. The track leaves the list, and the
+page links to **Trash** (**Restore** and the key **from Trash**). A track someone else deleted
+meanwhile is refused in words and leaves the list, which the page reads again, with the link to
+**Trash** when it waits there. Through the API it is `DELETE /api/v1/tracks/:id` (`409 in_trash`).
 While it is there:
 
 - nobody else sees the track or anything in it;
 - it keeps its keys, so no new track can take them;
-- site administrators restore it on **Administration**, **Trash**, under **Tracks**, with **Restore
-  track** (or `POST /api/v1/tracks/:id/undelete`).
+- site and configuration administrators restore it on **Trash** (`#/admin/trash`), under
+  **Tracks**, with **Restore track** (or `POST /api/v1/tracks/:id/undelete`).
 
 The trash keeps tracks and tickets for 30 days by default. Site administrators change this under
 **Retention**, **Days in the trash** (1 to 365). An hourly job then deletes them for good, in

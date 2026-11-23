@@ -40,6 +40,9 @@ const BUILD_SECRETS = {
   VITE_TASKMOOR_MASTER_KEY: randomBytes(32).toString('base64url'),
 };
 
+/** A built file's name without the hash Vite adds: `assets/a-1bC_2dE-.woff2` as `assets/a.woff2`. */
+const unhashed = (path: string) => path.replace(/-[\w-]{8}(\.\w+)$/, '$1');
+
 /** Every file under a folder, relative, with forward slashes. */
 const filesOf = (dir: string) =>
   readdirSync(dir, { recursive: true, withFileTypes: true })
@@ -111,6 +114,14 @@ describe('the frontend build', () => {
           expect(text).not.toContain(s);
       }
       expect(kitText(kit['index.html'])).toContain(secrets.instanceId);
+      // The kit keeps the fonts as files; the single file carries them as data URLs (T-262).
+      if (singleFile) {
+        expect(kitText(kit['index.html'])).not.toContain('.woff2');
+        expect(kitText(kit['index.html']).match(/url\("data:font\/woff2;base64,/g)).toHaveLength(2);
+        expect(kitText(kit['index.html'])).toContain('SIL OPEN FONT LICENSE Version 1.1');
+      } else {
+        expect(Object.keys(kit).filter((p) => p.endsWith('.woff2'))).toHaveLength(2);
+      }
     }
   });
 
@@ -134,7 +145,48 @@ describe('the frontend build', () => {
       expect(file.bytes).toBe(bytes.length);
       expect(file.sha256).toBe(createHash('sha256').update(bytes).digest('hex'));
     }
-    expect(filesOf(outDir).filter((f) => !/\.(html|js|css|json)$/.test(f))).toEqual([]);
+    // Every file in assets/ carries a hash of its contents, since the backend caches them for a
+    // year (ADR-066): the fonts' licence too (T-262).
+    const assets = manifest.files.map((f) => f.path).filter((f) => f.startsWith('assets/'));
+    expect(assets.filter((f) => unhashed(f) === f)).toEqual([]);
+    // Besides code and data, only Google Sans and its licence (T-262).
+    const others = filesOf(outDir).filter((f) => !/\.(html|js|css|json)$/.test(f));
+    expect(others.map(unhashed).sort()).toEqual([
+      'assets/OFL.txt',
+      'assets/googlesans-500-latin-ext.woff2',
+      'assets/googlesans-500-latin.woff2',
+    ]);
+  });
+
+  it("[IAM-031] ships Google's G and Google Sans itself, fetching nothing from Google (T-262)", () => {
+    const shipped = filesOf(outDir);
+    const fonts = shipped.filter((f) => f.endsWith('.woff2'));
+    // The fonts stay files, byte for byte Google's, with their licence beside them.
+    for (const font of fonts) {
+      expect(readFileSync(join(outDir, font))).toEqual(
+        readFileSync(join(WEB, 'src/fonts', unhashed(font).slice('assets/'.length))),
+      );
+    }
+    const licence = shipped.filter((f) => unhashed(f) === 'assets/OFL.txt');
+    expect(licence).toHaveLength(1);
+    expect(readFileSync(join(outDir, licence[0] ?? ''))).toEqual(
+      readFileSync(join(WEB, 'src/fonts/OFL.txt')),
+    );
+    const read = (pattern: RegExp) =>
+      shipped
+        .filter((f) => pattern.test(f))
+        .map((f) => readFileSync(join(outDir, f), 'utf8'))
+        .join('\n');
+    const css = read(/\.css$/);
+    for (const font of fonts) expect(css).toContain(`url(./${font.slice('assets/'.length)})`);
+    // The G goes inside the script as a data URL: no file to fetch, allowed by img-src data:.
+    const svg = readFileSync(join(WEB, 'src/assets/google/google-g.svg'));
+    expect(read(/\.js$/)).toContain(`data:image/svg+xml;base64,${svg.toString('base64')}`);
+    expect(shipped.filter((f) => f.endsWith('.svg'))).toEqual([]);
+    // Nothing the browser would load from Google's hosts.
+    expect(read(/\.(html|js|css)$/)).not.toMatch(
+      /fonts\.(googleapis|gstatic)\.com|www\.gstatic\.com\/images/,
+    );
   });
 
   it('[OPS-013] bundles no server code and ships its runtime-config slot empty', () => {
@@ -163,6 +215,11 @@ describe('the frontend build', () => {
     expect((await app.inject({ method: 'GET', url: '/health' })).json().version).toBe(VERSION);
     const index = await app.inject({ method: 'GET', url: '/' });
     expect(readRuntimeConfig(index.body)?.config.routing).toBe('hash');
+    // Its fonts from its own origin, as the policy's font-src 'self' allows (T-262).
+    const font = filesOf(outDir).find((f) => f.endsWith('.woff2')) ?? '';
+    const served = await app.inject({ method: 'GET', url: `/${font}` });
+    expect([served.statusCode, served.headers['content-type']]).toEqual([200, 'font/woff2']);
+    expect(index.headers['content-security-policy']).toContain("font-src 'self' data:");
     await app.close();
     await expect(buildApp({ version: '9.9.8', roles: ['web'], webDir: outDir })).rejects.toThrow(
       new RegExp(`holds frontend ${VERSION.replaceAll('.', '\\.')} but this server is 9\\.9\\.8`),

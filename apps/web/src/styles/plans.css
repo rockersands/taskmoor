@@ -50,6 +50,26 @@
   margin-block: 0;
 }
 
+/* A plan has ten tabs, longer ones in Spanish: where the bar is a wide screen's, they wrap to a
+   second line rather than hide the last ones past the card's edge (S3-PL-1). A phone's bar keeps
+   one strip that scrolls, with its fade (PL-17). */
+.plan-page > .track-tabs {
+  container: plan-tabs / inline-size;
+}
+
+@container plan-tabs (min-width: 48rem) {
+  .plan-page > .track-tabs ul {
+    flex-wrap: wrap;
+    width: auto;
+  }
+}
+
+/* A plan's ticket rows on a phone: the light skin's white glass edge does not show on the opaque
+   phone card, so the rows are parted by the border colour (S3-PL-3). */
+.plan-list .result-row {
+  border-top-color: var(--color-border);
+}
+
 /* On a phone the plan's parts follow each other at the small step, so its work shows sooner. */
 @media (max-width: 767px) {
   .page.plan-page,
@@ -382,6 +402,12 @@
   flex: 1 1 12rem;
 }
 
+/* The settings' fields stand level from their labels down: the hint under "A period starts on"
+   hangs below its field instead of lifting it above the others (S3-PL-10). */
+.plan-capacity-settings-row {
+  align-items: start;
+}
+
 .capacity-dialog-group {
   display: grid;
   gap: var(--space-2);
@@ -435,6 +461,12 @@
 
 .plan-share-status input {
   width: 100%;
+}
+
+/* With nothing to say the status takes no line of its own, so it adds no gap under the buttons
+   (S3-PL-2); it stays in the page, as a live region must. */
+.plan-share-status:not(:has(input)):has(> .board-hint:empty) {
+  flex-basis: 0;
 }
 
 .plan-view-tools {
@@ -1040,6 +1072,24 @@
     width: 100%;
     max-width: none;
   }
+
+  /* A compact bar on a phone, so the tabs and the work come sooner (S3-PL-2): the label beside
+     its select on one line, and Live's sentence kept only as the select's description, for a
+     screen reader. A scenario's sentence, which says edits are drafts, stays in sight. */
+  .scenario-bar-choice .form-field {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: var(--space-2);
+  }
+
+  .scenario-bar-sentence:not(.is-draft) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
 @media (pointer: coarse) {
@@ -1125,4 +1175,32 @@
 /* Auto-schedule's leave-out lists: a fieldset of check boxes, set closer than a form's groups. */
 .form fieldset.auto-schedule-choices {
   gap: var(--space-2);
+}
+
+/* A plan's five numbers on its Summary (S3-PL-6), as a track's (TR-30): one row when there is
+   room, else two to a row with the last across; a number sits on its tile's last line, so a
+   wrapped label never lowers it. */
+.plan-summary {
+  container: plan-summary / inline-size;
+}
+
+.plan-summary .report-stats {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.plan-summary .report-stats > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-1);
+}
+
+@container plan-summary (max-width: 40rem) {
+  .plan-summary .report-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .plan-summary .report-stats > div:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
 }

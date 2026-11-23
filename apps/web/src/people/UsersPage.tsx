@@ -1,17 +1,81 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
-import { PersonalDataSection } from '../account/PersonalDataSection';
+import { keepPageAddress } from '../admin/AdminLayout';
 import { NewButton, useNewForm } from '../admin/NewButton';
 import { ApiError } from '../api/client';
 import { pageAfter } from '../api/pages';
 import { useT } from '../i18n/I18nProvider';
+import { currentRoute, onRouteChange, replaceRoute, routeHref } from '../routing/router';
 import { useSession } from '../session/SessionProvider';
 import { useSessionExpiry } from '../session/useSessionExpiry';
-import { DangerAction } from '../shell/DangerAction';
 import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
-import { type PeopleClient, peopleClient, type User, type UserStatus } from './client';
-import { EraseUserForm } from './EraseUserForm';
+import {
+  type PeopleClient,
+  peopleClient,
+  ROLE_FILTERS,
+  type RoleFilter,
+  type User,
+  type UserStatus,
+} from './client';
+import { peopleRefusal, ROLE_FILTER_LABEL, roleWords } from './peopleWords';
+
+/** The People page's own address; a person's page is under it (T-331). */
+export const USERS_ROUTE = '#/admin/users';
+export const personHref = (id: number) => `${USERS_ROUTE}/${id}`;
+
+const STATUSES: readonly UserStatus[] = ['active', 'deactivated', 'all'];
+
+/** Whether the route is the list's own, with or without its filters. */
+const isListRoute = (route: string) => route === USERS_ROUTE || route.startsWith(`${USERS_ROUTE}?`);
+
+/** The route's query, empty without one. */
+const paramsOf = (route: string) =>
+  new URLSearchParams(route.includes('?') ? route.slice(route.indexOf('?') + 1) : '');
+
+interface Filters {
+  status: UserStatus;
+  role: RoleFilter;
+  query: string;
+}
+
+/**
+ * The filters the address keeps (T-331): `#/admin/users?show=all&role=ai_admin&q=grace`, so going
+ * back from a person's page, by Back or by the breadcrumb, finds the list as it was. Other
+ * addresses (stories, tests) keep nothing.
+ */
+function filtersInAddress(route = currentRoute()): Filters {
+  const kept: Filters = { status: 'active', role: 'any', query: '' };
+  if (!isListRoute(route)) return kept;
+  const params = paramsOf(route);
+  const show = params.get('show');
+  const role = params.get('role');
+  return {
+    status: STATUSES.includes(show as UserStatus) ? (show as UserStatus) : kept.status,
+    role: (ROLE_FILTERS as readonly string[]).includes(role ?? '') ? (role as RoleFilter) : 'any',
+    query: params.get('q') ?? '',
+  };
+}
+
+/**
+ * Writes the filters into the address, in place: only `show`, `role` and `q` change, and every
+ * other parameter stays (`?locale=` above all, NFR-006). The breadcrumb's People step leads back
+ * to the address it leaves.
+ */
+function keepFilters({ status, role, query }: Filters) {
+  const route = currentRoute();
+  if (!isListRoute(route)) return;
+  const params = paramsOf(route);
+  const set = (name: string, value: string | null) =>
+    value === null ? params.delete(name) : params.set(name, value);
+  set('show', status === 'active' ? null : status);
+  set('role', role === 'any' ? null : role);
+  set('q', query === '' ? null : query);
+  const search = params.toString();
+  const next = search ? `${USERS_ROUTE}?${search}` : USERS_ROUTE;
+  if (next !== route) replaceRoute(next);
+  keepPageAddress(USERS_ROUTE, next);
+}
 
 export interface UsersPageProps {
   /** Stories and tests pass their own backend; the page calls the API otherwise. */
@@ -19,11 +83,11 @@ export interface UsersPageProps {
 }
 
 /**
- * People (IAM-008), for site administrators: find someone by name or email, add a person (who
- * gets a one-time link to set a password), make or unmake a site administrator, deactivate and
- * reactivate, and make a new password link. Deactivating keeps everything the person did
- * attributed to them; the last site administrator stays. For a person's data (ASVS 8.3.2,
- * ADR-111): download it, or erase the person, confirmed by typing their email.
+ * People (IAM-008), for site administrators: find someone by name or email, by status and by
+ * role, and add a person (who gets a one-time link to set a password). Each row says which
+ * administrator roles the person holds, how many tracks they run, or "Member" (T-331; IAM-009,
+ * IAM-028), and has one Edit link to the person's page, which holds every action for them: the
+ * rows hold no other action (the user's request of 2026-11-17).
  */
 export function UsersPage({ client = peopleClient }: UsersPageProps) {
   const t = useT();
@@ -33,10 +97,11 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
   const titleId = useId();
   const searchId = useId();
   const statusId = useId();
-  const me = session.status === 'signed-in' ? session.user.id : 0;
+  const roleId = useId();
   const notAdmin = session.status === 'signed-in' && !session.user.isSiteAdmin;
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState<UserStatus>('active');
+  const [query, setQuery] = useState(() => filtersInAddress().query);
+  const [status, setStatus] = useState<UserStatus>(() => filtersInAddress().status);
+  const [role, setRole] = useState<RoleFilter>(() => filtersInAddress().role);
   const [state, setState] = useState<
     | { status: 'loading' }
     | ({ status: 'loaded' } & Listed)
@@ -49,11 +114,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
   const [message, setMessage] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [link, setLink] = useState<{ name: string; url: string } | null>(null);
-  /** The person whose data panel or erase form is open. */
-  const [open, setOpen] = useState<{ user: User; panel: 'data' | 'erase' } | null>(null);
   const adding = useNewForm();
-  // A deactivation takes the person's Deactivate away: the page's heading keeps the focus.
-  const title = useRef<HTMLHeadingElement>(null);
 
   /** The person the focus goes to: the first one the last page brought, as Show more goes. */
   const [focusId, setFocusId] = useState<number | null>(null);
@@ -66,7 +127,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
   const load = useCallback(
     async (keep = 0): Promise<Listed | null> => {
       const mine = ++reading.current;
-      const asked = { query: query.trim(), show: status };
+      const asked = { query: query.trim(), show: status, role };
       const start: Listed = {
         ...asked,
         users: [],
@@ -82,7 +143,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
         do {
           const got = await pageAfter(
             listed,
-            (offset) => client.users(asked.query, asked.show, offset),
+            (offset) => client.users(asked.query, asked.show, offset, asked.role),
             (page) => page.users,
             moved < MOST_MOVES,
           );
@@ -104,7 +165,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
         return null;
       }
     },
-    [client, query, status, expired],
+    [client, query, status, role, expired],
   );
   const shown = state.status === 'loaded' ? state.read : 0;
 
@@ -123,7 +184,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
     try {
       const got = await pageAfter(
         from,
-        (offset) => client.users(from.query, from.show, offset),
+        (offset) => client.users(from.query, from.show, offset, from.role),
         (page) => page.users,
       );
       if (mine !== reading.current) return;
@@ -148,36 +209,23 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
     return () => clearTimeout(timer);
   }, [load, notAdmin, query]);
 
-  const refusal = (error: unknown) => {
-    const code =
-      error instanceof ApiError ? (error.body as { error?: string } | null)?.error : undefined;
-    if (code === 'email_taken') return t('admin.users.problem.emailTaken');
-    if (code === 'last_admin') return t('admin.users.problem.lastAdmin');
-    if (code === 'cannot_deactivate_self') return t('admin.users.problem.self');
-    if (code === 'confirmation_mismatch') return t('admin.users.problem.mismatch');
-    if (code === 'cannot_erase_self') return t('admin.users.problem.eraseSelf');
-    if (code === 'managed_by_directory' || code === 'managed_by_scim') {
-      return t('admin.users.problem.managed');
-    }
-    if (code === 'already_erased' || code === 'erased') return t('admin.users.problem.erased');
-    // Their shared track groups gave the only other person who runs a track its role (ADR-121).
-    if (code === 'last_track_admin') return t('admin.users.problem.lastTrackAdmin');
-    if (code === 'directory_managed' || code === 'read_only') {
-      return t('admin.users.problem.directory');
-    }
-    if (code === 'invalid_request') return t('admin.users.problem.invalid');
-    return t('admin.users.problem.other');
-  };
-  const act = async (work: () => Promise<unknown>, said: string) => {
-    setProblem(null);
-    try {
-      await work();
-      setMessage(said);
-      await load(shown);
-    } catch (error) {
-      if (!expired(error)) setProblem(refusal(error));
-    }
-  };
+  // The address keeps the filters, so going back from a person's page finds them (T-331).
+  useEffect(() => keepFilters({ status, role, query }), [status, role, query]);
+  // And the list follows the address when it changes under the page: People in Administration's
+  // navigation is the list with no filter, whatever this one showed.
+  useEffect(
+    () =>
+      onRouteChange(() => {
+        const route = currentRoute();
+        if (!isListRoute(route)) return;
+        const kept = filtersInAddress(route);
+        setStatus(kept.status);
+        setRole(kept.role);
+        setQuery(kept.query);
+      }),
+    [],
+  );
+
   const when = (iso: string | null) =>
     iso ? intl.formatDate(new Date(iso), { dateStyle: 'medium' }) : t('admin.users.never');
 
@@ -185,7 +233,6 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
     <section aria-labelledby={titleId} className="page admin-page people-page">
       <PageHeader
         titleId={titleId}
-        titleRef={title}
         title={t('admin.users.title')}
         {...(state.status === 'forbidden'
           ? {}
@@ -219,7 +266,7 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                 void load(shown);
               }}
               onCancel={adding.close}
-              onProblem={(error) => setProblem(refusal(error))}
+              onProblem={(error) => setProblem(peopleRefusal(t, error))}
             />
           )}
           {link && (
@@ -271,6 +318,22 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                 <option value="all">{t('admin.users.status.all')}</option>
               </select>
             </div>
+            <div className="form-field">
+              <label htmlFor={roleId} className="form-label">
+                {t('admin.users.filter.role')}
+              </label>
+              <select
+                id={roleId}
+                value={role}
+                onChange={(event) => setRole(event.target.value as RoleFilter)}
+              >
+                {(['any', ...ROLE_FILTERS] as const).map((choice) => (
+                  <option key={choice} value={choice}>
+                    {t(ROLE_FILTER_LABEL[choice])}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           {state.status === 'loading' && <p className="page-note">{t('admin.users.loading')}</p>}
           {state.status === 'failed' && (
@@ -295,9 +358,6 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                       <div className="people-main">
                         <p className="people-name">
                           {u.name}
-                          {u.isSiteAdmin && (
-                            <span className="people-badge">{t('admin.users.siteAdmin')}</span>
-                          )}
                           {u.erased ? (
                             <span className="people-badge">{t('admin.users.erased')}</span>
                           ) : (
@@ -314,151 +374,33 @@ export function UsersPage({ client = peopleClient }: UsersPageProps) {
                             {t('admin.users.lastSignIn', { date: when(u.lastSignInAt) })}
                           </span>
                         </p>
+                        {/* Every administrator role, the tracks they run, or Member (T-331). */}
+                        {!u.erased && (
+                          <p className="people-roles">
+                            {roleWords(t, u).map((word, i) => (
+                              <span key={word} className="people-badge people-role">
+                                {i > 0 && (
+                                  <span className="visually-hidden">
+                                    {t('admin.users.roleSeparator')}
+                                  </span>
+                                )}
+                                {word}
+                              </span>
+                            ))}
+                          </p>
+                        )}
                       </div>
                       {!u.erased && (
                         <div className="people-actions">
-                          {u.active && u.id !== me && (
-                            <button
-                              type="button"
-                              className="button-secondary people-action"
-                              aria-label={t(
-                                u.isSiteAdmin
-                                  ? 'admin.users.unmakeAdminOf'
-                                  : 'admin.users.makeAdminOf',
-                                { name: u.name },
-                              )}
-                              onClick={() =>
-                                void act(
-                                  () => client.updateUser(u.id, { isSiteAdmin: !u.isSiteAdmin }),
-                                  t('admin.users.saved', { name: u.name }),
-                                )
-                              }
-                            >
-                              {t(
-                                u.isSiteAdmin ? 'admin.users.unmakeAdmin' : 'admin.users.makeAdmin',
-                              )}
-                            </button>
-                          )}
-                          {u.active && (
-                            <button
-                              type="button"
-                              className="button-secondary people-action"
-                              aria-label={t('admin.users.passwordLinkOf', { name: u.name })}
-                              onClick={() =>
-                                void (async () => {
-                                  setProblem(null);
-                                  try {
-                                    setLink({ name: u.name, url: await client.passwordLink(u.id) });
-                                  } catch (error) {
-                                    if (!expired(error)) setProblem(refusal(error));
-                                  }
-                                })()
-                              }
-                            >
-                              {t('admin.users.passwordLink')}
-                            </button>
-                          )}
-                          {u.id !== me &&
-                            (u.active ? (
-                              // Asks first, saying what will happen (D13).
-                              <DangerAction
-                                label={t('admin.users.deactivate')}
-                                name={t('admin.users.deactivateOf', { name: u.name })}
-                                outcome={t('admin.users.deactivateConfirm', { name: u.name })}
-                                confirmLabel={t('admin.users.deactivateOf', { name: u.name })}
-                                onConfirm={async () => {
-                                  setProblem(null);
-                                  try {
-                                    await client.deactivate(u.id);
-                                  } catch (error) {
-                                    // Refused: the question stays, and the reason shows above.
-                                    if (!expired(error)) setProblem(refusal(error));
-                                    throw error;
-                                  }
-                                  setMessage(t('admin.users.deactivatedSaid', { name: u.name }));
-                                  title.current?.focus();
-                                  await load(shown);
-                                }}
-                              />
-                            ) : (
-                              <button
-                                type="button"
-                                className="button-secondary people-action"
-                                aria-label={t('admin.users.reactivateOf', { name: u.name })}
-                                onClick={() =>
-                                  void act(
-                                    () => client.reactivate(u.id),
-                                    t('admin.users.reactivatedSaid', { name: u.name }),
-                                  )
-                                }
-                              >
-                                {t('admin.users.reactivate')}
-                              </button>
-                            ))}
-                          <button
-                            type="button"
-                            className="button-secondary people-action"
-                            aria-label={t('admin.users.dataOf', { name: u.name })}
-                            aria-expanded={open?.user.id === u.id && open.panel === 'data'}
-                            onClick={() =>
-                              setOpen(
-                                open?.user.id === u.id && open.panel === 'data'
-                                  ? null
-                                  : { user: u, panel: 'data' },
-                              )
-                            }
+                          {/* One way to everything about the person: their page (T-331). The
+                              name starts with the visible word (WCAG 2.5.3). */}
+                          <a
+                            href={routeHref(personHref(u.id))}
+                            className="button-secondary people-action people-edit"
+                            aria-label={t('admin.users.editOf', { name: u.name })}
                           >
-                            {t('admin.users.data')}
-                          </button>
-                          {u.id !== me && (
-                            <button
-                              type="button"
-                              className="button-danger-quiet people-action"
-                              aria-label={t('admin.users.eraseOf', { name: u.name })}
-                              onClick={() => {
-                                setProblem(null);
-                                setOpen({ user: u, panel: 'erase' });
-                              }}
-                            >
-                              {t('admin.users.erase')}
-                            </button>
-                          )}
-                        </div>
-                      )}
-                      {open?.user.id === u.id && open.panel === 'data' && (
-                        <div className="people-panel">
-                          <PersonalDataSection
-                            client={client.personalData(u)}
-                            timeZone={session.status === 'signed-in' ? session.user.timeZone : null}
-                          />
-                          <div className="form-actions">
-                            <button
-                              type="button"
-                              className="button-secondary"
-                              onClick={() => setOpen(null)}
-                            >
-                              {t('admin.users.dataClose')}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      {open?.user.id === u.id && open.panel === 'erase' && (
-                        <div className="people-panel">
-                          <EraseUserForm
-                            user={u}
-                            onCancel={() => setOpen(null)}
-                            onErase={async (confirmEmail) => {
-                              setProblem(null);
-                              try {
-                                const { label } = await client.erase(u.id, confirmEmail);
-                                setOpen(null);
-                                setMessage(t('admin.users.erasedSaid', { label }));
-                                await load(shown);
-                              } catch (error) {
-                                if (!expired(error)) setProblem(refusal(error));
-                              }
-                            }}
-                          />
+                            {t('admin.users.edit')}
+                          </a>
                         </div>
                       )}
                     </li>
@@ -490,6 +432,8 @@ interface Listed {
   query: string;
   /** Which people the list holds: active, deactivated or everyone. */
   show: UserStatus;
+  /** Which role they hold, or `any` (T-331). */
+  role: RoleFilter;
   users: User[];
   total: number;
   /** Rows read from the server so far: where the next page starts. */

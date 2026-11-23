@@ -31,6 +31,7 @@ import {
   samePeriods,
 } from '../plans/periods';
 import { planTickets, sourceRows } from '../plans/query';
+import { viewerDay } from '../reports/zone';
 import { DEFAULT_QUERY_TIMEOUT_MS, readOnly } from '../search/run';
 import { viewScenario } from './plan-scenarios';
 import { periodOf, planTeams, planVisible } from './plans';
@@ -159,7 +160,8 @@ export function registerPlanCapacityRoutes(
       }
       const over = draftOverlay(scenario?.id ?? null, tickets.unfiltered);
       const setting: PeriodSetting = periodOf(plan);
-      const first = from ?? new Date().toISOString().slice(0, 10);
+      // With no first day asked for, the periods start from the person's own today (T-280).
+      const first = from ?? viewerDay(request);
       const periods = periodsFrom(setting, first, count ?? DEFAULT_PERIODS);
       const windowStart = periods[0]?.start as string;
       const windowEnd = periods.at(-1)?.end as string;

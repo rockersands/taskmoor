@@ -14,6 +14,8 @@ describe('a plan view in the address', () => {
       ['month', '2027-02'],
       ['from', '2027-02-28'],
       ['sort', 'priority'],
+      // The Timeline's critical path (PLN-011), so a link keeps it on.
+      ['critical', '1'],
     ] as const) {
       const read = readView(`#/plans/12?${key}=${value}`);
       expect(read.position).toEqual({ [key]: value });
@@ -23,6 +25,26 @@ describe('a plan view in the address', () => {
     const all = '#/plans/12/list?assignee=me&zoom=weeks&month=2027-02&from=2027-02-28&sort=due';
     expect(planHref(12, 'list', readView(all))).toBe(all);
     expect(planHref(12, 'list', readView('#/plans/12/list'))).toBe('#/plans/12/list');
+    // The List's order is a column and a way (T-330): the way only when it is the other one.
+    for (const held of [
+      'sort=key',
+      'sort=key&order=desc',
+      'sort=type&order=desc',
+      'sort=created&order=asc',
+    ]) {
+      expect(planHref(12, 'list', readView(`#/plans/12/list?${held}`))).toBe(
+        `#/plans/12/list?${held}`,
+      );
+    }
+    expect(readView('#/plans/12/list?sort=key&order=desc').position).toEqual({
+      sort: 'key',
+      order: 'desc',
+    });
+    // Its own way, or the default, is held without the way.
+    expect(planHref(12, 'list', readView('#/plans/12/list?sort=key&order=asc'))).toBe(
+      '#/plans/12/list?sort=key',
+    );
+    expect(planHref(12, 'list', readView('#/plans/12/list?sort=created'))).toBe('#/plans/12/list');
   });
 
   it('[PLN-014] leaves out values that could not be meant', () => {
@@ -35,8 +57,12 @@ describe('a plan view in the address', () => {
       'from=2027-02-30',
       'from=tomorrow',
       'from=2027-2-1',
-      'sort=summary',
+      'sort=labels',
       'sort=created%20DESC',
+      'sort=key&order=up',
+      'order=desc',
+      'critical=yes',
+      'critical=0',
     ]) {
       expect(readView(`#/plans/12?${bad}`).position, bad).toEqual({});
     }
@@ -83,5 +109,41 @@ describe('a plan view in the address', () => {
   it('[PLN-002] routes the Changes and Scenarios tabs', () => {
     expect(PLAN_ROUTE.exec('#/plans/12/changes?scenario=4')?.[2]).toBe('changes');
     expect(PLAN_ROUTE.exec('#/plans/12/scenarios')?.[2]).toBe('scenarios');
+  });
+});
+
+describe('a baseline in the address (ADR-122 stage 9)', () => {
+  it('[PLN-011] routes the Baselines tab and keeps the baseline compared there only', () => {
+    expect(PLAN_ROUTE.exec('#/plans/12/baselines?baseline=3')?.[2]).toBe('baselines');
+    const route = '#/plans/12/baselines?track=SHOP&scenario=4&baseline=3';
+    const view = readView(route);
+    expect(view.baseline).toBe(3);
+    expect(planHref(12, 'baselines', view)).toBe(route);
+    expect(planHref(12, 'timeline', view)).toBe('#/plans/12/timeline?track=SHOP&scenario=4');
+    expect(readView('#/plans/12/baselines?baseline=0').baseline).toBeUndefined();
+    expect(readView('#/plans/12/baselines?baseline=99999999999').baseline).toBeUndefined();
+    // Comparing reads nothing more of the plan.
+    expect(planViewKey(12, view)).toBe(planViewKey(12, { ...view, baseline: undefined }));
+  });
+});
+
+describe('a structure in the address (ADR-122 stage 10)', () => {
+  it('[PLN-010] routes the Grid tab and keeps the structure shown there only', () => {
+    expect(PLAN_ROUTE.exec('#/plans/12/grid?structure=3')?.[2]).toBe('grid');
+    const route = '#/plans/12/grid?track=SHOP&scenario=4&structure=3';
+    const view = readView(route);
+    expect(view.structure).toBe(3);
+    expect(planHref(12, 'grid', view)).toBe(route);
+    expect(planHref(12, 'list', view)).toBe('#/plans/12/list?track=SHOP&scenario=4');
+    for (const bad of [
+      'structure=0',
+      'structure=x',
+      'structure=99999999999',
+      'structure=default',
+    ]) {
+      expect(readView(`#/plans/12/grid?${bad}`).structure, bad).toBeUndefined();
+    }
+    // Choosing a structure reads nothing more of the plan.
+    expect(planViewKey(12, view)).toBe(planViewKey(12, { ...view, structure: undefined }));
   });
 });

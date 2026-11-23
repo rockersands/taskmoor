@@ -1,7 +1,8 @@
-import { csvFile } from '@taskmoor/webconfig';
+import { type CsvSeparator, csvFile } from '@taskmoor/webconfig';
 import type { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { typeName } from '../shell/seededNames';
+import type { Slack } from '../timeline/critical';
 import { type Blocked, dependenciesOf } from '../timeline/dependencies';
 import type {
   CapacityCell,
@@ -22,7 +23,8 @@ import type {
  * from the server instead (`GET /plans/:id/export`), as it holds every ticket.
  *
  * Headers are in the person's language. RFC 4180 quoting, CRLF and a UTF-8 byte-order mark first
- * (T-252), like the server's exports.
+ * (T-252), like the server's exports, in the person's style (T-263): each builder takes it last,
+ * commas with numbers as 1.5 when left out, or semicolons with numbers as 1,5.
  */
 type T = ReturnType<typeof useT>;
 type Cell = string | number | null | undefined;
@@ -30,10 +32,14 @@ type Cell = string | number | null | undefined;
 /**
  * Rows as one file's text, by the rule every CSV export shares with the server's
  * (`@taskmoor/webconfig` `csv.ts`, tested there with one table): RFC 4180 quoting, a leading
- * apostrophe on text a spreadsheet would run as a formula, a semicolon quoted, a number left a
- * number, and the UTF-8 byte-order mark first, once, so Excel on Windows reads accented headers.
+ * apostrophe on text a spreadsheet would run as a formula, a comma or semicolon quoted, a number
+ * left a number (2,5 in the semicolon style), and the UTF-8 byte-order mark first, once, so Excel
+ * on Windows reads accented headers.
  */
-export const csvText = (rows: readonly (readonly Cell[])[]): string => csvFile(rows);
+export const csvText = (
+  rows: readonly (readonly Cell[])[],
+  separator: CsvSeparator = 'comma',
+): string => csvFile(rows, separator);
 
 const header = (t: T, ids: readonly MessageId[]) => ids.map((id) => t(id));
 
@@ -46,6 +52,9 @@ const scenarioLine = (t: T, data: { scenario?: { name: string } }): Cell[][] =>
   data.scenario ? [[t('plans.csv.inScenario', { name: data.scenario.name })]] : [];
 const draftCell = (t: T, draft: { stale: boolean } | undefined): Cell =>
   draft ? t(draft.stale ? 'plans.csv.draftStale' : 'plans.csv.yes') : t('plans.csv.no');
+/** A ticket's slack and whether it is on the critical path; blank where the path does not judge it. */
+const slackCells = (t: T, days: number | undefined): Cell[] =>
+  days === undefined ? ['', ''] : [days, t(days <= 0 ? 'plans.csv.yes' : 'plans.csv.no')];
 const trackKeys = (tracks: readonly { id: number; key: string }[]) =>
   new Map(tracks.map((x) => [x.id, x.key]));
 const stages: Record<'new' | 'active' | 'closed', MessageId> = {
@@ -56,7 +65,9 @@ const stages: Record<'new' | 'active' | 'closed', MessageId> = {
 
 /**
  * The Timeline: each listed ticket with its days, where they come from, its roll-up and its
- * blockers. Blockers the view does not list are its two numbers, never named.
+ * blockers. Blockers the view does not list are its two numbers, never named. With the critical
+ * path on (`slack`, PLN-011), each ticket's slack in days and whether it is on the path, as the
+ * page and its image mark it; a ticket the path does not judge has neither.
  */
 export function timelineCsv(
   t: T,
@@ -66,6 +77,8 @@ export function timelineCsv(
     data.links,
     data.blockersElsewhere,
   ),
+  slack?: Slack,
+  separator: CsvSeparator = 'comma',
 ): string {
   const tracks = trackKeys(data.tracks);
   const drafts = data.scenario !== undefined;
@@ -89,6 +102,7 @@ export function timelineCsv(
       'plans.csv.blockersOutside',
       'plans.csv.blockersUnlisted',
       ...(drafts ? (['plans.csv.draft'] as const) : []),
+      ...(slack ? (['critical.csv.slack', 'critical.csv.critical'] as const) : []),
     ]),
   ];
   for (const item of data.items) {
@@ -115,38 +129,42 @@ export function timelineCsv(
       blocked?.outside ?? 0,
       blocked?.unlisted ?? 0,
       ...(drafts ? [draftCell(t, item.draft)] : []),
+      ...(slack ? slackCells(t, slack.get(item.id)) : []),
     ]);
   }
-  return csvText(rows);
+  return csvText(rows, separator);
 }
 
 /** The Calendar: the entries of the month shown. */
-export function calendarCsv(t: T, data: PlanCalendar): string {
+export function calendarCsv(t: T, data: PlanCalendar, separator: CsvSeparator = 'comma'): string {
   const tracks = trackKeys(data.tracks);
   const drafts = data.scenario !== undefined;
-  return csvText([
-    ...scenarioLine(t, data),
-    header(t, [
-      'plans.csv.key',
-      'plans.csv.summary',
-      'plans.csv.type',
-      'plans.csv.track',
-      'plans.csv.stage',
-      'plans.csv.start',
-      'plans.csv.due',
-      ...(drafts ? (['plans.csv.draft'] as const) : []),
-    ]),
-    ...data.tickets.map((x) => [
-      x.key,
-      x.summary,
-      typeName(t, x.type),
-      tracks.get(x.trackId) ?? '',
-      t(stages[x.stage]),
-      x.start,
-      x.due,
-      ...(drafts ? [draftCell(t, x.draft)] : []),
-    ]),
-  ]);
+  return csvText(
+    [
+      ...scenarioLine(t, data),
+      header(t, [
+        'plans.csv.key',
+        'plans.csv.summary',
+        'plans.csv.type',
+        'plans.csv.track',
+        'plans.csv.stage',
+        'plans.csv.start',
+        'plans.csv.due',
+        ...(drafts ? (['plans.csv.draft'] as const) : []),
+      ]),
+      ...data.tickets.map((x) => [
+        x.key,
+        x.summary,
+        typeName(t, x.type),
+        tracks.get(x.trackId) ?? '',
+        t(stages[x.stage]),
+        x.start,
+        x.due,
+        ...(drafts ? [draftCell(t, x.draft)] : []),
+      ]),
+    ],
+    separator,
+  );
 }
 
 const OVERVIEW: Record<string, MessageId> = {
@@ -158,7 +176,7 @@ const OVERVIEW: Record<string, MessageId> = {
 };
 
 /** The Summary: each measure, its number and the search that finds exactly those tickets. */
-export function summaryCsv(t: T, data: PlanSummary): string {
+export function summaryCsv(t: T, data: PlanSummary, separator: CsvSeparator = 'comma'): string {
   const rows: Cell[][] = [
     header(t, ['plans.csv.section', 'plans.csv.measure', 'plans.csv.number', 'plans.csv.search']),
   ];
@@ -173,7 +191,7 @@ export function summaryCsv(t: T, data: PlanSummary): string {
   );
   add(t('plans.summary.byTrack'), data.tracks, (i) => i.name ?? '');
   add(t('plans.summary.byAssignee'), data.assignees, (i) => i.name ?? t('summary.unassigned'));
-  return csvText(rows);
+  return csvText(rows, separator);
 }
 
 const isCell = (c: CapacityCell | CapacityWork): c is CapacityCell => 'load' in c;
@@ -183,7 +201,7 @@ const isCell = (c: CapacityCell | CapacityWork): c is CapacityCell => 'load' in 
  * then stays a count and an amount, never named, and its heading says it is counted by whole weeks.
  * Notes stay on the page: they may say why someone was away, and a file travels.
  */
-export function capacityCsv(t: T, data: PlanCapacity): string {
+export function capacityCsv(t: T, data: PlanCapacity, separator: CsvSeparator = 'comma'): string {
   const rows: Cell[][] = [
     ...scenarioLine(t, data),
     header(t, [
@@ -255,7 +273,7 @@ export function capacityCsv(t: T, data: PlanCapacity): string {
   const unassigned = t('plans.capacity.unassigned');
   line('', unassigned, data.unassigned.cells, data.unassigned.unscheduled);
   line('', t('plans.capacity.others'), data.others.cells, data.others.unscheduled);
-  return csvText(rows);
+  return csvText(rows, separator);
 }
 
 const releaseState = (t: T, r: PlanRelease) =>
@@ -280,7 +298,7 @@ const CROSS_STATES: Record<PlanReleases['crossTrack'][number]['state'], MessageI
  * The Releases tab's rows, each release across tracks before those linked to it. What is hidden from
  * the person stays two numbers on its line, as the tab says it.
  */
-export function releasesCsv(t: T, data: PlanReleases): string {
+export function releasesCsv(t: T, data: PlanReleases, separator: CsvSeparator = 'comma'): string {
   const rows: Cell[][] = [
     header(t, [
       'plans.csv.group',
@@ -326,5 +344,5 @@ export function releasesCsv(t: T, data: PlanReleases): string {
   for (const g of data.tracks) {
     for (const r of g.releases) rows.push(line(g.track.name, r, g.track.key));
   }
-  return csvText(rows);
+  return csvText(rows, separator);
 }

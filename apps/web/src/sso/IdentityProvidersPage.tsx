@@ -320,7 +320,11 @@ function ProviderItem({
               <dd>
                 <a
                   href={provider.serviceProvider.metadataUrl}
-                  aria-label={t('admin.sso.spMetadataNamed', { name: provider.name })}
+                  // The address it shows, then whose it is: a list of links tells them apart.
+                  aria-label={t('admin.sso.spMetadataNamed', {
+                    url: provider.serviceProvider.metadataUrl,
+                    name: provider.name,
+                  })}
                 >
                   {provider.serviceProvider.metadataUrl}
                 </a>

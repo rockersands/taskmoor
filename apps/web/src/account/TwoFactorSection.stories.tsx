@@ -85,6 +85,9 @@ export const ConfirmRemoval: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Remove Blue key' }));
     await expect(canvas.getByLabelText('Current password')).toHaveFocus();
+    // It says what goes before the password, and the answer has the danger look (D13).
+    await expect(canvas.getByText('You can no longer sign in with Blue key.')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Remove' })).toHaveClass('button-danger');
   },
 };
 

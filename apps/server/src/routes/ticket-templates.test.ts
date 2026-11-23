@@ -658,6 +658,179 @@ describe('ticket templates (CORE-029, CORE-030)', () => {
     expect(plain.names).toEqual(read.names);
   });
 
+  it('[CORE-030] [CORE-009] [IAM-009] names a limited person field’s value as its own list offers it, once the start knows the ticket type (T-284)', async () => {
+    const key = await track();
+    const [group] = await database.db
+      .insertInto('user_group')
+      .values({ workspace_id: 1, name: `Approvers of ${key}` })
+      .returning('id')
+      .execute();
+    await database.db
+      .insertInto('group_member')
+      .values({ workspace_id: 1, group_id: group?.id as number, user_id: users.carol.id })
+      .execute();
+    // Limited to the group, except for chores, where it limits no one.
+    const approvers = ok(
+      await call('admin', 'POST', '/api/v1/fields', {
+        name: `Approvers ${key}`,
+        type: 'user',
+        multiple: true,
+        context: { config: { userGroupId: group?.id } },
+      }),
+      201,
+    ).field as { id: number };
+    ok(
+      await call('admin', 'POST', `/api/v1/fields/${approvers.id}/contexts`, {
+        name: 'Chores',
+        ticketTypeIds: [types.Chore],
+      }),
+      201,
+    );
+    const fieldKey = `fields.${approvers.id}`;
+    // Carol is in the group; Alice no longer is, or never was.
+    const values = { fields: { [approvers.id]: [users.carol.id, users.alice.id] } };
+    const open = (
+      await template('carol', { track: key, name: 'Any type', summary: 'Any', defaults: values })
+    ).template;
+    const bugsOnly = (
+      await template('carol', {
+        track: key,
+        name: 'Bugs only',
+        summary: 'Bug',
+        ticketTypeIds: [types.Bug],
+        defaults: values,
+      })
+    ).template;
+    const names = async (id: number, type?: number) =>
+      ok(
+        await call(
+          'alice',
+          'GET',
+          `/api/v1/ticket-templates/${id}?track=${key}${type === undefined ? '' : `&ticketTypeId=${type}`}`,
+        ),
+      ).names[fieldKey];
+    const carol = { id: users.carol.id, name: 'Carol' };
+    const alice = { id: users.alice.id, name: 'Alice' };
+    // With the type, the field's own list: Alice is not offered, though Alice holds the permission.
+    expect(await names(open.id, types.Feature)).toEqual([carol]);
+    // A template limited to bugs starts a bug when no type is named, as making the ticket does.
+    expect(await names(bugsOnly.id)).toEqual([carol]);
+    expect(
+      ok(
+        await call(
+          'alice',
+          'GET',
+          `/api/v1/ticket-templates/${bugsOnly.id}?track=${key}&ticketTypeId=${types.Feature}`,
+        ),
+        400,
+      ).fields,
+    ).toEqual({ ticketTypeId: 'not_in_template' });
+    // With no type to know, or a type where it limits no one: the site's people, by the permission.
+    expect(await names(open.id)).toEqual([carol, alice]);
+    expect(await names(open.id, types.Chore)).toEqual([carol, alice]);
+    await database.db.deleteFrom('global_grant').where('permission', '=', 'browse_users').execute();
+    try {
+      expect(await names(open.id, types.Feature)).toEqual([carol]);
+      expect(await names(bugsOnly.id)).toEqual([carol]);
+      expect(await names(open.id)).toBeUndefined();
+      expect(await names(open.id, types.Chore)).toBeUndefined();
+    } finally {
+      await database.db
+        .insertInto('global_grant')
+        .values({ workspace_id: 1, permission: 'browse_users', grantee: 'any_user' })
+        .execute();
+    }
+    // Making the ticket, Alice's value is left out and reported, as the start did not name her.
+    const made = ok(await apply('carol', open.id, { ticketTypeId: types.Feature }), 201);
+    expect(made.left).toEqual([fieldKey]);
+  });
+
+  it('[CORE-029] [IAM-009] names a template’s assignee only to readers who hold "Browse users and groups", never a deactivated one; its creator stays named (T-283)', async () => {
+    const key = await track();
+    const erin = await database.db
+      .insertInto('app_user')
+      .values({ workspace_id: 1, email: `erin-${key.toLowerCase()}@example.com`, name: 'Erin' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const forCarol = (
+      await template('carol', {
+        track: key,
+        name: 'For Carol',
+        summary: 'For Carol',
+        defaults: { assigneeId: users.carol.id },
+      })
+    ).template;
+    const forErin = (
+      await template('carol', {
+        track: key,
+        name: 'For Erin',
+        summary: 'For Erin',
+        defaults: { assigneeId: erin.id },
+      })
+    ).template;
+    await database.db
+      .updateTable('app_user')
+      .set({ deactivated_at: new Date() })
+      .where('id', '=', erin.id)
+      .execute();
+    const read = async (id: number) =>
+      ok(await call('alice', 'GET', `/api/v1/ticket-templates/${id}`)).template;
+    const listed = async (id: number) =>
+      (
+        ok(await call('alice', 'GET', `/api/v1/ticket-templates?track=${key}`)).templates as {
+          id: number;
+        }[]
+      ).find((x) => x.id === id);
+    const carol = { id: users.carol.id, name: 'Carol' };
+    expect(await read(forCarol.id)).toMatchObject({ assignee: carol, createdBy: carol });
+    expect(await listed(forCarol.id)).toMatchObject({ assignee: carol });
+    // Someone deactivated is no one the assignee picker offers: unnamed, the id stays.
+    expect(await read(forErin.id)).toMatchObject({
+      assignee: null,
+      defaults: { assigneeId: erin.id },
+    });
+    await database.db.deleteFrom('global_grant').where('permission', '=', 'browse_users').execute();
+    try {
+      for (const seen of [await read(forCarol.id), await listed(forCarol.id)]) {
+        expect(seen).toMatchObject({
+          assignee: null,
+          defaults: { assigneeId: users.carol.id },
+          createdBy: carol,
+        });
+      }
+    } finally {
+      await database.db
+        .insertInto('global_grant')
+        .values({ workspace_id: 1, permission: 'browse_users', grantee: 'any_user' })
+        .execute();
+    }
+  });
+
+  it('[CORE-030] leaves out and reports a deactivated template assignee when a ticket is made (T-283)', async () => {
+    const key = await track();
+    const fay = await database.db
+      .insertInto('app_user')
+      .values({ workspace_id: 1, email: `fay-${key.toLowerCase()}@example.com`, name: 'Fay' })
+      .returning('id')
+      .executeTakeFirstOrThrow();
+    const tpl = (
+      await template('carol', {
+        track: key,
+        name: 'For Fay',
+        summary: 'For Fay',
+        defaults: { assigneeId: fay.id },
+      })
+    ).template;
+    await database.db
+      .updateTable('app_user')
+      .set({ deactivated_at: new Date() })
+      .where('id', '=', fay.id)
+      .execute();
+    const made = ok(await apply('carol', tpl.id), 201);
+    expect(made.left).toEqual(['assigneeId']);
+    expect(made.ticket.assignee).toBeNull();
+  });
+
   it('[CORE-029] names the people, groups and teams a template for every track holds, to edit it (T-299)', async () => {
     const reviewer = ok(
       await call('admin', 'POST', '/api/v1/fields', { name: 'Reviewer T-299', type: 'user' }),

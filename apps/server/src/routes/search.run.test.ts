@@ -976,6 +976,28 @@ describe('search (M1-037)', () => {
     });
     expect(unknown.statusCode).toBe(400);
   });
+
+  it('[QRY-009] [AGL-016] orders keys by ticket number within a track: NUM-9 before NUM-10 (T-330)', async () => {
+    const made = await as('admin', {
+      method: 'POST',
+      url: '/api/v1/tracks',
+      payload: { key: 'NUM', name: 'Numbered', mode: 'shared' },
+    });
+    expect(made.statusCode, made.body).toBe(201);
+    for (let n = 1; n <= 11; n++) {
+      const res = await as('admin', {
+        method: 'POST',
+        url: '/api/v1/tickets',
+        payload: { track: 'NUM', summary: `Numbered ${n}` },
+      });
+      expect(res.statusCode, res.body).toBe(201);
+    }
+    const keysOf = async (q: string) => (await search('admin', q)).body.tickets.map((t) => t.key);
+    const wanted = Array.from({ length: 11 }, (_, at) => `NUM-${at + 1}`);
+    // By number, not as text, which would put NUM-10 and NUM-11 before NUM-2.
+    expect(await keysOf('track = NUM ORDER BY key ASC')).toEqual(wanted);
+    expect(await keysOf('track = NUM ORDER BY key DESC')).toEqual([...wanted].reverse());
+  });
   // Last: it adds 20,000 tickets, enough work that a 1 ms timeout always stops the query, also
   // where the server's timers fire late (Windows: about every 15 ms). Writing them takes a few
   // seconds alone and over a minute while other suites load the machine, hence the long limit.

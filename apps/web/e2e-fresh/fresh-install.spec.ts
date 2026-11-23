@@ -155,7 +155,7 @@ test('[NFR-013] [OPS-013] the frontend at another site: sign in, a ticket, its b
   await page.goto(`${FRONTEND}/#/search`);
   await expect(heading(page)).toHaveText('Search');
   await page.getByRole('button', { name: 'Advanced' }).click();
-  const query = page.getByRole('combobox', { name: 'Query' });
+  const query = page.getByRole('textbox', { name: 'Query' });
   await query.fill('track = FRESH AND text ~ lighthouse');
   await query.press('Enter');
   const results = page.getByRole('region', { name: 'Results' });

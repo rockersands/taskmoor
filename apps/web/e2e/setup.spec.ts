@@ -1114,7 +1114,7 @@ test('[IAM-005] the administrator adds a directory; it syncs and its people sign
   try {
     // The worker runs the first sync; the page looks again until it has.
     await expect(page.getByText('2 accounts, 2 groups')).toBeVisible({ timeout: 30_000 });
-    await page.getByRole('button', { name: 'Sync Studio LDAP now' }).click();
+    await page.getByRole('button', { name: 'Sync now from Studio LDAP' }).click();
     await expect(page.getByText('A sync of Studio LDAP is on its way.')).toBeVisible();
     await expect(page.getByText(/^Sync .*: nothing changed$/)).toBeVisible({ timeout: 30_000 });
 

@@ -36,8 +36,9 @@ type State =
 
 /**
  * Service accounts (IAM-007): accounts for programs that never sign in and are not counted as
- * users. Administrators create them, give them named, expiring tokens, rotate a token with an
- * overlap window so the program switches without downtime, and deactivate them.
+ * users. Administrators create them, rename them and say what they are for, give them named,
+ * expiring tokens, rotate a token with an overlap window so the program switches without
+ * downtime, and deactivate them. Groups (on the Groups page) give them permissions.
  */
 export function ServiceAccountsPage({ client = serviceAccountsClient }: ServiceAccountsPageProps) {
   const t = useT();
@@ -152,6 +153,7 @@ export function ServiceAccountsPage({ client = serviceAccountsClient }: ServiceA
                         client={client}
                         refuse={refuse}
                         onChanged={load}
+                        onSaid={setDone}
                       />
                     ))}
                   </ul>
@@ -249,6 +251,7 @@ function AccountItem({
   client,
   refuse,
   onChanged,
+  onSaid,
 }: {
   account: ServiceAccount;
   policy: TokenPolicy;
@@ -258,13 +261,17 @@ function AccountItem({
   client: ServiceAccountsClient;
   refuse: (error: unknown) => boolean;
   onChanged: () => Promise<void>;
+  /** Says what was done, in the page's status line. */
+  onSaid: (message: string) => void;
 }) {
   const t = useT();
   const text = useTokenText(timeZone);
   const id = useId();
   const manage = useRef<HTMLButtonElement>(null);
+  const change = useRef<HTMLButtonElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
 
   const reactivate = async () => {
     setBusy(true);
@@ -312,6 +319,16 @@ function AccountItem({
         </div>
         <div className="token-actions">
           <button
+            ref={change}
+            type="button"
+            className="button-secondary"
+            aria-expanded={editing}
+            aria-label={t('admin.serviceAccounts.changeNamed', { name: account.name })}
+            onClick={() => setEditing(!editing)}
+          >
+            {t('admin.serviceAccounts.change')}
+          </button>
+          <button
             ref={manage}
             type="button"
             className="button-secondary"
@@ -355,6 +372,23 @@ function AccountItem({
           {error}
         </p>
       )}
+      {editing && (
+        <AccountDetails
+          account={account}
+          client={client}
+          refuse={refuse}
+          onSaved={async (saved) => {
+            setEditing(false);
+            onSaid(t('admin.serviceAccounts.saved', { name: saved.name }));
+            await onChanged();
+            change.current?.focus();
+          }}
+          onCancel={() => {
+            setEditing(false);
+            change.current?.focus();
+          }}
+        />
+      )}
       {open && (
         <div id={`${id}-tokens`}>
           <AccountTokens
@@ -368,6 +402,88 @@ function AccountItem({
         </div>
       )}
     </li>
+  );
+}
+
+/** A service account's name and what it is for (IAM-007; T-320). */
+function AccountDetails({
+  account,
+  client,
+  refuse,
+  onSaved,
+  onCancel,
+}: {
+  account: ServiceAccount;
+  client: ServiceAccountsClient;
+  refuse: (error: unknown) => boolean;
+  onSaved: (account: ServiceAccount) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const t = useT();
+  const id = useId();
+  const [name, setName] = useState(account.name);
+  const [description, setDescription] = useState(account.description);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!name.trim()) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const saved = await client.update(account.id, {
+        name: name.trim(),
+        description: description.trim(),
+      });
+      await onSaved(saved);
+    } catch (e) {
+      if (!refuse(e)) setError(t('admin.serviceAccounts.saveFailed'));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form
+      className="form service-account-details"
+      aria-label={t('admin.serviceAccounts.changeNamed', { name: account.name })}
+      onSubmit={submit}
+    >
+      <div className="form-field">
+        <label htmlFor={`${id}-name`}>{t('admin.serviceAccounts.name')}</label>
+        <input
+          id={`${id}-name`}
+          required
+          maxLength={200}
+          autoComplete="off"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </div>
+      <div className="form-field">
+        <label htmlFor={`${id}-description`}>{t('admin.serviceAccounts.description')}</label>
+        <input
+          id={`${id}-description`}
+          maxLength={2000}
+          autoComplete="off"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+      </div>
+      {error && (
+        <p role="alert" className="form-error">
+          {error}
+        </p>
+      )}
+      <div className="form-actions">
+        <button type="submit" className="button-primary" disabled={busy}>
+          {t('admin.serviceAccounts.save')}
+        </button>
+        <button type="button" className="button-secondary" onClick={onCancel}>
+          {t('admin.serviceAccounts.cancelChange')}
+        </button>
+      </div>
+    </form>
   );
 }
 

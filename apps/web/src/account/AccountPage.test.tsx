@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { App } from '../App';
+import { personTimeZone } from '../i18n/zone';
 import { defaultPreferences } from '../notifications/fixtures';
 import { type Handler, noContent, stubBackend as stubAny } from '../test/backend';
 import { jsonResponse } from '../test/setup';
@@ -166,6 +167,8 @@ describe('account page: profile', () => {
       'aria-haspopup',
       'menu',
     );
+    // The zone saved is the person's clock at once, with no reload (T-280).
+    expect(personTimeZone()).toBe('Europe/Madrid');
   });
 
   it('[IAM-008] offers Automatic first and every time zone the browser knows', async () => {

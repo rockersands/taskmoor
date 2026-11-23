@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { SessionProvider } from '../session/SessionProvider';
+import { type Session, SessionProvider } from '../session/SessionProvider';
 import { AdminGroupPage } from './AdminGroupPage';
 import { AdminLayout } from './AdminLayout';
 import { AdminOverviewPage, type OverviewClient } from './AdminOverviewPage';
@@ -33,9 +33,11 @@ const meta = {
   title: 'Admin/Administration',
   component: AdminOverviewPage,
   args: { client: CLIENT },
+  // One frame per story: a story that wraps the page in a second AdminLayout draws the list of
+  // pages twice, two navigation landmarks of one name (axe landmark-unique, T-327).
   decorators: [
-    (Story) => (
-      <SessionProvider session={ADMIN}>
+    (Story, context) => (
+      <SessionProvider session={(context.parameters.session as Session) ?? ADMIN}>
         <main style={{ padding: 24 }}>
           <AdminLayout hash="#/admin">
             <Story />
@@ -66,14 +68,7 @@ export const NothingWaiting: Story = {
 
 /** A configuration administrator sees only the setup pages. */
 export const ConfigurationAdministrator: Story = {
-  render: (args) => (
-    <SessionProvider session={CONFIG_ADMIN}>
-      <AdminLayout hash="#/admin">
-        <AdminOverviewPage {...args} />
-      </AdminLayout>
-    </SessionProvider>
-  ),
-  decorators: [],
+  parameters: { session: CONFIG_ADMIN },
 };
 
 /** A group's own page, where a breadcrumb leads back to. */

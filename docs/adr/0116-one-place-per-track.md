@@ -66,7 +66,9 @@ them.
   - **What "Completed" means when it was renamed or replaced.** One answer on the server
     (`closingReasonId`): the reason named Completed, else what the default workflow's published
     version sets on entering a closed-stage status, which follows it through a rename and a
-    replacement; only with neither is a Completed made. The editor asks the server for it
+    replacement; only with neither is a Completed made. Making it records `close_reason.created`
+    in the same transaction whichever path made it, and finding one records nothing
+    (`createCloseReason` and `completedReasonId`; T-325). The editor asks the server for it
     (`POST /api/v1/workflows/:id/completed-reason`) when it adds a closing status to a workflow that
     moves freely, rather than matching a name in a list that may be late or unreadable. If the
     request fails the status is not added and the editor says why.
@@ -224,10 +226,30 @@ them.
       Taskmoor export: the workflow loader publishes a workflow that converts to none, one with
       only its create action, as version 1 with the moves). What free moves cannot reach stays
       empty wherever it comes from: a definition whose only statuses are closed-stage ones when
-      the workspace has no reason to name gets no move, is published or imported as it is, and
-      the check lists it. A restore still keeps what the version holds
-      until it is published, and the editor's publish step says that such a draft is published
-      with a move into every status. An import keeps every transition and rule a file has
+      the workspace has no reason to name gets no move. Where an administrator's action would make
+      it live, that action is refused (T-260, answered on 2026-11-16): **a publish** and **a
+      workflow file imported as a new workflow** answer 400 `invalid_request` with
+      `{ problem: 'no_moves' }`, checked right after the close-reason check and before the
+      status-mapping questions, so the draft stays as saved and no event is written (the import's
+      transaction rolls back, statuses it created included). The publish works out the moves
+      once (`withMovesIfNone`, which holds every status of the draft) and reuses them for the
+      rewrite after the last check; `noMovesPossible` says the moves were wanted (no transitions,
+      no rule, no board) and none came. "No reason to name" is wider than a site with no close
+      reason: `closingReasonId` is null whenever no reason is named Completed (in any case) and
+      the default workflow's published version sets none on entering a closed-stage status, so
+      the message names the fixes that work: a reason named Completed, a default workflow that
+      sets a reason when it closes, a status outside the closed stage, or the transitions drawn
+      by hand. Rejected: making Completed at publish, as `POST /workflows` and the editor's Add a
+      status do; a site with no reason to close with got there on purpose, and a reason made
+      inside a publish would hide in one `workflow.published` (saves, the repair and 0107 make
+      none either). Still accepted as they are: a file imported as the next draft (only a draft;
+      its publish is refused), a draft with a rule or a board, a definition where only some
+      statuses are closed-stage ones (tickets move but never close, and the lint shows the closed
+      ones as Unreachable), and an import run, which keeps the workflow so that the schemes and
+      tickets that use it are not broken; the check lists such a workflow. A restore still keeps
+      what the version holds until it is published, and the editor's publish step says that such
+      a draft is published with a move into every status, a closed-stage one only when there is a
+      reason to close with, and that a publish that can give none is refused. An import keeps every transition and rule a file has
       (WF-008 (4): imported workflows keep their rules); only a file with none gets moves.
     - *A reason named Completed made after Completed was replaced* (T-234): open, for the user.
       The reason free moves close with (`closingReasonId`) stays as it was: the reason named

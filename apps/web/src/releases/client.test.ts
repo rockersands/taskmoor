@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { setAccountTimeZone } from '../i18n/zone';
 import { notesFileHref } from './client';
 
 // The frontend hosted at one site and the backend at another (OPS-017): the page's configuration
@@ -21,5 +22,21 @@ describe('the release notes file with the backend at another site (T-282)', () =
       'https://api.example.test/api/v1/releases/7/notes?format=markdown&timeZone=Europe%2FMadrid',
     );
     zone.mockRestore();
+  });
+
+  it('[CORE-016] [NFR-006] names the account’s zone over the device’s, and the page’s language (T-280, T-283)', () => {
+    const zone = vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockReturnValue({
+      ...new Intl.DateTimeFormat().resolvedOptions(),
+      timeZone: 'Europe/Madrid',
+    });
+    setAccountTimeZone('America/Bogota');
+    try {
+      expect(notesFileHref(7, 'es')).toBe(
+        'https://api.example.test/api/v1/releases/7/notes?format=markdown&timeZone=America%2FBogota&locale=es',
+      );
+    } finally {
+      setAccountTimeZone(null);
+      zone.mockRestore();
+    }
   });
 });

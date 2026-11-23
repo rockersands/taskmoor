@@ -151,6 +151,7 @@ export const AtPhoneWidth: Story = {
 
 /** A finger reaches each workflow's name (ADR-033). */
 export const OnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByRole('link', { name: 'Support' });

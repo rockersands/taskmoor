@@ -211,4 +211,34 @@ test('[PLN-007] a release across tracks: made, linked, moved with one left out o
   expect(await count()).toBe(1);
   await signInAs(api, ori.email, PASSWORD);
   expect(await count()).toBe(0);
+
+  // Ori takes their own release out. Other teams plan by this and only that track's administrators
+  // can link it again, so it asks first, naming the release and its track (D13, T-267).
+  await visit(page, `#/cross-track-releases/${crossId}`);
+  await page.getByRole('button', { name: 'Remove Rel own' }).click();
+  const removing = page.getByRole('group', {
+    name: /^Rel own of Track .+ leaves this release across tracks/,
+  });
+  await expect(removing.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  expect(await noSidewaysScroll(page)).toBe(true);
+  await removing.getByRole('button', { name: `Remove Track ${keys.own} Rel own` }).click();
+  await expect(
+    page.getByText('Rel own is no longer linked. Its date did not change.'),
+  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Linked releases', level: 2 })).toBeFocused();
+
+  // Ada takes the other track's release out from the release's own page: the same question.
+  await signInAs(api, ADMIN.email, ADMIN.password);
+  await visit(page, `#/releases/${releaseOf.other}`);
+  await page.getByRole('button', { name: `Remove from Launch ${run}` }).click();
+  const leaving = page.getByRole('group', { name: /^Rel other of Track .+ leaves Launch/ });
+  await expect(leaving.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  expect(await seriousAxeViolations(page)).toEqual([]);
+  expect(await noSidewaysScroll(page)).toBe(true);
+  await leaving.getByRole('button', { name: `Remove from Launch ${run}` }).click();
+  await expect(
+    page.getByText(`This release is no longer linked to Launch ${run}. Its date did not change.`),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add to a release across tracks…' })).toBeFocused();
 });

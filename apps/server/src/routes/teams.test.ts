@@ -1,6 +1,7 @@
 import { useMigratedDatabase } from '@taskmoor/db/testing';
 import { hashPassword } from '@taskmoor/iam';
 import type { FastifyInstance, InjectOptions } from 'fastify';
+import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { SESSION_COOKIE } from '../auth';
@@ -148,7 +149,7 @@ describe('teams (M1-123)', () => {
     expect(anonymous.statusCode).toBe(401);
   });
 
-  it('[CORE-027] gives a picker at most `limit` teams, by name; every team without one (T-282)', async () => {
+  it('[CORE-027] gives a picker at most `limit` teams, by name (T-282)', async () => {
     for (const name of ['Pick C', 'pick a', 'Pick B']) await team(name);
     const names = async (query: string) => {
       const res = await get('bob', `/api/v1/teams?${query}`);
@@ -158,9 +159,60 @@ describe('teams (M1-123)', () => {
     expect(await names('query=pick&limit=2')).toEqual(['pick a', 'Pick B']);
     expect(await names('query=pick')).toEqual(['pick a', 'Pick B', 'Pick C']);
     expect((await names('limit=1')).length).toBe(1);
-    for (const bad of ['limit=0', 'limit=201', 'limit=two']) {
+    for (const bad of ['limit=0', 'limit=501', 'limit=two', 'after=%3D%3D', 'cursor=bm9wZQ']) {
       expect((await get('bob', `/api/v1/teams?${bad}`)).statusCode, bad).toBe(400);
     }
+  });
+
+  it('[CORE-027] pages the list by name, 100 at first, each team once and in order (T-286)', async () => {
+    // More than one page of them, in mixed case, written straight in for speed.
+    const made = Array.from(
+      { length: 104 },
+      (_, i) => `${i % 2 ? 'Page' : 'page'} ${String(103 - i).padStart(3, '0')}`,
+    );
+    await database.db
+      .insertInto('team')
+      .values(made.map((name) => ({ workspace_id: 1, name })))
+      .execute();
+    const page = async (query: string) => {
+      const res = await get('bob', `/api/v1/teams?${query}`);
+      expect(res.statusCode, res.body).toBe(200);
+      return res.json() as { teams: TeamJson[]; next: string | null };
+    };
+    const first = await page('query=page');
+    expect(first.teams).toHaveLength(100);
+    expect(first.next).toEqual(expect.any(String));
+    const second = await page(`query=page&after=${first.next}`);
+    expect(second.next).toBeNull();
+    const all = [...first.teams, ...second.teams].map((t) => t.name);
+    const expected = await database.db
+      .selectFrom('team')
+      .select('name')
+      .where(sql<boolean>`lower(name) LIKE 'page%'`)
+      .orderBy(sql`lower(name)`)
+      .orderBy('id')
+      .execute();
+    expect(all).toEqual(expected.map((t) => t.name));
+    expect(all).toHaveLength(104);
+    expect(new Set(all).size).toBe(all.length);
+    expect(all).toEqual([...made].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())));
+    // `cursor` is another name for `after`; small pages cover the same list.
+    const viaCursor = await page(`query=page&limit=100&cursor=${first.next}`);
+    expect(viaCursor.teams.map((t) => t.name)).toEqual(second.teams.map((t) => t.name));
+    const small: string[] = [];
+    let after: string | null = null;
+    do {
+      const next: { teams: TeamJson[]; next: string | null } = await page(
+        `query=page&limit=7${after ? `&after=${after}` : ''}`,
+      );
+      small.push(...next.teams.map((t) => t.name));
+      after = next.next;
+    } while (after);
+    expect(small).toEqual(all);
+    // The largest page holds them all, and says it is the last.
+    const big = await page('query=page&limit=500');
+    expect(big.teams.map((t) => t.name)).toEqual(all);
+    expect(big.next).toBeNull();
   });
 
   it('[CORE-027] keeps a team with a lead, a description and members, and tells about it', async () => {

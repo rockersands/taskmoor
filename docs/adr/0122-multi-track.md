@@ -15,10 +15,11 @@ rules"):
   searches. Changed on 2026-11-13 (`docs/plan/decisions.csv`, "The Multi-track section's name"):
   the section is named **Plans**, as its addresses (`/plans`) already were, and one of them stays a
   **plan**. This record keeps its old title and file name; the interface and the manual say Plans.
-- All of Multi-track is in 1.0 except the hierarchy grid (PLN-010) and baselines (PLN-011). It is
-  built in stages, one ticket each: this first one (T-088), then dependencies, teams and
-  capacity, cross-track releases, the program board, draft changes and scenarios, the
-  auto-scheduler, and duplicating or exporting (T-089 to T-089g).
+- All of Multi-track is in 1.0: the hierarchy grid (PLN-010) and baselines (PLN-011) joined it on
+  2026-11-13 (`docs/plan/decisions.csv`, "Hierarchy grid and baselines"). It is built in stages,
+  one ticket each: this first one (T-088), then dependencies, teams and capacity, cross-track
+  releases, the program board, draft changes and scenarios, the auto-scheduler, and duplicating or
+  exporting (T-089 to T-089g), then baselines and the hierarchy grid (T-089a, stages 9 and 10).
 - A plan holds any number of tickets; each view lists the first 10,000 and says so.
 - No board sources: each board belongs to one track (ADR-116), so choosing the track does the
   same.
@@ -320,6 +321,11 @@ take on.
   masks an erased person's name (`audit/query.ts`), and in a personal data download's
   `audit.ndjson`, whoever downloads it; `audit-verify` still checks the stored
   records. Notes should still say "Leave", not why: until the erasure they are as typed.
+  **As built since T-259 (answered on 2026-11-16):** the audit record of `plan.capacity_set` no
+  longer holds the notes' words at all (`audit/subscriber.ts` `auditDetails`): it keeps the
+  actor, the plan, each subject and period and the amounts before and after, so the record of
+  who changed what stays, and nothing about why someone was away reaches the stored log, its
+  retention or a syslog server. The masking above stays for records written before.
 - Teams, the unit and the periods are fields of `PATCH /api/v1/plans/:id` (`teams`,
   `capacityUnit`, `period`), in `plan.updated`.
 - Both routes are internal in the API document, as the other plan routes. Token scopes: read for
@@ -908,14 +914,61 @@ touch drags), and how the image looks, which needs a person to look at it.
   double-click reads the file as UTF-8 and accented headers such as "Versión" come out whole.
   Streamed exports put it before the header in their first chunk (`withBom` leaves text that
   already has one as it is); the views' files get it from `csvFile`, and `csvBlob` makes sure of it
-  again when the page hands the file over, typed `text/csv; charset=utf-8`. The separator stays a
-  comma: a Spanish Excel that wants semicolons still needs its import from text, which the mark does
-  not change. JSON and JSON Lines get no mark. The CSV importer (`records`) and the people file
+  again when the page hands the file over, typed `text/csv; charset=utf-8`. Both styles of T-263
+  (below) get it. JSON and JSON Lines get no mark. The CSV importer (`records`) and the people file
   start reading after it, through `bomLength`, so an exported file imports as it is. Tests: each
   export's bytes start EF BB BF once (`search-export.test.ts`, `plans.test.ts`, `audit.test.ts`,
   `PlanShare.test.tsx`), and each reads back through the importer, the search export as a whole
   CSV import (`search-export.test.ts`) and the downloaded files in the e2e specs
   (`search-results`, `audit`, `plan-share-and-export`).
+- **Commas or semicolons, by the person (T-263; answered 2026-11-16, replacing "separators as
+  they are" of the answer of 2026-11-13 to question 7 below).** As built:
+  - *Two styles in the shared rule.* `csvField`, `csvLine` and `csvFile` take `comma` (the default:
+    commas, numbers as 1.5) or `semicolon` (semicolons, numbers written with a decimal comma, 2,5,
+    unquoted). Text with a comma or a semicolon is quoted in both, and so now is text with a tab or a
+    `|`, so a file's own separators are the only ones outside quotes. Not Excel's `sep=;` first
+    line: Excel is widely reported to ignore the byte-order mark when that line is there, and other
+    readers, ours included, would take it for a row.
+  - *The person's style.* `automaticCsvSeparator(tag)` gives `semicolon` exactly when
+    `Intl.NumberFormat(tag).formatToParts(1.5)` writes a decimal comma: Windows sets Excel's list
+    separator to `;` in those regions. The tag is the account's "Language and region", else the
+    browser's language, so es-ES, de-DE, fr-FR and pt-BR get semicolons and es-MX, en-US and en-GB
+    commas. **Known gap:** Swiss German (de-CH) writes a decimal point, so it gets commas, while
+    Excel there separates with `;`; neither style writes that pair. A later change could split the
+    setting into the separator and the decimal mark.
+  - *The setting.* Profile has **Spreadsheet files (CSV)** beside "Language and region": Automatic,
+    "Commas, numbers as 1.5" or "Semicolons, numbers as 1,5". It is `user_preference.csv_separator`
+    (migration 0113; null is Automatic), read and written with `autoFollow` through
+    `GET`/`PATCH /api/v1/account/preferences` (`user.preferences_updated`), so erasure deletes it with
+    the row and the data download lists it in `preferences.json`. The web app's `CsvStyleProvider`
+    (`account/csvStyle.tsx`) reads it once, the first time a page shows a CSV control, and the
+    profile hands a saved choice on at once. Every CSV control uses it: Search, the audit log, a
+    plan's List, the files the Timeline, Calendar, Summary, Capacity and Releases build on the page,
+    and a baseline's comparison. No download menu gets a second CSV entry.
+  - *The API.* `GET /search/export`, `/plans/:id/export` and `/audit/export` take
+    `separator=comma|semicolon`, comma by default, so scripts and tokens see no change. The web app
+    names the separator only for the semicolon style, so the addresses of comma files are as before
+    and the e2e specs, run in an English browser, still download commas.
+  - *The importer reads what spreadsheets write.* Without `delimiter` in a mapping (no default any
+    more; runs stored before keep the comma written into them), `detectDelimiter` counts `,` `;` tab
+    and `|` outside quotes in the header record and takes the most frequent, a tie going to the
+    comma; it reads the bytes only, so every job part of a run agrees. The people file of a Cloud
+    import does the same. A file whose bytes after any UTF-8 mark are not UTF-8 (`isUtf8`) is
+    decoded once, in `CsvSource`'s constructor before any scan, as UTF-16 when it starts with that
+    mark, else as Windows-1252 through a 32-entry table over Latin-1 (Node 22's own `TextDecoder`
+    reads 0x80 to 0x9F of `windows-1252` as Latin-1 controls, so it is not used), and the report
+    gets a `read_as_windows_1252` source note with the first lines holding accented letters; the
+    wizard explains it in English and Spanish. A number field of a semicolon file reads "2,5" and
+    "1.234,5"; a bare "1.234", a thousands dot or a decimal point, is left out with `value_invalid`.
+    So a semicolon export imports back to the same values with no separator named (QRY-015 (2),
+    `search-export.test.ts`). The `csv` fuzz target now reaches the detection, the Windows-1252 and
+    UTF-16 readings and the decimal commas, with written tables that must read back: its M1 stage
+    has to run again.
+  - Tests: `csv.test.ts` in webconfig (both styles, the rule by tag, detection), the importer's
+    `csv.test.ts` and `cloud/people.test.ts`, `links.test.ts` (the setting), `privacy.test.ts`
+    (download and erasure), the three exports' tests, `account/csvStyle.test.tsx`,
+    `ProfileSection.test.tsx`, `planExport.test.tsx`, and the search and audit pages' links. Each
+    cites IAM-008 or NFR-006 with the export's or the importer's requirement.
 - **The picture's colours are listed in the design guard's ALLOWED list,** with the reason: a file
   must not change with the skin.
 - **Tests by name:** the page's flows are in `plans/PlanShare.test.tsx`, and the file functions' in
@@ -939,7 +992,8 @@ touch drags), and how the image looks, which needs a person to look at it.
    Windows reads accented headers such as "Versión" when the file is opened by a double-click. A
    Spanish Excel may still want a semicolon between cells, which a mark does not change. Not tried in
    Excel. **Answered 2026-11-13: a mark on every CSV export, not only a plan's; separators as they
-   are. Built in T-252** (above).
+   are. Built in T-252** (above). **The separators were asked again in T-263 and answered on
+   2026-11-16: commas or semicolons by the person's region, with a choice on Profile** (above).
 
 ### Stage 5 (T-089d): the program board and dependency options
 
@@ -1844,6 +1898,8 @@ and the page notes above say what changed where they belong):
 
 #### Questions for the user (the design takes the first answer each time)
 
+**Answered on 2026-11-14 (T-306): the user took Claude's recommendation for all eighteen, the first answer each, as built (decisions.csv).**
+
 1. **Opening a plan:** shows Live (edits change tickets at once, as now) until someone picks a
    scenario, kept in the address; or the main scenario when there is one; or the last choice in
    this browser.
@@ -2499,6 +2555,8 @@ from the design above, or settles what it left open:
 
 #### Questions for the user (the design takes the first answer each time)
 
+**Answered on 2026-11-14 (T-312): the user took Claude's recommendation for all twenty-four, the first answer each, as built; question 24 too (decisions.csv).**
+
 1. **What a run fills:** the plan's periods, with the capacity set on the Capacity tab (PLN-004
    says sprints and is reworded); or the sprints of each team's Scrum board (`board.team_id`), with
    capacity per sprint; or both, chosen per run.
@@ -2552,16 +2610,1239 @@ from the design above, or settles what it left open:
     plan's viewers read on every run); or the proposals record what their runner saw and other
     viewers see them only as a count.
 
+### Stage 9 (T-089a): baselines, the critical path and levelling
+
+**Designed on 2026-11-14; built the same day (see "As built (stage 9)" below for where the build
+differs).**
+PLN-011 moves to M1 with this stage, as a Must, reworded to what will be built (the wording is
+under "Tests"); the user brought it into 1.0 on 2026-11-13 (`docs/plan/decisions.csv`, "Hierarchy
+grid and baselines"). The new wording narrows the spec's in five ways: delay and slack are counted
+in calendar days (question 10); a baseline holds own and sprint days, never roll-ups, and each
+reader sees only their share of it (questions 7 and 15); "fixed-date tickets" are the tickets the
+auto-scheduler's keep rules hold (question 3); levelling moves only level-0 tickets, later, by the
+plan's periods as Capacity counts them (questions 2, 4 and 6); and its output is draft changes in a
+scenario, never live tickets (question 2). Two designs were made for this stage and judged against
+the spec, privacy, the earlier stages and the code. This one takes the smaller one's storage and its
+"a mode of the auto-scheduler" (one migration, two tables; stage 7's route, reads, keep rules and
+writer reused), and grafts in the larger one's safer pieces: the critical path computed on the
+server over the whole plan (`unfiltered`), never over the view's filters, so a filter cannot change
+the plan's end; a separate pure engine beside `schedule()`, which shares only the sorting of
+tickets and the graph code, so the fill rules are not touched; a move undone as a whole when a push
+would reach a ticket that may not move; and the promise "every cell within capacity, or reported",
+which holds where "no cell becomes over" did not. The questions at the end are the user's; the
+design takes the first answer each time.
+
+A **baseline** is a named, frozen copy of the days of a plan's tickets at one moment: for each
+ticket its capturer is shown, its own start and due days, or else its sprint's days, and which of
+the two it was. It is taken from the tickets as they are (**Live**) or from a scenario. **Delay** is
+a ticket's end now less its end in the baseline, in calendar days; a ticket has **slipped** when its
+delay is above 0. A ticket's **end** is read by the one bar rule: its due day, else its start day,
+else its sprint's end (`barDays`, `apps/server/src/plans/scheduler.ts:273`, the server's twin of
+the web's `barOf`). **Slack** is how many days a ticket's end can move later before the plan's end
+moves or one of its dependencies becomes late; the **critical path** is the open dated tickets
+with slack of 0 or less. **Evening out load** (levelling, in the spec and in this record) is a
+second kind of auto-schedule run: it moves only the tickets that put a person or team over capacity
+in a period, later, by as little as it can, each keeping its own length, and never moves a ticket a
+keep rule holds.
+
+**On the words:** the interface says **Baseline**, **Capture baseline**, **Compare with
+baseline**, "N days later", "N days earlier", **Critical path**, **slack**, **Even out load** and
+"moved later" (question 1). It never says "level", "levelling", "resource levelling",
+"optimise", "AI" or "Gantt": "level" already names a hierarchy level in Taskmoor
+(`docs/specs/00-terminology.md`), which is also why stage 7 avoided it. Stage 6 kept "baseline" out
+of its interface so that this stage could use it (stage 6, "On the words"); this stage uses it only
+for stored copies of days, never for the main scenario.
+
+#### What is stored (migration: the next free number, 0111 today)
+
+One migration, numbered when built: the next free number, claimed in `COORDINATION.md` Messages
+first (0111 on `main` at 91a354b0; the Mac's next would also be 0111, so the claim decides). The
+critical path and evening out store nothing.
+
+- **`plan_baseline` (new):** `id` serial; `workspace_id`; `plan_id` references `plan` ON DELETE
+  CASCADE; `name` text, 1 to 100 characters; `source` text CHECK IN (`'live'`, `'scenario'`);
+  `scenario_name` text NULL, the scenario's name copied at capture so the list can say "from
+  Faster" after it is renamed or gone (NULL exactly when `source` is `'live'`); `tickets` int, how
+  many rows it holds; `created_by` references `app_user` NOT NULL; `created_at` timestamptz;
+  `updated_at` timestamptz; `version` int. A unique index on `(plan_id, id)`, as
+  `plan_scenario_plan_idx` (`0110_plan_scenarios.ts:33`), and an index on `created_by`.
+- **`plan_baseline_day` (new):** `workspace_id`; `plan_id`; `baseline_id`; `ticket_id` references
+  `ticket` ON DELETE CASCADE; `start_date` date NULL; `due_date` date NULL; `dated` text NULL CHECK
+  IN (`'own'`, `'sprint'`), NULL exactly when both days are; `closed` boolean. PRIMARY KEY
+  `(baseline_id, ticket_id)`, a foreign key `(plan_id, baseline_id)` to `plan_baseline (plan_id,
+  id)` ON DELETE CASCADE, and an index on `ticket_id`, for a ticket's purge.
+- A row is kept for **every** ticket of the plan the capturer is shown, at every level, closed
+  ones included, dated or not, so a comparison can tell a ticket added since from one that had no
+  days then. Keys, summaries and roll-ups are never stored.
+- In the same change: the table types in `packages/db/src/schema.ts`, the schema golden file, and
+  a row of each in `packages/db/src/upgrade-fixtures.ts`.
+- **The data download** (`apps/server/src/privacy/export.ts`, beside `plan_scenario` at `:390`)
+  gains `planBaselines`: the baselines a person captured, as id, plan id, name, source and time,
+  without days, since the plan or its tickets may be hidden from them now, as for scenarios.
+  **Erasure rewrites nothing:** `created_by` keeps the account's id, which then names the
+  placeholder, as `plan_scenario.created_by` does (stage 6, "Events, audit and records").
+- **A copy of a plan** (`POST /plans/:id/duplicate`, `routes/plans.ts:538`) takes no baselines, as
+  it takes no scenarios (question 14). A deleted plan takes its baselines with it.
+
+#### Routes and token scopes
+
+All are internal in the API document (`x-taskmoor-stability: internal`), and scopes follow the
+method. A plan the person may not see, and a baseline or scenario of another plan, answer 404 word
+for word as a missing id. Writes are for the plan's editors, its owner and site administrators;
+anyone else gets `forbidden` with `edit_plan`. That rule is written three times today
+(`mayManage`, `routes/plans.ts:191`; the write check of `opened()`, `routes/plan-scenarios.ts:235`;
+`editable` in `visiblePlan`, `routes/plan-schedule.ts:322`). The first stage built lifts it into one
+`planEditable(request, ownerId)` in a new `apps/server/src/plans/access.ts`, which the three then
+call (moved, not changed). The baseline routes live in a new `apps/server/src/routes/plan-baselines.ts`,
+registered beside `registerPlanScenarioRoutes` (`app.ts:612`).
+
+| Route | Scope | What |
+|---|---|---|
+| `GET /api/v1/plans/:id/baselines` | read | Anyone who sees the plan: `{ baselines: [{ id, name, source, scenarioName, tickets, createdAt, createdBy: { id, name }, version }], editable, limits }`, newest first |
+| `POST /api/v1/plans/:id/baselines` | write | `{ name, scenarioId? }`; 201 with the baseline |
+| `PATCH /api/v1/plans/:id/baselines/:bid` | write | `{ name, version }`; renames |
+| `DELETE /api/v1/plans/:id/baselines/:bid?version=` | write | Deletes it and its rows |
+| `GET /api/v1/plans/:id/baselines/:bid/compare?scenario=&<plan filters>&show=&after=` | read | The comparison, below |
+| `GET /api/v1/plans/:id/critical-path?scenario=&<plan filters>` | read | The path, in "The critical path" below; in `routes/plan-views.ts` |
+| `GET /api/v1/plans/:id/schedule` and `POST /api/v1/plans/:id/schedule` | read, write | Stage 7's, with `mode` (see "Evening out load") |
+
+**Refusals:** 400 `invalid_fields` (a name out of bounds; `scenarioId` missing or of another plan:
+`{ scenarioId: 'not_found' }`; a bad filter, `show` or cursor); 409 `too_many_baselines { limit:
+10 }`, `plan_too_large { limit: 50000 }` (the plan's tickets are counted first with `LIMIT
+50,001`) and `version_conflict`; 404 as above; a search that runs too long answers as
+`searchRefusal` (`routes/search.ts:102`) does, 503 `query_timeout`.
+
+#### Capturing a baseline
+
+One transaction, under `lockPlan` (`plans/drafts.ts:451`), so two captures take turns and the
+limit of 10 holds:
+
+1. The plan's tickets for the capturer are counted through `planTickets(...)` and its `unfiltered`
+   condition (`plans/query.ts:244`): the whole plan as they are shown it, never the views' filters,
+   never the trash. More than 50,000 refuse with `plan_too_large`.
+2. One `INSERT INTO plan_baseline_day ... SELECT` over `ticket k` WHERE that condition, with the
+   days through `draftOverlay(scenarioId, unfiltered)` (`plans/drafts.ts:219`) when a scenario is
+   named, else the live `start_date` and `due_date`, and the sprint's days through `sprintDay`
+   (`plans/sprints.ts:14`) for a ticket with no day of its own, `dated` saying which. `closed` is
+   `status.stage = 'closed'`. It is a single statement, so Postgres's limit on bound values does not
+   apply, as it does to stage 7's draft writes.
+3. `plan.baseline_captured` is emitted.
+
+The name is prefilled on the page ("Baseline 14 Nov"); names need not be unique.
+
+#### Comparing (acceptance 1)
+
+`GET .../baselines/:bid/compare` is a sibling of stage 6's `GET /plans/:id/compare`
+(`routes/plan-scenarios.ts:1189`) and is built from the same pieces: `shownTo` (`:214`) with the
+page's filters, `viewScenario` (`:146`) for `scenario=`, and `draftOverlay` for the days now. It is
+one read-only statement (`readOnly`, `search/run.ts:208`) over the reader's plan tickets (`where`:
+the plan with the page's filters) LEFT JOIN `plan_baseline_day` on its primary key, plus one count
+of the baseline's rows whose ticket is not in the reader's `unfiltered` plan.
+
+- **The answer:** `{ baseline: { id, name, source, scenarioName, createdAt }, against: 'live' |
+  { scenario }, counts, planEnd, tickets, next }`.
+- **`counts`:** `compared` (dated on both sides), `slipped` (delay above 0), `earlier`, `same`,
+  `addedSince` (no row in the baseline), `undatedThen` (a row without days), `undatedNow` (days
+  then, none now), and `notShown`: rows whose ticket the reader is not shown in the plan now,
+  hidden or gone from the plan, as one number that never says which (decisions row 134). Tickets
+  the page's filters leave out are simply not compared.
+- **`planEnd`:** `{ was, now, delay }`, the latest end on each side over the tickets compared.
+  (The baseline's side is `was`, not `then`: Biome's `noThenProperty` refuses a `then` property.)
+- **`tickets`:** 200 a page, `show=slipped` (the default), `earlier`, `added` or `all`, ordered by
+  delay, largest first, then rank and id; each `{ id, key, summary, level, closed, was: { start,
+  due, dated }, now: { start, due, dated }, delay, startShift }`, where `startShift` is the start's
+  difference in days. `next` is an opaque cursor.
+- Delay is `dayNumber(end now) − dayNumber(end then)` (`plans/periods.ts:17`), the same for open
+  and closed tickets; a closed one is marked (question 10).
+
+#### The critical path
+
+A new pure function, `criticalPath(input)`, in a new `apps/server/src/plans/criticalPath.ts`, with
+no database: `input = { tickets: { id, start, end }[] (day numbers), links: { from, to }[] }`;
+answer `{ planEnd, slack: Map<id, number>, critical: id[], chains: id[][], cycles: id[] }`.
+
+1. **What it runs over:** the plan's open tickets the viewer is shown (`unfiltered`, never the
+   page's filters), at any level, with a bar of their own or of their sprint, read with the
+   scenario's days when `scenario=` is set. Closed tickets are left out and constrain nothing, as in
+   stage 7. A parent dated only by its children's roll-up is not on the path; its children are.
+2. **Links:** `blockingLinks(trx, ws, ids, options)` (`plans/dependencies.ts:87`): blocking links
+   and the types the plan chose (`dependencyOptions`, `:47`), one per pair, the source finishing
+   first. A link from a ticket outside that set is dropped: a closed blocker holds nothing, and a
+   blocker outside the plan or hidden from the viewer is counted on the route (`waitsElsewhere`),
+   never named.
+3. **Plan end:** the latest end among the tickets read.
+4. **Slack**, in reverse topological order: a ticket's latest end is the least of the plan's end
+   and, for each ticket it blocks, that ticket's latest start less one day; its slack is its latest
+   end less its end, where a ticket's latest start is its latest end less its length. Negative
+   slack means a dependency on that chain is already late, which the Timeline already shows (PLN-006).
+5. **Circles:** strongly connected components (`stronglyConnected`, below); members of a circle
+   get no slack and are counted in `cycles`, with words.
+6. **Chains:** the critical tickets joined through the links where the gap equals the difference
+   of their slack, each listed from its first ticket to the one at the end, the longest first.
+
+**The route** `GET /api/v1/plans/:id/critical-path?scenario=&<plan filters>` (in
+`routes/plan-views.ts`, for anyone who sees the plan) reads the open tickets in one statement
+(`plan_too_large` above 50,000, `MAX_OPEN_READ`, `scheduler.ts:30`), runs the engine, and answers
+`{ planEnd, chains: [{ tickets: [{ id, key, summary, start, end, slack }] }] (500 tickets at most,
+the rest counted in more), counts: { critical, cycles, undated, waitsElsewhere }, listed: [{ id,
+slack }] }`. `listed` gives the slack of the tickets the Timeline lists with the same filters (its
+first 10,000 by rank, `LISTED`, `plans/model.ts:20`), so the page marks its own bars while the path
+belongs to the whole plan. Two viewers who are shown different tickets can get different paths, a
+different plan end and different slack; the page says the path covers "the tickets this plan shows
+you".
+
+#### Evening out load (levelling)
+
+**A mode of stage 7's run, with an engine of its own** (question 2). `scheduleBody`
+(`scheduler.ts:50`) gains `mode: 'fill' | 'even_out'`, `'fill'` by default, so every existing
+caller is unchanged. Reused as they are: the route `POST /api/v1/plans/:id/schedule` and its
+readiness `GET`, `readScheduleInputs` and `readReadiness` (`plans/scheduleInputs.ts`: capacity,
+load, `maySchedule`, `hiddenBlocker`, people's drafts through `draftOverlay(..., { origin: 'person'
+})`), the leave-out and keep choices, the whole write path (`createScenario`, `lockScenario`, the
+re-read under the lock, the diff, `writeDrafts` with origin `scheduler` in chunks of
+`MAX_DRAFT_WRITE`, `clearSchedulerDrafts`, `TooManyDrafts`, `plan.drafts_set`), and stage 6's
+preview, compare, make main, apply and discard. **No migration:** 0110's origin check already
+allows `scheduler` (`0110_plan_scenarios.ts:47`). Not reused: the fill loop in `schedule()`
+(`scheduler.ts:342`), which re-places every movable ticket from the first day, drops each
+ticket's own length and keeps a cursor per subject. Evening out wants the opposite (move the
+fewest, by the least, keeping length), and a mode flag inside that loop would tangle two rule sets
+that each have their own property tests.
+
+The engine is a new pure function, `evenOut(input: ScheduleInput): ScheduleOutput`, in a new
+`apps/server/src/plans/evenOut.ts`, with stage 7's input and output shapes. The rules, in the order
+a person can follow:
+
+1. **Sort the tickets** with `classify` (stage 7's classes, below). **Fixed-date tickets** are the
+   kept ones: a person's draft, may not be scheduled by the runner, the keep query, in progress, in
+   an active sprint (question 3). Closed and left-out tickets never move, and no level but 0.
+   A movable ticket in a circle, or with a blocker the runner is not shown (`hiddenBlocker`), does
+   not move either (`cycle`, `hidden_blocker`), as in stage 7. A movable ticket with no due day
+   carries no load in any period (Capacity counts it as unscheduled, `plan-capacity.ts:241`), so
+   it is never a candidate.
+2. **Start where things are:** each subject's load per period is `person.load` plus every ticket
+   passed, at the period of its due day: the numbers the Capacity tab shows for the scenario. A cell
+   (a subject in a period of the run) is **over** when a capacity is set there and the load is above
+   it (`over: limit !== null && load > limit`, `plan-capacity.ts:285`).
+3. **Order of work:** over cells in period order, then teams before people, then by id.
+4. **Candidates** in an over cell: movable tickets due in that period that carry that subject, with
+   an estimate above 0, **lowest-ranked first** (rank by UTF-16 code unit, descending, then id,
+   descending) (question 4). They are taken one at a time until the cell fits.
+5. **One move:** the first later period `q` of the run where every capped subject of the ticket
+   has load + estimate ≤ capacity. Both days shift by `q`'s first day less the due day, the least
+   shift that puts the due day in `q`, so the ticket keeps its length (question 6). Its load leaves
+   the cell and enters `q`.
+6. **What it blocks:** each ticket it blocks that would now start on or before its new end
+   (`isLate`, `scheduler.ts:265`) is pushed later by the least amount (new start = blocker's end +
+   1, its length kept), along the chain in topological order, its load moving with it. If a push
+   would reach a ticket that may not move (kept, left out and open, in a circle, sprint-dated
+   without days of its own) or would take any ticket past the run's last day, the whole move is
+   undone, the candidate gets `would_make_late`, naming that ticket when the runner is shown it, and
+   the next candidate is tried (question 5). A pushed ticket's new cell is checked when that cell's
+   turn comes: pushes land only after the period being worked on, so the order of rule 3 reaches
+   them.
+7. **No room:** a cell with no candidate left that can move stays over. Its remaining candidates
+   get `still_over`; the cell is listed in `overLeft: [{ subject, periodStart, over }]` with
+   `only_fixed` when every ticket in it is fixed.
+
+**Reasons** (added to stage 7's lists, `scheduler.ts:165-192`, with a sentence each in
+`scheduleWords.ts` in both catalogues and the contract scenario updated): placed `moved_off_over`
+`{ subject, fromPeriod, days }` and `pushed_by_move` `{ blockerId, days }`; not placed `still_over`
+and `would_make_late` `{ ticketId? }`; `ScheduleOutput` gains an optional `overLeft`. Every other
+movable ticket is placed with `already`, so nothing is drafted for it, and the writer's diff removes
+an earlier auto-scheduler proposal on it, as a re-run does. A fill run and an even-out run in the
+same scenario therefore replace each other's proposals, and both start from live days plus people's
+drafts, never from an earlier run's result; the dialog and the manual say so.
+
+**What the rules promise** (fast-check properties in `plans/evenOut.test.ts`):
+
+- (a) No kept, closed or left-out ticket, and no ticket of another level, gets a draft
+  (acceptance 2).
+- (b) No ticket moves earlier, and each moved ticket keeps its length.
+- (c) No link between tickets in the input that was not late before is late after.
+- (d) After the run every cell of the run is within capacity, or is listed in `overLeft`
+  (acceptance 3).
+- (e) The output does not depend on the order of the input, and a second run on its own output
+  changes nothing.
+- (f) A plan with no over cell gets no draft.
+
+Termination: moves and pushes only go later, never past the run's last day, and cells are visited
+once in period order, so each ticket moves at most once per period of the run.
+
+**Readiness** gains `overCells`, how many cells of the run are over now, over the reader's
+tickets. `plan.schedule_ran` gains `mode` and `overLeft` (a count).
+
+#### Shared code (moved, not changed)
+
+These moves keep behaviour as it is; stage 7's tests and golden files prove it by passing
+unchanged.
+
+- **`apps/server/src/plans/graph.ts` (new):** `stronglyConnected(n, out)`, Tarjan's components
+  lifted from inside `schedule()` (`scheduler.ts:493-544`), and the `Heap` class (`:299`).
+  `schedule()`, `evenOut()` and `criticalPath()` import them.
+- **`classify(input)`**, exported from `scheduler.ts`: the `klass` mapping at `:444-458`, which
+  `schedule()` then calls. The arrays of load and capacity and `addLoadAtDue` (`:476`) stay inside
+  `schedule()`: they hold changing state, and `evenOut()` keeps its own.
+- **`apps/server/src/plans/access.ts` (new):** `planEditable`, above.
+
+#### Who sees what
+
+- **A baseline holds only what its capturer was shown,** and a reader sees its days only on
+  tickets the plan shows them now: every read joins the baseline's rows to the reader's
+  `where`/`unfiltered`, never the reverse. For a baseline from Live those days are ones the
+  ticket's history already tells anyone who sees the ticket; for one from a scenario they are
+  drafted days, which stage 6 already shows to every viewer of the plan on tickets they are shown.
+  So a reader learns nothing about a ticket they may see that the plan did not already tell them.
+- **Roll-ups are never stored,** because a stored roll-up would carry the capturer's hidden
+  descendants to another reader.
+- **Rows on tickets a reader is not shown** are one count, `notShown`, never keyed or dated.
+- **The critical path** runs only through tickets the viewer is shown, and blockers it may not see
+  are only counted. Its plan end and slack are the viewer's.
+- **Evening out** follows stage 7's rules, including its question 24: a runner who sees more can
+  push a ticket after a blocker others cannot see. Moving a ticket later never makes its own
+  hidden blocker's link late; a hidden ticket it blocks may become late without the runner
+  knowing, and the manual says so.
+
+#### The pages, on a desktop and on a phone
+
+- **A Baselines section** (a new `{ id: 'baselines', path: '/baselines', labelId:
+  'plans.section.baselines' }` in `PLAN_SECTIONS`, `apps/web/src/plans/address.ts:5`, after
+  Scenarios), `PlanBaselinesPage.tsx` (new): the list (name, "from Live" or "from Faster", who and
+  when); **Capture baseline…** for editors, a dialog with the name prefilled and the source, "What
+  the Timeline shows now: Live" or the open scenario; rename and delete (`shell/DangerAction`).
+  At 10 the button is off, with the reason in words.
+- **The comparison** (`BaselineCompare.tsx`, new, laid out as `ScenarioCompare.tsx`), opened from
+  the list and kept in the address (`baseline=`, with `scenario=` and the filters): a sentence first,
+  "12 tickets end later than in Kick-off, by up to 14 days; 3 earlier; 40 the same. The plan ends 9
+  days later (21 Feb, was 12 Feb). 4 tickets in this baseline are not shown to you."; then filter
+  buttons with `aria-pressed` (**Later**, **Earlier**, **Added since**, **All**) and a list, never
+  a table at phone width: key and summary as a link, "9 days later: due 21 Feb, was 12 Feb",
+  "(closed)" where it is. **Show more** pages; **Download CSV** goes through `planExport.ts` and
+  `packages/webconfig/src/csv.ts`.
+- **The Timeline** (`TimelineView.tsx`): a **Critical path** toggle among its tools
+  (`critical=1` in the address, so a link keeps it). Critical bars get a heavy outline and a
+  marker shape, never colour alone, and their description says "On the critical path"; other bars
+  say "N days of slack". A tight link between two critical tickets is drawn heavier in the SVG
+  overlay. A legend entry (`legendEntries`, `:973`). `CriticalPathList.tsx` (new, beside
+  `DependencyList.tsx`) gives the chains in words for the keyboard, screen readers and phones:
+  "SPA-3 ends 4 Dec, then SPA-7 starts 5 Dec … ends 12 Feb, the plan's end." The image
+  (`planImage.ts`) draws the same outline when the toggle is on, and the Timeline's CSV gains
+  "Slack (days)" and "Critical" (stage 8: the two drawings stay in step).
+- **The auto-schedule dialog** (`AutoScheduleDialog.tsx`): a radio group **What the run does**:
+  **Place work in rank order** (the default, stage 7) or **Even out load** ("Moves only work that
+  puts someone over capacity, later, by as little as it can, keeping each ticket's length."). The
+  keep choices are headed "Kept tickets never move (fixed dates)". Readiness adds "4 periods are
+  over capacity now." `ScheduleResult.tsx` and `scheduleWords.ts` gain sentences: "Moved 2 weeks
+  later, from 1–14 Dec to 15–28 Dec: Atlas was 6 points over.", "Moved 3 days later after SPA-10,
+  which was moved.", "Not moved: moving it would make kept SPA-4 late.", "Still over: no room for
+  Atlas up to 8 Feb." and the over-left list.
+- **Everywhere:** glass per ADR-114, strings under `baselines.*`, `critical.*` and
+  `schedule.evenOut.*` in both catalogues (`pnpm i18n:check` clean), 44 px targets under a coarse
+  pointer, no sideways scrolling at 360 px, a sheet for each dialog on a phone, and stories with
+  axe in both skins.
+
+#### Events, audit and records
+
+Each is emitted in its transaction with the plan as subject and is audited, as `plan.*` events
+are; webhooks get none. Payloads hold ids and counts, never names, days or keys.
+
+- `plan.baseline_captured` `{ baselineId, source, tickets }`, `plan.baseline_renamed`
+  `{ baselineId }`, `plan.baseline_deleted` `{ baselineId }` (new, in `events/catalogue.ts`).
+- `plan.schedule_ran` gains `mode` and `overLeft`.
+- Comparing and the critical path are reads and emit nothing.
+
+#### Limits and performance
+
+| Limit | Value | Refusal |
+|---|---|---|
+| Baselines per plan | 10 | `too_many_baselines` |
+| Tickets a capture holds | 50,000 (PLN-001's plan) | `plan_too_large` |
+| Open tickets the critical path reads | 50,000 | `plan_too_large` |
+| Comparison page | 200 tickets | |
+| Tickets listed in the path's chains | 500, the rest counted | |
+| A baseline's name | 1 to 100 characters | `invalid_fields` |
+| Evening out | stage 7's limits (10,000 movable, 1 to 12 periods, 10,000 drafted) | stage 7's |
+
+Budgets, by `expectWithinBudget` in `plans.large.test.ts` and the engines' own large tests:
+a capture of 50,000 tickets under 3 s; a comparison over 50,000 under 1 s; `criticalPath` on
+50,000 tickets and 100,000 links under 200 ms, the route under 1.5 s; `evenOut` on 10,000 movable
+tickets, 20,000 links, 300 people and 12 periods under 300 ms. Measured, not enforced, while the
+user's 2026-11-14 hold on benchmarking lasts. The critical path is O(V + E); evening out is bounded
+by V × P moves, each with its pushes. At most 500,000 baseline rows per plan.
+
+#### Seams left for later stages
+
+- **Ghost bars:** the Timeline route can take `baseline=` and give each item `baseline: { start,
+  due, dated } | null`, with a parent's baseline span rolled up per reader from the captured rows
+  of the descendants that reader sees (the roll-up CTE, `plan-views.ts:459-474`), never stored.
+  The lane, the legend and `planImage.ts` then draw a thin bar under each bar.
+- **A baseline as a side of stage 6's compare** (`a=baseline:<id>`), and automatic baselines on
+  make main, on apply or at a period's start.
+- **Slack in the engine:** `criticalPath()` is pure, so evening out could prefer tickets with the
+  most slack, and a web twin could share a table of cases as `late-rule.json` does.
+- **Days, not periods:** a working week and evening out by day need capacity counted by day.
+
+#### What the manual says
+
+When built, `docs/manual/use/multi-track.md` gains **Baselines** (capturing, from Live or a
+scenario, who may, the comparison and its counts, what "not shown to you" means, delay in calendar
+days) and **Critical path** (what it covers, slack, why it can differ between people), and
+**Auto-scheduling** gains **Evening out load** (what it moves, what it never moves, "kept tickets
+never move (fixed dates)", that a fill run and an even-out run replace each other's proposals and
+both start from live days and people's drafts, and that work moves by periods). "Not yet in plans"
+says what this stage leaves out, and `sources` stay current.
+
+#### Tests
+
+PLN-011 as it should read when built: *Taskmoor shall let a plan's editors capture named baselines
+of the days of the plan's tickets, from the tickets as they are or from a scenario, and anyone who
+sees the plan compare a baseline with the days now, listing each ticket that ends later with its
+delay in calendar days; show the critical path through the plan's dependencies, with each ticket's
+slack in days; and let an auto-schedule run even out load, moving movable level-0 tickets out of
+periods where a person or plan team is over capacity, later and keeping their length, as draft
+changes in a scenario, never moving a ticket a keep rule holds. A plan gives no access: a viewer
+sees a baseline's days only on tickets the plan shows them, and the rest only as a count, and the
+critical path runs only through tickets they are shown. Ghost bars on the Timeline, baselines of
+roll-ups, automatic baselines, working days, a stored fixed-dates mark, and evening out by day or
+above level 0 are not in this requirement (ADR-122, stage 9).* Acceptance: (1) A baseline
+comparison lists the tickets that end later with their delay in calendar days, and the plan's end
+then and now. (2) Evening out never drafts a ticket a keep rule holds (fixed dates), nor a closed
+or left-out one, and makes no dependency late between tickets it reads. (3) After evening out,
+every period's load is within capacity or the over-full period is reported. (4) On a chain of
+dependencies that ends the plan, with no dependency late, every ticket has slack 0 and is on the
+critical path, and a ticket beside the chain shows its slack in days.
+
+The spec's PLN-011 row and `requirements-index.csv` move to M1 with this wording, as a Must, and
+the title becomes "Baselines, critical path and levelling"; it drops "Gantt", "resource" and
+"unconstrained" for the defined terms above.
+
+- `plans/evenOut.test.ts` (new, pure), `[PLN-011]`: an over cell emptied by moving the
+  lowest-ranked ticket one period later with its length kept; a kept ticket never moved and the
+  cell reported `only_fixed`; a push through a chain of two; a push that would reach a kept, an
+  open left-out and a sprint-dated ticket undoes the move (`would_make_late`) and tries the next;
+  no room up to the run's end (`still_over`); a team and its member both over; a capacity of 0;
+  properties (a) to (f) with `fc` from `@taskmoor/testkit/property`, the shuffled input included.
+- `plans/criticalPath.test.ts` (new, pure), `[PLN-011]`: a chain ending the plan is all slack 0;
+  a parallel ticket's slack; sprint-dated tickets; a circle counted; a closed blocker holding
+  nothing; ties. Property: with no late link, delaying a ticket of slack 0 by one day and pushing
+  what it blocks delays the plan's end by exactly one day, and delaying a ticket of slack s ≥ 0 by
+  s days leaves it unchanged (the generator makes no late link, since a late one can move the end
+  by more).
+- `plans/graph.test.ts` (new); `plans/scheduler.test.ts` and its large test unchanged.
+- `routes/plan-baselines.test.ts` (new; the harness of `plan-scenarios.test.ts`), `[PLN-011]`:
+  capture from Live and from a scenario; own and sprint days; the delay across a month's end and a
+  year's end; every count; paging; rename and delete with `version`; `too_many_baselines`,
+  `plan_too_large`, `not_found`, 403 `edit_plan`, 404 word for word. `[PLN-011] [QRY-008]`: four
+  viewers with sentinel keys, summaries and days on hidden tickets, on each read that touches
+  `plan_baseline_day` (the comparison and the list): a baseline captured by
+  an administrator shows a member no hidden ticket's key or day, only `notShown`; the critical path
+  never names a hidden blocker.
+- `routes/plan-schedule.test.ts` gains `mode: 'even_out'`: drafts with origin `scheduler`, a fill
+  run after it replacing them, people's drafts kept; after the run `GET .../capacity?scenario=` has
+  no over cell that is not reported. `routes/plan-dependencies.test.ts` gains the critical-path
+  route: chosen link types count, a scenario's days are read, and the page's filters change
+  `listed` but never the path.
+- `scopes.test.ts` `[IAM-007]`, `contract.test.ts` `[AUT-010]` (the three baseline events, the new
+  reasons, `mode`), `audit/subscriber.test.ts`, `privacy.test.ts` (the download's
+  `planBaselines`; erasure keeps them), the migration test and upgrade fixtures, and
+  `plans.large.test.ts` (the budgets above).
+- Web: `PlanBaselinesPage.test.tsx` and `BaselineCompare.test.tsx` (the sentence, filters,
+  paging, a list at `setViewportWidth(360)`), `CriticalPathList.test.tsx`, `TimelineView.test.tsx`
+  (the toggle, outline and descriptions), `AutoScheduleDialog.test.tsx` and
+  `scheduleWords.test.ts` (the mode and every new reason in both catalogues), `planExport.test.tsx`;
+  stories with axe in both skins; the `en-XA` test.
+- e2e `plan-baselines.spec.ts`, desktop and phone: capture a baseline, drag a bar in a scenario,
+  compare and read "N days later", turn on the critical path and read the list, run Even out load
+  and see a kept ticket stay.
+
+#### Building it
+
+Three pieces, in this order, each gated on its own if the wave must be cut:
+
+1. **Baselines** (the migration; `routes/plan-baselines.ts`, `plans/access.ts`, the download,
+   events; `PlanBaselinesPage.tsx`, `BaselineCompare.tsx`, `address.ts`, a client and fixtures).
+2. **The critical path** (`plans/graph.ts` and `classify` moved; `plans/criticalPath.ts`; the
+   route in `plan-views.ts`; `TimelineView.tsx`, `CriticalPathList.tsx`, `planImage.ts`,
+   `planExport.ts`).
+3. **Evening out** (`plans/evenOut.ts`, `scheduleBody`'s `mode`, `routes/plan-schedule.ts`,
+   `scheduleInputs.ts`' readiness count; `AutoScheduleDialog.tsx`, `ScheduleResult.tsx`,
+   `scheduleWords.ts`). It alone touches stage 7's route and dialog, so it can follow later
+   without reopening the migration.
+
+#### Asked by the spec or nearby, not built here
+
+- Ghost bars on the Timeline and in its image, and baselines of parents' roll-ups (see "Seams").
+- Automatic baselines; baselines of estimates, Team values, sprints or releases.
+- Working days and holidays for delay and slack (stage 7, question 21).
+- Evening out by day, moving tickets earlier, backfilling, splitting a ticket, levels above 0,
+  moving sprint-dated tickets or sprint membership, and preferring tickets with slack.
+- A stored "Keep its dates" mark or a shared "Fixed dates" field (stage 7, question 4).
+- A critical path that counts capacity, or one through parents' roll-ups.
+
+#### As built (stage 9)
+
+Built on 2026-11-14 on `wave19/t089a-hierarchy-baselines`, in the three pieces of "Building it":
+baselines (migration `0111_plan_baselines`, `plans/access.ts`, `routes/plan-baselines.ts`, the
+download, the events; `PlanBaselinesPage.tsx`, `BaselineCompare.tsx`, `baselineClient.ts`,
+`baselineFixtures.ts`, `baselineExport.ts`, `address.ts`, `PlanPage.tsx`), the critical path
+(`plans/graph.ts`, `classify` exported, `plans/criticalPath.ts`, the route in `plan-views.ts`;
+`TimelineView.tsx`, `timeline/critical.ts`, `CriticalPathList.tsx`, `criticalFixtures.ts`,
+`PlanTimelinePage.tsx`, `planExport.ts`, `planImage.ts`) and evening out (`plans/evenOut.ts`,
+`scheduler.ts`, `routes/plan-schedule.ts`, `scheduleInputs.ts`; `AutoScheduleDialog.tsx`,
+`ScheduleResult.tsx`, `scheduleWords.ts`, `scenarioClient.ts`), with the manual's sections. Where
+the build differs from the design above, or settles what it left open:
+
+- **`then` is `was`** in the comparison's answer (`tickets[].was`, `planEnd.was`): Biome's
+  `noThenProperty` refuses a property named `then`, since it makes an object look like a promise.
+  `was` is null for a ticket added since, rather than an object of nulls.
+- **"Added since" reads "Not in the baseline"** on the page (the filter, the count and each line),
+  with a sentence that such a ticket was added to the plan since or was not shown to whoever
+  captured it. A row is kept only for what the capturer was shown, so a reader who sees more (a
+  site administrator, say) finds the capturer's hidden tickets without a row, and the page cannot
+  tell them from tickets added since. The answer's names (`addedSince`, `show=added`) are kept.
+- **The comparison answers more:** `mostLater` (the largest delay, for "by up to N days"),
+  `query` and `show`. Each ticket's `level` is `{ rank, kind }`, as on the Timeline, and `closed` is
+  the ticket's state now; the `closed` flag stored at capture is kept but not answered. `show` is
+  the page's state, not in its address; `baseline=` is (`PlanView.baseline`, written only on the
+  Baselines tab and not part of `planViewKey`).
+- **The comparison's file** holds every page of the list chosen, reading at most 250 pages of 200
+  (a whole plan of 50,000), through `planExport`'s `csvText`; its first lines name the baseline and,
+  when any, `notShown`.
+- **`planEditable`** replaced `mayManage` in `routes/plans.ts` and the `editable` of `visiblePlan`
+  in both `routes/plan-scenarios.ts` and `routes/plan-schedule.ts`; behaviour is unchanged.
+- **The page reuses** the Scenarios tab's list, card and dialog classes and the filter chips, so no
+  stylesheet changed for baselines.
+- **The critical path's open choices:** `waitsElsewhere` counts the dated open tickets with at
+  least one blocker outside the plan or hidden from the viewer. Links into or out of a circle
+  constrain nothing. Each critical ticket is in exactly one chain: a ticket with two tight links
+  onward follows the longer, and the other starts a chain of its own; chains come longest first,
+  then by their first start, then id. The cut at 500 tickets can end partway through a chain.
+  `undated` counts open tickets with no bar of their own or of their sprint, parents dated only
+  by their children included. The answer carries `scenario` when one is read.
+- **The critical path on the page** shows only where the page's client reads it
+  (`PlanClient.criticalPath`, optional), so pages and stories built on `fakePlanClient` show no
+  toggle. A path that ends partway through a late chain says, on each ticket of slack below 0, "(a
+  dependency before it is N days late)". The Timeline's CSV gains **Slack (days)** and
+  **Critical** only while the toggle is on, and the image a legend line; the page reads the path
+  afresh for each file.
+- **Evening out's answer shapes:** `moved_off_over` carries `{ subject, fromPeriod, fromPeriodEnd,
+  toPeriod, toPeriodEnd, days, over }`, where after several moves `fromPeriod` is the first period
+  and `days` the whole shift; `would_make_late` carries `{ ticketId?, why, until }`, `why` being
+  `kept`, `left_out`, `cycle`, `hidden_blocker`, `sprint` or `past_end`; `overLeft` is `[{ teamId
+  | userId, periodStart, periodEnd, over, onlyFixed }]`, a boolean decided in the final pass (true
+  when the cell ends holding only tickets that do not move). `DayProposal` lets a proposal keep a
+  null day: a day a ticket does not have stays null. `countOverCells` is exported for readiness.
+- **Evening out's outcomes:** every other movable ticket is placed with `already` and the page
+  never lists those; tickets in a circle or behind a hidden blocker are listed as not placed
+  (`cycle`, `hidden_blocker`), as in stage 7. `still_over` is left only on the candidates of a
+  cell that stays over (rule 7): a ticket whose try failed before a later candidate's move made its
+  cell fit stays where it is, with `already`. `would_make_late` stays on its ticket (rule 6), since
+  it still says why it did not move. Within a cell, a size no later period could take is not
+  searched again for the same assignee until a move pushes a ticket, which frees room in a later
+  period; this keeps the large case inside its budget.
+- **Pushes can raise the number of over cells.** Rule 5 checks room only for the moved ticket; a
+  pushed ticket lands where the push puts it and its cell is worked when its turn comes. Promise
+  (d) holds, since every cell left over is listed, but in the large synthetic plan (packed full,
+  then capacity cut by 20%) 161 over cells became 511 after a run. Counting the pushes' load when
+  choosing where to move would change rule 5; the user's to decide (question 17).
+- **Readiness's `overCells`** counts the reader's tickets of the plan by their live days and
+  people's drafts in the scenario (never the auto-scheduler's), closed work due then and work
+  elsewhere included, in one more read-only statement; readiness now passes the scenario's
+  overlay through. `diffProposals` takes nullable days. `plan.schedule_ran` gains `mode` and
+  `overLeft` (a count), as designed, in `events/catalogue.ts`.
+- **The dialog** remembers `mode` with its other choices in this browser, and a run in rank order
+  sends no `mode`. The keep choices sit in a nested fieldset with the legend "Kept tickets never
+  move (fixed dates)", styled by the existing `.auto-schedule-choices`; the note that the two kinds
+  of run replace each other's proposals shows when Even out load is chosen.
+- **Measured, not enforced** (the user's hold on benchmarking): `evenOut` alone on 10,000 tickets,
+  20,000 links, 300 people and 12 periods, about 200 ms (`evenOut.large.test.ts`).
+- **The e2e** `apps/web/e2e/plan-baselines.spec.ts` is built, on a desktop and a phone: a
+  baseline compared after a ticket moves later, the critical path in words, and Even out load into
+  a scenario with a kept ticket staying. The critical path route's limits have tests in
+  `routes/plan-dependencies.test.ts`: the chains cut at 500 tickets with `more`, and 409
+  `plan_too_large` above 50,000 open tickets.
+- **The page's even-out count:** an even-out answer's `counts` carry `moved` (tickets moved or
+  pushed whose proposal stands), since the list of tickets is cut at 2,000 with those not moved
+  first; the result reads it rather than counting the list.
+- **The leftovers, done:** the event contract has a second schedule scenario with `mode:
+  'even_out'` (`events/contract.test.ts`), whose event says `even_out` and `overLeft`;
+  `fakeScenarioClient` honours `mode`, evening out Web's load by these rules over the fake plan
+  (with a `capacity` option; `scenarioFixtures.test.ts`); the plan's Timeline has a story with the
+  critical path on (`PlanPage.stories.tsx`, `TimelineCriticalPath`, through `withCriticalPath`);
+  and the comparison's **Download CSV** is `aria-disabled` while it reads, so focus stays on it.
+- **Not yet done (deferred while benchmarking is paused):** the budgets in `plans.large.test.ts`
+  (a capture and a comparison of 50,000 tickets; `criticalPath` on 50,000 tickets and 100,000
+  links, and its route). `docs/api` lists the five baseline routes and the critical path's, all
+  internal.
+
+#### Questions for the user (the design takes the first answer each time)
+
+**Answered on 2026-11-14 (T-314): the user took Claude's recommendation for each, the first answer each, as built (decisions.csv). Question 17, added during the build, follows the same answer.**
+
+1. **What evening out is called** ("level" already names a hierarchy level): **Even out load**;
+   or "Fix over-capacity"; or "Level resources", accepting the clash.
+2. **Evening out and the auto-scheduler:** a second mode of the same run (same route, reads, keep
+   rules and drafts with origin `scheduler` into a scenario), with an engine of its own; or a
+   separate action with its own draft origin (a migration widening 0110's origin check); or a step
+   inside the fill run that repairs over-full periods.
+3. **What a fixed-date ticket is:** a ticket the run's keep rules hold (a person's draft, may not
+   be scheduled by the runner, in progress, in an active sprint, the keep query); or a "Keep its
+   dates" mark per plan and ticket (a migration); or a shared checkbox field named "Fixed dates";
+   or any ticket with both days of its own.
+4. **Which ticket leaves an over-full period first:** the lowest-ranked; or the one with the most
+   slack (the critical path inside the engine); or the smallest estimate.
+5. **A move that would make a ticket it blocks late:** the blocked ticket is pushed too, keeping
+   its length, and the move is undone when the push reaches a ticket that may not move; or blocked
+   tickets are never pushed and the link becomes late, with a warning; or every move that needs a
+   push is refused.
+6. **How far a ticket moves:** the least shift that puts its due day in the first later period
+   with room, keeping its length; or whole periods; or onto the first day with room (needs
+   capacity by day).
+7. **What a baseline holds:** each plan ticket's own days, or else its sprint's, as its capturer
+   is shown them, from Live or the open scenario, with roll-ups computed when read; or roll-ups
+   stored too (they would carry hidden work to other readers); or Live only.
+8. **How baselines are made:** by hand, named, up to 10 per plan; or up to 20; or also
+   automatically when a scenario is made main or applied; or one per plan, replaced on capture.
+9. **Who may capture, rename and delete:** the plan's editors (owner and site administrators),
+   while everyone who sees the plan reads them; or everyone who sees the plan, their own.
+10. **Delay:** calendar days between the end then and the end now (due, else start, else the
+    sprint's end), the same for closed tickets, marked closed; or working days (needs a working
+    week, kept for 2.0); or, for a closed ticket, the day it closed against the baseline's due day.
+11. **Where a comparison shows:** a Baselines section with the list of tickets that end later; or
+    that and ghost bars on the Timeline with parents' spans; or inside the Scenarios compare.
+12. **What the critical path runs through:** open tickets with days of their own or of their
+    sprint, over blocking links and the plan's chosen types, with parents dated only by roll-ups
+    left off; or parents included by their roll-ups; or blocking links only.
+13. **Where it is computed:** on the server over the whole plan the viewer is shown, the page's
+    filters leaving it unchanged; or in the browser over the Timeline's listed rows, so a filter
+    changes it.
+14. **A copy and the download:** a copy of a plan takes no baselines, and the data download lists
+    the baselines a person captured without days; or a copy takes them; or the download holds the
+    days by ticket id.
+15. **Whose view a baseline holds:** what its capturer was shown, each reader seeing only the
+    tickets they are shown now and the rest as a count; or only tickets every viewer of the plan
+    may see.
+16. **Where the critical path shows:** a toggle on the Timeline with a list in words, marked in
+    its image and CSV; or also on the program board; or only as a list.
+17. **Pushes that fill later periods** (asked after the build, 2026-11-14): a move checks room only
+    for the ticket it moves, the tickets it pushes are worked when their period's turn comes, and
+    every cell left over is listed, as built; or a move counts its pushes' load too and is undone
+    when they would take a later cell over (fewer moves, more cells left over where they are); or
+    pushed tickets may move again past the run's periods.
+
+### Stage 10 (T-089a): the hierarchy grid
+
+**Designed on 2026-11-14; built on 2026-11-14 (see "As built (stage 10)" below for where the build
+differs).**
+PLN-010 moves to M1 with this stage, reworded to what will be built (the wording is under "Tests");
+the user brought it into 1.0 on 2026-11-13 (`docs/plan/decisions.csv`, "Hierarchy grid and
+baselines"). The new wording narrows the spec's in six ways: a grid lives inside a plan and starts
+from the plan's tickets (questions 1 and 2); its steps come in a fixed order, one of each kind at
+most except grouping and links (question 23); grouping takes single-valued fields only (question
+20); a ticket appears once per structure (question 4); one row moves at a time (question 10); and
+inside a scenario the grid shows live values and is read-only (question 16). "Any depth" is the
+depth of the hierarchy: the ladder has no gaps and a parent sits exactly one level up
+(`parentLevelAllowed`, `apps/server/src/tickets/hierarchy.ts:204`, with `DEFAULT_PARENT_RULES`
+at `:201`), so children go as deep as the levels the administrators made. Two designs were made
+for this stage and judged against the spec, privacy, the earlier stages and the code. This one
+takes the larger one's shape (one insert step, a columnar skeleton with `inPlan`, `via`,
+`notShown` and `elsewhere`, rows placed by a link not draggable, a new row-window hook that leaves
+the Timeline untouched, a visited set besides the depth guard, cells in view fetched again after an
+edit because stored formula fields change on the server) and grafts in the smaller one's
+corrections: live values inside a scenario, as the plan List; keys, field types, today and the
+working week in the skeleton, so rows have names before their cells load and formula columns can
+compile in the browser; an unsaved default structure; an explicit refusal when the read runs too
+long; the grid's own row limit beside the views' 10,000; and hidden linked tickets counted as well
+as hidden children. The questions at the end are the user's; the design takes the first answer
+each time.
+
+The **Grid** is a section of a plan that shows its tickets as a tree. A **structure** is a saved,
+named recipe for that tree, kept with the plan: its **steps** and its **columns**. It holds no
+tickets: the rows are built for each viewer when read, so two viewers can see different rows. The
+steps are **Add tickets** (the plan's tickets, maybe narrowed by a query), **Group by** (a field),
+**Add children** (by parent, down every level) and **Add linked tickets** (by a link type and a
+direction). A **row** is a ticket row or a group row. **Total** columns add up, or count, the
+rows below a row; **Formula** columns compute a value per row in the formula field language.
+
+**On the words:** the interface says **Grid**, **structure**, the four step names, **Total**,
+"total of the rows below", **Formula**, **Move under…**, "Not in this plan" and "+N not shown"
+(question 25). It uses the administrators' names of hierarchy levels, read from `GET
+/api/v1/hierarchy-levels` (`routes/ticket-types.ts:311`): this is the one Plans page where level
+names belong. It never says "generator", "epic", "issue", "folder" or "baseline" (stage 9's word),
+nor any other product's name.
+
+#### What a structure is
+
+A zod `structureSpec` (new, in a new `apps/server/src/plans/structures.ts`): `{ steps, columns }`.
+The steps apply in this order, whatever order they are stored in:
+
+1. **Add tickets** (exactly one): `{ kind: 'insert', query?: text ≤ 2,000 }`. It reads the plan's
+   tickets for the viewer through `planTickets()` (`plans/query.ts:244`) and its `where` (the plan
+   with the page's filters), the one permission-safe way to them (stage 1). The query only narrows
+   them: it is compiled by `compileCondition` (`boards/data.ts:261`) in the plan's scope and ANDed,
+   as the auto-scheduler's queries are. A query a viewer cannot run makes the structure `broken`
+   for that viewer, with the reason, as a saved-search source is marked (`viewerSources`). Tickets
+   are taken by rank, then id, up to `GRID_ROWS` (100,000). An inserted ticket whose parent is
+   also inserted sits under it, as `timelineRows()` (`apps/web/src/timeline/rows.ts:18`) nests
+   rows; a parent the viewer may not see reads as none.
+2. **Group by** (0 to 2): `{ kind: 'group', field }`: track, assignee, status, type or priority
+   (the plan's own groupings), or a custom select, user, team or release field whose `multiple` is
+   false (`FieldTable.multiple`, `packages/db/src/schema.ts:1659`), so no ticket falls in two
+   groups. Values come from `parseAxis` (`reports/general.ts:144`) and `axisValues` (`:159`, then
+   exported, unchanged). Grouping applies to top rows; their rows below follow them. Two steps nest.
+   Groups are ordered by their label, "No value" last.
+3. **Add children** (0 or 1): `{ kind: 'children' }`: every descendant by `ticket.parent_id` that
+   the viewer may see, in the plan or not, down to the leaves. A visited set stops any loop that
+   bad or imported data could make, and a guard stops at 32 levels (`CASCADE_LEVELS`,
+   `fields/formulas.ts:52`); the Timeline's depth of 10 is not used.
+4. **Add linked tickets** (0 to 2): `{ kind: 'links', linkTypeId, direction: 'outward' |
+   'inward', depth: 1 to 3 }`: under each ticket row present at that point, the tickets it links
+   to by that type in that direction, then theirs, up to `depth`. Only tickets the viewer may see
+   are added; a ticket already on the path stops it.
+
+**Placing rules:**
+
+- **A ticket appears once,** where the steps first reach it, in step order, then breadth first by
+  row order (question 4). A later reach adds to that row's `elsewhere` count ("2 linked tickets are
+  shown elsewhere").
+- **Tickets outside the plan** that a children or links step reaches, and that the viewer may see,
+  are rows marked "Not in this plan" (`inPlan` false; question 3). This is the reach of the
+  Timeline's roll-ups (stage 1).
+- **A hidden ticket is never a row.** A row counts its hidden live children and its hidden linked
+  tickets of the steps' types in `notShown`, shown "+N not shown" (decisions row 134); a count
+  never says which.
+- Past 100,000 rows the structure stops and says "Shows the first 100,000 rows" (question 18).
+
+**Columns** (at most 30; 10 totals and 5 formulas among them):
+
+- **Ticket columns:** any of `SYSTEM_COLUMNS` or `cf[N]` (`apps/web/src/search/columns.ts`). They
+  edit in place where `cellEditor` (`:155`) gives an editor, and are read-only otherwise. `parent`
+  stays read-only in a cell: a row moves with Move under.
+- **Totals:** `{ kind: 'total', fn: 'sum' | 'min' | 'max' | 'count' | 'progress', of? }`. `sum`
+  takes original estimate, remaining estimate, time spent, and number fields and formula fields of
+  number, currency, percentage or duration output; `min` and `max` also take start, due and date
+  fields; `count` and `progress` take no field.
+- **Formulas:** `{ kind: 'formula', name, expression, output, decimals }`, in the formula field
+  language (`packages/formula`), checked on save by `compileFormula(expr, { resolve, output })`
+  with `formulaResolver(catalog, null)` (`fields/formulas.ts:185`), shared fields only, and stored
+  by id, as a formula field is (`rewrite.ts`). A field deleted later makes the column `broken`,
+  which shows its error while the rest of the structure works.
+
+**The default:** a plan with no saved structure shows an unsaved one: Add tickets, then Add
+children, with key, summary, status and assignee, a count total and a progress total (question 21).
+
+#### Totals and formulas (acceptance 3)
+
+At a row with rows below it, a total is computed from its **child rows**: `sum` adds their totals,
+`min` and `max` take theirs, and a leaf gives its own value; so at every row a sum total equals the
+sum of its child rows' values, by construction. The row's own value is **not** added (question 6):
+it stays in its ticket column beside the total, and the column's header says "Total of rows
+below", so an editor reading a middle level is not surprised. `count` is every ticket row below,
+at any depth. `progress` is how many ticket rows below are in a status of the closed stage, out of
+how many, ADR-120's definition (not the Timeline's `closed_at`), shown as "3 of 8 closed" with a
+bar, never a percentage (decisions row 157). Empty values are skipped, and "5 of 8 have a value"
+says so (spec 03 section 1, partial roll-ups). Group rows total their rows; a last row totals the
+top rows. Only rows the viewer is shown enter a total; a row with `notShown` says "+4 not shown"
+beside it. Totals are never stored.
+
+A **formula column** runs `evaluate(program, input)` per row, where `field(id)` reads the row's
+values, `children(id)` and `childCount()` read its child rows in the grid (whichever step added
+them), and `today` and `workingWeek` come with the skeleton (`EvalInput`,
+`packages/formula/src/evaluate.ts:14-25`). Group rows show nothing. Nothing is stored, so these
+columns are not searchable or sortable. `sum(children.{X})` equals the sum total of X only where X
+is itself a total of its rows below, or where every child row is a leaf: `children.{X}` reads each
+child's own value, while the total reads each child's total.
+
+Totals and formulas are computed **in the browser** by one pure module, `apps/web/src/plans/grid/
+compute.ts` (new). An edit or a move recomputes only the chains of rows above the changed ones, in
+O(depth), so 100,000 rows never need the server again to refresh a total. `apps/web` gains a
+workspace dependency on `@taskmoor/formula`, which has none of its own.
+
+**Stored formula fields** shown as ticket columns keep their stored values, which count every
+child that is not deleted, seen or not (`loadChildren`, `fields/formulas.ts`). So a stored
+`children.{Estimate}` and a Total over the same rows can differ, and the manual says why.
+
+#### What is stored (migration: the next free number when built)
+
+One migration, numbered when built: the next free number after stage 9's, claimed in
+`COORDINATION.md` Messages first (0112 if stage 9 takes 0111).
+
+- **`plan_structure` (new):** `id` serial; `workspace_id`; `plan_id` references `plan` ON DELETE
+  CASCADE; `name` text, 1 to 100 characters, unique per plan ignoring case; `spec` jsonb, checked by
+  `structureSpec` on every write; `created_by` and `updated_by` reference `app_user` NOT NULL;
+  `created_at`, `updated_at`, `version` int. A unique index on `(plan_id, lower(name))`.
+- In the same change: the table type in `schema.ts`, the schema golden file and a row in
+  `upgrade-fixtures.ts`.
+- **The data download** gains `planStructures`: the structures a person created, by plan id and
+  name. **Erasure rewrites nothing**, as for scenarios.
+- **A copy of a plan** (stage 8) copies its structures, as plan settings (question 15). Collapsed
+  rows are remembered per viewer in the browser only (`taskmoor.grid.<planId>.<structureId>`, read
+  and written in `try`, never needed).
+
+#### Routes and token scopes
+
+All are internal in the API document (`x-taskmoor-stability: internal`), and scopes follow the
+method. A plan the person may not see, and a structure of another plan, answer 404 word for word as
+a missing id. Writes are for the plan's editors (`planEditable`, stage 9's `plans/access.ts`; this
+stage lifts it if it is built first); anyone else gets `forbidden` with `edit_plan`. They live in a
+new `apps/server/src/routes/plan-structures.ts`, registered beside `registerPlanScenarioRoutes`.
+
+| Route | Scope | What |
+|---|---|---|
+| `GET /api/v1/plans/:id/structures` | read | `{ structures: [{ id, name, updatedAt, version, broken }], editable, limits }` |
+| `POST /api/v1/plans/:id/structures` | write | `{ name, spec }`; 201 |
+| `PATCH /api/v1/plans/:id/structures/:sid` | write | `{ name?, spec?, version }` |
+| `DELETE /api/v1/plans/:id/structures/:sid?version=` | write | |
+| `GET /api/v1/plans/:id/structures/:sid/rows?<plan filters>` | read | The skeleton, below; `default` in place of `:sid` reads the default structure |
+| `POST /api/v1/plans/:id/grid/tickets` | read | `{ ids: ≤ 500, fields }`: the rows in view, below |
+
+**The skeleton** is columnar, to stay small at 100,000 rows: `{ generation, total, more, today,
+workingWeek, fields: [{ ref, type }], rows: { ticket: int[] (0 for a group row), key: string[],
+parent: int[] (a row index, −1 at the top), depth: int[], level: int[] (the level's rank), track:
+int[], inPlan: bool[], via: int[] (0 inserted, 1 child, 2 + n the nth links step), closed: bool[],
+notShown: int[], elsewhere: int[] }, groups: [{ row, field, label }], values: { [ref]: (number |
+string | null)[] } }`. `values` holds only the fields that totals and formulas read; `fields`
+gives each one's type, so the browser can compile a formula column; `today` and `workingWeek` come
+from `formulaEnv` (`fields/formulas.ts:487`), the viewer's day.
+
+**Reading it** (one read-only transaction, `readOnly`, `search/run.ts:208`, with the plan views'
+statement timeout):
+
+1. `planTickets()`, then the ids of `where` ANDed with the step's query, by rank and id, `LIMIT
+   100,001`.
+2. Children: one `WITH RECURSIVE` over `ticket.parent_id` under the viewer's ticket filter, as the
+   Timeline's roll-up reads it (`seen`, `plan-views.ts:411` and `:459-474`), with a visited path and
+   the depth guard; then one count of the live children the viewer may not see, per row.
+3. Links: per step, one recursive query over `ticket_link` joined to `link_type`, under the same
+   filter, with a count of the hidden ones per row.
+4. The pure step, `buildStructure(input)` in a new `apps/server/src/plans/structureTree.ts`: nest,
+   drop repeats (counted), group the top rows, order siblings by rank then id, and give the rows in
+   preorder.
+5. Values: one SELECT over `ticket` and the side tables (`fields/storage.ts`) for the refs read;
+   `closed` is `status.stage = 'closed'`.
+
+A read that runs too long refuses as `searchRefusal` (`routes/search.ts:102`) does, 503
+`query_timeout`, never with part of an answer. `generation` lets the page drop an older answer that
+arrives after a newer one.
+
+**The rows in view:** `POST .../grid/tickets` answers the tickets in the search route's shape,
+through `searchViews(db, catalogs, request, ids, filter)` (`routes/search.ts:196`) and `project()`
+(`:182`), both exported already, with the viewer's ticket filter applied again: an id the viewer
+may not see is left out silently, the same as a missing one, so the route says nothing about which
+tickets exist. Each ticket carries `version`, so an edit keeps the 409. The limit of 500 ids
+matches `POST /search/format-rules` (`routes/list-views.ts:30`).
+
+**No new write route:** an edit and a move are the ticket's own `PATCH /api/v1/tickets/:id` with
+`version` (`routes/tickets.ts:1361`), which keeps every check: the hierarchy lock
+(`shareHierarchy`), `lockParent` (`:495`), `placementProblem` (`:510`: `required`, `wrong_level`,
+`other_track`), `edit_tickets`, the edit layout and field rules, the per-status edit locks, the 409,
+history, events, and the stored formula roll-ups of the old and new parents.
+
+**Refusals:** 400 `invalid_fields` with the path of the bad step or column (a formula that does not
+check returns the body of `GET /api/v1/formulas/check`, `routes/fields.ts:1410`), `invalid_query`;
+409 `too_many_structures { limit: 20 }`, `name_taken`, `version_conflict`; 404 as above; 503
+`query_timeout`.
+
+#### Editing and moving (acceptance 2)
+
+- **Cells** reuse `Cell` and `CellInput` (`apps/web/src/search/ResultTable.tsx:272` and `:455`),
+  exported where they are and not changed, with `cellEditor` and `cellChange` (`columns.ts:155`,
+  `:258`). A refusal shows on the cell, as in search results. After a save the answer replaces the
+  ticket in the cache and its values in the skeleton; the totals above recompute, and cells in view
+  of the rows above are fetched again, since the server recomputed their stored formula fields.
+- **Moving a row** with everything below it: a drag handle on the tree cell, and **Move under…**
+  in the row's menu (Shift+F10 or the menu key, and on phones), with a ticket picker. Allowed
+  targets come from the levels: a ticket row exactly one level up, in the same track when the row
+  is a subticket, as `placementProblem` rules; other targets say why on hover, in its words. A
+  group row is not a target ("A group is not a parent"; question 13). A row placed by a links step
+  cannot be dragged: its place comes from a link, not its parent (question 12). **Remove from
+  parent** sends `parent: null`, which the server refuses where a parent is `required`.
+- **The confirmation** (`MoveUnderDialog.tsx`, new): "Move ABC-12 under DEF-3? Its parent changes
+  from GHI-1 to DEF-3. 6 rows move with it." **Move** sends `PATCH { parent, version }`. On success
+  the rows move in the page and the skeleton is read again behind; on a refusal or 409 the dialog
+  says why and nothing moves.
+- **One row at a time** (question 10). Moving under a ticket of another track needs only what a
+  move needs today, `edit_tickets` on the moved ticket and a parent the mover may see (question 11).
+- **Inside a scenario** the Grid shows live values, is read-only and says "The grid shows live
+  values" (`plans.list.live`), as the plan List does (`PlanListPage.tsx:122-129`; question 16).
+
+#### Who sees what
+
+- **Rows are only tickets the viewer may see:** the insert through `planTickets()`, the other
+  steps through the viewer's ticket filter. A hidden parent breaks the path: its visible children
+  become top rows, as on the Timeline.
+- **Hidden tickets below a row are a count only,** never keyed, valued or added into a total.
+- **Group labels** name only values on rows shown.
+- **The rows-in-view route** answers only for tickets the viewer may see. Writes are the ticket
+  route's own.
+- **Stored formula fields** keep their stored value, which may count hidden children: that is how
+  formula fields work today, and the manual says so.
+
+#### The pages, on a desktop and on a phone
+
+- **The section:** `{ id: 'grid', path: '/grid', labelId: 'plans.section.grid' }` in
+  `PLAN_SECTIONS` (`apps/web/src/plans/address.ts:5`), after List; `PlanGridPage.tsx` (new), with
+  the structure chosen in the address (`structure=`), a picker, **Refresh**, **Expand all**,
+  **Collapse all** and, for editors, **New structure…** and **Edit structure…**
+  (`StructureDialog.tsx`, new: the steps in their fixed order, then the columns, each with its
+  check in words).
+- **Desktop:** a `role="treegrid"` with `aria-rowcount` of the rows shown, and on each row drawn
+  `aria-rowindex`, `aria-level`, `aria-expanded`, `aria-setsize` and `aria-posinset`; the header
+  row and the tree column stay in view. Rows are drawn in a window by a new hook,
+  `apps/web/src/plans/grid/rowWindow.ts`, on the Timeline's pattern (fixed 44 px rows, an overscan
+  of 20, padding above and below, the focused row kept drawn); `TimelineView.tsx` is not changed. A
+  new `visibleRows(skeleton, collapsed)` in `plans/grid/tree.ts` maps what is shown to skeleton rows
+  in one pass on each expand or collapse. Every row opens expanded (question 22).
+- **Cells load by window:** debounced 100 ms, 500 ids a request, about 5,000 tickets kept; a row
+  not yet loaded shows its key and a quiet line.
+- **Keyboard:** arrows move; Right and Left expand and collapse; Enter edits; Escape cancels; Home
+  and End go to a row's ends, Ctrl+Home and Ctrl+End to the grid's.
+- **Phones** (below the compact width, ADR-033): a windowed list of cards, each with a 44 px
+  expand button, an indent of 12 px a level up to 4 levels and then the level's name in words, key
+  and summary, and the first two columns as label and value. Tapping a card opens a sheet with
+  every column, where the cell editors work and Move under is offered. No drag on touch, no
+  sideways scrolling.
+- **Everywhere:** glass per ADR-114, strings under `grid.*` in both catalogues (`pnpm i18n:check`
+  clean), 44 px targets under a coarse pointer, and stories with axe in both skins.
+
+#### Events, audit and records
+
+`plan.structure_created`, `plan.structure_changed` and `plan.structure_deleted` (new), with the
+plan as subject, audited, no webhooks, payloads of ids and the name. Edits and moves emit the
+ticket's own events and history.
+
+#### Limits and performance
+
+| Limit | Value | Refusal |
+|---|---|---|
+| Structures per plan | 20 | `too_many_structures` |
+| Rows | 100,000 (`GRID_ROWS`; `LISTED`, `plans/model.ts:20`, stays 10,000 for the other views) | cut, `more: true` |
+| Steps | 1 insert, 2 group, 1 children, 2 links | `invalid_fields` |
+| Link depth | 1 to 3 | `invalid_fields` |
+| Columns | 30, of which 10 totals and 5 formulas | `invalid_fields` |
+| A step's query | 2,000 characters | `invalid_fields` |
+| Ids per rows-in-view read | 500 | `invalid_fields` |
+| A name | 1 to 100 characters | `invalid_fields` |
+
+Budgets, by `expectWithinBudget` in a new `plan-structures.large.test.ts` (10,000 rows in every
+gate, 100,000 with `TASKMOOR_LARGE_PLANS=1`): a skeleton of 100,000 rows under 3 s and under 4 MB
+before compression; 500 rows in view under 300 ms; a recompute after one edit under 16 ms; a
+scroll frame under 16 ms. The backlog's "50k-row frame budget" (M2-005) becomes 100,000. Measured,
+not enforced, while the user's 2026-11-14 hold on benchmarking lasts.
+
+#### Shared code (moved, not changed)
+
+- `Cell` and `CellInput` exported from `ResultTable.tsx`, where they are.
+- `axisValues` exported from `reports/general.ts`.
+- `planEditable` from stage 9's `plans/access.ts`, or lifted here if this stage is built first.
+
+#### Seams left for later stages
+
+- Moving several rows at once, through the backlog's ticket-by-ticket loop
+  (`routes/backlog-planning.ts:257`) or a bulk operation's `edit.parent`.
+- Dropping on a group row to set its field; ranking by drag; sorting siblings by a column.
+- Drafts in the Grid: 0110's field check widened to `parent` and more fields.
+- Live updates through the program board's channel.
+- CSV of a structure through `packages/webconfig/src/csv.ts`; format rules, since
+  `POST /search/format-rules` already takes 500 ids.
+- An "under this Outcome" query condition, so a total can link to its search.
+- Structures outside plans; grouping by labels or other multi-valued fields.
+
+#### What the manual says
+
+When built, `docs/manual/use/multi-track.md` gains **Grid**: structures and who may change them;
+each step; "Not in this plan", "+N not shown" and "shown elsewhere"; totals as "total of the rows
+below" and why they can differ from a stored formula field; progress by closed stage; formula
+columns; moving a row and what it checks; live values in a scenario; the 100,000-row stop; and the
+phone's cards. "Not yet in plans" says what this stage leaves out, and `sources` stay current.
+
+#### Tests
+
+PLN-010 as it should read when built: *Taskmoor shall show a plan's tickets as a tree in a Grid
+built from saved structures that the plan's editors keep: the plan's tickets, maybe narrowed by a
+query, grouped by up to two single-valued fields, then extended by children at every level of the
+hierarchy and by tickets linked by chosen link types, across tracks; with ticket columns edited in
+place through the ticket's own change, total columns (sum, min, max, count, and progress by closed
+stage) over the rows below, and formula columns in the formula field language; and moving one row
+under another parent, by dragging or a Move under action, after confirmation. A plan gives no
+access: a viewer is shown only tickets they may see, and hidden tickets below a row are only
+counted. Drafts in the Grid, moving several rows at once, dropping on a group, sorting by a column
+and downloading a structure are not in this requirement (ADR-122, stage 10).* Acceptance: (1) A
+structure of 100,000 rows scrolls to its last row and saves an edit there without an error. (2)
+Moving a row under another parent changes its parent only after confirmation, through the
+ticket's own checks, and a refusal says why. (3) On every row with rows below it, a sum total
+equals the sum of its child rows' values, a leaf's being its own. (4) A ticket the viewer may not
+see is never a row, never named and never in a total; it is only counted.
+
+The spec's PLN-010 row and `requirements-index.csv` move to M1 with this wording; it drops
+"generators" for steps, "any depth" for the hierarchy's depth, and adds acceptance (4).
+
+- `plans/structureTree.test.ts` (new, pure), `[PLN-010]`: nesting, repeats counted, grouping,
+  preorder; fc properties: every ticket at most once, parents before children, the same output
+  for a shuffled input, the stop at 100,000.
+- `apps/web/src/plans/grid/compute.test.ts` (new), `[PLN-010]`: fc property over random trees that
+  a sum total equals the sum of the child rows' values at every row (acceptance 3); min, max, count,
+  progress and partial values; the rows above an edit recomputed; a formula `sum(children.{X})`
+  equal to the sum total on trees of depth 1.
+- `routes/plan-structures.test.ts` (new), `[PLN-010]`: create, change and delete; `version`;
+  limits; `name_taken`; a formula that does not check; a query that does not compile; a broken
+  source and a deleted field; 403 `edit_plan`, 404 word for word; the default structure; a slow
+  read refused, never partial. Moves through `PATCH`: `wrong_level`, `other_track`, `required`,
+  `forbidden`, 409. `[PLN-010] [QRY-008]`: four viewers with sentinel keys on a hidden child, a
+  hidden parent, a hidden linked ticket and a child outside the plan: none appears in rows, keys,
+  groups, values or the rows-in-view answer; `notShown` only counts.
+- `scopes.test.ts` `[IAM-007]`, `contract.test.ts` `[AUT-010]` (the three events),
+  `audit/subscriber.test.ts`, `privacy.test.ts`, the migration test and upgrade fixtures,
+  `plan-structures.large.test.ts`.
+- Web: `PlanGridPage.test.tsx` (a fake 100,000-row skeleton scrolled to its end and its last row
+  edited, with no console error and the drawn rows within the window, `[PLN-010]` (1); treegrid
+  roles; keyboard; live values in a scenario), `MoveUnderDialog.test.tsx` (`[PLN-010]` (2)),
+  `StructureDialog.test.tsx`, cards at `setViewportWidth(360)`; stories with axe in both skins;
+  `pnpm conformance formula` unchanged (the same language).
+- e2e `plan-grid.spec.ts`, desktop and phone: save a structure, edit a cell, move a row after
+  confirming and see the totals change, and Move under on a phone.
+
+#### Building it
+
+Four pieces; 1 and 2 can be built at once, then 3, then 4:
+
+1. **The model and storage:** the migration, `plans/structures.ts`, `plans/structureTree.ts`,
+   `routes/plan-structures.ts` (the CRUD and the skeleton), `axisValues` exported, the download,
+   events.
+2. **The browser engine:** `apps/web/src/plans/grid/compute.ts` and `tree.ts`, with
+   `@taskmoor/formula` added to `apps/web/package.json`.
+3. **The page:** `PlanGridPage.tsx`, `plans/grid/rowWindow.ts`, `plans/grid/client.ts`,
+   `StructureDialog.tsx`, `address.ts`, `Cell` and `CellInput` exported, the rows-in-view route.
+4. **Moving:** `MoveUnderDialog.tsx` and the drag and menu actions. If the wave runs short, links
+   steps keep depth 1 and formula columns wait, before any privacy or acceptance test is cut.
+
+#### Asked by the spec or nearby, not built here
+
+Every item under "Seams", and: percentages and estimate-weighted progress (decisions row 157);
+skip-level parents (`ParentRules.skipLevels` stays off, so moves need no cycle walk); links
+steps deeper than 3; a structure's own filters beyond the plan's.
+
+#### As built (stage 10)
+
+Built on 2026-11-14 on `wave20/t089a-hierarchy-grid`, in the four pieces of "Building it": the
+model and storage (migration `0112_plan_structures`, `plans/structures.ts`,
+`plans/structureTree.ts`, `routes/plan-structures.ts`, `axisValues` and `names` exported from
+`reports/general.ts`, the three events, audited, the download and the copy of a plan), the browser
+engine (`plans/grid/types.ts`, `tree.ts`, `compute.ts`, `fixtures.ts`), the page
+(`PlanGridPage.tsx`, `StructureDialog.tsx`, `plans/grid/client.ts`, `clientFixtures.ts`,
+`rowWindow.ts`, `words.ts`, `styles/grid.css`, `address.ts`, `PlanPage.tsx`, `Cell` and `CellInput`
+exported from `ResultTable.tsx`) and moving (`MoveUnderDialog.tsx` and the grip, menu and drag in
+`PlanGridPage.tsx`), with the manual's "The Grid". Every question took its first answer. Where the
+build differs from the design above, or settles what it left open:
+
+**The answers**
+
+- **The list answers more:** each structure carries its `spec`, which the page needs to draw its
+  columns and to edit it, and the answer adds `plan` and `default` (the unsaved default's spec).
+  Structures are listed by name ignoring case, then id; `broken` is a boolean, true when a step or
+  column no longer works or the Add tickets query does not compile for this reader.
+- **The skeleton answers more:** `plan`, `structure` (`id`, `name`, `spec`, `version`, all null
+  but `spec` for the default), `editable`, `broken`, `problems` (`[{ path, reason, error?,
+  message? }]`: `field_deleted`, `link_type_deleted`, `formula` with the check's error, or the
+  query's refusal in words), `query`, and inside a scenario `scenario` with `live: true`.
+- **Group entries** are `{ row, field, value, label }`, with `value` and `label` null for "No
+  value", which the page says in the reader's language. Group rows carry `ticket` 0 (which marks
+  them), level 0, track 0, key `''` and `inPlan` true. The page keys a group row by its value
+  (`g<field>=<value>`, `g<field>!` for none), so a collapsed group survives a renamed label.
+- **`total`** is the number of rows given, never more. **`values`** follow the formula field
+  convention: dates as day numbers, durations in seconds. **`today`** is the reader's day in their
+  time zone (`todayIn`); `workingWeek` comes from `formulaEnv`. **`generation`** is a counter in the
+  server process, started from the clock. **The page does not compare it** (a review's finding):
+  behind several API processes (the Helm chart's replicas) each counts its own, so a newer answer
+  could carry a lower number and the page kept the old one. The page drops a late answer by its
+  own read number, which also keys the grid it draws.
+- **A change that sends the stored spec again** compares both specs with their keys sorted
+  (`canonicalJson`, `tickets/model.ts`): jsonb gives the stored spec's keys in its own order, so
+  without it a spec with totals, a links step or a formula never matched itself, and each save
+  bumped the version and emitted `plan.structure_changed`.
+- **Ticket columns** are `{ kind: 'ticket', field }`, the design giving no shape: `key`, the
+  search results' system columns or `cf[N]`. **Lowest and Highest** also take date and date-time
+  custom fields and formula fields of date output.
+- **The rows-in-view route** is a read-only POST: it joins `READ_ONLY_ROUTES` in
+  `tokens/scopes.ts` and has an exemption in `events/contract.test.ts`. Like search results, a
+  ticket's `parent` there carries the id of a parent the reader may not see, with a null key and
+  summary; the page never names it. `docs/api` lists the six routes, all internal.
+- **The data download** lists each structure a person created with its plan id, its own id, its
+  name and when it was made, without its steps or columns, as the plan may be hidden from them
+  now. **A copy of a plan** copies the structures with the copier as `created_by` and
+  `updated_by`; `plan.duplicated` keeps its payload and does not count them.
+
+**Reading the rows**
+
+- **Hidden children are counted only when the structure has an Add children step,** and only under
+  the rows that step opened (the inserted tickets and the children above the depth guard). Hidden
+  linked tickets are counted per links step, under the rows that step opened. The page shows the
+  count of a row and every row below it, `hiddenBelow`, once, in the tree cell.
+- **The children walk** starts from the inserted tickets and never passes through another inserted
+  ticket, which the insert has already nested. A links step makes up to three queries: the walk,
+  the hidden counts and the facts of the tickets it reached.
+- **A links step is cut by the tickets it adds, not its link pairs:** it keeps every pair to a
+  ticket already a candidate, and pairs to at most 100,000 new tickets, lowest id first
+  (`cutLinks`, `plans/structureTree.ts`), ordered by source and target, so the cut is the same on
+  every read. A guard of 400,000 pairs read bounds memory; reaching it, or a 100,001st new ticket,
+  sets `more`.
+- **Group by a custom field** counts a value only where the field's context covers the ticket's
+  track and type, as the cells and totals read it; a value kept in the side tables after a context
+  was narrowed groups under "No value".
+- **The tree and the skeleton grow their lists in place** (`appendTo`): a copy per entry made
+  grouping 100,000 top rows, or nesting 100,000 children under one parent, quadratic, holding the
+  server for seconds outside the statement timeout's reach.
+
+**The browser engine**
+
+- **A recompute is not strictly O(depth):** each row above an edit is recomputed from its child
+  rows, so the cost is the child counts along the chain; this keeps every total exactly equal to a
+  full recompute, with no rounding drift. A move rebuilds the columnar arrays, O(n).
+- **Formula columns are computed per cell when drawn,** not for every row ahead of time, and give
+  the value as a formula field stores it (to 0.001, whole seconds, `YYYY-MM-DD`); the page applies
+  `decimals`.
+- **A moved row goes last** among its new siblings until the skeleton is read again.
+
+**The page**
+
+- **The tree column holds the key** as a link, headed **Ticket**, so a `key` ticket column is not
+  drawn a second time. `aria-rowcount` counts the header row and the **All rows** total row in the
+  table's foot as well as the rows shown. The page measures the sticky header row and the **All
+  rows** footer and gives both to the row window (`offset`, `bottom`), so a row scrolled to by the
+  keyboard shows whole between them, and to the scroller as scroll padding, so focus does too. A
+  row whose cell is being edited may grow past 44 px.
+- **Focus:** when closing rows hides the row that held the treegrid's one Tab stop, the highest
+  closed row above it takes the stop. A moved row keeps focus and scroll only in the read that
+  follows the move; Refresh, a filter or another structure starts at the first row. The menu key
+  or Shift and F10 also cancel the next `contextmenu` within a second, which Chrome and Edge on
+  Windows send on the menu key's keyup, so the browser's own menu never opens over the row's.
+- **Cells:** a failed read of the rows in view says "Some cells could not be read" with **Try
+  again**. After an edit, the tickets of the rows above, read again, also replace their values in
+  the skeleton, so a formula column reading a stored formula field of those rows follows the
+  server's new value. A cell answer is kept while the grid is shown even if the rows wanted
+  changed meanwhile (a `mounted` ref; the e2e found rows left loading).
+- **Keys beyond the design:** Page Up and Page Down move ten rows, and Left on a closed row goes to
+  its parent. Ctrl+Home and Ctrl+End go to the first and last rows in the same column.
+- **Inside a scenario** the page says its own sentence, `grid.live` ("The Grid shows tickets as they
+  are, not drafts, and its cells cannot be edited here."), rather than `plans.list.live`; the
+  structure actions stay, since structures belong to the plan.
+- **The picker lists only saved structures:** once a plan has one, the unsaved default is no longer
+  offered (the route still reads it by `default`). A structure named in the address that no longer
+  exists shows the plan's first, with a notice. Delete structure is a `DangerAction` in the
+  toolbar, named "Delete structure {name}" (`grid.delete.label`); on the unsaved default, **Save as a structure…** takes the place of Edit structure….
+- **The dialog** shows a saved formula as stored, by id (`{cf[41]}`), not rewritten to names. A new
+  formula column starts as `count(children)`, named "Child rows"; Lowest and Highest of a date say
+  "Earliest" and "Latest". A group row shows "Field: value" and how many child rows it has.
+- **Phone cards** are 120 px unless their words need more: the tallest card drawn (its open
+  button's own height, plus padding and border) sets every card's height, up to 480 px, so two
+  facts and two marks, or larger text, are never clipped and the row window's rows stay one
+  height. A card's name starts with "Open" and its key (`grid.openCard`), then the words it shows,
+  so the name a speaking user hears matches what they read.
+- **Estimates after an edit:** the search view keeps them under `timeTracking`, so `savedTicketOf`
+  (`plans/grid/client.ts`) copies them up before `editOfTicket` reads them.
+
+**Moving**
+
+- **"Other targets say why on hover"** is the drag's own label and outline: during a drag the label
+  beside the pointer and the outline of the row under it say why a row cannot be the parent; in
+  Move under…, a row that cannot be the parent says why in its text and description. There is no
+  tooltip outside a drag.
+- **The picker offers the Grid's own ticket rows,** not any ticket, at most 50 with how many more
+  match. Before asking the server the page refuses a wrong level (naming the level the parent needs),
+  another track for a subticket, the row's own rows, its parent already, group rows and rows placed
+  by a link; Remove from parent of a subticket says "A subticket needs a parent." and sends
+  nothing. The server's refusals of the same map to the same words.
+- **Remove from parent** of a row whose parent the Grid does not show (a top row, or one in a group)
+  leaves the row where it is until the skeleton is read again.
+- **On a touch screen wider than a phone** the grip drags as the calendar's grips do
+  (`scrollFirst`): after a short rest, or a sideways move. Phones have no grip; the card's sheet
+  offers Move under… and Remove from parent. No Alt+arrow moves, none being designed.
+
+**Verified**
+
+- The e2e `apps/web/e2e/plan-grid.spec.ts` passes on the desktop and the phone viewport (run on
+  its own, not the whole `pnpm verify --e2e`). Its first run changed the page in three places,
+  recorded above: the phone card's name, the name of Delete structure and the `mounted` guard on
+  cell answers.
+- The random trees of the property tests live in `apps/web/src/test/gridTrees.ts`, under the test
+  helpers' folder, so the module boundaries hold.
+- The 100,000-row tree has tests that fail past a timeout rather than a budget: 100,000 top rows
+  in two groups, and 100,000 children under one parent (`structureTree.test.ts`).
+
+**Not yet done**
+
+- The budgets in `plan-structures.large.test.ts` wait for the user's hold on benchmarking; the
+  limits and refusals have their tests (`routes/plan-structures.test.ts`, 503 `query_timeout` on
+  20,000 tickets), and `PlanGridPage.test.tsx` draws a fake 100,000-row skeleton to its last row
+  and edits it there.
+
+#### Questions for the user (the design takes the first answer each time)
+
+**Answered on 2026-11-14 (T-315): the user took Claude's recommendation for each, the first answer each; stage 10 is built on them (decisions.csv).**
+
+1. **Where a structure lives:** inside a plan, as its Grid section, shared with whoever sees the
+   plan; or on its own, saved and shared like a saved search; or both.
+2. **The insert step's query:** only narrows the plan's tickets; or runs like any search, so a
+   structure can start outside the plan.
+3. **Children and linked tickets outside the plan:** rows, marked "Not in this plan"; or only
+   counted, like hidden ones.
+4. **A ticket reached twice:** shown once, where first reached, the other places counting it; or
+   at every place, each counted in totals; or at every place, counted once.
+5. **Hidden tickets below a row:** a count beside it ("+4 not shown"), never in a total; or left
+   out with no count.
+6. **What a total at a parent adds up:** its rows below (a leaf gives its own value); or its own
+   value too; or a choice per column.
+7. **Progress:** "3 of 8 closed" with a bar, by tickets in a closed stage; or weighted by an
+   estimate; or a percentage (with decisions row 157, in 2.0).
+8. **Count:** every ticket row below, at any depth; or the direct children only.
+9. **A formula column:** an expression in the formula field language kept with the structure,
+   where children means the row's child rows, computed in the browser; or only existing formula
+   fields shown as columns.
+10. **Rows moved at once:** one with everything below it, confirmed each time; or several chosen
+    rows with one confirmation, ticket by ticket (up to 1,000, as the backlog's action); or a bulk
+    operation (needs `bulk_change`).
+11. **Moving under a ticket of another track:** the rule of today, edit permission on the moved
+    ticket and a parent the mover may see; or also edit permission on the new parent's track.
+12. **A row placed by a link:** cannot be dragged, its place being a link's; or can be, changing
+    its parent and not the link.
+13. **Dropping on a group row:** not a target; or it sets that group's field, after confirmation.
+14. **Who saves structures:** the plan's editors, everyone who sees the plan using them; or anyone,
+    as personal structures beside the shared ones.
+15. **A copy of a plan:** copies its structures; or starts with the default.
+16. **Inside a scenario:** live values, read-only, as the List; or drafted days, read-only; or
+    edits written as drafts (needs drafts of more fields).
+17. **Other people's changes:** a Refresh button and the stale-edit notice; or live, through the
+    program board's channel.
+18. **Past 100,000 rows:** the first 100,000, saying so; or refused.
+19. **Sibling order:** rank, then id; or sorted by any column.
+20. **Group by fields:** single-valued fields only; or also labels and other multi-valued fields,
+    a ticket repeated under each value.
+21. **A plan with no saved structure:** a default (the plan's tickets and their children, with
+    key, summary, status, assignee, a count and a progress total); or an empty Grid asking for one.
+22. **How a structure opens:** every row expanded, collapsed rows remembered in the browser; or
+    the top level only.
+23. **Steps:** one insert, then up to two groupings, one children step and two links steps of
+    depth 1 to 3, in that order; or steps in any order and number.
+24. **Phones:** cards with a sheet and Move under, no drag; or no Grid on phones.
+25. **The words:** Grid, structure, Add tickets, Group by, Add children, Add linked tickets,
+    Total, Formula; or "Hierarchy", "view" and "generators".
+26. **Downloading a structure in 1.0:** not in 1.0, the List and Timeline downloads remaining; or
+    CSV of the rows with totals.
+
 ### Later stages
 
-Each adds its section here when it starts: the hierarchy grid and baselines (T-089a; PLN-010,
-PLN-011), which the user brought into 1.0 on 2026-11-13. Releases across tracks (stage 4),
-duplicating, linking and exporting (stage 8), the program board with dependency options (stage 5),
-draft changes and scenarios (stage 6) and the auto-scheduler (stage 7) are designed above.
-PLN-002 to PLN-011 move to M1 in the spec with their stage, so nothing lists them for 1.0 before
-they exist; PLN-006 moved with stage 2, PLN-005 and PLN-009 with stage 3, PLN-007 with stage 4,
-PLN-008 and PLN-013 with stage 5, which builds PLN-013 with the program board as the user decided on
-2026-11-13 (T-089i), PLN-002 and PLN-003 with stage 6, and PLN-004 with stage 7.
+Each stage adds its section above when it starts. Releases across tracks (stage 4), duplicating,
+linking and exporting (stage 8), the program board with dependency options (stage 5), draft
+changes and scenarios (stage 6), the auto-scheduler (stage 7) and baselines, the critical path
+and levelling (stage 9, built on 2026-11-14) are designed and built above, and so is the hierarchy
+grid (stage 10, built on 2026-11-14), which like stage 9 is T-089a and which the user brought into
+1.0 on 2026-11-13. PLN-002 to PLN-011 move to M1 in the spec with their stage: PLN-006 moved
+with stage 2, PLN-005 and PLN-009 with stage 3, PLN-007 with stage 4, PLN-008 and PLN-013 with
+stage 5, which builds PLN-013 with the program board as the user decided on 2026-11-13 (T-089i),
+PLN-002 and PLN-003 with stage 6, and PLN-004 with stage 7. PLN-011 and PLN-010 move with stages 9
+and 10 when these are designed, before they are built, because the user's decision of 2026-11-13
+asked for their wording and milestones to be updated now; until then nothing listed a requirement
+for 1.0 before its stage existed. With them every requirement of Plans (PLN-001 to PLN-014) is in
+M1.
 
 ## Options considered
 

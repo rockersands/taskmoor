@@ -2,8 +2,10 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { App } from '../App';
+import type { Session } from '../session/SessionProvider';
 import { type Handler, stubBackend, untranslated, visibleTexts } from '../test/backend';
 import { jsonResponse } from '../test/setup';
+import { useTimeZone } from '../test/timeZone';
 import { setViewportWidth } from '../test/viewport';
 import { ALERT_DEFAULTS, RECENT_ALERTS } from './alertsFixtures';
 import { ADMIN, MEMBER } from './fixtures';
@@ -347,5 +349,22 @@ describe('security settings: alert rules (ADR-109)', () => {
     const alerts = recent.closest('form') as HTMLElement;
     expect(untranslated(visibleTexts(alerts))).toEqual([]);
     expect(errors).toEqual([]);
+  });
+});
+
+/**
+ * One clock per person (T-280): the latest alerts' times are on the zone saved on the account,
+ * whatever the device's. The device here is Mexico City.
+ */
+describe('security settings: alert times on the account’s clock', () => {
+  useTimeZone('America/Mexico_City');
+
+  it('[IAM-018] [NFR-006] writes when each alert was raised on the account’s zone', async () => {
+    const admin = ADMIN as Extract<Session, { status: 'signed-in' }>;
+    openSecurity({}, { status: 'signed-in', user: { ...admin.user, timeZone: 'Asia/Tokyo' } });
+    const form = await screen.findByRole('form', { name: 'Security alerts' });
+    const latest = within(form).getByRole('list', { name: 'Latest alerts' });
+    // Raised at 22:14 on 1 November in UTC: 07:14 on 2 November in Tokyo, 16:14 on the device.
+    expect(within(latest).getAllByRole('listitem')[0]).toHaveTextContent(/Nov 2, 2026, 7:14\sAM/);
   });
 });

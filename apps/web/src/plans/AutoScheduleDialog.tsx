@@ -9,6 +9,7 @@ import type {
   ScenarioClient,
   ScenarioList,
   ScenarioRow,
+  ScheduleMode,
   ScheduleReadiness,
   ScheduleRequest,
   ScheduleResult,
@@ -23,6 +24,8 @@ const MAX_QUERY = 2_000;
 
 /** The choices kept in this browser, per plan: a convenience, never needed (ADR-122 stage 7). */
 export interface Choices {
+  /** What the run does: place work in rank order, or even out load (ADR-122 stage 9). */
+  mode: ScheduleMode;
   periods: number;
   keepInProgress: boolean;
   keepInSprint: boolean;
@@ -33,6 +36,7 @@ export interface Choices {
 }
 
 const DEFAULTS: Choices = {
+  mode: 'fill',
   periods: DEFAULT_PERIODS,
   keepInProgress: true,
   keepInSprint: true,
@@ -55,6 +59,7 @@ export function readChoices(planId: number): Choices {
     const v = JSON.parse(raw) as Partial<Record<keyof Choices, unknown>>;
     const periods = Number(v.periods);
     return {
+      mode: v.mode === 'even_out' ? 'even_out' : 'fill',
       periods:
         Number.isInteger(periods) && periods >= 1 && periods <= MAX_PERIODS
           ? periods
@@ -136,7 +141,9 @@ export interface AutoScheduleDialogProps {
  * and where sizes come from, and the tickets without an estimate, an assignee or a team. When no
  * team has capacity, Run is off with the reason beside it. The choices (what to keep, what to
  * leave out, from when and how far) start from the last ones used in this browser. While it runs,
- * Run says so and the dialog stays until the run answers. A sheet on a phone.
+ * Run says so and the dialog stays until the run answers. A sheet on a phone. What the run does is
+ * a choice (ADR-122 stage 9): place work in rank order, or even out load, moving only work that
+ * puts someone over capacity, later; readiness then says how many periods are over capacity now.
  */
 export function AutoScheduleDialog({
   planId,
@@ -153,6 +160,7 @@ export function AutoScheduleDialog({
   const intl = useIntl();
   const id = useId();
   const [first] = useState(() => readChoices(planId));
+  const [mode, setMode] = useState<ScheduleMode>(first.mode);
   const shortDay = (iso: string) =>
     intl.formatDate(new Date(`${iso}T00:00:00Z`), {
       day: 'numeric',
@@ -282,6 +290,8 @@ export function AutoScheduleDialog({
         inActiveSprint: keepInSprint,
         ...(keepText ? { query: keepText } : {}),
       },
+      // A run in rank order says nothing: it is what the server does without a mode.
+      ...(mode === 'even_out' ? { mode } : {}),
     };
     setRunning(true);
     setProblem(null);
@@ -317,6 +327,7 @@ export function AutoScheduleDialog({
       return;
     }
     const chosen: Choices = {
+      mode,
       periods,
       keepInProgress,
       keepInSprint,
@@ -362,6 +373,7 @@ export function AutoScheduleDialog({
     : null;
   const proposals = readiness?.scenario?.proposals ?? 0;
   const drafts = readiness?.scenario?.drafts ?? 0;
+  const overCells = readiness?.overCells;
 
   return (
     <ModalDialog
@@ -456,9 +468,47 @@ export function AutoScheduleDialog({
                   })}
                 </p>
               )}
+              {overCells !== undefined &&
+                (overCells > 0 ? (
+                  <p>{t('schedule.evenOut.overCells', { count: overCells })}</p>
+                ) : (
+                  mode === 'even_out' && <p>{t('schedule.evenOut.nothingOver')}</p>
+                ))}
             </>
           )}
         </section>
+
+        <fieldset>
+          <legend>{t('schedule.evenOut.mode')}</legend>
+          <div className="form-field form-field-inline">
+            <input
+              id={`${id}-fill`}
+              type="radio"
+              name={`${id}-mode`}
+              checked={mode === 'fill'}
+              aria-describedby={`${id}-fill-hint`}
+              onChange={() => setMode('fill')}
+            />
+            <label htmlFor={`${id}-fill`}>{t('schedule.evenOut.mode.fill')}</label>
+          </div>
+          <p className="form-hint" id={`${id}-fill-hint`}>
+            {t('schedule.evenOut.mode.fillHint')}
+          </p>
+          <div className="form-field form-field-inline">
+            <input
+              id={`${id}-even`}
+              type="radio"
+              name={`${id}-mode`}
+              checked={mode === 'even_out'}
+              aria-describedby={`${id}-even-hint`}
+              onChange={() => setMode('even_out')}
+            />
+            <label htmlFor={`${id}-even`}>{t('schedule.evenOut.mode.evenOut')}</label>
+          </div>
+          <p className="form-hint" id={`${id}-even-hint`}>
+            {t('schedule.evenOut.mode.evenOutHint')}
+          </p>
+        </fieldset>
 
         <fieldset>
           <legend>{t('schedule.dialog.where')}</legend>
@@ -546,33 +596,36 @@ export function AutoScheduleDialog({
         <fieldset>
           <legend>{t('schedule.dialog.what')}</legend>
           <p className="board-hint">{t('schedule.dialog.closedNever')}</p>
-          <div className="form-field form-field-inline">
-            <input
-              id={`${id}-keep-progress`}
-              type="checkbox"
-              checked={keepInProgress}
-              onChange={(event) => setKeepInProgress(event.target.checked)}
+          <fieldset className="auto-schedule-choices">
+            <legend>{t('schedule.evenOut.kept')}</legend>
+            <div className="form-field form-field-inline">
+              <input
+                id={`${id}-keep-progress`}
+                type="checkbox"
+                checked={keepInProgress}
+                onChange={(event) => setKeepInProgress(event.target.checked)}
+              />
+              <label htmlFor={`${id}-keep-progress`}>{t('schedule.dialog.keepInProgress')}</label>
+            </div>
+            <div className="form-field form-field-inline">
+              <input
+                id={`${id}-keep-sprint`}
+                type="checkbox"
+                checked={keepInSprint}
+                onChange={(event) => setKeepInSprint(event.target.checked)}
+              />
+              <label htmlFor={`${id}-keep-sprint`}>{t('schedule.dialog.keepInSprint')}</label>
+            </div>
+            <QueryField
+              id={`${id}-keep-query`}
+              label={t('schedule.dialog.keepQuery')}
+              hint={t('schedule.dialog.keepQueryHint')}
+              value={keepQuery}
+              max={maxQuery}
+              error={queryError('keep.query')}
+              onChange={setKeepQuery}
             />
-            <label htmlFor={`${id}-keep-progress`}>{t('schedule.dialog.keepInProgress')}</label>
-          </div>
-          <div className="form-field form-field-inline">
-            <input
-              id={`${id}-keep-sprint`}
-              type="checkbox"
-              checked={keepInSprint}
-              onChange={(event) => setKeepInSprint(event.target.checked)}
-            />
-            <label htmlFor={`${id}-keep-sprint`}>{t('schedule.dialog.keepInSprint')}</label>
-          </div>
-          <QueryField
-            id={`${id}-keep-query`}
-            label={t('schedule.dialog.keepQuery')}
-            hint={t('schedule.dialog.keepQueryHint')}
-            value={keepQuery}
-            max={maxQuery}
-            error={queryError('keep.query')}
-            onChange={setKeepQuery}
-          />
+          </fieldset>
           <ChoiceList
             id={`${id}-types`}
             legend={t('schedule.dialog.leaveTypes')}
@@ -649,6 +702,7 @@ export function AutoScheduleDialog({
         {target === 'this' && active && proposals > 0 && (
           <p className="board-hint">{t('schedule.dialog.rerun', { count: proposals, drafts })}</p>
         )}
+        {mode === 'even_out' && <p className="board-hint">{t('schedule.evenOut.replaces')}</p>}
         <p className="board-hint">{t('schedule.dialog.changesNothing')}</p>
         {problem && (
           <p className="board-problem" role="alert">

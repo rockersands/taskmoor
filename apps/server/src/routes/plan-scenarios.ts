@@ -6,6 +6,7 @@ import { requireUser } from '../auth';
 import type { Authorizer } from '../authz/authorizer';
 import { diff, emit } from '../events/bus';
 import type { FieldCatalogs } from '../fields/catalog';
+import { planEditable } from '../plans/access';
 import {
   ALREADY,
   APPLY_CONCURRENCY,
@@ -207,7 +208,7 @@ export function registerPlanScenarioRoutes(
     if (!admin) q = q.where(planVisible(ws, request.user?.id as number));
     const plan = await q.executeTakeFirst();
     if (!plan) return null;
-    return { ...plan, editable: admin || plan.owner_id === request.user?.id };
+    return { ...plan, editable: await planEditable(request, plan.owner_id) };
   }
 
   /** The plan's tickets for this person without the filters: where their drafts show. */

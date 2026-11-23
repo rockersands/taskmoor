@@ -96,6 +96,7 @@ export const ByKeyboard: Story = {
  * a finger's size (T-231).
  */
 export const GripsOnATouchScreen: Story = {
+  tags: ['touch'],
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
     await expect(window.innerWidth).toBeGreaterThanOrEqual(768);
@@ -105,6 +106,7 @@ export const GripsOnATouchScreen: Story = {
 
 /** Phones: one column, nothing sideways, the grips 44px under a finger (T-231). */
 export const Phone: Story = {
+  tags: ['touch'],
   globals: { viewport: { value: 'mobile1' } },
   beforeEach: onARealTouchScreen,
   play: async ({ canvasElement }) => {
@@ -171,6 +173,7 @@ function intoTheGripsRoom(root: Element): string[] {
  * room the card keeps at its end for its 44 px grip, and never runs under the grip (T-290).
  */
 export const LongNamesOnATouchPhone: Story = {
+  tags: ['touch'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   beforeEach: onARealTouchScreen,
   args: {

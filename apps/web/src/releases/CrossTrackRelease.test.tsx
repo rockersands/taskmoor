@@ -474,11 +474,39 @@ describe('releases across tracks (PLN-007)', () => {
     await user.selectOptions(select, 'Website 3.0');
     await user.click(within(dialog).getByRole('button', { name: 'Link it' }));
     expect(await screen.findByRole('link', { name: '3.0' })).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Remove 2.0' }));
+    // Taking one out asks first: other teams plan by this, and only its track links it again (D13).
+    const trigger = screen.getByRole('button', { name: 'Remove 2.0' });
+    expect(trigger).toHaveClass('button-danger-quiet');
+    await user.click(trigger);
+    const question = screen.getByRole('group', {
+      name: '2.0 of Shop leaves this release across tracks: its tickets stop counting here, and its date no longer moves with this one. Only Shop’s administrators can link it again, and only while it is neither shipped nor archived.',
+    });
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    expect(client.unlinked()).toEqual([]);
+    await user.click(within(question).getByRole('button', { name: 'Remove Shop 2.0' }));
     await screen.findByText('2.0 is no longer linked. Its date did not change.');
     expect(client.unlinked()).toEqual([21]);
-    // Its button has gone: focus waits on the heading above, not on the page's body.
+    // Its row has gone with the question: focus waits on the heading above, not on the page's body.
     expect(screen.getByRole('heading', { name: 'Linked releases', level: 2 })).toHaveFocus();
+  });
+
+  it('[PLN-007] asks on a phone card too, and keeps the question when the removal is refused', async () => {
+    setViewportWidth(375);
+    const user = userEvent.setup();
+    const client = renderPage();
+    const unlink = vi
+      .spyOn(client, 'unlink')
+      .mockResolvedValueOnce({ ok: false, code: 'forbidden' });
+    const cards = await screen.findByRole('list', { name: 'Linked releases' });
+    await user.click(within(cards).getByRole('button', { name: 'Remove 2.0' }));
+    const question = within(cards).getByRole('group', { name: /^2\.0 of Shop leaves/ });
+    await user.click(within(question).getByRole('button', { name: 'Remove Shop 2.0' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('The release could not be removed.');
+    expect(within(question).getByRole('button', { name: 'Cancel' })).toBeVisible();
+    await user.click(within(question).getByRole('button', { name: 'Remove Shop 2.0' }));
+    await screen.findByText('2.0 is no longer linked. Its date did not change.');
+    expect(unlink).toHaveBeenCalledTimes(2);
+    setViewportWidth(1280);
   });
 
   it('[PLN-007] edits its name and may end when its work completes', async () => {

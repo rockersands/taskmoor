@@ -54,14 +54,27 @@ under its title.
   It offers **New track** (a dialog with the form Administration uses) to those the server lets make
   one: shared configuration for site and configuration administrators, local for
   `create_local_tracks`, which the session reports. A person with neither sees no button.
+
+  **As built (T-320, areas; CORE-015):** a track's areas, API-only until then, have a page of
+  the track at `#/tracks/KEY/areas` (`areas/AreasPage.tsx`), under its tab bar with no tab of its
+  own, as its Ticket templates are, and linked from its Summary and from its page under Tracks
+  you run. Anyone who sees the track reads it; its administrators, and site and configuration
+  administrators, add, change, archive, restore and delete areas there. New area sits in the
+  header (D11); Delete is a DangerAction (D13) and, for an area tickets are in (409 `in_use`),
+  then asks where they go: another area that is not archived, or none. It needs no server change:
+  whether the reader may change the areas comes from the releases list's `mayManage`, which the
+  same rule decides (`mayManage` in `routes/releases.ts`). The route passes `section={null}` for
+  now; once `wave26m/t359-track` merges, it should pass `section="summary"` with that branch's
+  `within`, as Ticket templates then do. Not an Administration page, so `admin/sections.ts` and
+  `forbiddenPages.test.tsx` do not list it: someone who cannot see the track gets Track not found.
 - **Settings** is personal: Account, Appearance and Tutorials.
 - **Administration** is a section of its own, separate from Settings, with its own navigation (the
   user's decision, 2026-11-03: a full panel in 1.0; it replaces the Settings hub first planned
   here). It sits under **Manage** for those allowed to see it, and its groups are:
   - People and access: People, Groups, Teams, Invitations, Access policies, Visibility policies and
     the permission explainer.
-  - Tracks and setup: Tracks, Workflows, Workflow maps, Fields, Configuration sets, Layout sets,
-    Priorities, Notification policies, and which sets a track uses.
+  - Tracks and setup: Tracks, Workflows, Workflow maps, Fields, Ticket types, Configuration sets,
+    Layout sets, Priorities, Labels, Notification policies, and which sets a track uses.
   - Sign-in and security: Security, Identity providers, Directories, Network access, Audit log.
   - Integrations and AI: API tokens, Service accounts, MCP, Frontends, Webhooks, AI, AI usage,
     limits and prices.
@@ -78,10 +91,373 @@ under its title.
   permission explainer; webhooks; AI limits and prices; which layout, priority, visibility and
   notification sets a track uses. The rest of what the manual marks as API-only is listed in
   `docs/plan/ui-overhaul-tasks.md`.
+  - **As built (T-320; T-155, UI-T21: notification policies and email, 2026-11-16).**
+    **Notification policies** (`#/admin/notification-policies`) is the last page of Tracks and
+    setup, for site and configuration administrators: the shared policies, the default first, each
+    with the tracks that use it and its rule count; **Manage** opens one with its rules grouped by
+    event, **Remove** on each, a rule form (event, who hears of it, and the person, group, role or
+    field that kind names), name and description, and **Delete** (DangerAction, D13) only for a
+    policy no track uses; the default and one in use say why they stay. **New policy** starts
+    from the default's rules. A local-mode track's own policies are on
+    `#/manage/tracks/<id>/notification-policies`, through `sets/trackScope.tsx` as its layout and
+    configuration sets are, linked from its Manage page, with **Use this policy for** the track.
+    **Email** (`#/admin/email`) is the last page of System, for site administrators only, as its
+    route is: whether a mail server is set up (never its address or password), the batch window in
+    minutes (0 to 60; seconds set through the API show as a part of a minute) and the digest hour.
+    Two small server additions: a policy's rules name what they point at (`userName`,
+    `groupName`, `roleName`, `fieldName`), so the page needs no list only administrators may read;
+    and `GET /api/v1/notification-events` lists the events published transitions fire
+    (`customEvents`) to those who make policies, with `?trackId=` for a track's own workflows. A
+    transition event no workflow lists can still be typed. What is left out: a group recipient
+    on a track's own page for someone who is no administrator (groups are listed for
+    administrators only), and a test-mail button.
+    Every rule change sends the whole list, and the server refuses a list naming a field no
+    longer there (deleting a field leaves its rules), so a rule naming a field since deleted is
+    left out of the next change, and of a copy, with a line on the policy saying so beforehand
+    and the status line after; the person choice of the rule form never keeps a person its list
+    no longer shows (an emptied search, or the next rule after one is added).
+  - **As built (T-322, 2026-11-16): a local-mode track's own workflow map and visibility
+    policies, and configuration administrators on Visibility policies.** Both join the track's
+    own pages through `sets/trackScope.tsx`, as its layout sets, configuration sets and
+    notification policies did, with two more links under **Its own configuration** on the track's
+    Manage page. **Workflow map** (`#/manage/tracks/<id>/workflow-map`) opens the map the track
+    owns at once in the form **Manage** opens on Workflow maps (the default for every other type,
+    a workflow per type, Save with the status mapping step of T-320), without Delete, since the
+    map comes and goes with the track (`409 owned_by_track`). It names the shared workflows and
+    the track's own (`GET /workflows?trackId=`), the own ones marked "(KEY’s own)", for the types
+    the track offers (`GET /tracks/:id/workflow-map`) plus those the map already names.
+    **Visibility policies** (`#/manage/tracks/<id>/visibility-policies`) lists the policies the
+    track owns (`?trackId=`), makes new ones for it, says which policy the track uses (its own,
+    a shared one or none) and offers **Use this policy for** the track (`PATCH /tracks/:id`), with
+    a line on what happens to tickets at levels the policy lacks; for whoever runs the track,
+    roles come from `GET /tracks/:id/roles` and people from `GET /people/mentionable`, and the
+    groups are never asked for. Site and configuration administrators keep the site's lists
+    (`/roles`, `/groups`, `/people/lookup`; `trackVisibilityClient`, `trackFieldsClient`'s
+    pattern): administering a track does not bring Browse track, which its own lists of people
+    need. On the shared pages, someone who runs tracks but
+    is no administrator gets the links to their local-mode tracks, as elsewhere. Visibility
+    policies let configuration administrators in, as the server always did: `AdminPage.setup`
+    marks a page outside Tracks and setup that they use, so they see **People and access** with
+    only **Visibility policies** in the navigation, on the group's page and in the command
+    palette. No server change. Creating and changing a track's own workflows stays in the API
+    for now: the workflow editor is not track-scoped yet. Tests: `WorkflowMapsPage.test.tsx`,
+    the track-scope cases of `VisibilityPage.test.tsx`, `forbiddenPages.test.tsx`,
+    `AdminSection.test.tsx`, stories with axe in both skins, and `e2e/track-own-flow.spec.ts` on
+    the desktop and mobile projects.
+- **As built (T-320, 2026-11-16): Priorities.** One page, `#/admin/priorities`, in Tracks and
+  setup after Layout sets, for site and configuration administrators; anyone else, a track's
+  manager included, sees the refusal alone, since the lists are the site's. Three cards, each with
+  its New button at its head (D11) and its own status and refusal lines, so a phone shows the
+  answer beside the list acted on: the priorities, most urgent first; the priority sets; and the
+  close reasons, folded in because they are the same kind of site list under CORE-014.
+  - Priorities and close reasons: New, Up and Down (the keyboard path of section 7; the whole
+    order goes to `PUT .../order`, and a list changed elsewhere meanwhile is read again with
+    nothing moved), Change (name and description) and Delete (D13). The question says first what a
+    value in use needs; when the server answers `409 in_use`, or for a close reason
+    `used_by_workflow` with the workflows named, the page asks which value takes its place and
+    sends `?replacementId`, which also gives those workflows a new version.
+  - Priority sets: New and Manage (name, description, the priorities offered, what new tickets
+    get), Make this the default set, and Delete, whose question counts the tracks that go back to
+    the default set; the default set has no Delete.
+  - No icon or colour controls for priorities: neither changes what is drawn, as the icon follows
+    the place in the list. Names show as stored, as on the other configuration pages.
+  - Which sets a track uses links its priority picker here, and this page links back. Merging
+    labels (`POST /labels/merge`) stayed in the API then: T-322 gives it a page (below).
+- **As built (T-322, 2026-11-16): Labels.** One page, `#/admin/labels` (`labels/LabelsPage.tsx`), in
+  Tracks and setup after Priorities, for site and configuration administrators; anyone else, a
+  track's manager included, sees the refusal alone and the page reads nothing for them, since the
+  labels are the site's. The user accepted a web control for merging labels (CORE-017 (2)) in 1.0;
+  of the two places the scope offered, a section of Fields or a page of its own, it is a page:
+  labels are a built-in field with nothing on the Fields page, and that page also opens in a
+  track's scope, where the site's labels do not belong.
+  - Two cards. **Merge or rename** comes first: the ticked labels with their counts, **They
+    become** (one word, checked as typed: a space, a word the ticked labels already are, or more
+    than 100 labels says why under the field and keeps the action off), and the merge as a
+    `DangerAction` (D13), whose first step reads **Merge**, or **Rename** when one label changes,
+    and whose question says how many tickets change, at most the sum of the counts. Then **Labels
+    on this site**: a search by how labels start, as the suggestions match them, and the labels 50
+    at a time, a box each with the tickets that have it as its description. **Show more labels**
+    gives the keyboard to the first label it adds; while a new search is on its way it waits
+    (`aria-disabled`), so the old search's labels are never paged on under the new one. A change
+    to the ticks or the word puts an open question away (the `DangerAction` is drawn again under a
+    new key), so the question never asks about a merge that is no longer there.
+  - Ticks stay while the search changes, so labels found by different beginnings go into one
+    merge; **Clear the ticks** gives the keyboard to the card's heading. After a merge the ticks
+    and the word clear, the list is read again, the status line says how many tickets changed,
+    and the keyboard stays on the first step.
+  - One server addition: `GET /api/v1/labels/usage` (`q`, `after`, `limit`), for site and
+    configuration administrators, in the suggestions' order with each label's `ticketCount`,
+    tickets in the trash included since a merge changes them. `GET /api/v1/labels` stays names
+    only, for everyone, while typing.
+  - A label is one word of up to 255 characters, so every line and the confirm button of the page
+    wrap inside the word (`.labels-page` in `people.css`).
+  - Tests: `LabelsPage.test.tsx` and `labels/client.test.ts` with a fake backend, the refusal in
+    `forbiddenPages.test.tsx`, stories with axe in both skins (a 255-character label at phone width,
+    and touch sizes), the route's case in `ticket-fields.test.ts`, and `e2e/labels.spec.ts` on the
+    desktop and mobile projects, with its own track and labels.
 - Each administration page has a breadcrumb back to its group, and admin routes keep their paths.
 - **The top bar** keeps New ticket, the command palette and the person's menu. It gains a
   light and dark toggle and a **Help** menu: Tutorials, Keyboard shortcuts and the Manual.
 - **Names** follow `docs/specs/00-terminology.md`. No Atlassian term appears in the interface.
+
+**As built (T-320, ticket types and levels, 2026-11-16):**
+
+- **Where:** **Tracks and setup** > **Ticket types** (`#/admin/ticket-types`), right after Fields,
+  for site and configuration administrators; the command palette offers it. Everyone signed in
+  may read the lists, so the session decides who uses the page: anyone else sees only the
+  refusal. The levels are the page's headings, top first, each a card with the shared types at
+  it, under their stored names, as the other configuration pages show them.
+- **Levels:** New level (a name, a description and where it goes: above Outcome or above an added
+  level, the top by default), Rename on every level, Up and Down on the added ones (the keyboard
+  stays on the moved level's button), and Remove level, which asks first with what
+  `GET /api/v1/hierarchy-levels/impact` says: the types that fall to the standard level (the
+  shared ones by name, a local-mode track's own ones counted from the preview, since the page
+  lists shared types only) and the tickets that change level (CORE-007 (1)). Saving a rename gives
+  the keyboard back to Rename; a type saved at another level gives it to its Manage button in its
+  new card. While the preview says it would break a parent link,
+  Remove is not offered and the card says how many links. Any refused change (`breaks_tickets`)
+  is said in words with both counts, links and tickets left without a parent.
+- **Types:** New ticket type and Manage take a name, a description, a level (a new level is
+  previewed the same way before saving) and an icon from the seven shapes or a plain hexagon,
+  shown as radio buttons with each shape beside its word. An icon is stored only when it changes
+  what the type draws, so a type that draws its name's shape keeps no icon until it is renamed.
+  Delete ticket type asks first; the refusals name the type sets that hold it or count its tickets.
+- **Not built, on purpose:** no colour control for a type, since its stored colour draws nothing
+  (the icon tells types apart by shape, never by colour); a local-mode track's own types wait
+  for T-322.
+- **Type sets on Configuration sets:** the form (new and Manage) also holds the order (a list with
+  Up and Down per type), the preselected type (or none: the first in the order) and, for a shared
+  set, the kinds of track it is the default for; a kind it already has stays ticked, since another
+  set takes it over. Saving sends only what changed. When the server answers `type_in_use`, the
+  set asks for each dropped type a kept type of its level (`ticketTypeMapping`), the first choice
+  taking the keyboard, or says that none is kept; saving again maps the tickets. A refusal names
+  only the dropped types left without a target, so the question keeps every type any refusal
+  since the last save named, with its choice, and counts their tickets from every refusal's count
+  (or saves without a number when the counts do not tell).
+- **Nothing new on the server.** The page uses the existing routes of `routes/ticket-types.ts`.
+- **Tests:** `TicketTypesPage.test.tsx` and the type set cases of `ConfigurationSetsPage.test.tsx`
+  with fake backends, the refusal-only page in `forbiddenPages.test.tsx`, stories with axe in
+  both skins, and `e2e/ticket-types.spec.ts` on the desktop and mobile projects.
+
+**As built (T-320, UI-T21 fields, 2026-11-16): the Fields page's API-only controls.** The user
+accepted the recommendation that every UI-T21 row gets a web control in 1.0. For fields, on the
+existing **Administration** > **Fields** page (`#/admin/fields`), web only, on routes the server
+already had:
+
+- **New field** offers every type, Formula included, with a **Description** and the type's settings;
+  **Manage** splits into `FieldPanel` (name and description; settings or formula; delete),
+  `ContextsSection` (where it applies, whom a person field offers, the default), `OptionList`
+  (options, child options of a two-level list, Up and Down), `FormulaEditor` with `formulaWords.ts`,
+  and `FieldSettings`.
+- **Contexts:** each says its reach and, for a person field, whom it offers. Change sets the name,
+  every track or ticked ones, every ticket type or ticked ones, and anyone, a group's members or a
+  track role's holders (`config` with a null for the limit not chosen). A local-mode track's field
+  covers its own track only and the form does not list others. Delete asks first (D13) and says
+  when it is the last context, after which the field applies nowhere.
+- **Defaults:** per context; release, area, read-only text and formula fields take none and the
+  page says so. The create form now starts each custom field it sets with its context's default
+  (the form model already carried it), and sends `null` for one the person emptied, since the
+  server fills in a default for a field left out. A template's or a copied ticket's values go over
+  the defaults; a field locked for the person keeps the server's own filling.
+- **Options:** child options under each option of a two-level list; Up and Down send every option at
+  that level (`PUT .../options/order`), and the keyboard stays on the moved option (section 7).
+- **Formulas:** a check while typing (`GET /formulas/check`, after a pause) says what the formula
+  gives and reads, or where it is wrong by line and column in the reader's language: every code of
+  `packages/formula/src/errors.ts` has its own words, never the server's English. A refused save
+  says the same. The help lists the fields it can read, in braces, and its functions.
+- **Type settings:** a paragraph's most characters, and a number's format, decimals and currency,
+  built together with their display, as recommended: the ticket page's number facts (and a line
+  under the box for those who may change it) and the cells of search results and a plan's Grid
+  show numbers by them (`fields/numberFormat.ts`, `Intl.NumberFormat`), a formula's number,
+  currency and percentage outputs too. **A choice list's display (dropdown, radio, checkboxes)
+  stays API-only in 1.0:** the web app always shows a list, so a control would change nothing; the
+  page leaves a stored one as it is, and the manual says it is kept for the API and imports.
+- **After review:** an option's **Delete** is a `DangerAction` too (D13): it asks first and names
+  the child options and the default that go with it. **Merged with T-267 (wave 21):** it asks only
+  for an option with child options or one the context's default names (a child option included);
+  a plain option goes at once with `button-secondary`, and one a ticket holds is refused either
+  way. The question is worded for this page, which shows child options and sets defaults: what
+  leaves the list, that new tickets start empty until a default is saved again, and that an option
+  a ticket holds stays. A default naming an option no longer offered
+  is shown without it and saved without it, with a line naming it; a context naming a track in the
+  trash is saved without it, with a line saying so (the server refuses both). The keyboard never
+  falls to the page: **New context** stays as the form's button (`useNewForm`), a closed form gives
+  focus back to its button, a deleted context or option to its section's heading, and **Remove the
+  default** to **Save the default**.
+- **Who:** site and configuration administrators. Everyone signed in reads `GET /fields`, so the
+  session decides, as on Priorities and Ticket types: someone who only runs tracks sees only the
+  refusal, not controls on shared fields that the server refuses them and pickers that read lists
+  only administrators may read.
+- **Not here:** a local-mode track's own fields (later, with its own types) and merging labels.
+- **Tests:** page, section, option list, defaults, number format and formula words tests; a story
+  per component with axe in both skins; `e2e/fields-admin.spec.ts` on desktop and mobile.
+
+**As built (T-322, 2026-11-16): a local-mode track's own ticket types and fields.** The user
+accepted that every gap beyond the UI-T21 list gets a web control in 1.0; these two were API-only
+for the people who run a track with its own configuration (spec 01a section 1.1). Web only, on
+routes the server already had, through the track-scope pattern of section 8 (`sets/trackScope.tsx`).
+
+- **Its own ticket types:** a card above the type set on the track's own **Configuration sets**
+  (`#/manage/tracks/<id>/configuration-sets`, `sets/OwnTypesSection.tsx`). New ticket type and
+  Manage take a name, a description, a level and an icon, with the Ticket types page's own
+  `IconPicker` and `LevelSelect`; each row says its level and whether the track's type set offers
+  it, since a type is offered only once it is ticked there. Save always saves and says so, with
+  nothing changed too, as on Ticket types. Delete ticket type is a `DangerAction` (D13);
+  the refusals say which set holds it (untick it there first) or count its tickets, and the
+  keyboard goes to the card's heading once the row goes. No preview of a level change:
+  `GET /hierarchy-levels/impact` counts tickets across tracks and is for administrators, so the
+  server's `breaks_tickets` refusal gives the counts instead. Levels stay the site's.
+- **Its own fields:** the Fields page in track scope, `#/manage/tracks/<id>/fields`, linked under
+  **Its own configuration** on the track's Manage page. It lists only the fields the track owns
+  (the shared ones that reach it still feed a formula's help and check), New field sends
+  `trackId`, and Manage is the same `FieldPanel`, `ContextsSection`, `OptionList` and
+  `FormulaEditor`. The track's name is above the title, the breadcrumb goes through the track, and
+  the line under the title leads back to its Manage page.
+- **Pickers read only what the person may read** (`trackFieldsClient`): someone who runs the track
+  gets the track's roles (`GET /tracks/:id/roles`), people who may be mentioned in it
+  (`GET /people/mentionable?track=`) and no list of groups, so a person field offers anyone or a
+  track role's holders; a group limit chosen before stays, named "the group chosen before". A
+  group field's default finds groups through the field (`GET /fields/:id/groups`). Site and
+  configuration administrators on a track's page keep the site's lists, which the track's own may
+  refuse them (a configuration administrator need not run the track); a group default, on the
+  shared page too, searches the site's list (`GET /groups?query=`), since the field's route also
+  needs Browse users and groups, which a site may take from everyone (`findFieldGroups` is the
+  runners' alone).
+- **Who sees the shared Fields page:** it now follows section 8 as Configuration sets does:
+  someone who runs tracks but is no administrator gets links to the tracks they run with their own
+  configuration, not the refusal of T-320, since the page no longer offers them controls on shared
+  fields; a member still gets only the refusal, which now says where a track's own fields are.
+- **Tests:** `ConfigurationSetsPage.test.tsx` and `FieldsAdminPage.test.tsx` cases for the track's
+  page (sources included), `forbiddenPages.test.tsx`, stories with axe in both skins
+  (`OwnTypesSection.stories.tsx`, the Fields page's track stories), and
+  `e2e/track-own-types-fields.spec.ts` on the desktop and mobile projects, as someone who runs the
+  track and is no administrator. The page sweep visits the new page.
+
+**As built (T-320, UI-T21 wave 1, 2026-11-16): status mapping, groups, service accounts and field
+grantees.** Four controls the manual marked as API-only are on their existing pages; no page or
+route is new.
+
+- **Status mapping (WF-001, WF-002).** Choosing another workflow map on **Tracks** and **Save the
+  map** on **Workflow maps** read the preview first (`GET /tracks/:id/workflow-map/impact`, `POST
+  /workflow-maps/:id/impact`, whose answer now also lists `targetWorkflows` with their statuses). With
+  no ticket to move the change is made at once; otherwise one shared step, `StatusMappingPanel`,
+  opens under the control, its heading focused: a choice per ticket type and status, from the new
+  workflow's statuses, none chosen for the person, then the change with `typeStatusMapping`.
+  **Cancel** puts the focus back on the control. A `409 status_mapping_required` after the preview
+  (tickets changed meanwhile) reads it again and asks again, keeping the choices. On Workflow
+  maps an edit to the map's form while the step is open closes it, since it was for the map as
+  previewed; Save the map previews the map as it now is. Tickets that move
+  in the background show `MigrationProgress`, a bar read again every two seconds. The step is a
+  `people-form` with a `fieldset.form-field`, so it takes the Administration styles and no new CSS.
+- **Groups (IAM-008).** An open group starts with its name and description and **Save**; a
+  directory's group shows no name field and names the directory instead. A taken name is refused
+  in words.
+- **Service accounts in groups (IAM-007).** The people list leaves service accounts out, so an
+  open group has **Add a service account**, a choice of the active ones (`GET /service-accounts`,
+  site administrators, as Groups is); not for a directory's group. The group's read gives each
+  member's `kind`, and a service account is marked with a badge. **Service accounts** gains
+  **Change**, which renames an account and says what it is for, under its row.
+- **People in field and Groups in field (IAM-010, IAM-011).** Both kinds join the grantee choices on
+  **Permissions** (access policies, not global permissions) and **Visibility policies**, with a
+  **User field** or **Group field** choice by name, read from `GET /fields`: shared fields for a
+  shared policy, and a local-mode track's own for its own. Grants and members show the field's name,
+  or its key when the field is gone. The server now checks an access grant's field as it checks a
+  level member's: it must exist, be of the kind, and be shared or the policy's track's
+  (`400 fieldKey` otherwise).
+
+**As built (T-322, 2026-11-16): deleting a track, and a shared-mode track's access policy and type
+set.** Both were API-only (the scope's items (e) and (f)); no page or route is new, and the server
+is unchanged.
+
+- **Delete track (CORE-025, M1-101).** **Manage** on **Tracks** ends with **Delete track**, beside
+  Archive and for archived tracks too: a `DangerAction` (D13), `configuration/DeleteTrack.tsx`,
+  whose question names what goes to the trash with the track (tickets, releases, areas), that its
+  key stays taken and that it can be restored from Trash until its time there is up. The track
+  leaves the list, the page's heading takes the focus, and a link leads to Trash
+  (`#/admin/trash`), where configuration administrators restore tracks too. Every refusal is
+  said in words. A refusal (403) keeps the question open; `409 in_trash` and a gone track (404)
+  mean someone else deleted it meanwhile, so the page reads its list again, the row and its
+  question go, the heading takes the focus and, for `in_trash`, the link to Trash is offered.
+- **Access policy and type set (CORE-005, IAM-010).** **Which sets a track uses** gains **Access
+  policy** and **Type set** for a shared-mode track, from the shared policies and type sets, with
+  no empty choice; the link to Permissions is shown to site administrators only, as only they open
+  it. A local-mode track keeps its own, and the form says so with a link to the track's own
+  Configuration sets, where its type set changes. Its own access policy has no page, so the note
+  says it is changed through the API.
+  A type set switch that the server refuses with `409 type_in_use` opens wave 22's mapping
+  question (`TypeMapping` from `sets/TypeSetForm.tsx`, which gains words of its own for a track)
+  under **Type set**: for each type the new set lacks, a kept type of its level, or why there is
+  none. Saving again sends `ticketTypeMapping`; refusals accumulate as on Configuration sets, so
+  the count of tickets that took another type comes from them. Choosing another set drops the
+  question. **Tracks** keeps its link here rather than a second picker.
+- **Tests:** unit tests and stories (both skins, with a touch-screen story for the danger action)
+  for both; `e2e/track-settings.spec.ts` on desktop and mobile: delete and restore from Trash,
+  switching a track's policy and type set with a mapped ticket, and a local-mode track's note.
+
+**As built (T-331, 2026-11-17): every person's role on People, and one Edit per person.** The
+user asked for two things on Administration > People: to see each person's role ("only the site
+admin has his role on"), and for the rows to hold no quick actions: "put an edit button that opens
+all related actions for that user".
+
+- **Roles on each row.** Under the address, a line of badges names every administrator role the
+  person holds (site, configuration, automation, AI and extensions administrator), **Runs N
+  tracks** when they run tracks, or **Member** (the user's choice). A role counts when something
+  gives it: the account's site administrator flag, or a global grant to the person, to a group
+  they are in (through nesting and a directory's groups too) or to everyone signed in, as the
+  authorizer reads it; a site administrator's implied roles are not listed, so the row says what
+  was given. Running a track counts as the create-tracks rule does (`runningNoTrack`): **Run the
+  track** on a live track through a role (theirs or a group's), a grant or ownership. The server
+  reads both for a whole page in two statements (`authz/person-roles.ts`), measured with 3,000
+  people: a page of 200 takes as many statements as a page of 5.
+- **The role filter.** **Role** sits beside **Show**: any role, one of the five, people who run
+  tracks, or members with none. The server filters (`?role=`) with uncorrelated subqueries, so
+  the total and the pages stay right. The address keeps both choices and the search
+  (`#/admin/users?show=all&role=ai_admin&q=grace`) only while it is the People page, changing
+  only those three parameters, so `?locale=` and any other stays (NFR-006). Going back from a
+  person's page finds the list as it was, by Back or by the breadcrumb: a list page that keeps
+  its filters in the address tells the breadcrumb (`keepPageAddress`), whose step back to it
+  leads to the address it left. When the address changes under the list (People in the
+  navigation), the list follows it.
+- **Erased people hold nothing.** Erasure (ADR-111) keeps the group memberships, grants, track
+  roles and owned tracks that gave someone a role, so the role queries leave erased people out
+  themselves, as `runningNoTrack` does: their row has no role and no track, and every role
+  filter, Member included, leaves them out (an erased person is a placeholder, not a member).
+- **One Edit per person, to a page.** The row's actions (site administrator, password link,
+  deactivate or reactivate, data, erase) leave it; a link styled as a secondary button, visible
+  **Edit**, named "Edit" and the person (the visible word first, WCAG 2.5.3), sits at the row's
+  end and opens **the person's page**, `#/admin/users/<id>` (`people/PersonPage.tsx`), under
+  People in the breadcrumb (`useAdminTrail`). A page, not a dialog or a panel under the row:
+  directories and identity providers open a form under the item because they edit one form, but a
+  person has a dozen independent actions in five parts (roles, profile, sign-in, data, account),
+  each with its own answer and confirmation, which is what the workflow editor and a track's
+  people page are: pages of their own with an address that back and forward and links reach.
+  The page holds: roles with where each comes from, each source a link to where it changes
+  (Groups, Global permissions) and each track run linked to its people page; site administrator
+  on and off; **Profile** (name, email, time zone, language, sending only what changed);
+  **Sign-in** with the password link, the break-glass mark and **Reset second factor** (a
+  `DangerAction`, D13); the person's data downloads; **Account** with Deactivate (`DangerAction`,
+  the heading taking the focus after), Reactivate and **Erase…** (`EraseUserForm`, typed email,
+  as before). The T-323 person controls were API-only and had routes (`PATCH /users/:id`,
+  `POST /users/:id/two-factor/reset`), audited as `user.updated` and `user.two_factor_reset`; no
+  route is new. Oneself: no deactivate, erase or site administrator switch, and one's own second
+  factor stays on the account page. A missing person is a not-found page.
+- **On a long page, the answer sits by its action.** A refusal shows in the part whose button was
+  pressed, beside it (under a confirmation that stays open, D13), and scrolls into view; none
+  shows under the page's header. The focus never falls to the page: after Reactivate (Deactivate
+  takes its place) the heading takes it, as after Deactivate; **Done** under a password link
+  gives it back to **New password link**, Cancel in the erase form to **Erase…**; **Profile**
+  is not remounted after a save, so **Save profile** keeps it; and the page's buttons are
+  `aria-disabled` while a change runs, never `disabled`, which would drop it. A read-only
+  directory's person shows the name and email read-only, and Save sends neither. A person marked
+  break-glass before a directory took the account (an unlinked entry that came back) still gets
+  **Remove the break-glass mark**, which the server allows; marking stays refused. The site
+  administrator source says "Marked on their account", without pointing at a button that one's
+  own page and a deactivated person's do not show.
+- **Tests:** server tests for the roles, their sources, the tracks run, the filter's pages and the
+  statement count (`routes/user-roles.test.ts`); unit tests of the list and the page; stories in
+  both skins with axe, at phone width and on a touch screen (Edit, the filters, every action and
+  both answers of a question, the role sources' links at 44 px); `e2e/people.spec.ts` goes through
+  Edit to deactivate, reactivate and erase, and opens the list filtered by role from the address.
 
 ### 2. Layout and density
 
@@ -260,6 +636,40 @@ become **translucent glass**:
   (`aria-disabled`, so the one pressed keeps focus), Escape does nothing and a second press sends
   nothing; a refusal leaves the question open. Afterwards focus goes back to the first button,
   which stays focusable while it is unavailable until focus moves on.
+  **Which removals ask (answered on 2026-11-16, T-267; the user accepted the recommendation).**
+  DangerAction asks first in two cases. First, when the removal loses what its page cannot put
+  back as it was: a list's items and their states, a saved draft, second-level options, a default
+  the page cannot set, or a link the page cannot make again. Second, when it takes something from
+  people beyond the row you see: an invitation someone holds, a release's place in a release
+  across tracks other teams plan by, a permission given to a role, a group or everyone, or a whole
+  track made read-only. It does not ask when the same page puts the thing back at once with
+  nothing lost. A step that needs input or proof keeps its own form: where tickets go (a board
+  column, a visibility level's replacement) or a password (security keys, the authenticator
+  app). A restore asks only when it replaces work. The danger look then means "this asks first"
+  (or, for the password steps, "this removes"), so a removal that does not ask keeps
+  `button-secondary`. As built:
+  - Ask: a field option with second-level options or that is its context's default (an option a
+    ticket holds is refused by the server either way; on wave 22's Fields page, T-320, which shows
+    child options and sets defaults, the rule stands and only the question's words change); a
+    whole checklist with items, naming how
+    many and how many were done; a ticket link to another track (the key's prefix against the
+    ticket's track key: the picker only finds this track's tickets); a release taken out of a
+    release across tracks, in its table, on its phone card and on the release's own page; Withdraw
+    on an invitation, in words that never tell whether the address has an account; Remove on a
+    policy grant (naming the tracks that use the policy) and on a global grant; Archive track;
+    Discard draft on a workflow; Restore as draft over a draft or unsaved changes.
+  - At once, `button-secondary`: a checklist item (history keeps its words), an empty checklist,
+    a link inside the track, an unused option without second-level options, Restore track, a
+    restore with nothing to replace, and one person's role or membership.
+  - Own step, unchanged: a board column with tickets and a visibility level's replacement (where
+    the tickets go); Summary's Back to the default and a directory's Sync and remove were already
+    DangerAction. Removing a security key and switching off the app keep the password step, whose
+    first button is `button-danger-quiet`; `ConfirmPasswordForm` takes an `outcome` line, said
+    first and describing the form, which makes its submit `button-danger`, with focus on the
+    password.
+  - The own confirmations this replaced are gone: the track's Yes and No (`.people-confirm`), and
+    the workflow editor's discard panel and the version list's own question (`.token-confirm`),
+    whose focus went to the destructive button.
 - **Check boxes and radios** are one control, drawn by `forms.css` with no specificity: a clear well
   with the 3:1 field edge when off, the accent with a tick or a dot when on, 20 px; the system's own
   under forced colours. The browser's box was flat grey in the dark skin.

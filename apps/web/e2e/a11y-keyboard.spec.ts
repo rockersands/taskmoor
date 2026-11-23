@@ -45,7 +45,8 @@ test('[NFR-005] the main journeys work with the keyboard alone', async ({
   test.skip(browserName === 'webkit', 'WebKit skips links on Tab by default');
   test.setTimeout(120_000);
   const api = await playwright.request.newContext({ baseURL: BASE });
-  expect((await api.post('/api/v1/session', { data: ADMIN })).status()).toBe(200);
+  const signedIn = await api.post('/api/v1/session', { data: ADMIN });
+  expect(signedIn.status()).toBe(200);
   const key = `K${testInfo.project.name.slice(0, 1).toUpperCase()}${testInfo.workerIndex.toString(36).toUpperCase()}${Date.now().toString(36).toUpperCase().slice(-6)}`;
   const post = async (url: string, data: unknown) => {
     const res = await api.post(url, { data });
@@ -53,12 +54,20 @@ test('[NFR-005] the main journeys work with the keyboard alone', async ({
     return res.json();
   };
   const track = (await post('/api/v1/tracks', { key, name: `Keys ${key}`, mode: 'shared' })).track;
-  const day = (n: number) => {
-    const now = new Date();
-    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), n))
-      .toISOString()
-      .slice(0, 10);
-  };
+  // Days of the month the calendar opens on: the person's own (ADR-010 T-280), on Ada's zone
+  // when her account has one, else the browser's, not UTC's, which is already the next month on
+  // a month's last evening west of Greenwich.
+  const device = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const zone = ((await signedIn.json()).user.timeZone as string | null) ?? device;
+  const month = new Intl.DateTimeFormat('en-CA', {
+    timeZone: zone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+    .format(new Date())
+    .slice(0, 7);
+  const day = (n: number) => `${month}-${String(n).padStart(2, '0')}`;
   await post('/api/v1/tickets', {
     track: key,
     summary: 'First by keyboard',
