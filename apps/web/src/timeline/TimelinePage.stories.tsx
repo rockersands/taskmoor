@@ -228,6 +228,7 @@ export const KeyPressAreaOnAPhone: Story = {
  * holds the same place, so a child's key starts right of its parent's, as the indent says.
  */
 export const ChildrenIndentedOnAPhone: Story = {
+  tags: ['touch'],
   globals: { viewport: { value: 'mobile1', isRotated: false } },
   args: { client: fakeTimelineClient({ data: crowded }) },
   beforeEach: onARealTouchScreen,
