@@ -503,6 +503,7 @@ export function WorkflowEditorPage({
     );
     const created: Transition = {
       id: transitionId,
+      // Untitled, never the add button's own name, so the two buttons do not share one (AD-19).
       name: t('admin.workflow.newTransition'),
       from: [source],
       to: ids.find((s) => s !== source) ?? source,

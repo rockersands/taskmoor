@@ -4992,7 +4992,7 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.workflow.allStatusesUsed':
     'Todos los estados del sitio están en este flujo de trabajo. Los estados nuevos se añaden en la página Flujos de trabajo.',
   'admin.workflow.addTransition': 'Nueva transición',
-  'admin.workflow.newTransition': 'Transición nueva',
+  'admin.workflow.newTransition': 'Transición sin nombre',
   'admin.workflow.noTransitions': 'Aún no hay transiciones.',
   'admin.workflow.initialBadge': 'Estado inicial',
   'admin.workflow.route': 'De {from} a {to}',

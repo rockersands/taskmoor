@@ -237,8 +237,9 @@ in Administration does. The address of a workflow that does not exist, or no lon
   If you replace Completed and later make a new reason named Completed, the free moves already
   there keep the replacement, and the ones added from then on set the new Completed.
   On a workflow with rules it adds only the status, and the
-  steps into it are yours to draw. **New transition** adds a transition. A status's panel can **Make
-  it the initial status** or remove it from the workflow.
+  steps into it are yours to draw. **New transition** adds a transition called Untitled
+  transition, with its name ready to type over. A status's panel can **Make it the initial
+  status** or remove it from the workflow.
 - **Discard draft**, in the danger colour, throws the draft away after asking: the saved draft,
   which may be another administrator's work, and every unsaved change are deleted, and the
   published version stays as it is. **Cancel**, which has the focus, or Escape keeps them.

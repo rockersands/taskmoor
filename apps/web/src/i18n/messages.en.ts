@@ -4876,7 +4876,7 @@ export const messagesEn = {
   'admin.workflow.allStatusesUsed':
     'Every status of the site is in this workflow. New statuses are added on the Workflows page.',
   'admin.workflow.addTransition': 'New transition',
-  'admin.workflow.newTransition': 'New transition',
+  'admin.workflow.newTransition': 'Untitled transition',
   'admin.workflow.noTransitions': 'No transitions yet.',
   'admin.workflow.initialBadge': 'Initial status',
   'admin.workflow.route': 'From {from} to {to}',
