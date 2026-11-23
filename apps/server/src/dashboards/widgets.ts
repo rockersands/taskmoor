@@ -119,14 +119,22 @@ const fieldName = (axis: Axis, s: Scope) =>
 /** A value as the query language reads it: a quoted string with its quotes escaped. */
 const quoted = (text: string) => `"${text.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 
-/** The catalogues whose names are unique on the site, so a search may name their values. */
-const NAMED_AXES: ReadonlySet<string> = new Set(['status', 'priority', 'type', 'closeReason']);
+/**
+ * The system fields whose names are unique on the site, so a search may name their values. Ticket
+ * types are not: a local-mode track's type may share its name with a shared one (T-359).
+ */
+const NAMED_AXES: ReadonlySet<string> = new Set(['status', 'priority', 'closeReason']);
+
+/** The order grouped tickets lists each group in, most recently updated first (`groupBy`). */
+const GROUP_ORDER = parseQuery('ORDER BY updated DESC').orderBy;
 
 /**
  * The search that finds every ticket of one value of a grouped report (S3-ST-2): the report's own
- * query, narrowed to the value. A name where the catalogue's names are unique, a label's text, and
- * an id where names may repeat (people, releases, areas, options); no value is `IS EMPTY`. The rest
- * gathered as other has no single search: null.
+ * query, narrowed to the value. A name where the catalogue's names are unique (statuses,
+ * priorities, close reasons, groups), a label's text, and otherwise an id, which a bare number is
+ * before a name (people, types, releases, areas, teams, options); no value is `IS EMPTY`. It lists
+ * the tickets in the report's order, so its first ones are the ones the group shows (T-359). The
+ * rest gathered as other has no single search: null.
  */
 export function valueQuery(
   query: string,
@@ -135,14 +143,23 @@ export function valueQuery(
   value: { id: string | null; name: string | null; kind: 'value' | 'none' | 'other' },
 ): string | null {
   if (value.kind === 'other' || axis.kind === 'all') return null;
-  if (value.kind === 'none' || value.id === null) return narrowQuery(query, `${field} IS EMPTY`);
-  const text = axis.kind === 'system' ? axis.field === 'labels' : axis.values === 'label';
-  const literal = text
-    ? quoted(value.id)
-    : axis.kind === 'system' && NAMED_AXES.has(axis.field) && value.name !== null
-      ? quoted(value.name)
-      : value.id;
-  return narrowQuery(query, `${field} = ${literal}`);
+  let condition: string;
+  if (value.kind === 'none' || value.id === null) {
+    condition = `${field} IS EMPTY`;
+  } else {
+    const text = axis.kind === 'system' ? axis.field === 'labels' : axis.values === 'label';
+    const named = axis.kind === 'system' ? NAMED_AXES.has(axis.field) : axis.values === 'group';
+    const literal = text
+      ? quoted(value.id)
+      : named && value.name !== null
+        ? quoted(value.name)
+        : value.id;
+    condition = `${field} = ${literal}`;
+  }
+  return printQuery({
+    where: parseQuery(narrowQuery(query, condition)).where,
+    orderBy: GROUP_ORDER,
+  });
 }
 
 /** The viewer's time zone: their browser's, else their profile's, else UTC (T-272). */

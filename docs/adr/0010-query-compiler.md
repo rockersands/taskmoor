@@ -631,3 +631,24 @@ As built:
   follow-up T-319. The audit log's download name and a personal-data export's name stay on UTC:
   the audit page counts its days in UTC, and the export is named after the day it was made, for
   whoever downloads it. AI usage periods are counted in UTC by the server, and the page says so.
+
+## A bare number is an id first (T-359; decided on 2026-11-22)
+
+Releases and areas are named per track, a local-mode track's ticket type may share its name with
+a shared one, and a team may be called by any number. Values were read as a name first and an id
+only when no name matched, so a release named `5` in one track took over `targetRelease = 5`,
+the search the releases page and a grouped report write for release number 5.
+
+- **The rule `crossTrackRelease` already had (PLN-007) now holds for releases, areas, teams and
+  ticket types**: the resolver keeps a bare number a number (`targetRelease`, `foundInRelease`,
+  `area`, `type`, and custom release, area and Team fields), and the binder reads it as an id
+  before a name; a quoted one is a name before an id; a bare number that is nobody's id is still
+  a name. A comparison (`targetRelease > 5`) names the release it starts from the same way.
+- **A grouped report's search names its group so that it finds that group only** (S3-ST-2):
+  statuses, priorities, close reasons and groups by name (their names are unique on the site),
+  labels by their text, everything else by id, ticket types included. It ends in
+  `ORDER BY updated DESC`, the order the report lists each group in, so the search starts with the
+  tickets the group shows (`valueQuery` in `dashboards/widgets.ts`).
+- Not changed: the other catalogues (statuses, priorities, close reasons, levels, groups, roles)
+  keep a name before an id, and options keep matching a value or an id.
+- Tests: `routes/search-ids.test.ts`, and `track-reports.test.ts` for the grouped report.

@@ -577,6 +577,28 @@ type NamedKind =
   | 'role'
   | 'team';
 
+/**
+ * The kinds whose bare numbers are ids before names (T-359), as `crossTrackRelease`'s are: a
+ * release or an area may share its name with one of another track, and a ticket type of a
+ * local-mode track with a shared one, so an id is how a search names exactly one of them (a
+ * report's link to one of its groups, a release's page). A quoted number is a name before an id.
+ */
+const ID_FIRST: ReadonlySet<NamedKind> = new Set(['release', 'area', 'team', 'type']);
+
+/**
+ * The rows a value names: by name (any case) before id, or, for a bare number when `idFirst`,
+ * by id before name. Only digits can be an id.
+ */
+function pickNamed<T extends Named>(rows: readonly T[], value: Typed, idFirst: boolean): T[] {
+  const given = content(value);
+  const wanted = lower(String(given.value));
+  const byName = () => rows.filter((r) => lower(r.name) === wanted);
+  const byId = () => (/^\d+$/.test(wanted) ? rows.filter((r) => String(r.id) === wanted) : []);
+  const [first, second] = idFirst && given.type === 'number' ? [byId, byName] : [byName, byId];
+  const found = first();
+  return found.length > 0 ? found : second();
+}
+
 class Binder {
   readonly warnings: string[] = [];
   private readonly cache = new Map<string, Promise<unknown>>();
@@ -1952,7 +1974,10 @@ class Binder {
     return ids;
   }
 
-  /** Ids by name (any case) or by id, and the names nothing is called now. */
+  /**
+   * Ids by name (any case) or by id, and the names nothing is called now. A name comes before an
+   * id, but a bare number of the kinds in `ID_FIRST` is an id before a name.
+   */
   private async findNamed(kind: NamedKind, values: Typed[]): Promise<Found> {
     const rows = await this.table(kind);
     const ids: number[] = [];
@@ -1962,10 +1987,7 @@ class Binder {
         ids.push(...(await this.namedFunction(kind, v)));
         continue;
       }
-      const wanted = lower(String(v.value));
-      let found = rows.filter((r) => lower(r.name) === wanted);
-      if (found.length === 0 && /^\d+$/.test(wanted))
-        found = rows.filter((r) => String(r.id) === wanted);
+      const found = pickNamed(rows, v, ID_FIRST.has(kind));
       if (found.length === 0) missing.push(String(v.value));
       ids.push(...found.map((r) => r.id));
     }
@@ -2021,7 +2043,10 @@ class Binder {
     return idList(rows.filter(test).map((r) => r.id));
   }
 
-  /** Releases after or before one in its track's order (`fixVersion > "1.0"`). */
+  /**
+   * Releases after or before one in its track's order (`fixVersion > "1.0"`). The one compared
+   * with is named as `=` names it: a bare number is an id before a name.
+   */
   private async releasesBeyond(op: Comparison, given: Typed, field: string): Promise<number[]> {
     const value = content(given);
     const rows = await this.db
@@ -2029,8 +2054,7 @@ class Binder {
       .select(['id', 'track_id', 'name', 'sort_order'])
       .where('workspace_id', '=', this.ws)
       .execute();
-    const wanted = lower(String(value.value));
-    const pivots = rows.filter((r) => lower(r.name) === wanted || String(r.id) === wanted);
+    const pivots = pickNamed(rows, value, ID_FIRST.has('release'));
     if (pivots.length === 0) {
       throw new SearchError(`${field} has no value "${String(value.value)}"`, 'unknown_value');
     }

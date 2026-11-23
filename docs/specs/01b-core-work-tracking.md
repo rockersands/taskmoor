@@ -53,20 +53,20 @@ Absolute formats: `yyyy/MM/dd HH:mm`, `yyyy-MM-dd HH:mm`, `yyyy/MM/dd`, `yyyy-MM
 
 | Canonical identifier | Also accept | Notes |
 |---|---|---|
-| `foundInRelease` | `affectedVersion` | Release field |
+| `foundInRelease` | `affectedVersion` | Release field. A bare number is an id before a name, a quoted one a name before an id (T-359) |
 | `approvals` | | Service tracks; see approval functions |
 | `assignee`, `requester`, `creator` | `reporter` | User fields; accept `currentUser()`, `membersOf()` |
 | `attachments` | | IS EMPTY / IS NOT EMPTY only |
 | `trackCategory` | `category` | Track category |
 | `changeGatingType` | "Change gating type" | Change records (file 04a) |
 | `comment`, `description`, `environment`, `summary` | | Text; `~` only for long text |
-| `area` | `component` | |
+| `area` | `component` | A bare number is an id before a name, a quoted one a name before an id (T-359) |
 | `created`, `updated`, `due`, `closed`, `lastViewed` | `resolved`; `updatedDate` (given); `createdDate`, `dueDate`, `resolutionDate` (verify) | Dates |
-| custom field name or id | `cf[<id>]` (verify) | Operators by field type |
+| custom field name or id | `cf[<id>]` (verify) | Operators by field type. Release, area and Team fields read a bare number as an id before a name, a quoted one as a name before an id (T-359) |
 | `ticket.property[<key>].<path>`, or the index's alias | `issue.property[<key>].<path>` | Values inside a ticket property that a declared property index covers (API-013); operators by the index's type: number, string, text (`~`), date, user. No history predicates |
 | `parent` | `"Epic link"` (retired; rewritten to `parent`) | |
 | `savedSearch` | `filter`; `request`, `savedFilter`, `searchRequest` (given) | Saved search by id or name; cycles rejected |
-| `targetRelease` | `fixVersion` | |
+| `targetRelease` | `fixVersion` | A bare number is an id before a name, a quoted one a name before an id (T-359) |
 | `crossTrackRelease` | | Release across tracks by id or name (PLN-007): `=`, `!=`, `IN`, `NOT IN`; the target tickets of its linked releases; one the person may not see reads as one that does not exist. A bare number is an id before a name, a quoted one a name before an id. Binds only to linked releases of tracks the person sees. No `IS EMPTY`, history or order |
 | `hierarchyLevel` | | All levels including custom ones |
 | `journey`, `journeyParent`, `journeyType`, `journeyTypeVersion`, `journeyTicket` | `journeyWorkItem` | Parsed and stored; semantics not in research (verify) |
@@ -81,7 +81,7 @@ Absolute formats: `yyyy/MM/dd HH:mm`, `yyyy-MM-dd HH:mm`, `yyyy/MM/dd`, `yyyy-MM
 | SLA name | | Service tracks, with SLA functions |
 | `sprint` | | With sprint functions and relative tokens (QRY-013) |
 | `text` | | Master text: summary, description, environment, comments, free-text custom fields; `~` only |
-| `type` | `issuetype` (given), `issueType` | Ticket type |
+| `type` | `issuetype` (given), `issueType` | Ticket type. A bare number is an id before a name, a quoted one a name before an id (T-359): a local-mode track's type may share a shared type's name |
 | `key` | `issue`, `issueKey` (given: `issue`) | Ticket key |
 | `voter`, `votes`, `follower`, `followers` | `watcher`, `watchers` | |
 | `ticketLink` | `issueLink` (derived), `workItemLink` | |
