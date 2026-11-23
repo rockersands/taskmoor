@@ -27,7 +27,7 @@ import {
   restore,
 } from './backup';
 import { BackupBusyError, message, STALE_RUN_MS } from './backups/runs';
-import { recordedBackup } from './backups/schedule';
+import { type BackupWorkerState, recordedBackup } from './backups/schedule';
 import { formatChecks, migrationChecks, serverChecks, type UpgradeCheck } from './upgrade-check';
 
 /**
@@ -114,6 +114,11 @@ export interface UpgradeOptions {
   dataDir?: string | undefined;
   /** Where the pre-upgrade backup goes (`backupDirectory()`); null when there is none. */
   backupRoot: string | null;
+  /**
+   * Why there is no `backupRoot` (`backupWorkerState()`): `off` when `TASKMOOR_BACKUP_DIR` is
+   * `off`, so the check gives that reason instead of asking for a directory.
+   */
+  backupDeclined?: Exclude<BackupWorkerState, 'ready'> | undefined;
   /** This build's version, for the report and the backup manifest. */
   version: string;
   /** Non-secret settings kept in the backup. */
@@ -438,8 +443,12 @@ async function backupChecks(
       {
         name: 'backup',
         state: 'block',
+        // With TASKMOOR_BACKUP_DIR=off the data directory may well be set: the reason is the
+        // one scheduled backups give, not a variable to set that already is.
         detail:
-          'no backup directory: set TASKMOOR_DATA or TASKMOOR_BACKUP_DIR, or pass --no-backup when the database provider keeps backups',
+          options.backupDeclined === 'off'
+            ? 'backups are off on this process (TASKMOOR_BACKUP_DIR=off): run the upgrade with TASKMOOR_BACKUP_DIR set to a directory, or pass --no-backup when the database provider keeps backups'
+            : 'no backup directory: set TASKMOOR_DATA or TASKMOOR_BACKUP_DIR, or pass --no-backup when the database provider keeps backups',
       },
     ];
   }

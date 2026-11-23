@@ -33,6 +33,7 @@ import {
   runScheduledBackup,
   scheduleBackups,
   scheduleSlot,
+  VERIFY_TASK,
 } from './schedule';
 
 /** A stand-in for pg_dump: a directory with a manifest, as `backup` leaves one. */
@@ -360,6 +361,49 @@ describe('scheduled backups (M1-101, OPS-008)', () => {
     const later = new Date(now.getTime() + 16 * 60_000);
     await scheduleBackups(database.db, later, 'off');
     expect(await backupStatus(database.db, later)).toMatchObject({ workers: 'off', nextAt: null });
+  });
+
+  it('[OPS-008] (2) leaves the restore drill to a worker with a backup directory, as it leaves the backup', async () => {
+    // The week's drill of a backup that a worker with a place for it took.
+    const root = join(dir, 'drilled');
+    const path = join(root, 'scheduled-2026-12-21T02-30-00');
+    await fakeBackup(database.db, path, { databaseUrl: database.url, version: 'test' });
+    await enqueue(database.db, [
+      {
+        workspaceId: 1,
+        task: VERIFY_TASK,
+        key: `${VERIFY_TASK}:drilled`,
+        payload: { path },
+        maxAttempts: 1,
+      },
+    ]);
+    // A worker without a backup directory never claims it: it may not see the backup at all
+    // (another host), and a drill run there would spend the job's one attempt on a failure.
+    for (const declined of ['off', 'no-directory'] as const) {
+      const worker = new JobRunner(database.db, `worker-${declined}`);
+      registerBackupJobs(worker, database.db, {
+        databaseUrl: database.url,
+        backupDir: null,
+        declined,
+        version: 'test',
+      });
+      expect(await worker.runOnce()).toBe(0);
+    }
+    expect(await database.db.selectFrom('job').select(['attempts', 'done_at']).execute()).toEqual([
+      { attempts: 0, done_at: null },
+    ]);
+    expect(await database.db.selectFrom('backup_run').select('id').execute()).toEqual([]);
+    // A worker with one runs it and records the drill (the fake dump does not restore: it fails).
+    const ready = new JobRunner(database.db, 'worker-ready');
+    registerBackupJobs(ready, database.db, {
+      databaseUrl: database.url,
+      backupDir: root,
+      version: 'test',
+    });
+    expect(await ready.runOnce()).toBe(1);
+    expect(await database.db.selectFrom('backup_run').select(['kind', 'state']).execute()).toEqual([
+      { kind: 'drill', state: 'failed' },
+    ]);
   });
 
   it('[OPS-008] runs one backup at a time and fails runs whose process died', async () => {

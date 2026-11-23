@@ -2,7 +2,7 @@
 title: "Backups and restore"
 audience: admins
 sources: apps/server/src/backup.ts, apps/server/src/backups/schedule.ts, apps/server/src/backups/runs.ts, apps/server/src/backups/drill.ts, apps/server/src/events/queue.ts, apps/server/src/main.ts, apps/server/src/cli.ts, apps/server/src/config.ts, apps/server/src/secrets.ts, apps/server/src/routes/backups.ts, apps/server/src/routes/admin.ts, apps/server/src/routes/trash.ts, apps/server/src/trash/purge.ts, apps/server/src/trash/policy.ts, apps/web/src/admin/SystemPage.tsx, apps/web/src/admin/TrashPage.tsx, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/compose/docker-compose.yml, deploy/allinone/Dockerfile, deploy/allinone/entrypoint.sh, deploy/helm/README.md, deploy/helm/taskmoor/templates/workloads.yaml, tools/image/drill-backup.sh, docs/adr/0022-upgrades-and-migrations.md, docs/specs/05b-administration-security-and-self-hosting.md
-accessed: 2026-11-14
+accessed: 2026-11-22
 attestation: own-words
 ---
 # Backups and restore
@@ -80,11 +80,13 @@ failed after five minutes.
 
 A worker with `TASKMOOR_BACKUP_DIR=off`, or with neither that nor `TASKMOOR_DATA`, takes no
 scheduled backups: it neither queues the day's backup nor picks it up, so a worker with a backup
-directory takes it. Each worker reports at every check whether it can take backups. When only
-workers that cannot have reported in the last 15 minutes, System status shows no next backup
-and says why instead: every worker has scheduled backups turned off, or none has a place to keep
-them. Give at least one worker a backup directory, or turn the schedule off with
-`PUT /api/v1/admin/backups/schedule` if the database provider keeps your backups.
+directory takes it. It leaves the weekly restore drill to such a worker too, since the drill reads
+the backup from the backup directory, which a worker on another host may not see. Each worker
+reports at every check whether it can take backups. When only workers that cannot have reported
+in the last 15 minutes, System status shows no next backup and says why instead: every worker has
+scheduled backups turned off, or none has a place to keep them. Give at least one worker a backup
+directory, or turn the schedule off with `PUT /api/v1/admin/backups/schedule` if the database
+provider keeps your backups.
 
 ### Changing the schedule
 

@@ -65,7 +65,7 @@ import { verifyChain } from './audit/chain';
 import { backupSize, redactSecrets, restore, tableChecksums, waitForIdleQueue } from './backup';
 import { latestBackup, recordedDrill } from './backups/drill';
 import { BackupBusyError } from './backups/runs';
-import { backupDirectory, recordedBackup } from './backups/schedule';
+import { backupDirectory, backupWorkerState, recordedBackup } from './backups/schedule';
 import { loadConfig } from './config';
 import { createPasswordLink, passwordLinkUrl } from './directory';
 import { backfillEmbeddings } from './embeddings/backfill';
@@ -169,10 +169,12 @@ const db = createDb({
 try {
   switch (command) {
     case 'upgrade': {
+      const backupState = backupWorkerState({ backupDir: config.backupDir, dataDir });
       const report = await upgrade(db, {
         databaseUrl,
         dataDir,
         backupRoot: backupDirectory({ backupDir: config.backupDir, dataDir }),
+        ...(backupState === 'ready' ? {} : { backupDeclined: backupState }),
         version: config.version,
         config: {
           PUBLIC_URL: config.publicUrl,

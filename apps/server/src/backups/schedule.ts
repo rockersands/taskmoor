@@ -36,10 +36,10 @@ import {
  *   drill run at a time; a run whose process died is marked failed after five minutes without
  *   a heartbeat.
  * - **Workers that take none:** a worker with `TASKMOOR_BACKUP_DIR=off`, or with neither it nor
- *   `TASKMOOR_DATA`, neither queues the day's backup nor claims it, so a worker that can take
- *   it does. Every worker says at each check whether it can (`backup_worker_ready` and
- *   `backup_worker_declined`), so the status page names no next backup when none can, and
- *   says why, instead of promising one that would fail.
+ *   `TASKMOOR_DATA`, neither queues the day's backup nor claims it or its restore drill, so a
+ *   worker that can take them does. Every worker says at each check whether it can
+ *   (`backup_worker_ready` and `backup_worker_declined`), so the status page names no next
+ *   backup when none can, and says why, instead of promising one that would fail.
  *
  * Administrators change the schedule with `PUT /api/v1/admin/backups/schedule`; the location
  * is the operator's (an environment variable), never something the API can point elsewhere.
@@ -396,24 +396,29 @@ export function registerBackupJobs(
   db: Kysely<Database>,
   deps: ScheduledBackupDeps,
 ): void {
-  // A worker with nowhere to put a backup leaves the job to one that has a place: claiming it
-  // would only record a failure and spend the job's attempts.
-  if (!deps.backupDir) runner.decline(BACKUP_TASK);
-  else
-    runner.handle(BACKUP_TASK, async (job) => {
-      const outcome = await runScheduledBackup(db, deps, job.id);
-      if (outcome.state === 'succeeded' && outcome.verify) {
-        await enqueue(db, [
-          {
-            workspaceId: job.workspaceId,
-            task: VERIFY_TASK,
-            key: `${VERIFY_TASK}:${outcome.runId}`,
-            payload: { path: outcome.path },
-            maxAttempts: 1,
-          },
-        ]);
-      }
-    });
+  // A worker with nowhere to put a backup leaves the backup and its restore drill to one that
+  // has a place. Claiming the backup would only record a failure and spend the job's attempts;
+  // the drill restores a backup from the backup directory, which a worker without one may not
+  // see at all (another host that shares no storage with the one that took it).
+  if (!deps.backupDir) {
+    runner.decline(BACKUP_TASK);
+    runner.decline(VERIFY_TASK);
+    return;
+  }
+  runner.handle(BACKUP_TASK, async (job) => {
+    const outcome = await runScheduledBackup(db, deps, job.id);
+    if (outcome.state === 'succeeded' && outcome.verify) {
+      await enqueue(db, [
+        {
+          workspaceId: job.workspaceId,
+          task: VERIFY_TASK,
+          key: `${VERIFY_TASK}:${outcome.runId}`,
+          payload: { path: outcome.path },
+          maxAttempts: 1,
+        },
+      ]);
+    }
+  });
   runner.handle(VERIFY_TASK, async (job) => {
     const { path } = job.payload as { path: string };
     // The drill records its own outcome; a failed one is a finding, not a job to retry.
