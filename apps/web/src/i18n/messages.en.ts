@@ -1781,6 +1781,9 @@ export const messagesEn = {
   'admin.audit.verb.approval_decided': 'approval decided',
   'admin.audit.verb.approvers_set': 'approvers set',
   'admin.audit.verb.archived': 'archived',
+  'admin.audit.verb.baseline_captured': 'baseline captured',
+  'admin.audit.verb.baseline_deleted': 'baseline deleted',
+  'admin.audit.verb.baseline_renamed': 'baseline renamed',
   'admin.audit.verb.bulk_revoked': 'revoked in bulk',
   'admin.audit.verb.cancelled': 'cancelled',
   'admin.audit.verb.capacity_set': 'capacity set',
@@ -1852,6 +1855,9 @@ export const messagesEn = {
   'admin.audit.verb.sign_in_refused': 'sign-in by single sign-on refused',
   'admin.audit.verb.signed_in': 'signed in',
   'admin.audit.verb.started': 'started',
+  'admin.audit.verb.structure_changed': 'structure changed',
+  'admin.audit.verb.structure_created': 'structure created',
+  'admin.audit.verb.structure_deleted': 'structure deleted',
   'admin.audit.verb.subscribed': 'subscribed',
   'admin.audit.verb.summary_layout_removed': 'summary layout removed',
   'admin.audit.verb.summary_layout_set': 'summary layout set',
@@ -8031,16 +8037,16 @@ export const messagesEn = {
     '{field}: it is set on the ticket once it exists, so the create form leaves it out.',
   'layouts.preview.reason.computed':
     '{field}: its value is computed, so the create form leaves it out.',
+  'layouts.preview.reason.noReleases':
+    '{field}: the track has no releases, so the create form leaves it out.',
+  'layouts.preview.reason.noAreas':
+    '{field}: the track has no areas, so the create form leaves it out.',
   'purpose.crossTracks':
     'Several tracks’ own releases lined up on one end, and how far their work has come.',
   'purpose.crossTrack':
     'One release across tracks: its end, its linked releases and how far their work has come.',
   'empty.crossTrack.upcoming':
     'One lines up several tracks’ own releases on one end. Make one to start.',
-  'layouts.preview.reason.noReleases':
-    '{field}: the track has no releases, so the create form leaves it out.',
-  'layouts.preview.reason.noAreas':
-    '{field}: the track has no areas, so the create form leaves it out.',
   'empty.crossTrack.shipped': 'One shows here once all its releases have shipped.',
   'empty.crossTrack.candidates':
     'You can link upcoming releases of tracks you administer that are in no other release across tracks.',

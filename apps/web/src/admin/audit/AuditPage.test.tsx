@@ -222,22 +222,22 @@ describe('audit log page (M1-085)', () => {
 describe('the audit log on the person’s clock (M1-085)', () => {
   useTimeZone('Asia/Kolkata');
 
-    it('[IAM-013] puts the day over the time and the address under who, beside the list (AD-2)', async () => {
-      renderPage(fakeAuditClient({ records: SWEEP_RECORDS }));
-      const table = await screen.findByRole('table');
-      expect(
-        within(table)
-          .getAllByRole('columnheader')
-          .map((h) => h.textContent),
-      ).toEqual(['When', 'Who, from where', 'Action', 'Subject']);
-      const cells = within(within(table).getAllByRole('row')[3] as HTMLElement).getAllByRole('cell');
-      const when = cells[0]?.querySelector('time');
-      expect(when).toHaveAttribute('dateTime', '2026-11-14T09:14:29Z');
-      expect(when?.querySelector('.audit-day')).toHaveTextContent('Nov 14, 2026');
-      // On the person's clock, half an hour off any whole hour here.
-      expect(when?.querySelector('.audit-time')).toHaveTextContent('2:44:29 PM');
-      expect(cells[1]?.firstChild?.textContent).toBe('Eval Admin');
-      expect(within(cells[1] as HTMLElement).getByText('From 127.0.0.1')).toHaveClass('audit-from');
-      expect(cells[2]).toHaveTextContent('Ticket template created');
-    });
+  it('[IAM-013] puts the day over the time and the address under who, beside the list (AD-2)', async () => {
+    renderPage(fakeAuditClient({ records: SWEEP_RECORDS }));
+    const table = await screen.findByRole('table');
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((h) => h.textContent),
+    ).toEqual(['When', 'Who, from where', 'Action', 'Subject']);
+    const cells = within(within(table).getAllByRole('row')[3] as HTMLElement).getAllByRole('cell');
+    const when = cells[0]?.querySelector('time');
+    expect(when).toHaveAttribute('dateTime', '2026-11-14T09:14:29Z');
+    expect(when?.querySelector('.audit-day')).toHaveTextContent('Nov 14, 2026');
+    // On the person's clock, half an hour off any whole hour here.
+    expect(when?.querySelector('.audit-time')).toHaveTextContent('2:44:29 PM');
+    expect(cells[1]?.firstChild?.textContent).toBe('Eval Admin');
+    expect(within(cells[1] as HTMLElement).getByText('From 127.0.0.1')).toHaveClass('audit-from');
+    expect(cells[2]).toHaveTextContent('Ticket template created');
+  });
 });

@@ -1827,6 +1827,9 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.audit.verb.approval_decided': 'aprobación decidida',
   'admin.audit.verb.approvers_set': 'aprobadores fijados',
   'admin.audit.verb.archived': 'archivado',
+  'admin.audit.verb.baseline_captured': 'línea base capturada',
+  'admin.audit.verb.baseline_deleted': 'línea base eliminada',
+  'admin.audit.verb.baseline_renamed': 'línea base renombrada',
   'admin.audit.verb.bulk_revoked': 'revocación masiva',
   'admin.audit.verb.cancelled': 'cancelación',
   'admin.audit.verb.capacity_set': 'capacidad fijada',
@@ -1898,6 +1901,9 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.audit.verb.sign_in_refused': 'inicio de sesión único rechazado',
   'admin.audit.verb.signed_in': 'inicio de sesión',
   'admin.audit.verb.started': 'inicio',
+  'admin.audit.verb.structure_changed': 'estructura cambiada',
+  'admin.audit.verb.structure_created': 'estructura creada',
+  'admin.audit.verb.structure_deleted': 'estructura eliminada',
   'admin.audit.verb.subscribed': 'suscripción',
   'admin.audit.verb.summary_layout_removed': 'diseño del resumen quitado',
   'admin.audit.verb.summary_layout_set': 'diseño del resumen fijado',
@@ -8211,16 +8217,16 @@ export const messagesEs: Record<MessageId, string> = {
     '{field}: se pone en el ticket una vez creado, así que el formulario de crear lo omite.',
   'layouts.preview.reason.computed':
     '{field}: su valor se calcula, así que el formulario de crear lo omite.',
+  'layouts.preview.reason.noReleases':
+    '{field}: el track no tiene versiones, así que el formulario de crear lo omite.',
+  'layouts.preview.reason.noAreas':
+    '{field}: el track no tiene áreas, así que el formulario de crear lo omite.',
   'purpose.crossTracks':
     'Las versiones de varios tracks alineadas en un mismo final, y cuánto ha avanzado su trabajo.',
   'purpose.crossTrack':
     'Una versión entre tracks: su final, sus versiones enlazadas y cuánto ha avanzado su trabajo.',
   'empty.crossTrack.upcoming':
     'Una alinea las versiones de varios tracks en un mismo final. Crea una para empezar.',
-  'layouts.preview.reason.noReleases':
-    '{field}: el track no tiene versiones, así que el formulario de crear lo omite.',
-  'layouts.preview.reason.noAreas':
-    '{field}: el track no tiene áreas, así que el formulario de crear lo omite.',
   'empty.crossTrack.shipped': 'Una aparece aquí cuando todas sus versiones se han publicado.',
   'empty.crossTrack.candidates':
     'Puedes enlazar versiones próximas de tracks que administras y que no estén en otra versión entre tracks.',

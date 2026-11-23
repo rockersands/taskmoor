@@ -15,14 +15,17 @@ const serverSource = (file: string) => readFileSync(join(SERVER_SRC, file), 'utf
 
 /**
  * Actions the server writes as a literal beside the lists (`action: 'audit.syslog_test'`), in any
- * of its source files but the tests: a new one is held to words as soon as it is written.
+ * of its source files but the tests: a new one is held to words as soon as it is written. Any
+ * quote counts; a code is two words joined by a dot, as every audit action is.
  */
 function literalActions(): string[] {
   const files = readdirSync(SERVER_SRC, { recursive: true, encoding: 'utf8' }).filter(
     (f) => f.endsWith('.ts') && !f.endsWith('.test.ts'),
   );
   return files.flatMap((file) =>
-    [...serverSource(file).matchAll(/\baction: '([a-z_]+\.[a-z_]+)'/g)].map((m) => m[1] as string),
+    [...serverSource(file).matchAll(/\baction:\s*['"`]([a-z_]+\.[a-z_]+)['"`]/g)].map(
+      (m) => m[1] as string,
+    ),
   );
 }
 
