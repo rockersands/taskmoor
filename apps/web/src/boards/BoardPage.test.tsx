@@ -554,6 +554,32 @@ describe('the board page (M1-043)', () => {
     expect(grip).toHaveFocus();
   });
 
+  it('[AGL-002] [NFR-005] brings the whole Move menu into view once its first move has the focus (S3-SP-10)', async () => {
+    // jsdom lays nothing out and has no scrollIntoView: which element asked, and what had the
+    // focus then, is what can be told here. The story MoveMenuAtTheWindowsFoot measures it.
+    const scrolled: { what: Element; focus: Element | null; options: unknown }[] = [];
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      value(this: Element, options: unknown) {
+        scrolled.push({ what: this, focus: document.activeElement, options });
+      },
+      configurable: true,
+    });
+    try {
+      const user = userEvent.setup();
+      renderBoard();
+      await page();
+      const grip = screen.getByRole('button', { name: 'Move SHOP-23' });
+      grip.focus();
+      await user.keyboard('{Enter}');
+      const menu = (grip.closest('li') as HTMLElement).querySelector('.board-move-menu');
+      const first = menu?.querySelector('button');
+      await waitFor(() => expect(first).toHaveFocus());
+      expect(scrolled).toEqual([{ what: menu, focus: first, options: { block: 'nearest' } }]);
+    } finally {
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+    }
+  });
+
   it('[AGL-002] asks which transition when several lead into the column', async () => {
     const user = userEvent.setup();
     const client = renderBoard();

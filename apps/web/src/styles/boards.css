@@ -400,6 +400,9 @@
   margin: 0;
   padding: 0;
   list-style: none;
+  /* Opened at the window's foot, it is brought into view with the room a card gets (S3-SP-10). */
+  scroll-margin-block: var(--space-4);
+  scroll-margin-top: calc(var(--shell-topbar-reach, 0px) + var(--space-4));
 }
 
 .board-move-menu button {

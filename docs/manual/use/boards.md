@@ -121,8 +121,9 @@ write it in a comment. There are three ways to move a card:
   board;
 - press the card's grip, **Move PAY-42**, and choose **Forward to Done**, **Back to To do**, **Up
   in Doing** or **Down in Doing**. The menu opens inside the card with its first move in focus, as
-  every grip's menu does: the up and down arrows go through the moves, and Escape closes it and
-  returns to the grip;
+  every grip's menu does, and scrolls into view whole when the card sits at the bottom of the
+  window: the up and down arrows go through the moves, and Escape closes it and returns to the
+  grip;
 - focus the card and press Alt with the left or right arrow (to the next column) or the up or
   down arrow (within the column).
 

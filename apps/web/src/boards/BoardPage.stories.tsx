@@ -399,6 +399,73 @@ export const LongColumn: Story = {
   },
 };
 
+/**
+ * How far up and down `el` can be seen: the window, narrowed by every box around it that scrolls
+ * or clips (a column that scrolls inside itself, on a phone).
+ */
+const sightOf = (el: Element) => {
+  let top = 0;
+  let bottom = window.innerHeight;
+  for (let around = el.parentElement; around; around = around.parentElement) {
+    if (around === document.body || around === document.documentElement) break;
+    if (getComputedStyle(around).overflowY === 'visible') continue;
+    const port = around.getBoundingClientRect().top + around.clientTop;
+    top = Math.max(top, port);
+    bottom = Math.min(bottom, port + around.clientHeight);
+  }
+  return { top, bottom };
+};
+
+/** Whether the whole of `el` can be seen, give or take a pixel of rounding. */
+const inSight = (el: Element) => {
+  const box = el.getBoundingClientRect();
+  const sight = sightOf(el);
+  return box.top >= sight.top - 1 && box.bottom <= sight.bottom + 1;
+};
+
+/**
+ * A card's grip brought to the foot of what shows it (the window, or a column that scrolls inside
+ * itself), then its Move menu opened by `open`: the menu is drawn in the card, below the grip, out
+ * of sight, and opening it brings it into view whole, its first move in hand (S3-SP-10; the third
+ * sweep's state-grip-menu-board).
+ */
+const menuAtTheWindowsFoot =
+  (open: (grip: HTMLElement) => Promise<void>): NonNullable<Story['play']> =>
+  async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('list', { name: 'To do' });
+    const grip = canvas.getByRole('button', { name: 'Move SHOP-20' });
+    grip.scrollIntoView({ block: 'end' });
+    await expect(inSight(grip)).toBe(true);
+    await expect(grip.getBoundingClientRect().bottom).toBeGreaterThan(sightOf(grip).bottom - 24);
+    await open(grip);
+    const menu = (grip.closest('li') as HTMLElement).querySelector('.board-move-menu');
+    if (!(menu instanceof HTMLElement)) throw new Error('The Move menu did not open.');
+    await waitFor(() => expect(within(menu).getAllByRole('button')[0]).toHaveFocus());
+    await waitFor(() => expect(inSight(menu)).toBe(true));
+    window.scrollTo(0, 0);
+  };
+
+/** With the keys: the grip in hand, then Enter. */
+export const MoveMenuAtTheWindowsFoot: Story = {
+  args: { client: fakeBoardClient({ cards: longColumn(40), lanes: ONE_LANE }) },
+  play: menuAtTheWindowsFoot(async (grip) => {
+    grip.focus();
+    await userEvent.keyboard('{Enter}');
+  }),
+};
+
+/** With a finger on a phone, where the grip sits at the card's foot (NFR-007). */
+export const MoveMenuAtTheWindowsFootOnATouchPhone: Story = {
+  tags: ['touch'],
+  args: { client: fakeBoardClient({ cards: longColumn(40), lanes: ONE_LANE }) },
+  globals: { viewport: { value: 'mobile1', isRotated: false } },
+  beforeEach: onARealTouchScreen,
+  play: menuAtTheWindowsFoot(async (grip) => {
+    await userEvent.click(grip);
+  }),
+};
+
 /** The person filter at the width of a small phone: only the columns scroll sideways. */
 export const PersonFilterAtPhoneWidth: Story = {
   args: { client: fakeBoardClient() },

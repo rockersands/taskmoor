@@ -264,12 +264,16 @@ export function BoardPage({
   const [menuFor, setMenuFor] = useState<number | null>(null);
   /**
    * The open Move menu takes the focus on its first move, as every grip's menu does (S3-SP-10);
-   * the arrows go through its moves and Escape gives the focus back to the grip.
+   * the arrows go through its moves and Escape gives the focus back to the grip. The menu is drawn
+   * in the card, below the grip, so a grip at the window's foot (or a column's) opens it out of
+   * sight: the whole menu is brought into view, as the board's other focus moves bring their card.
    */
   const moveList = useRef<HTMLUListElement>(null);
   useEffect(() => {
     if (menuFor === null) return;
-    moveList.current?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
+    const menu = moveList.current;
+    menu?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
+    menu?.scrollIntoView?.({ block: 'nearest' });
   }, [menuFor]);
   /** The card whose title is being edited, with the version the person read. */
   const [editing, setEditing] = useState<{ id: number; version: number | undefined } | null>(null);
