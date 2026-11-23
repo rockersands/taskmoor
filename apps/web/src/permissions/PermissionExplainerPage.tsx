@@ -228,9 +228,12 @@ export function PermissionExplainerPage({ client = explainClient }: { client?: E
               {t('admin.explain.ticketHint')}
             </p>
           </div>
-          <button type="submit" className="button-primary">
-            {t('admin.explain.ask')}
-          </button>
+          {/* Content width, like every other form's submit (S3-AC-3). */}
+          <div className="form-actions">
+            <button type="submit" className="button-primary">
+              {t('admin.explain.ask')}
+            </button>
+          </div>
         </form>
       )}
       {problem && (

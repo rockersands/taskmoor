@@ -2,7 +2,14 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
 import { expect, within } from 'storybook/test';
 import { SessionProvider } from '../session/SessionProvider';
-import { ADMIN, HEALTHY, MEMBER, NEEDS_ATTENTION, STALE_BACKUP } from './fixtures';
+import {
+  ADMIN,
+  HEALTHY,
+  MEMBER,
+  NEEDS_ATTENTION,
+  NO_BACKUP_WORKER,
+  STALE_BACKUP,
+} from './fixtures';
 import { SystemPage } from './SystemPage';
 import { textLines } from './textLines';
 import type { UpdateCheck } from './UpdateNotice';
@@ -48,6 +55,22 @@ export const Healthy: Story = { args: { load: async () => HEALTHY } };
 export const NeedsAttention: Story = { args: { load: async () => NEEDS_ATTENTION } };
 
 export const PendingMigrationAndOldBackup: Story = { args: { load: async () => STALE_BACKUP } };
+
+/**
+ * Every worker has scheduled backups turned off (S3-AC-1): no next backup is promised, the
+ * warning says why in words, and the last failure gives its reason without the server's note to
+ * the operator.
+ */
+export const NoWorkerTakesBackups: Story = {
+  args: { load: async () => NO_BACKUP_WORKER },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const next = await canvas.findByText(/^None will run: every worker/);
+    await expect(next).toHaveClass('status-warn');
+    await expect(canvas.getByText(/the worker that took it could not keep backups$/)).toBeVisible();
+    await expect(canvasElement.textContent).not.toMatch(/TASKMOOR_BACKUP_DIR/);
+  },
+};
 
 export const Loading: Story = { args: { load: () => new Promise(() => {}) } };
 

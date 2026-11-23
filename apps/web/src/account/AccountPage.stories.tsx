@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactElement } from 'react';
-import { expect, waitFor, within } from 'storybook/test';
+import { expect, within } from 'storybook/test';
 import { fakeNotificationsClient } from '../notifications/fixtures';
 import { SessionProvider } from '../session/SessionProvider';
 import { fakePersonalTokensClient } from '../tokens/fixtures';
@@ -110,8 +110,9 @@ const atPhone375 = (Story: () => ReactElement) => (
 );
 
 /**
- * On a phone the row of sections scrolls inside itself (D17): the current section, the last here,
- * is brought into view, and the edge with more sections beyond it fades.
+ * On a phone every section shows (D17): the row wraps onto a second line instead of scrolling
+ * inside itself, where 'Your data' waited unseen past the edge (the third sweep). The current
+ * section, the last here, is marked where it stands.
  */
 export const SectionsAtPhoneWidth: Story = {
   decorators: [atPhone375],
@@ -119,35 +120,21 @@ export const SectionsAtPhoneWidth: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const bar = await canvas.findByRole('navigation', { name: 'Account sections' });
-    await expect(bar.scrollWidth).toBeGreaterThan(bar.clientWidth);
-    const current = within(bar).getByRole('link', { name: 'Your data' });
-    await waitFor(() => expect(bar.scrollLeft).toBeGreaterThan(0));
+    await expect(bar.scrollWidth).toBeLessThanOrEqual(bar.clientWidth);
     const shown = bar.getBoundingClientRect();
-    const tab = current.getBoundingClientRect();
-    await expect(tab.left).toBeGreaterThanOrEqual(shown.left);
-    await expect(tab.right).toBeLessThanOrEqual(shown.right + 1);
-    // More sections wait past the left edge, none past the right.
-    await waitFor(() => expect(bar).toHaveAttribute('data-more', 'start'));
-    await fitsPhoneWidth(canvas);
-  },
-};
-
-/**
- * Opened at Profile on a phone, the row says it goes on (D2, D17): the edge fades over at least a
- * tab's width, so a tab that ends at the edge, such as 'API tokens', visibly thins out instead of
- * looking whole while 'Your data' waits unseen beyond it.
- */
-export const RowReadsAsGoingOnAtPhoneWidth: Story = {
-  decorators: [atPhone375],
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    const bar = await canvas.findByRole('navigation', { name: 'Account sections' });
-    await waitFor(() => expect(bar).toHaveAttribute('data-more', 'end'));
-    const mask = getComputedStyle(bar).maskImage;
-    const fade = Number(/calc\(100% - ([\d.]+)px\)/.exec(mask)?.[1] ?? 0);
-    for (const name of ['API tokens', 'Your data']) {
-      const tab = within(bar).getByRole('link', { name }).getBoundingClientRect();
-      await expect(fade).toBeGreaterThanOrEqual(tab.width);
+    const links = within(bar).getAllByRole('link');
+    await expect(links).toHaveLength(5);
+    for (const link of links) {
+      const tab = link.getBoundingClientRect();
+      await expect(tab.left).toBeGreaterThanOrEqual(shown.left);
+      await expect(tab.right).toBeLessThanOrEqual(shown.right + 1);
     }
+    await expect(within(bar).getByRole('link', { name: 'Your data' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    // Nothing fades: what shows is all there is.
+    await expect(getComputedStyle(bar).maskImage).toBe('none');
+    await fitsPhoneWidth(canvas);
   },
 };

@@ -1,9 +1,10 @@
 import { type FormEvent, useEffect, useId, useState } from 'react';
 import { ApiError, api } from '../api/client';
-import { useT } from '../i18n/I18nProvider';
+import { type Translate, useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { personTimeZone } from '../i18n/zone';
 import { EmptyState } from '../shell/EmptyState';
+import { inUnits, LengthField, toMinutes, type Unit } from './SessionPolicyForm';
 
 /** The alert rules the server knows (ADR-109), in the order the form shows them. */
 export const ALERT_RULES = [
@@ -56,8 +57,44 @@ export const securityAlertsClient: SecurityAlertsClient = {
 /** The limits the server keeps (`security/alerts.ts`). */
 const THRESHOLD = { min: 1, max: 100_000 };
 const WINDOW = { min: 1, max: 1440 };
+/** A window is at most a day, so it is entered in minutes or hours, as session lengths are. */
+const WINDOW_UNITS: readonly Unit[] = ['minutes', 'hours'];
 
-type Draft = Record<AlertRule, { enabled: boolean; threshold: string; windowMinutes: string }>;
+/**
+ * A window in words, in the unit that holds it whole: '1 hour', '15 minutes'. The rules, their
+ * defaults and every alert raised, here and on the Administration overview, say it alike
+ * (S3-AC-6): an alert once read '5 in 60 minutes' under a rule set to 1 hour.
+ */
+export function alertWindow(t: Translate, minutes: number): string {
+  const { amount, unit } = inUnits(minutes, WINDOW_UNITS);
+  return t('admin.alerts.length', { amount: Number(amount), unit });
+}
+
+/** An alert raised, in one line: 'Bulk exports by one person: 5 in 1 hour, Oct 30, 2026, …'. */
+export function raisedAlertText(
+  t: Translate,
+  alert: Pick<RaisedAlert, 'rule' | 'count' | 'windowMinutes'>,
+  time: string,
+): string {
+  return t('admin.alerts.raised', {
+    rule: alertRuleName(t, alert.rule),
+    count: alert.count,
+    length: alertWindow(t, alert.windowMinutes),
+    time,
+  });
+}
+
+/** A rule's name; a rule this version does not know reads as refused requests. */
+export function alertRuleName(t: Translate, rule: string): string {
+  return t(
+    ((ALERT_RULES as readonly string[]).includes(rule)
+      ? `admin.alerts.rule.${rule}`
+      : 'admin.alerts.rule.access_refusals') as MessageId,
+  );
+}
+
+type Length = { amount: string; unit: Unit };
+type Draft = Record<AlertRule, { enabled: boolean; threshold: string; window: Length }>;
 const draftOf = (rules: AlertRules): Draft =>
   Object.fromEntries(
     ALERT_RULES.map((r) => [
@@ -65,7 +102,7 @@ const draftOf = (rules: AlertRules): Draft =>
       {
         enabled: rules[r].enabled,
         threshold: String(rules[r].threshold),
-        windowMinutes: String(rules[r].windowMinutes),
+        window: inUnits(rules[r].windowMinutes, WINDOW_UNITS),
       },
     ]),
   ) as Draft;
@@ -114,8 +151,8 @@ export function SecurityAlertsForm({
 
   const change = (
     rule: AlertRule,
-    field: 'enabled' | 'threshold' | 'windowMinutes',
-    value: string | boolean,
+    field: 'enabled' | 'threshold' | 'window',
+    value: string | boolean | Length,
   ) => setDraft((d) => (d ? { ...d, [rule]: { ...d[rule], [field]: value } } : d));
 
   const submit = async (event: FormEvent) => {
@@ -123,14 +160,13 @@ export function SecurityAlertsForm({
     if (!draft) return;
     setError(null);
     setSaved('');
-    const whole = (text: string, range: { min: number; max: number }) => {
-      const n = Number(text);
-      return Number.isInteger(n) && n >= range.min && n <= range.max ? n : null;
-    };
+    const within = (n: number | null, range: { min: number; max: number }) =>
+      n !== null && Number.isInteger(n) && n >= range.min && n <= range.max ? n : null;
     const rules = {} as AlertRules;
     for (const rule of ALERT_RULES) {
-      const threshold = whole(draft[rule].threshold, THRESHOLD);
-      const windowMinutes = whole(draft[rule].windowMinutes, WINDOW);
+      const text = draft[rule].threshold;
+      const threshold = within(text.trim() === '' ? null : Number(text), THRESHOLD);
+      const windowMinutes = within(toMinutes(draft[rule].window), WINDOW);
       if (threshold === null || windowMinutes === null) {
         setError(t('admin.alerts.outOfRange'));
         return;
@@ -170,12 +206,6 @@ export function SecurityAlertsForm({
       timeStyle: 'short',
       ...(zone ? { timeZone: zone } : {}),
     }).format(new Date(iso));
-  const ruleName = (rule: string) =>
-    t(
-      ((ALERT_RULES as readonly string[]).includes(rule)
-        ? `admin.alerts.rule.${rule}`
-        : 'admin.alerts.rule.access_refusals') as MessageId,
-    );
   return (
     // Checked here, so the message is the page's own, in the reader's language.
     <form
@@ -190,7 +220,7 @@ export function SecurityAlertsForm({
       <p className="page-note">{t('admin.alerts.intro')}</p>
       {ALERT_RULES.map((rule) => (
         <fieldset key={rule}>
-          <legend>{ruleName(rule)}</legend>
+          <legend>{alertRuleName(t, rule)}</legend>
           <div className="form-field form-field-inline">
             <input
               id={`${id}-${rule}-on`}
@@ -202,35 +232,33 @@ export function SecurityAlertsForm({
           </div>
           <div className="form-field">
             <label htmlFor={`${id}-${rule}-threshold`}>{t('admin.alerts.threshold')}</label>
-            <input
-              id={`${id}-${rule}-threshold`}
-              type="number"
-              inputMode="numeric"
-              min={THRESHOLD.min}
-              max={THRESHOLD.max}
-              step={1}
-              value={draft[rule].threshold}
-              onChange={(event) => change(rule, 'threshold', event.target.value)}
-            />
+            {/* As narrow as the window's number beside its unit (S3-AC-6). */}
+            <div className="length-field">
+              <input
+                id={`${id}-${rule}-threshold`}
+                type="number"
+                inputMode="numeric"
+                min={THRESHOLD.min}
+                max={THRESHOLD.max}
+                step={1}
+                value={draft[rule].threshold}
+                onChange={(event) => change(rule, 'threshold', event.target.value)}
+              />
+            </div>
           </div>
-          <div className="form-field">
-            <label htmlFor={`${id}-${rule}-window`}>{t('admin.alerts.window')}</label>
-            <input
-              id={`${id}-${rule}-window`}
-              type="number"
-              inputMode="numeric"
-              min={WINDOW.min}
-              max={WINDOW.max}
-              step={1}
-              value={draft[rule].windowMinutes}
-              aria-describedby={`${id}-${rule}-default`}
-              onChange={(event) => change(rule, 'windowMinutes', event.target.value)}
-            />
-          </div>
+          {/* A number and a unit, like the session lengths above (D22, S3-AC-6). */}
+          <LengthField
+            id={`${id}-${rule}-window`}
+            label={t('admin.alerts.window')}
+            hintId={`${id}-${rule}-default`}
+            value={draft[rule].window}
+            units={WINDOW_UNITS}
+            onChange={(value) => change(rule, 'window', value)}
+          />
           <p id={`${id}-${rule}-default`} className="form-hint">
             {t('admin.alerts.default', {
               threshold: state.defaults[rule].threshold,
-              minutes: state.defaults[rule].windowMinutes,
+              length: alertWindow(t, state.defaults[rule].windowMinutes),
             })}
           </p>
         </fieldset>
@@ -257,14 +285,7 @@ export function SecurityAlertsForm({
         <ul aria-labelledby={`${id}-recent`} className="security-alerts-list">
           {state.recent.map((alert) => (
             <li key={alert.id} className="security-alert">
-              <span>
-                {t('admin.alerts.raised', {
-                  rule: ruleName(alert.rule),
-                  count: alert.count,
-                  minutes: alert.windowMinutes,
-                  time: when(alert.raisedAt),
-                })}
-              </span>
+              <span>{raisedAlertText(t, alert, when(alert.raisedAt))}</span>
               {alert.subject.address && (
                 <span className="security-alert-subject">
                   {t('admin.alerts.address', { address: alert.subject.address })}

@@ -114,6 +114,10 @@ describe('Administration (ADR-114)', () => {
         .getAllByRole('link')
         .map((l) => l.textContent),
     ).toEqual(['Account', 'Appearance', 'Tutorials']);
+    // Account is described as it is now, a tab each: Notifications and Your data too (S3-AC-8).
+    const account = within(page).getByRole('link', { name: 'Account' }).closest('li');
+    expect(account).toHaveTextContent(/notifications, password/);
+    expect(account).toHaveTextContent(/API tokens and a download of your data\.$/);
   });
 
   it('[AGL-018] shows a site administrator every group, and health, people and alerts', async () => {
@@ -143,6 +147,15 @@ describe('Administration (ADR-114)', () => {
     expect(within(waiting).queryByText('Ada')).toBeNull();
     const alerts = screen.getByRole('region', { name: 'Security alerts' });
     expect(await within(alerts).findByText(/from 203\.0\.113\.9/)).toBeVisible();
+    // Worded as the Security page's latest alerts: the window in the unit its rule uses.
+    expect(
+      within(alerts)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      expect.stringMatching(/^Failed sign-ins from one address: 25 in 15 minutes, .* from 203/),
+      expect.stringMatching(/^Bulk exports by one person: 5 in 1 hour, /),
+    ]);
   });
 
   it('[AGL-018] keeps the other panels when one read fails', async () => {

@@ -2,7 +2,7 @@
 title: "Upgrades"
 audience: admins
 sources: deploy/compose/update.sh, tools/release/sign-update-manifest.sh, packages/builder-core/src/backend.ts, apps/server/src/updates/check.ts, apps/server/src/routes/update-check.ts, apps/web/src/admin/UpdateNotice.tsx, docs/adr/0117-update-command-and-new-version-notice.md, tools/airgap/install-offline.sh, apps/server/src/upgrade.ts, apps/server/src/upgrade-check.ts, apps/server/src/cli.ts, apps/server/src/main.ts, apps/server/src/frontend.ts, apps/server/src/routes/meta.ts, packages/db/src/releases.ts, apps/web/src/i18n/messages.en.ts, deploy/README.md, deploy/compose/README.md, deploy/compose/upgrade.sh, deploy/allinone/entrypoint.sh, deploy/helm/README.md, deploy/helm/taskmoor/templates/upgrade-check.yaml, docs/adr/0022-upgrades-and-migrations.md, docs/adr/0070-meta-endpoint-and-version-window.md, docs/specs/05b-administration-security-and-self-hosting.md, packages/builder-core/src/postgres-tls.ts, docs/adr/0111-personal-data-and-database-tls.md
-accessed: 2026-11-03
+accessed: 2026-11-22
 attestation: own-words
 ---
 # Upgrades
@@ -185,7 +185,7 @@ you upgrade. See [Kubernetes with Helm](helm.md).
 | `upgrade-lock` | Another upgrade of this database is running | |
 | `migrations` | A newer release migrated the database, or a migration would run out of order | |
 | `upgrade-path` | The database is too many releases back; the message names the release to upgrade to first | |
-| `backup` | There is no backup directory, or `--no-backup` with online migrations | A backup is running (the upgrade waits for it), or `--no-backup` |
+| `backup` | There is no backup directory (with `TASKMOOR_BACKUP_DIR=off` it says backups are off for the process, as scheduled backups do), or `--no-backup` with online migrations | A backup is running (the upgrade waits for it), or `--no-backup` |
 | `backup-space` | Less free space than the backup needs | Less than twice that |
 | `processes` | Other Taskmoor processes are connected and the plan has online migrations | Other Taskmoor processes are connected |
 | `previous-attempt` | An unattended run whose last attempt at this target failed | |

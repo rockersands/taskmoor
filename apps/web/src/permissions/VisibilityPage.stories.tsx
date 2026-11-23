@@ -44,6 +44,27 @@ export const LevelWithNoMembers: Story = {
 /** No policy yet: what one is for. */
 export const Empty: Story = { args: { client: fakeVisibilityClient([]) } };
 
+/**
+ * The explainer's Explain button is as wide as its words, like every other form's submit, not the
+ * width of the form (S3-AC-3).
+ */
+export const ExplainButtonContentWidth: Story = {
+  render: () => (
+    <div style={{ width: 760 }}>
+      <PermissionExplainerPage client={fakeExplainClient()} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const page = within(canvasElement);
+    const form = await page.findByRole('form', { name: 'Ask why' });
+    const button = within(form).getByRole('button', { name: 'Explain' });
+    const field = within(form).getByLabelText('Ticket key (optional)');
+    await expect(button.getBoundingClientRect().width).toBeLessThan(
+      field.getBoundingClientRect().width / 2,
+    );
+  },
+};
+
 /** A configuration administrator manages the shared policies too (T-322). */
 export const ForAConfigurationAdministrator: Story = {
   parameters: { session: CONFIG_ADMIN },

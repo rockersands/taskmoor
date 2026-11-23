@@ -2,7 +2,7 @@
 title: "Your account"
 audience: users
 sources: apps/web/src/account/AccountPage.tsx, apps/server/src/oauth/tokens.ts, apps/web/src/account/ProfileSection.tsx, apps/web/src/account/AppearanceSection.tsx, apps/web/src/account/PasswordSection.tsx, apps/web/src/account/TwoFactorSection.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/account/options.ts, apps/web/src/twofactor/TotpSetupForm.tsx, apps/web/src/twofactor/RecoveryCodes.tsx, apps/web/src/session/UserMenu.tsx, apps/web/src/session/SecondFactorStep.tsx, apps/web/src/tokens/TokensSection.tsx, apps/web/src/tokens/TokenForm.tsx, apps/web/src/tokens/format.ts, apps/web/src/skins/skins.ts, apps/web/src/i18n/locale.ts, apps/web/src/i18n/messages.en.ts, apps/web/src/App.tsx, apps/server/src/routes/search.ts, apps/server/src/email/deliver.ts, docs/adr/0024-i18n-and-accessibility.md, docs/adr/0035-api-tokens-and-service-accounts.md, docs/adr/0036-skins-and-soft-visual-language.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, docs/adr/0109-security-notices-and-alerts.md, apps/web/src/account/PersonalDataSection.tsx, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, docs/adr/0111-personal-data-and-database-tls.md, apps/web/src/shell/ThemeToggle.tsx, apps/web/src/tutorial/TutorialsPage.tsx, apps/web/src/tutorial/sections.ts, docs/adr/0114-glass-interface-and-clear-sections.md, docs/adr/0115-guided-tutorial.md, apps/web/src/styles/motion.css, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md, apps/web/src/tutorial/TutorialProvider.tsx, apps/web/src/styles/forms.css, apps/web/src/styles/surfaces.css, apps/web/src/session/SignInPage.tsx, apps/web/src/session/SignInForm.tsx, apps/web/src/shell/StandaloneFrame.tsx, apps/web/src/shell/NotFoundPage.tsx, docs/plan/decisions.csv, apps/web/src/styles/account.css, apps/web/src/session/GoogleSignInButton.tsx, apps/web/src/session/PasswordField.tsx, apps/web/src/session/PasswordLinkPage.tsx, apps/web/src/trackpeople/InvitationPage.tsx, apps/web/src/notifications/UnsubscribePage.tsx, apps/web/src/oauth/ConsentPage.tsx, apps/web/src/styles/standalone.css, apps/web/src/i18n/days.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/columns.ts, apps/web/src/reports/ScopeReports.tsx, apps/web/src/tickets/view/ActivityPanel.tsx, apps/server/src/fields/values.ts, apps/web/src/tickets/view/client.ts, apps/web/src/i18n/zone.ts, apps/web/src/i18n/I18nProvider.tsx, apps/web/src/session/SessionProvider.tsx, apps/web/src/api/client.ts, apps/server/src/reports/zone.ts, apps/server/src/routes/saved-searches.ts, docs/adr/0010-query-compiler.md, packages/webconfig/src/csv.ts, apps/web/src/account/csvStyle.tsx, apps/server/src/routes/links.ts, docs/adr/0122-multi-track.md, apps/web/src/account/ConfirmPasswordForm.tsx
-accessed: 2026-11-16
+accessed: 2026-11-22
 attestation: own-words
 ---
 # Your account
@@ -23,8 +23,8 @@ Open the menu with your name at the right of the top bar. It says **Signed in as
 and offers **Account** and **Sign out**. You also reach the page from **Settings**
 and from the command palette (**Account**). It opens at **Profile**; the row of sections under
 the title leads to the others, and the line under the title says what the section holds. On a
-phone the row scrolls sideways on its own: the section you are in is moved into view, and an edge
-that fades out over about a tab's width says more sections are that way. Notification emails link straight to **Notifications**.
+phone the row wraps onto a second line, so every section shows. Notification emails link straight
+to **Notifications**.
 
 ## Signing in
 
@@ -112,8 +112,7 @@ what they say; a dialog or the palette also dims the whole page behind it.
 
 Check boxes and radio buttons look the same everywhere, in both skins: a clear box with a visible
 edge when off, the accent colour with a tick or a dot when on. On the **Appearance** cards each
-radio sits on a small solid chip of its own, so it looks the same over a light and a dark
-preview.
+radio sits under the preview, beside the choice's name, so it looks the same on every card.
 
 Things move in a quick, watery way: menus and dialogs swell open and settle, and a card you move
 drops into place. If you have asked your system for reduced motion, nothing animates and everything
@@ -138,7 +137,9 @@ The web app is in English. A Spanish translation is included as a draft: choose 
 **Language and region** on your account to use it, and the app switches as soon as you save,
 and on every device once you sign in there. Languages without a translation show English.
 To try it without changing your account, add `?locale=es` to the address; a `?locale=` in the
-address always wins. Taskmoor never picks the draft from your browser's language alone.
+address always wins. It changes only the page you read: **Language and region** on Profile still
+shows the language saved on your account, and saving keeps that one. Taskmoor never picks the
+draft from your browser's language alone.
 
 Dates follow the same choice: a day is **Dec 1, 2026** in English and **1 dic 2026** in
 Spanish, not `2026-12-01`, on a release and its reports, a card, the backlog's panels, a ticket's

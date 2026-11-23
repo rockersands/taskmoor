@@ -269,11 +269,19 @@ describe('security settings: alert rules (ADR-109)', () => {
     const account = within(form).getByRole('group', { name: 'Failed sign-ins for one account' });
     expect(within(account).getByRole('checkbox', { name: 'Alert on this' })).toBeChecked();
     expect(within(account).getByLabelText('Alert after this many')).toHaveValue(10);
-    expect(within(account).getByLabelText('Within this many minutes')).toHaveValue(60);
-    expect(within(account).getByText('Default: 10 within 60 minutes.')).toBeVisible();
+    // A window is a number with a unit, like the session lengths (D22, S3-AC-6).
+    expect(within(account).getByLabelText('Within this time')).toHaveValue(1);
+    expect(
+      within(account).getByRole('combobox', { name: 'Unit of “Within this time”' }),
+    ).toHaveValue('hours');
+    expect(within(account).getByText('Default: 10 within 1 hour.')).toBeVisible();
     const latest = within(form).getByRole('list', { name: 'Latest alerts' });
     expect(within(latest).getAllByRole('listitem')[0]).toHaveTextContent(
       /Failed sign-ins from one address: 25 in 15 minutes.*from 203\.0\.113\.9/,
+    );
+    // An alert's window in the unit its rule is set in, not '5 in 60 minutes' (S3-AC-6).
+    expect(within(latest).getAllByRole('listitem')[1]).toHaveTextContent(
+      /^Bulk exports by one person: 5 in 1 hour, /,
     );
 
     const threshold = within(account).getByLabelText('Alert after this many');
@@ -281,6 +289,10 @@ describe('security settings: alert rules (ADR-109)', () => {
     await user.type(threshold, '5');
     const exports = within(form).getByRole('group', { name: 'Bulk exports by one person' });
     await user.click(within(exports).getByRole('checkbox', { name: 'Alert on this' }));
+    // Two hours is kept as 120 minutes.
+    const window = within(exports).getByLabelText('Within this time');
+    await user.clear(window);
+    await user.type(window, '2');
     await user.click(within(form).getByRole('button', { name: 'Save alert rules' }));
     expect(await within(form).findByText('Alert rules saved.')).toBeVisible();
     expect(saved).toEqual([
@@ -288,7 +300,7 @@ describe('security settings: alert rules (ADR-109)', () => {
         rules: {
           ...ALERT_DEFAULTS,
           sign_in_failures_account: { enabled: true, threshold: 5, windowMinutes: 60 },
-          bulk_exports: { enabled: false, threshold: 5, windowMinutes: 60 },
+          bulk_exports: { enabled: false, threshold: 5, windowMinutes: 120 },
         },
       },
     ]);

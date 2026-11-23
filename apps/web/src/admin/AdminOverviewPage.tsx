@@ -9,7 +9,7 @@ import { EmptyState } from '../shell/EmptyState';
 import { PageHeader } from '../shell/PageHeader';
 import { AdminPageLinks } from './AdminGroupPage';
 import { useAdminAccess } from './access';
-import { ALERT_RULES, type RaisedAlert, securityAlertsClient } from './SecurityAlertsForm';
+import { type RaisedAlert, raisedAlertText, securityAlertsClient } from './SecurityAlertsForm';
 import { loadSystemInfo, type SystemInfo } from './SystemPage';
 import { groupsFor } from './sections';
 
@@ -220,12 +220,6 @@ function AlertsPanel({ read }: { read: OverviewClient['alerts'] }) {
   const t = useT();
   const intl = useIntl();
   const state = useLoad(read);
-  const ruleName = (rule: string) =>
-    t(
-      ((ALERT_RULES as readonly string[]).includes(rule)
-        ? `admin.alerts.rule.${rule}`
-        : 'admin.alerts.rule.access_refusals') as MessageId,
-    );
   return (
     <Panel
       titleId="admin.alerts.title"
@@ -246,15 +240,12 @@ function AlertsPanel({ read }: { read: OverviewClient['alerts'] }) {
           <ul className="admin-panel-list">
             {state.value.slice(0, SHOWN).map((alert) => (
               <li key={alert.id}>
-                {t('admin.alerts.raised', {
-                  rule: ruleName(alert.rule),
-                  count: alert.count,
-                  minutes: alert.windowMinutes,
-                  time: intl.formatDate(alert.raisedAt, {
-                    dateStyle: 'medium',
-                    timeStyle: 'short',
-                  }),
-                })}
+                {/* Worded as the Security page's latest alerts are, window and all (S3-AC-6). */}
+                {raisedAlertText(
+                  t,
+                  alert,
+                  intl.formatDate(alert.raisedAt, { dateStyle: 'medium', timeStyle: 'short' }),
+                )}
                 {alert.subject.address && (
                   <span className="page-note">
                     {' '}

@@ -89,3 +89,52 @@ export const AtPhoneWidth: Story = {
     await fitsPhoneWidth(canvas);
   },
 };
+
+/**
+ * On a phone every card puts its New button the same way: under its heading, at the start, and
+ * not beside a short heading while a long one pushes it below (S3-AC-7). On a wide screen each
+ * button sits at the end of its heading's row.
+ */
+export const NewButtonsOneWayOnAPhone: Story = {
+  decorators: [atPhoneWidth],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('heading', { name: 'Roles' });
+    const pairs: [string, string][] = [
+      ['Roles', 'New role'],
+      ['Access policies', 'New access policy'],
+      ['Global permissions', 'New global permission'],
+    ];
+    for (const [title, label] of pairs) {
+      const heading = canvas.getByRole('heading', { name: title }).getBoundingClientRect();
+      const button = canvas.getByRole('button', { name: label }).getBoundingClientRect();
+      await expect(button.top).toBeGreaterThanOrEqual(heading.bottom - 1);
+      await expect(Math.round(button.left)).toBe(Math.round(heading.left));
+    }
+    await fitsPhoneWidth(canvas);
+  },
+};
+
+export const NewButtonsBesideTheHeadingOnADesktop: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: 960 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole('heading', { name: 'Roles' });
+    for (const [title, label] of [
+      ['Roles', 'New role'],
+      ['Access policies', 'New access policy'],
+      ['Global permissions', 'New global permission'],
+    ] as const) {
+      const heading = canvas.getByRole('heading', { name: title }).getBoundingClientRect();
+      const button = canvas.getByRole('button', { name: label }).getBoundingClientRect();
+      await expect(button.top).toBeLessThan(heading.bottom);
+      await expect(button.left).toBeGreaterThan(heading.right);
+    }
+  },
+};

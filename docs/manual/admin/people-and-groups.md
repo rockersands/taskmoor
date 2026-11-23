@@ -2,7 +2,7 @@
 title: "People, groups and teams"
 audience: admins
 sources: apps/server/src/routes/users.ts, apps/web/src/admin/AdminLayout.tsx, apps/server/src/authz/person-roles.ts, apps/web/src/people/PersonPage.tsx, apps/web/src/people/peopleWords.ts, apps/server/src/routes/groups.ts, apps/server/src/routes/password-links.ts, apps/server/src/routes/session.ts, apps/server/src/routes/two-factor.ts, apps/server/src/routes/setup.ts, apps/server/src/two-factor.ts, apps/server/src/directory.ts, apps/server/src/auth.ts, apps/server/src/cli.ts, apps/server/src/tokens/bearer.ts, packages/iam/src/throttle.ts, packages/iam/src/policy.ts, packages/db/src/migrations/0003_identity.ts, apps/web/src/people/UsersPage.tsx, apps/web/src/api/pages.ts, apps/web/src/people/GroupsPage.tsx, apps/web/src/people/client.ts, apps/server/src/routes/teams.ts, apps/server/src/tracks/membership.ts, packages/db/src/migrations/0060_teams.ts, apps/web/src/people/TeamsPage.tsx, apps/web/src/people/teamsClient.ts, docs/adr/0076-teams.md, apps/web/src/admin/SecurityPage.tsx, apps/web/src/admin/SettingsPage.tsx, apps/web/src/account/SessionsSection.tsx, apps/web/src/i18n/messages.en.ts, docs/adr/0019-identity.md, docs/specs/05a-administration-security-and-self-hosting.md, apps/server/src/session-policy.ts, apps/web/src/admin/SessionPolicyForm.tsx, apps/server/src/security/alerts.ts, apps/server/src/security/notices.ts, apps/server/src/security/mail.ts, apps/server/src/security/refusals.ts, apps/server/src/routes/security-alerts.ts, apps/server/src/audit/record.ts, apps/web/src/admin/SecurityAlertsForm.tsx, docs/adr/0109-security-notices-and-alerts.md, apps/server/src/privacy/erase.ts, apps/server/src/privacy/export.ts, apps/server/src/routes/personal-data.ts, apps/server/src/audit/query.ts, apps/web/src/people/EraseUserForm.tsx, apps/web/src/account/PersonalDataSection.tsx, docs/adr/0111-personal-data-and-database-tls.md, apps/server/src/trackgroups/privacy.ts, docs/adr/0121-personal-track-groups.md, apps/web/src/shell/DangerAction.tsx, apps/server/src/authz/create-tracks.ts, apps/server/src/trackgroups/access.ts, docs/adr/0122-multi-track.md, docs/adr/0118-track-invitations.md, apps/server/src/routes/service-accounts.ts, apps/server/src/ldap/gateway.ts, apps/web/src/api/teams.ts, apps/server/src/audit/subscriber.ts
-accessed: 2026-11-17
+accessed: 2026-11-22
 attestation: own-words
 ---
 # People, groups and teams
@@ -312,10 +312,11 @@ By default a session lasts 14 days, and ends earlier after 3 days without use. O
 **Security**, under **Sign-in sessions**, set **A sign-in lasts** and **Sign out after it goes
 unused for**, each a whole number with its unit (minutes, hours or days; the page shows a length
 in the largest unit that holds it whole), then select **Save session settings**. A sign-in lasts
-1 hour to 90 days, and the idle time is 5 minutes or more and no longer than the sign-in. The security checklist (ASVS level
-2) asks for 12 hours and 30 minutes. A shorter setting also ends the sessions that are older or
-idler than the new limits; it applies to frontends on another site too. On HTTPS the browser cookie is `__Host-taskmoor_session`; the database keeps
-only a hash of it.
+1 hour to 90 days, and the idle time is 5 minutes or more and no longer than the sign-in. The
+security checklist (ASVS level 2) asks for a sign-in of at most 12 hours that ends after 30
+minutes unused. A shorter setting also ends the sessions that are older or idler than the new
+limits; it applies to frontends on another site too. On HTTPS the browser cookie is
+`__Host-taskmoor_session`; the database keeps only a hash of it.
 
 People see their sessions on their Account page under **Sessions**, and can **Sign out** one or
 **Sign out all other sessions**. A session also ends when the person signs out, changes their
@@ -347,20 +348,24 @@ audit log gets one `access.refused_repeatedly` record when the refusals in the w
 and one more at 100, 1,000 and so on, with the count and the last route.
 
 **Alerts.** On **Administration** > **Security**, under **Security alerts**, each rule has **Alert on
-this**, **Alert after this many** and **Within this many minutes**:
+this**, **Alert after this many** and **Within this time**, a whole number with its unit (minutes
+or hours, from 1 minute to 24 hours; the page shows a window in the largest unit that holds it
+whole):
 
 | Rule | Counts | Default |
 |---|---|---|
-| **Failed sign-ins for one account** | Failed sign-ins and password checks for the account | 10 within 60 minutes |
+| **Failed sign-ins for one account** | Failed sign-ins and password checks for the account | 10 within 1 hour |
 | **Failed sign-ins from one address** | The same, plus refused API tokens, from one IP address | 25 within 15 minutes |
 | **Refused requests of one person or token** | HTTP 403 answers | 50 within 15 minutes |
-| **Bulk exports by one person** | Full exports, audit log exports and search result exports | 5 within 60 minutes |
+| **Bulk exports by one person** | Full exports, audit log exports and search result exports | 5 within 1 hour |
 
 Select **Save alert rules**. Windows are fixed: a 15-minute window starts on the quarter hour.
 A rule raises at most one alert per window for the same account, address, person or token.
 Every site administrator then gets an item in their inbox (under **Priority**) and an email, and
 the audit log records `security.alert_raised`, so it also reaches syslog and webhooks. The
-section lists the latest alerts. AI spend alerts (see [AI usage](ai-usage.md)) reach site
+section lists the latest alerts, each with its rule, the count, the window in the same unit as
+the rules and when it was raised, for example "Bulk exports by one person: 5 in 1 hour", then the
+address or email it came from. AI spend alerts (see [AI usage](ai-usage.md)) reach site
 administrators the same way.
 
 ## Groups

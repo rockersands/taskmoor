@@ -39,6 +39,24 @@ export const Settings: Story = {
   },
 };
 
+/**
+ * 'Tools agents get' heads its group inside the panel, as the groups on Security and Network
+ * access do, not on the panel's top border (S3-AC-9).
+ */
+export const ToolsGroupHeadingInside: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const group = await canvas.findByRole('group', { name: 'Tools agents get' });
+    const legend = group.querySelector('legend') as HTMLElement;
+    const box = group.getBoundingClientRect();
+    const top = box.top + parseFloat(getComputedStyle(group).borderTopWidth);
+    await expect(legend.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      top + parseFloat(getComputedStyle(group).paddingTop) - 1,
+    );
+    await expect(legend.getBoundingClientRect().left).toBeGreaterThan(box.left);
+  },
+};
+
 /** The width of a small phone; nothing inside may stick out sideways. */
 const atPhoneWidth = (Story: () => ReactElement) => (
   <div data-testid="phone-width" style={{ width: 360 }}>

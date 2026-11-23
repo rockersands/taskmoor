@@ -10,7 +10,12 @@ import { attachmentStores } from './attachments/stores';
 import { registerAuditJobs, scheduleRetention } from './audit/retention';
 import { forwardAudit } from './audit/syslog';
 import { Authorizer } from './authz/authorizer';
-import { backupDirectory, registerBackupJobs, scheduleBackups } from './backups/schedule';
+import {
+  backupDirectory,
+  backupWorkerState,
+  registerBackupJobs,
+  scheduleBackups,
+} from './backups/schedule';
 import { registerBulkJobs } from './bulk/jobs';
 import { trimBulkOperations } from './bulk/model';
 import { loadConfig } from './config';
@@ -253,11 +258,14 @@ if (config.roles.includes('worker') && db) {
   // deletes the files of deleted attachments (queued by deletions and the purge, and hourly).
   registerAttachmentJobs(runner, db, attachments);
   // Scheduled backups and their weekly verification (M1-101): checked every five minutes,
-  // queued once per scheduled time across all workers.
+  // queued once per scheduled time across all workers. A worker with nowhere to put one
+  // (TASKMOOR_BACKUP_DIR=off, or no data directory) leaves them to the others and says so.
   const backupDir = backupDirectory(config);
+  const backupWorker = backupWorkerState(config);
   registerBackupJobs(runner, db, {
     databaseUrl: config.databaseUrl as string,
     backupDir,
+    ...(backupWorker === 'ready' ? {} : { declined: backupWorker }),
     ...(config.dataDir ? { dataDir: config.dataDir } : {}),
     version: config.version,
     config: {
@@ -309,7 +317,7 @@ if (config.roles.includes('worker') && db) {
   const scheduleHousekeeping = () =>
     Promise.all([
       schedulePurge(db),
-      scheduleBackups(db),
+      scheduleBackups(db, new Date(), backupWorker),
       scheduleFieldValueCheck(db),
       scheduleChangeLogTrim(db),
       scheduleFormulaRefresh(db, formulaCatalogs),

@@ -292,7 +292,10 @@ describe('workflow editor (M1-030)', () => {
     const client = fakeWorkflowsClient();
     const save = vi.spyOn(client, 'saveDraft');
     renderEditor(client);
-    await user.click(await screen.findByRole('button', { name: 'Add a transition' }));
+    // A filled New button, like every add action in administration (AD-19).
+    const add = await screen.findByRole('button', { name: 'New transition' });
+    expect(add).toHaveClass('button-primary');
+    await user.click(add);
     const name = screen.getByLabelText('Name');
     expect(name).toHaveFocus();
     await user.clear(name);
@@ -334,6 +337,20 @@ describe('workflow editor (M1-030)', () => {
     });
     expect(screen.getByText('Draft version 3')).toBeVisible();
     expect(screen.queryByText('Unsaved changes')).toBeNull();
+  });
+
+  it('[WF-002] [NFR-005] a new transition is untitled, so its name never repeats the New transition button', async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    const add = await screen.findByRole('button', { name: 'New transition' });
+    await user.click(add);
+    expect(screen.getByLabelText('Name')).toHaveValue('Untitled transition');
+    await user.click(add);
+    // Two transitions kept as they came, and still one button that adds another.
+    expect(
+      within(transitionList()).getAllByRole('button', { name: 'Untitled transition' }),
+    ).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'New transition' })).toEqual([add]);
   });
 
   it('[WF-002] works from the keyboard: an entry opens with Enter and focus moves to its details', async () => {

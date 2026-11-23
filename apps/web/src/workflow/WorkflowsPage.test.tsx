@@ -142,7 +142,7 @@ describe('workflows administration (M1-030)', () => {
       'GET /workflows/9': () => jsonResponse(200, { workflow: { ...SUPPORT_WORKFLOW, id: 9 } }),
     });
     window.location.hash = '#/admin/workflows';
-    await user.click(await screen.findByRole('button', { name: 'Create a workflow' }));
+    await user.click(await screen.findByRole('button', { name: 'New workflow' }));
     const form = screen.getByRole('form', { name: 'New workflow' });
     expect(within(form).getByLabelText('Start from')).toHaveDisplayValue(
       'A workflow that moves freely',
@@ -172,7 +172,7 @@ describe('workflows administration (M1-030)', () => {
       'POST /workflows': () => jsonResponse(409, { error: 'name_taken' }),
     });
     window.location.hash = '#/admin/workflows';
-    await user.click(await screen.findByRole('button', { name: 'Create a workflow' }));
+    await user.click(await screen.findByRole('button', { name: 'New workflow' }));
     const form = screen.getByRole('form', { name: 'New workflow' });
     await user.type(within(form).getByLabelText('Name'), 'Support');
     await user.selectOptions(within(form).getByLabelText('Start from'), '1');

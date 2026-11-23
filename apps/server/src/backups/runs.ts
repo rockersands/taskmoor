@@ -131,7 +131,16 @@ export type RunRow = {
   pruned_at: Date | null;
 };
 
+/**
+ * How a run failed by a worker that could not keep backups began, before such runs said why.
+ * That one message was written both for `TASKMOOR_BACKUP_DIR=off` and for a worker with neither
+ * it nor `TASKMOOR_DATA`, so such a run cannot tell which: it gets the reason `could-not-keep`,
+ * which names no cause (S3-AC-1).
+ */
+const OLDER_NO_BACKUPS = 'this worker has no backup directory';
+
 export function runView(r: RunRow): RunView {
+  const details = (r.details ?? {}) as Record<string, unknown>;
   return {
     id: String(r.id),
     kind: r.kind,
@@ -140,7 +149,12 @@ export function runView(r: RunRow): RunView {
     finishedAt: r.finished_at?.toISOString() ?? null,
     path: r.path,
     sizeBytes: r.size_bytes === null ? null : Number(r.size_bytes),
-    details: r.details,
+    // An older run of this kind gets a reason, so the status page words it without the
+    // server's note to the operator, and without guessing which cause it was.
+    details:
+      r.state === 'failed' && r.error?.startsWith(OLDER_NO_BACKUPS) && details.reason === undefined
+        ? { ...details, reason: 'could-not-keep' }
+        : r.details,
     error: r.error,
     pruned: r.pruned_at !== null,
   };

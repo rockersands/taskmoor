@@ -1255,7 +1255,7 @@ test('[WF-002] [WF-012] the administrator builds a workflow with rules in the ed
     await page.goto('./#/admin');
     await page.getByRole('link', { name: 'Workflows' }).click();
     await expect(heading(page)).toHaveText('Workflows');
-    await page.getByRole('button', { name: 'Create a workflow' }).click();
+    await page.getByRole('button', { name: 'New workflow' }).click();
     const form = page.getByRole('form', { name: 'New workflow' });
     expect(await seriousAxeViolations(page)).toEqual([]);
     await form.getByLabel('Name', { exact: true }).fill('Support flow');
@@ -1273,7 +1273,7 @@ test('[WF-002] [WF-012] the administrator builds a workflow with rules in the ed
     await expect(statuses.getByRole('button')).toHaveText(['Open', 'Active', 'Closed']);
 
     // A transition with a guard, a check and an effect.
-    await page.getByRole('button', { name: 'Add a transition' }).click();
+    await page.getByRole('button', { name: 'New transition' }).click();
     await expect(page.getByLabel('Name', { exact: true })).toBeFocused();
     await page.getByLabel('Name', { exact: true }).fill('Start work');
     const panel = page.getByRole('region', { name: 'Transition: Start work' });
@@ -1391,7 +1391,7 @@ test('[WF-002] the workflow editor works on a small phone without sideways scrol
     page.getByRole('button', { name: 'Text', exact: true }),
     page.getByRole('button', { name: 'Version history' }),
     page.getByRole('button', { name: 'Show the diagram' }),
-    page.getByRole('button', { name: 'Add a transition' }),
+    page.getByRole('button', { name: 'New transition' }),
     page.getByLabel('Add a status'),
     ...(await page.getByRole('list', { name: 'Transitions' }).getByRole('button').all()),
   ];

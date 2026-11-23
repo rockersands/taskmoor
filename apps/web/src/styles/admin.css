@@ -704,6 +704,15 @@ details[open] > summary.admin-disclosure::after,
   font-weight: var(--font-weight-strong);
 }
 
+/* Its heading inside the well, as `.form` groups have it (Security, Network access), not on the
+   well's top border (S3-AC-9). */
+.admin-page .people-form > fieldset.form-field > legend {
+  float: inline-start;
+  width: 100%;
+  margin-bottom: var(--space-1);
+  padding: 0;
+}
+
 .import-choices {
   display: grid;
   gap: var(--space-2);
@@ -890,9 +899,10 @@ details[open] > summary.admin-disclosure::after,
   gap: var(--space-2);
 }
 
-/* A section card's heading with its "New …" button at the end (D11); the button wraps under the
-   heading when the card is narrow. */
+/* A section card's heading with its "New …" button at the end (D11); in a narrow card the button
+   goes under the heading. */
 .admin-card-head {
+  container: admin-card-head / inline-size;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -905,6 +915,14 @@ details[open] > summary.admin-disclosure::after,
   margin: 0;
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+/* Narrow, every card's button goes under its heading, at the start: wrapping only when the two
+   did not fit put a short label beside its heading and a long one below (S3-AC-7). */
+@container admin-card-head (max-width: 30rem) {
+  .admin-card-head > .facts-title {
+    flex-basis: 100%;
+  }
 }
 
 /* A page's "New …" button has one place on every administration page, at every width: under the

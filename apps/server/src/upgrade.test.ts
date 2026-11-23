@@ -510,6 +510,21 @@ describe('pre-flight (OPS-006)', () => {
         state: 'block',
         detail: expect.stringMatching(/TASKMOOR_BACKUP_DIR, or pass --no-backup/),
       });
+      // With TASKMOOR_BACKUP_DIR=off it gives the reason scheduled backups give, not a variable
+      // to set: the data directory may well be set already (S3-AC-1).
+      const off = await upgrade(
+        target.db,
+        options(target, { backupRoot: null, backupDeclined: 'off' }),
+      );
+      const offCheck = off.checks.find((c) => c.name === 'backup');
+      expect(offCheck).toMatchObject({
+        state: 'block',
+        detail: expect.stringMatching(
+          /^backups are off on this process \(TASKMOOR_BACKUP_DIR=off\)/,
+        ),
+      });
+      expect(offCheck?.detail).toMatch(/--no-backup/);
+      expect(offCheck?.detail).not.toMatch(/TASKMOOR_DATA/);
       const unsafe = await upgrade(
         target.db,
         options(target, { migrations: online, noBackup: true }),
