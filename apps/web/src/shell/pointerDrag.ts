@@ -59,8 +59,9 @@ type Axis = 'y' | 'x';
  * The nearest ancestor that scrolls along `axis`: up and down, or else the page itself; sideways,
  * such as a board's columns, or else nothing, since a page never scrolls sideways (ADR-033).
  */
-function scrollerOf(element: Element | null, axis: Axis): Element | null {
-  for (let node = element?.parentElement ?? null; node; node = node.parentElement) {
+function scrollerOf(element: Element | null, axis: Axis, self = false): Element | null {
+  const first = self ? element : (element?.parentElement ?? null);
+  for (let node = first; node; node = node.parentElement) {
     const style = getComputedStyle(node);
     const overflow = axis === 'y' ? style.overflowY : style.overflowX;
     const room =
@@ -91,6 +92,22 @@ const offsetOf = (scroller: Element, axis: Axis) =>
   axis === 'y' ? scroller.scrollTop : scroller.scrollLeft;
 
 /**
+ * The area under the pointer that scrolls up and down inside the page, such as a phone board's
+ * column (T-359), or null over the page itself and where nothing is drawn to ask.
+ */
+function innerScrollerAt(x: number, y: number): Element | null {
+  if (typeof document.elementFromPoint !== 'function') return null;
+  const scroller = scrollerOf(document.elementFromPoint(x, y), 'y', true);
+  return scroller === document.scrollingElement ? null : scroller;
+}
+
+/** Whether an area can still scroll up and down by `step`: it has not reached that end yet. */
+const canScrollBy = (scroller: Element, step: number) =>
+  step < 0
+    ? scroller.scrollTop > 0
+    : scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight - 1;
+
+/**
  * Follows one press into a drag with pointer events, so a mouse, a pen and a finger work alike
  * (T-162; ADR-114, section 12; the Tracks page's groups work the same way, CORE-034). The press
  * becomes a drag once it has moved `DRAG_START` pixels; until then it is a press, and its click
@@ -99,7 +116,9 @@ const offsetOf = (scroller: Element, axis: Axis) =>
  * - Escape cancels it, and goes no further, so it does not also close a dialog or a menu;
  * - the pointer near the top or bottom of the scrolling area scrolls it, and near the left or right
  *   edge of an area that scrolls sideways (a board's columns) scrolls that, so a place off the
- *   screen can be reached with a finger, whose drag cannot scroll the page itself;
+ *   screen can be reached with a finger, whose drag cannot scroll the page itself; over another
+ *   area that scrolls up and down inside the page (a phone board's column, T-359), near its top or
+ *   bottom, that area scrolls while it can;
  * - the page carries `is-pointer-dragging`, so no text is selected on the way.
  *
  * A release the page never heard of ends the press with nothing moved: a mouse let go in another
@@ -136,23 +155,32 @@ export function followPointerDrag(
   /** Escape ended the drag; the press is still down, and its click is still the drag's. */
   let cancelled = false;
   let frame = 0;
-  /** This frame's scroll along each axis, from where the pointer is. */
-  const steps = () => ({
-    y: edgeStep(scrollers.y, at.y, 'y'),
-    x: edgeStep(scrollers.x, at.x, 'x'),
-  });
+  /**
+   * This frame's scroll along each axis, from where the pointer is, and what it scrolls: up and
+   * down, another area that scrolls inside the page under the pointer while it can (a phone
+   * board's column the card is carried into), else the area the press began in.
+   */
+  const steps = () => {
+    const inner = innerScrollerAt(at.x, at.y);
+    const innerStep = inner && inner !== scrollers.y ? edgeStep(inner, at.y, 'y') : 0;
+    const y =
+      inner && innerStep !== 0 && canScrollBy(inner, innerStep)
+        ? { scroller: inner, step: innerStep }
+        : { scroller: scrollers.y, step: edgeStep(scrollers.y, at.y, 'y') };
+    return { y, x: { scroller: scrollers.x, step: edgeStep(scrollers.x, at.x, 'x') } };
+  };
 
   const scroll = () => {
     frame = 0;
     if (!dragging || cancelled) return;
     const step = steps();
-    if (step.y === 0 && step.x === 0) return;
+    if (step.y.step === 0 && step.x.step === 0) return;
     let moved = false;
     for (const axis of ['y', 'x'] as const) {
-      const scroller = scrollers[axis];
-      if (step[axis] === 0 || !scroller) continue;
+      const { scroller, step: by } = step[axis];
+      if (by === 0 || !scroller) continue;
       const before = offsetOf(scroller, axis);
-      scroller.scrollBy?.(axis === 'y' ? { top: step.y } : { left: step.x });
+      scroller.scrollBy?.(axis === 'y' ? { top: by } : { left: by });
       if (offsetOf(scroller, axis) !== before) moved = true;
     }
     // The page moved under a still pointer: what lies under it changed.
@@ -233,7 +261,7 @@ export function followPointerDrag(
     e.preventDefault();
     handlers.move(at.x, at.y);
     const step = steps();
-    if (!frame && (step.y !== 0 || step.x !== 0)) frame = nextFrame(scroll);
+    if (!frame && (step.y.step !== 0 || step.x.step !== 0)) frame = nextFrame(scroll);
   }
 
   function onUp(e: PointerEvent) {

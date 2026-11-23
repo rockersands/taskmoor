@@ -639,16 +639,18 @@
 
   /* A long column scrolls inside itself, no taller than the screen under the bar and the column's
      head, so the page ends with the board: below a short column there is no window of empty
-     canvas the length of the longest one (second and third sweeps). Past its last card the
-     scroll carries on to the page. */
+     canvas the length of the longest one (second and third sweeps; Claude's decision of
+     2026-11-22). Past its last card the scroll carries on to the page. A card carried near the
+     foot or the top of such a column scrolls it (followPointerDrag). */
   .board-row:not(.board-heads) > .board-cell {
     max-height: calc(100dvh - var(--topbar-height) - 2 * var(--shell-gap) - 7rem);
     overflow-y: auto;
   }
 
-  /* While a card is in hand the cells reach the row's full height again: a finger deep in a long
-     column that moves sideways is still over the short column beside it, and the card lands at
-     its end. The drag's styles last until the drop has read what is under the finger. */
+  /* While a card is in hand the cells reach the row's height, a long column's window: a finger
+     low in a long column that moves sideways is still over the short column beside it, and the
+     card lands at its end. The drag's styles last until the drop has read what is under the
+     finger. */
   body.is-pointer-dragging .board-row:not(.board-heads) {
     align-items: stretch;
   }
