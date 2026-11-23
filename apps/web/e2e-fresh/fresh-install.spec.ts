@@ -134,7 +134,10 @@ test('[NFR-013] [OPS-013] the frontend at another site: sign in, a ticket, its b
   await expect(page.getByRole('button', { name: 'New ticket' })).toBeVisible();
   await page.keyboard.press('c');
   const dialog = page.getByRole('dialog', { name: 'Create ticket' });
-  await dialog.getByLabel('Track').selectOption({ value: 'FRESH' });
+  // The Track picker is an icon select, a combobox whose options read "KEY · Name" (T-255,
+  // S3-SP-13), not a native select.
+  await dialog.getByRole('combobox', { name: 'Track', exact: true }).click();
+  await dialog.getByRole('option', { name: /^FRESH · / }).click();
   // The track's own form and its ticket types load after the choice: type once they have. The
   // type is a combobox that names the chosen type (CORE-005), shown once the types are in.
   await expect(dialog.getByRole('combobox', { name: 'Ticket type' })).toHaveText(/\S/);
