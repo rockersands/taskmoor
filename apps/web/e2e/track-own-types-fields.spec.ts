@@ -125,7 +125,8 @@ test('[CORE-005] [CORE-009] [IAM-030] someone who runs a track keeps its own tic
 
   // Their track's Manage page leads to its configuration sets, which hold its own ticket types.
   await visit(page, `#/manage/tracks/${mine}`);
-  await expect(page.getByRole('heading', { level: 1, name: new RegExp(key) })).toBeVisible();
+  // The track above the page's title, "People of the track" (S3-TR-9).
+  await expect(page.getByText(new RegExp(`^${key} · `))).toBeVisible();
   const own = page.getByRole('region', { name: 'Its own configuration' });
   await own
     .getByRole('link', { name: 'Configuration sets: its ticket types and field rules' })
