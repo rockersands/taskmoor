@@ -492,6 +492,27 @@ describe('ChecklistsPanel', () => {
     expect(screen.queryByRole('button', { name: /^More options/ })).toBeNull();
   });
 
+  it('[CORE-033] keeps a whole checklist’s Remove out of More on a phone, where it asks first (T-268, T-267)', async () => {
+    setViewportWidth(360);
+    const user = userEvent.setup();
+    const { client } = renderPanel();
+    // An item's Remove, from More, goes at once, as its button does on a wider screen.
+    await user.click(await screen.findByRole('button', { name: 'More options for Print it' }));
+    const menu = screen.getByRole('menu', { name: 'More options for Print it' });
+    await user.click(within(menu).getByRole('menuitem', { name: 'Remove' }));
+    await waitFor(() => expect(screen.queryByRole('checkbox', { name: 'Print it' })).toBeNull());
+    expect(client.calls.some((c) => c.action === 'removeItem')).toBe(true);
+    // The checklist's own Remove stays a button beside its name, in no menu, and asks first.
+    const trigger = screen.getByRole('button', { name: 'Remove the checklist Before release' });
+    expect(trigger.closest('[role="menu"]')).toBeNull();
+    expect(trigger.closest('.checklist-item')).toBeNull();
+    await user.click(trigger);
+    expect(
+      screen.getByRole('group', { name: /^Removing Before release deletes its 4 items/ }),
+    ).toBeVisible();
+    expect(client.calls.some((c) => c.action === 'removeChecklist')).toBe(false);
+  });
+
   it('[NFR-006] comes from the catalogue, in the pseudo-locale too', async () => {
     const { errors, container } = renderPanel(undefined, 'en-XA');
     await screen.findByRole('progressbar');

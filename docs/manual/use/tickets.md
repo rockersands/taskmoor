@@ -383,10 +383,11 @@ order, with the keyboard as with the pointer, and **Remove** takes it away. With
 finger you can also drag an item by its grip (the six dots among its controls) to another place in
 its checklist; a line shows where it will land, and Escape stops the drag with nothing moved. On a
 phone an item keeps its name on one row and its grip, its state and **More** on the next: **More**
-holds an item's **Edit**, **Move up**, **Move down** and **Remove**. Every change shows in the
-ticket's [history](#history) and reaches others who have the ticket open. Changing a checklist needs
-the **Edit tickets** permission; a status that reserves editing to some people holds here too, and
-the section says so. Everyone who can see the ticket can read them.
+holds an item's **Edit**, **Move up**, **Move down** and **Remove**. A checklist's own buttons stay
+beside its name, also on a phone, so its **Remove**, which asks first, is never inside a menu.
+Every change shows in the ticket's [history](#history) and reaches others who have the ticket open.
+Changing a checklist needs the **Edit tickets** permission; a status that reserves editing to some
+people holds here too, and the section says so. Everyone who can see the ticket can read them.
 
 An item goes at once: the history keeps its words, so typing it again brings it back. A checklist
 that holds items asks first, in the danger colour, saying how many items go and how many were done:

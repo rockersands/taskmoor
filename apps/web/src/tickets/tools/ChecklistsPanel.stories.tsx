@@ -169,8 +169,9 @@ export const ItemsInLine: Story = {
 };
 
 /**
- * On a phone an item takes two rows (PL-44): its name, then its grip, its state and More, which
- * holds Edit, the moves and Remove. Every control is a finger's size, and nothing goes sideways.
+ * On a phone an item takes two rows (PL-44, T-268): its name, then its grip, its state and More,
+ * which holds Edit, the moves and Remove; the checklist's own buttons stay beside its name. Every
+ * control is a finger's size, and nothing goes sideways.
  */
 export const ItemsOnAPhone: Story = {
   tags: ['touch'],
@@ -196,8 +197,15 @@ export const ItemsOnAPhone: Story = {
       await expect(Math.min(...tops)).toBeGreaterThanOrEqual(Math.floor(name.bottom));
     }
     await expect(
-      tooSmallForAFinger(canvasElement, ['.checklist-item-menu button', '.checklist-item select']),
+      tooSmallForAFinger(canvasElement, [
+        '.checklist-item-menu button',
+        '.checklist-item select',
+        '.checklist-actions button',
+      ]),
     ).toEqual([]);
+    // The checklist's own Remove stays beside its name, in no menu, since it asks first (T-268).
+    const remove = canvas.getByRole('button', { name: 'Remove the checklist Before release' });
+    await expect(remove.closest('.checklist-item, [role="menu"]')).toBeNull();
     const page = canvasElement.ownerDocument.documentElement;
     await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
     // More holds the rest, the first item's without Move up.
