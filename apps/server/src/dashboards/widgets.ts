@@ -32,6 +32,7 @@ import {
   sprintQuery,
   sprintView,
 } from '../routes/sprints';
+import { pickOptions } from '../search/bind';
 import { prepareSearch, readOnly, runPage } from '../search/run';
 import { priorityLevels } from '../tickets/priority-level';
 import { timeSettings } from '../tickets/time';
@@ -128,24 +129,50 @@ const NAMED_AXES: ReadonlySet<string> = new Set(['status', 'priority', 'closeRea
 /** The order grouped tickets lists each group in, most recently updated first (`groupBy`). */
 const GROUP_ORDER = parseQuery('ORDER BY updated DESC').orderBy;
 
+/** An option of the field a grouped report groups by: its id and value. */
+export interface OptionRef {
+  id: number;
+  value: string;
+}
+
+/**
+ * How a search names one option of a field so that it finds that option alone, as the binder
+ * reads options, by value before id (`pickOptions`): by its value where no other option of the
+ * field has it, else by its id where no option of the field has the id as its value, else not at
+ * all (T-359).
+ */
+function optionLiteral(id: string, options: readonly OptionRef[]): string | null {
+  const option = options.find((o) => String(o.id) === id);
+  if (!option) return null;
+  const alone = (found: readonly OptionRef[]) => found.length === 1 && found[0] === option;
+  if (alone(pickOptions(options, option.value))) return quoted(option.value);
+  return alone(pickOptions(options, id)) ? id : null;
+}
+
 /**
  * The search that finds every ticket of one value of a grouped report (S3-ST-2): the report's own
  * query, narrowed to the value. A name where the catalogue's names are unique (statuses,
- * priorities, close reasons, groups), a label's text, and otherwise an id, which a bare number is
- * before a name (people, types, releases, areas, teams, options); no value is `IS EMPTY`. It lists
- * the tickets in the report's order, so its first ones are the ones the group shows (T-359). The
- * rest gathered as other has no single search: null.
+ * priorities, close reasons, groups), a label's text, an option as `optionLiteral` names it among
+ * the field's `options`, and otherwise an id, which a bare number is before a name (people, types,
+ * releases, areas, teams); no value is `IS EMPTY`. It lists the tickets in the report's order, so
+ * its first ones are the ones the group shows (T-359). The rest gathered as other, and an option
+ * no search names alone, have no single search: null.
  */
 export function valueQuery(
   query: string,
   field: string,
   axis: Axis,
   value: { id: string | null; name: string | null; kind: 'value' | 'none' | 'other' },
+  options: readonly OptionRef[] = [],
 ): string | null {
   if (value.kind === 'other' || axis.kind === 'all') return null;
   let condition: string;
   if (value.kind === 'none' || value.id === null) {
     condition = `${field} IS EMPTY`;
+  } else if (axis.kind === 'custom' && axis.values === 'option') {
+    const literal = optionLiteral(value.id, options);
+    if (literal === null) return null;
+    condition = `${field} = ${literal}`;
   } else {
     const text = axis.kind === 'system' ? axis.field === 'labels' : axis.values === 'label';
     const named = axis.kind === 'system' ? NAMED_AXES.has(axis.field) : axis.values === 'group';
@@ -450,6 +477,10 @@ export async function widgetData(ctx: WidgetContext, widget: Widget): Promise<un
       const grouped = await read((trx) =>
         groupBy(trx, { workspaceId: ws, scope: condition, axis, limit: c.limit }),
       );
+      const options =
+        axis.kind === 'custom' && axis.values === 'option'
+          ? [...s.catalog.options.values()].filter((o) => o.fieldId === axis.fieldId)
+          : [];
       return {
         field: c.field,
         ...fieldName(axis, s),
@@ -457,7 +488,7 @@ export async function widgetData(ctx: WidgetContext, widget: Widget): Promise<un
         // Each group names the search that finds all of it, past the tickets listed (S3-ST-2).
         values: grouped.values.map((v) => ({
           ...v,
-          query: valueQuery(c.query, c.field, axis, v),
+          query: valueQuery(c.query, c.field, axis, v, options),
         })),
       };
     }

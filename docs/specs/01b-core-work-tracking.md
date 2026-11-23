@@ -62,7 +62,7 @@ Absolute formats: `yyyy/MM/dd HH:mm`, `yyyy-MM-dd HH:mm`, `yyyy/MM/dd`, `yyyy-MM
 | `comment`, `description`, `environment`, `summary` | | Text; `~` only for long text |
 | `area` | `component` | A bare number is an id before a name, a quoted one a name before an id (T-359) |
 | `created`, `updated`, `due`, `closed`, `lastViewed` | `resolved`; `updatedDate` (given); `createdDate`, `dueDate`, `resolutionDate` (verify) | Dates |
-| custom field name or id | `cf[<id>]` (verify) | Operators by field type. Release, area and Team fields read a bare number as an id before a name, a quoted one as a name before an id (T-359) |
+| custom field name or id | `cf[<id>]` (verify) | Operators by field type. Release, area and Team fields read a bare number as an id before a name, a quoted one as a name before an id; select, multiple select and cascading select fields read a value as an option's text before its id (T-359) |
 | `ticket.property[<key>].<path>`, or the index's alias | `issue.property[<key>].<path>` | Values inside a ticket property that a declared property index covers (API-013); operators by the index's type: number, string, text (`~`), date, user. No history predicates |
 | `parent` | `"Epic link"` (retired; rewritten to `parent`) | |
 | `savedSearch` | `filter`; `request`, `savedFilter`, `searchRequest` (given) | Saved search by id or name; cycles rejected |

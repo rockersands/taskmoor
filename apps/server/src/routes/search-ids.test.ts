@@ -31,9 +31,10 @@ interface Group {
  * type like a shared one. A bare number is an id before a name, a quoted one a name before an id,
  * as `crossTrackRelease` reads them (PLN-007); so a grouped report's search for one of its groups,
  * which names a release, an area, a team or a type by id, finds that group and nothing else, and
- * lists it in the report's order.
+ * lists it in the report's order. An option's text may be another option's id: an option is read
+ * by its text before its id, and a group names its option so that the search finds it alone.
  */
-describe('a bare number names one release, area, team or ticket type', () => {
+describe('a bare number names one release, area, team or ticket type; an option is its text first', () => {
   const database = useMigratedDatabase();
   let app: FastifyInstance;
   const users = {} as Record<Person, { id: number; cookie: string }>;
@@ -41,6 +42,9 @@ describe('a bare number names one release, area, team or ticket type', () => {
   const t: Record<string, number> = {};
   const ids = { release: 0, numbered: 0, area: 0, team: 0, sharedBug: 0, localBug: 0, local: 0 };
   let crew = 0;
+  let severity = 0;
+  /** The Severity field's options, in the order they were made. */
+  let sev: number[] = [];
   let dashboard = 0;
 
   const as = (who: Person, options: InjectOptions) =>
@@ -168,6 +172,58 @@ describe('a bare number names one release, area, team or ticket type', () => {
         201,
       )
     ).field.id;
+    // A select whose texts are numbers, with options of its own in GB: the first and third are
+    // named after each other's id, the second and fourth (GB's) differ only in case, and the
+    // fifth is named after the fourth's id.
+    type Context = { id: number; trackIds: number[] | null; options: { id: number }[] };
+    severity = (
+      await call(
+        'admin',
+        {
+          method: 'POST',
+          url: '/api/v1/fields',
+          payload: {
+            name: 'Severity',
+            type: 'select',
+            context: { options: ['a', 'b', 'c'].map((value) => ({ value })) },
+          },
+        },
+        201,
+      )
+    ).field.id;
+    const contexts = (
+      await call(
+        'admin',
+        {
+          method: 'POST',
+          url: `/api/v1/fields/${severity}/contexts`,
+          payload: {
+            name: 'GB',
+            trackIds: [tracks.GB],
+            options: ['d', 'e'].map((value) => ({ value })),
+          },
+        },
+        201,
+      )
+    ).field.contexts as Context[];
+    const everywhere = contexts.find((c) => c.trackIds === null);
+    const inGB = contexts.find((c) => c.trackIds?.includes(tracks.GB as number));
+    if (!everywhere || !inGB) throw new Error('no contexts');
+    sev = [...everywhere.options, ...inGB.options].map((o) => o.id);
+    const [s0, s1, s2, s3, s4] = sev as [number, number, number, number, number];
+    for (const [context, option, value] of [
+      [everywhere, s0, String(s2)],
+      [everywhere, s1, 'Major'],
+      [everywhere, s2, String(s0)],
+      [inGB, s3, 'major'],
+      [inGB, s4, String(s3)],
+    ] as const) {
+      await call('admin', {
+        method: 'PATCH',
+        url: `/api/v1/fields/${severity}/contexts/${context.id}/options/${option}`,
+        payload: { value },
+      });
+    }
     const shared = (await call('admin', { method: 'GET', url: '/api/v1/tracks/GA/ticket-types' }))
       .ticketTypes as { id: number; name: string; level: { id: number; rank: number } }[];
     const bug = shared.find((x) => x.name === 'Bug');
@@ -204,16 +260,19 @@ describe('a bare number names one release, area, team or ticket type', () => {
     await create('ga1', 'GA', {
       targetReleaseIds: [ids.release],
       areaIds: [ids.area],
-      fields: { [String(crew)]: ids.team },
+      fields: { [String(crew)]: ids.team, [String(severity)]: s0 },
     });
-    await create('ga2', 'GA');
-    await create('ga3', 'GA');
+    await create('ga2', 'GA', { fields: { [String(severity)]: s2 } });
+    await create('ga3', 'GA', { fields: { [String(severity)]: s1 } });
     await create('gb1', 'GB', {
       targetReleaseIds: [shadowRelease],
       areaIds: [shadowArea],
-      fields: { [String(crew)]: shadowTeam },
+      fields: { [String(crew)]: shadowTeam, [String(severity)]: s3 },
     });
-    await create('gb2', 'GB', { targetReleaseIds: [ids.numbered] });
+    await create('gb2', 'GB', {
+      targetReleaseIds: [ids.numbered],
+      fields: { [String(severity)]: s4 },
+    });
     // GB's tickets take its own types; its type set is not what this test is about.
     await database.db
       .updateTable('ticket')
@@ -252,6 +311,7 @@ describe('a bare number names one release, area, team or ticket type', () => {
               { id: 'release', kind: 'group-by', config: { query, field: 'targetRelease' } },
               { id: 'area', kind: 'group-by', config: { query, field: 'area' } },
               { id: 'crew', kind: 'group-by', config: { query, field: `cf[${crew}]` } },
+              { id: 'severity', kind: 'group-by', config: { query, field: `cf[${severity}]` } },
             ],
           },
         },
@@ -312,5 +372,39 @@ describe('a bare number names one release, area, team or ticket type', () => {
     const local = types.find((v) => v.id === String(ids.localBug));
     expect(local?.name).toBe('Bug');
     expect(await found(local?.query as string)).toEqual(['gb1']);
+  });
+
+  it('[QRY-002] reads an option by its text before its id, so a text that is another option’s id names its own option (T-359)', async () => {
+    const [s0, s1, s2, s3] = sev as [number, number, number, number];
+    // s0's text is s2's id and s2's is s0's: each names its own option, bare or quoted.
+    expect(await found(`Severity = ${s2}`)).toEqual(['ga1']);
+    expect(await found(`cf[${severity}] = "${s0}"`)).toEqual(['ga2']);
+    // A number no option has as its text is still an id.
+    expect(await found(`Severity = ${s1}`)).toEqual(['ga3']);
+    // A text names every option that has it, in any case.
+    expect((await found('Severity = MAJOR')).sort()).toEqual(['ga3', 'gb1']);
+    expect(await found(`Severity IN choiceOption(${s3})`)).toEqual(['gb2']);
+  });
+
+  it('[RPT-002] a grouped report’s search names an option so that it finds that group only, or no search where none can (S3-ST-2, T-359)', async () => {
+    const [s0, s1, s2, s3, s4] = sev as [number, number, number, number, number];
+    const values = await groups('severity');
+    expect(values.map((v) => v.id).sort()).toEqual([s0, s1, s2, s3, s4].map(String).sort());
+    const byOption = new Map(values.map((v) => [v.id, v]));
+    const query = (option: number) => byOption.get(String(option))?.query;
+    // By its text where that text is its own: s0's text is s2's id.
+    expect(query(s0)).toBe(`track IN (GA, GB) AND cf[${severity}] = "${s2}" ORDER BY updated DESC`);
+    // By its id where another option shares its text (Major and major).
+    expect(query(s1)).toBe(`track IN (GA, GB) AND cf[${severity}] = ${s1} ORDER BY updated DESC`);
+    // s3 shares its text with s1 and its id is s4's text: no search names it alone.
+    expect(query(s3)).toBeNull();
+    for (const [option, ticket] of [
+      [s0, 'ga1'],
+      [s1, 'ga3'],
+      [s2, 'ga2'],
+      [s4, 'gb2'],
+    ] as const) {
+      expect(await found(query(option) as string), `${option}: ${query(option)}`).toEqual([ticket]);
+    }
   });
 });

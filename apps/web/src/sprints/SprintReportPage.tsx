@@ -329,14 +329,15 @@ export function SprintReportPage({
   const title = report
     ? t('sprints.report.title', { name: report.sprint.name })
     : t('sprints.report.link');
-  // Whether the sprint still runs or finished, and its dates, so a closed sprint's report never
-  // reads like the running one's (S3-ST-5).
+  // Whether the sprint still runs or finished, and its planned dates, so a closed sprint's report
+  // never reads like the running one's (S3-ST-5). The start is the planned one, as the backlog
+  // shows it, not the day someone pressed Start; that day stands in only where none was planned.
   const when = (() => {
     const sprint = report?.sprint;
     if (!sprint) return null;
     const date = (at: string) =>
       intl.formatDate(new Date(at), { month: 'short', day: 'numeric', year: 'numeric' });
-    const start = sprint.startedAt ?? sprint.startAt;
+    const start = sprint.startAt ?? sprint.startedAt;
     if (sprint.state === 'closed') {
       const completed = sprint.completedAt ?? sprint.endAt;
       if (!completed) return null;

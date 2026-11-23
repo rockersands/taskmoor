@@ -322,7 +322,7 @@ index on side rows until M1-040), and capped counts. Run `pnpm gen --items 10000
 | `tracksWhereUserHasPermission(permission)` | The authorizer's `allowedTracks` for the person; a permission by its code or Jira-compatible key (`BROWSE_PROJECTS`, `Browse projects`, `browse_track`; dialect `PERMISSION_NAMES`) |
 | `tracksWhereUserHasRole(role)` | Tracks where the person, or a group they are in (nesting included), acts in the role |
 | `standardTicketTypes()`, `subticketTypes()` | Ticket types by level kind |
-| `choiceOption(options...)`, `cascadeOption(parent, child?)` | Options of the field by id or value; `cascadeOption(parent, none)` is not built |
+| `choiceOption(options...)`, `cascadeOption(parent, child?)` | Options of the field by text before id (T-359); `cascadeOption(parent, none)` is not built |
 | `followedTickets()`, `votedTickets()`, `ticketHistory()` | A ticket set: the person's rows in `ticket_follower`, `ticket_vote`, `ticket_visit` (the home page's visits, the latest 50 kept) |
 | `updatedBy(user, from?, to?)` | A ticket set: a change by the person (`ticket_change`; a ticket's creation is there too, as every first value by its creator) or a comment of theirs that the viewer reads, at or after `from` and at or before `to`, to the minute |
 | `linkedTickets(key, linkType...)` | A ticket set over `ticket_link`. A description reads from the given ticket's side (`"blocks"`: tickets it blocks); a type's name, when no description matches, takes its links either way |
@@ -644,11 +644,19 @@ the search the releases page and a grouped report write for release number 5.
   `area`, `type`, and custom release, area and Team fields), and the binder reads it as an id
   before a name; a quoted one is a name before an id; a bare number that is nobody's id is still
   a name. A comparison (`targetRelease > 5`) names the release it starts from the same way.
+- **Options are read by their text before their id**, as the other catalogues read a name
+  before an id (`pickOptions` in `search/bind.ts`): every option of the field with that text, in
+  any case, else the option with that id. They matched either before, so `Severity = 3` found the
+  option "3" and also the option whose id is 3. Option texts are what people type, story points
+  and severities among them, so the text wins; the id stays for a number no option has as text.
 - **A grouped report's search names its group so that it finds that group only** (S3-ST-2):
   statuses, priorities, close reasons and groups by name (their names are unique on the site),
-  labels by their text, everything else by id, ticket types included. It ends in
+  labels by their text, an option by its text where no other option of the field has it (two
+  contexts, or two children of a cascade, may share one), else by its id where no option of the
+  field has that id as its text, and everything else by id, ticket types included. An option that
+  neither names alone gets no search, as the rest gathered as **Other** has none. It ends in
   `ORDER BY updated DESC`, the order the report lists each group in, so the search starts with the
   tickets the group shows (`valueQuery` in `dashboards/widgets.ts`).
 - Not changed: the other catalogues (statuses, priorities, close reasons, levels, groups, roles)
-  keep a name before an id, and options keep matching a value or an id.
+  keep a name before an id.
 - Tests: `routes/search-ids.test.ts`, and `track-reports.test.ts` for the grouped report.

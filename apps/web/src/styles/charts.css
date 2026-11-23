@@ -114,7 +114,8 @@
   stroke: var(--color-chart-guide);
 }
 
-/* A line another runs along shows as a wider band beneath it, so both read where they agree. */
+/* The stretch of a line another runs along, drawn again as a wider band beneath both, so the two
+   read where they agree; the rest of the line stays 2px (ADR-057). */
 .chart-line-under {
   stroke-width: 6;
 }
@@ -440,18 +441,15 @@
   }
 
   /* Two-dimensional statistics on a phone: narrow cells and row names that wrap between words,
-     so a table of a handful of columns fits its card, Total included (second sweep). */
+     so a table of a handful of columns fits its card, Total included (second sweep). The first
+     and last columns keep the same inset, so the corner's field name and Total never touch the
+     edges of the header band (S3-ST-8). */
   .report-table .report-two-dimensional :is(th, td) {
     padding-inline: var(--space-1);
   }
 
   .report-table .report-two-dimensional :is(th, td):first-child {
     min-width: 0;
-    padding-inline-start: 0;
-  }
-
-  .report-table .report-two-dimensional :is(th, td):last-child {
-    padding-inline-end: 0;
   }
 }
 

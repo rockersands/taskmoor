@@ -3,7 +3,7 @@ title: "Search and the query language"
 audience: users
 jira-names: the Jira-compatible dialect's names
 sources: apps/server/src/boards/one-per-track.ts, apps/server/src/routes/saved-searches.ts, apps/web/src/search/savedClient.ts, apps/web/src/search/SearchPage.tsx, apps/web/src/search/BasicFilters.tsx, apps/web/src/search/basic.ts, apps/web/src/search/suggest.ts, apps/web/src/search/ResultTable.tsx, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/columns.ts, apps/web/src/search/ColumnPicker.tsx, apps/web/src/search/columns.ts, apps/web/src/search/SavedSearchBar.tsx, apps/web/src/search/client.ts, apps/web/src/i18n/messages.en.ts, packages/query/src/fields.ts, packages/query/src/functions.ts, packages/query/src/dialect.ts, packages/query/src/dates.ts, packages/query/src/resolve.ts, apps/server/src/search/bind.ts, apps/server/src/search/compile.ts, apps/server/src/routes/search.ts, apps/server/src/routes/search-export.ts, apps/server/src/routes/saved-searches.ts, docs/specs/00-terminology.md, docs/specs/01b-core-work-tracking.md, docs/specs/06-query-language-grammar.md, docs/adr/0010-query-compiler.md, docs/adr/0069-full-text-search.md, packages/query/src/text.ts, apps/server/src/search/text.ts, apps/server/src/search/count.ts, docs/adr/0052-search-results.md, docs/adr/0053-saved-searches.md, apps/server/src/routes/teams.ts, apps/server/src/properties/model.ts, docs/adr/0083-entity-properties.md, docs/adr/0096-dc-filters-and-query-translation.md, apps/server/src/import/load-filters.ts, apps/server/src/search/cross-track.ts, packages/webconfig/src/csv.ts, apps/server/src/reports/zone.ts, apps/web/src/account/csvStyle.tsx
-accessed: 2026-11-22
+accessed: 2026-11-23
 attestation: own-words
 ---
 # Search and the query language
@@ -159,6 +159,9 @@ order is the track's release order.
   page link to them: a bare number is read as an id first, a quoted one as a name first. So
   `targetRelease = 12` is the release numbered 12, even if another track has a release named
   "12", which `targetRelease = "12"` finds. A bare number that is nobody's id is still a name.
+- An option of a select list by its text first, and by its number (id) only when no option of
+  the field has that text: `Severity = 3` is the option "3", even if another option is
+  numbered 3.
 - People by `currentUser()`, email or name: `requester = "ana@example.com"`.
 - Ticket keys: `parent = PAY-10`. A track key also matches the keys a track had before.
 - Dates: `2026-10-30` or `2026/10/30`, with a time in quotes: `"2026-10-30 14:00"`.

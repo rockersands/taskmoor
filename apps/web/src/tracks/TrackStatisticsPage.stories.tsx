@@ -306,7 +306,8 @@ const WIDE_GRID = {
 
 /**
  * Two-dimensional statistics on a phone, in a card as wide as the sweep's at 375 px: every column
- * fits, Total included, and the corner heading sits in the header band (second sweep, S3-ST-8).
+ * fits, Total included, and the corner heading sits in the header band, inset from its edges as
+ * Total is (second sweep, S3-ST-8).
  */
 export const PhoneTwoDimensional: Story = {
   args: {
@@ -329,7 +330,8 @@ export const PhoneTwoDimensional: Story = {
     const canvas = within(canvasElement);
     const region = await canvas.findByRole('region', { name: 'Two-dimensional statistics' });
     await expect(window.innerWidth).toBeLessThan(768);
-    await expect(within(region).getByRole('columnheader', { name: 'Total' })).toBeVisible();
+    const total = within(region).getByRole('columnheader', { name: 'Total' });
+    await expect(total).toBeVisible();
     await expect(region.scrollWidth).toBeLessThanOrEqual(region.clientWidth);
     const [corner, first] = within(region).getAllByRole('columnheader');
     if (!corner || !first) throw new Error('no header');
@@ -337,6 +339,9 @@ export const PhoneTwoDimensional: Story = {
     await expect(getComputedStyle(corner).backgroundColor).toBe(
       getComputedStyle(first).backgroundColor,
     );
+    // Neither the corner's name nor Total touches the band's edge.
+    await expect(Number.parseFloat(getComputedStyle(corner).paddingInlineStart)).toBeGreaterThan(0);
+    await expect(Number.parseFloat(getComputedStyle(total).paddingInlineEnd)).toBeGreaterThan(0);
   },
 };
 

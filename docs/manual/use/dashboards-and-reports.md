@@ -2,7 +2,7 @@
 title: "Dashboards and reports"
 audience: users
 sources: apps/web/src/App.tsx, apps/web/src/api/client.ts, apps/server/src/reports/zone.ts, apps/web/src/reports/DonutChart.tsx, apps/web/src/styles/dashboards.css, apps/web/src/tracks/client.ts, apps/web/src/dashboards/DashboardsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/server/src/routes/dashboards.ts, apps/web/src/dashboards/WidgetSettings.tsx, apps/web/src/dashboards/WidgetView.tsx, apps/web/src/sprints/SprintReportPage.tsx, apps/web/src/reports/BoardReportsPage.tsx, apps/web/src/tracks/TrackStatisticsPage.tsx, apps/web/src/tracks/BoardInTrack.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/reports/ScopeReports.tsx, apps/web/src/reports/client.ts, apps/web/src/reports/ReportTable.tsx, apps/web/src/reports/ColumnChart.tsx, apps/web/src/reports/LineChart.tsx, apps/web/src/styles/charts.css, apps/web/src/styles/boards.css, apps/web/src/shell/NotFoundPage.tsx, docs/plan/decisions.csv, apps/web/src/i18n/messages.en.ts, apps/server/src/reports/scope-burndown.ts, apps/server/src/reports/general.ts, apps/server/src/routes/scope-reports.ts, docs/adr/0054-sprints.md, docs/adr/0057-sprint-charts.md, docs/adr/0058-flow-reports.md, docs/adr/0059-general-and-release-reports.md, docs/adr/0060-dashboards.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/days.ts, apps/web/src/i18n/zone.ts
-accessed: 2026-11-22
+accessed: 2026-11-23
 attestation: own-words
 ---
 # Dashboards and reports
@@ -94,7 +94,10 @@ labels, target and found-in release, area, or a custom field that groups. A fiel
 counts under each.
 
 In **Created vs closed**, a closing is the moment a close reason is set, so a ticket closed,
-reopened and closed again counts twice. **Tickets by date** counts each ticket once, by the date
+reopened and closed again counts twice. Where two lines of a line chart run together from one
+point to the next, as **Created** and **Closed** do over quiet days with nothing created or
+closed, that stretch of the line named first in the legend shows as a wider band beneath the
+other, so neither hides the other; the rest of each line stays thin. **Tickets by date** counts each ticket once, by the date
 it has now. A ticket is done when its status is in the closed stage, the same rule progress uses
 everywhere. **Workload** and **Time tracking** add up time in hours, and say so when time
 tracking is turned off on the site. Sprint widgets need a Scrum board you can see; when the
@@ -169,7 +172,9 @@ These read the whole track, with no query to write:
   and links to the search that finds all of them (**See all 20 in Search**). That search lists them
   in the report's order, most recently updated first, so it starts with the ones the group shows.
   It names a release, an area, a team or a ticket type by its number, so two of the same name,
-  such as a track's own **Bug** type and the shared one, stay apart.
+  such as a track's own **Bug** type and the shared one, stay apart, and an option of a select
+  list by its text, or by its number where another option shares that text. An option that
+  neither names alone, which takes texts that are other options' numbers, has no link.
 
 Wherever a report asks for a **Field**, **Rows** or **Columns**, the list also offers the custom
 fields used in the track whose values group: select lists, people, groups, releases, areas, teams
@@ -287,9 +292,9 @@ instead of charting zeros.
   and its release date), its planned date and the day the work would be done at the pace of the
   last 14 days. Its legend names what the lines add up, such as **Estimate in scope** and
   **Estimate completed** (or **Hours** or **Tickets**). Where the completed line runs along the
-  scope line, as once all the work is done, the scope is drawn as a wider band beneath it, so
-  both stay in sight. Once the release has shipped it says the day it shipped on, as its page does, and no
-  forecast. These days carry their year, as the Releases list writes them (**Planned for
+  scope line, as once all the work is done, that stretch of the scope is drawn as a wider band
+  beneath it, so both stay in sight. Once the release has shipped it says the day it shipped on,
+  as its page does, and no forecast. These days carry their year, as the Releases list writes them (**Planned for
   Nov 30, 2026.**); the chart's axis keeps the short **Nov 30**.
 - **Outcome report**: choose an outcome as for its burndown. **Outcome progress**: the same chart
   for the tickets under the outcome, from the day the first one joined it, its axis and legend
