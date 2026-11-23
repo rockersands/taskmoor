@@ -7,10 +7,11 @@ import { setViewportWidth } from '../test/viewport';
 import { fakeSprintClient } from './fixtures';
 import { SprintReportPage } from './SprintReportPage';
 
-function open(locale: Locale = 'en', client = fakeSprintClient()) {
+/** The report as a person reads it, on their own clock when `timeZone` is given (T-280). */
+function open(locale: Locale = 'en', client = fakeSprintClient(), timeZone: string | null = null) {
   const errors: Error[] = [];
   const view = render(
-    <I18nProvider locale={locale} onError={(e) => errors.push(e)}>
+    <I18nProvider locale={locale} timeZone={timeZone} onError={(e) => errors.push(e)}>
       <SprintReportPage boardId={7} sprintId={11} client={client} />
     </I18nProvider>,
   );
@@ -89,8 +90,8 @@ describe('sprint charts on the report (M1-060)', () => {
     expect(screen.getByText('Committed at the start').closest('dl')).toHaveClass('glass-card');
   });
 
-  it('[AGL-010] says whether the sprint still runs or finished, and its dates (S3-ST-5)', async () => {
-    open();
+  it('[AGL-010] says whether the sprint still runs or finished, and its dates on the person’s clock (S3-ST-5)', async () => {
+    open('en', fakeSprintClient(), 'UTC');
     expect(await screen.findByText('In progress: Oct 26, 2026 to Nov 9, 2026.')).toBeVisible();
     const closed = fakeSprintClient();
     const report = closed.report;
@@ -101,10 +102,11 @@ describe('sprint charts on the report (M1-060)', () => {
         sprint: { ...read.sprint, state: 'closed', completedAt: '2026-11-10T16:00:00Z' },
       };
     };
-    open('es', closed);
+    // At UTC+14 it finished on the 11th, though it was still the 10th in London.
+    open('es', closed, 'Pacific/Kiritimati');
     expect(
       await screen.findByText(
-        'Terminó el 10 nov 2026. Estaba previsto del 26 oct 2026 al 9 nov 2026.',
+        'Terminó el 11 nov 2026. Estaba previsto del 26 oct 2026 al 9 nov 2026.',
       ),
     ).toBeVisible();
   });

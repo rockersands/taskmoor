@@ -5824,6 +5824,7 @@ export const messagesEn = {
   'dashboards.widget.slice': '{value} · {share}',
   'dashboards.widget.shown': '{shown, plural, one {# ticket} other {# tickets}} of {total}',
   'dashboards.widget.groupAll': 'See all {total} in Search',
+  'dashboards.widget.groupAllNamed': 'See all {total} in Search: {group}',
   'dashboards.widget.noOpenInRelease.title': 'No open tickets target this release',
   'dashboards.widget.noOpenInRelease':
     'This report counts the open tickets that target the release, and a release that has shipped usually has none left. Choose another release.',

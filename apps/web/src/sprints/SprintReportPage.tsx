@@ -348,9 +348,9 @@ export function SprintReportPage({
           })
         : t('sprints.report.dates.closedOnly', { completed: date(completed) });
     }
-    return start && sprint.endAt
-      ? t('sprints.report.dates.active', { start: date(start), end: date(sprint.endAt) })
-      : null;
+    // Only a started sprint has a report; one not started says nothing of its dates here.
+    if (sprint.state !== 'active' || !start || !sprint.endAt) return null;
+    return t('sprints.report.dates.active', { start: date(start), end: date(sprint.endAt) });
   })();
   // Inside a track the Backlog tab is right above: no pill repeats it (D7).
   const toBacklog = embedded ? null : (

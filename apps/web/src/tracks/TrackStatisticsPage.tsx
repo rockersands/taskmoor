@@ -5,7 +5,12 @@ import { WidgetView } from '../dashboards/WidgetView';
 import { useT } from '../i18n/I18nProvider';
 import type { MessageId } from '../i18n/messages.en';
 import { FLOW_REPORTS, type FlowReport, FlowReportBody } from '../reports/BoardReportsPage';
-import { type ReportClient, reportClient } from '../reports/client';
+import {
+  openingRelease,
+  type ReportClient,
+  type ReportRelease,
+  reportClient,
+} from '../reports/client';
 import { SCOPE_REPORTS, ScopeReport, type ScopeReportKind } from '../reports/ScopeReports';
 import { navigate, routeHref } from '../routing/router';
 import { EmptyState } from '../shell/EmptyState';
@@ -158,9 +163,7 @@ function TicketReport({
   const [statistic, setStatistic] = useState<WorkStatistic>('remainingEstimate');
   const [open, setOpen] = useState(true);
   const [custom, setCustom] = useState<{ id: string; name: string }[]>([]);
-  const [releases, setReleases] = useState<
-    { id: number; name: string; shipped?: boolean; archived?: boolean }[] | null
-  >(null);
+  const [releases, setReleases] = useState<ReportRelease[] | null>(null);
   const [release, setRelease] = useState<number | null>(null);
   const byField = [
     'pie',
@@ -201,11 +204,11 @@ function TicketReport({
       (list) => {
         if (!live) return;
         setReleases(list);
-        // A release's workload needs one: the first still to ship, whose open tickets are its
-        // workload, not one that shipped with none left (S3-ST-9). Time tracking starts on the
-        // whole track.
-        const upcoming = list.find((r) => !r.shipped && !r.archived) ?? list[0];
-        if (report === 'release-workload') setRelease((r) => r ?? upcoming?.id ?? null);
+        // A release's workload needs one: the next to ship, whose open tickets are its workload,
+        // not one that shipped with none left (S3-ST-9), else the one that shipped last, as the
+        // release reports open (T-359). Time tracking starts on the whole track.
+        const opening = openingRelease(list);
+        if (report === 'release-workload') setRelease((r) => r ?? opening?.id ?? null);
       },
       () => live && setReleases([]),
     );

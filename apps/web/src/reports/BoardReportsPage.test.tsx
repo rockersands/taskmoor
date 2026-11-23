@@ -366,6 +366,36 @@ describe('release and outcome reports of a Scrum board (M1-062)', () => {
     });
   });
 
+  it('[RPT-001] the release reports open on the next release to ship, else the one that shipped last (T-359)', async () => {
+    const client = scrum();
+    const shipped = (id: number, name: string, at: string) => ({
+      id,
+      name,
+      shipped: true,
+      shippedAt: at,
+    });
+    client.releases = async () => [
+      shipped(30, 'Checkout 1.0', '2026-08-18T10:00:00Z'),
+      { id: 31, name: 'Checkout 2.0', shipped: false, shippedAt: null },
+      { id: 32, name: 'Checkout 2.1', shipped: false, shippedAt: null },
+    ];
+    const { container } = open('release-burndown', 'en', client);
+    await screen.findByRole('figure', { name: 'Remaining work' });
+    expect(screen.getByRole('combobox', { name: 'Release' })).toHaveDisplayValue('Checkout 2.0');
+    expect(client.calls.at(-1)).toEqual({ report: 'release-burndown', params: { release: 31 } });
+    container.remove();
+    // Every release shipped: the one that shipped last, whatever its place in the list.
+    const done = scrum();
+    done.releases = async () => [
+      shipped(30, 'Checkout 1.0', '2026-08-18T10:00:00Z'),
+      shipped(31, 'Checkout 2.0', '2026-10-02T10:00:00Z'),
+      shipped(32, 'Checkout 2.1', '2026-09-20T10:00:00Z'),
+    ];
+    open('release-report', 'en', done);
+    await screen.findByRole('figure', { name: 'Release progress' });
+    expect(screen.getByRole('combobox', { name: 'Release' })).toHaveDisplayValue('Checkout 2.0');
+  });
+
   it('[RPT-001] says when the board’s track has no releases', async () => {
     const client = scrum();
     client.releases = async () => [];

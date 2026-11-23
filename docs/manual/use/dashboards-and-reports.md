@@ -1,8 +1,8 @@
 ---
 title: "Dashboards and reports"
 audience: users
-sources: apps/web/src/App.tsx, apps/web/src/api/client.ts, apps/server/src/reports/zone.ts, apps/web/src/reports/DonutChart.tsx, apps/web/src/styles/dashboards.css, apps/web/src/tracks/client.ts, apps/web/src/dashboards/DashboardsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/server/src/routes/dashboards.ts, apps/web/src/dashboards/WidgetSettings.tsx, apps/web/src/dashboards/WidgetView.tsx, apps/web/src/sprints/SprintReportPage.tsx, apps/web/src/reports/BoardReportsPage.tsx, apps/web/src/tracks/TrackStatisticsPage.tsx, apps/web/src/tracks/BoardInTrack.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/reports/ScopeReports.tsx, apps/web/src/reports/ReportTable.tsx, apps/web/src/reports/ColumnChart.tsx, apps/web/src/reports/LineChart.tsx, apps/web/src/styles/charts.css, apps/web/src/styles/boards.css, apps/web/src/shell/NotFoundPage.tsx, docs/plan/decisions.csv, apps/web/src/i18n/messages.en.ts, apps/server/src/reports/scope-burndown.ts, apps/server/src/reports/general.ts, apps/server/src/routes/scope-reports.ts, docs/adr/0054-sprints.md, docs/adr/0057-sprint-charts.md, docs/adr/0058-flow-reports.md, docs/adr/0059-general-and-release-reports.md, docs/adr/0060-dashboards.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/days.ts, apps/web/src/i18n/zone.ts
-accessed: 2026-11-16
+sources: apps/web/src/App.tsx, apps/web/src/api/client.ts, apps/server/src/reports/zone.ts, apps/web/src/reports/DonutChart.tsx, apps/web/src/styles/dashboards.css, apps/web/src/tracks/client.ts, apps/web/src/dashboards/DashboardsPage.tsx, apps/web/src/dashboards/DashboardPage.tsx, apps/server/src/routes/dashboards.ts, apps/web/src/dashboards/WidgetSettings.tsx, apps/web/src/dashboards/WidgetView.tsx, apps/web/src/sprints/SprintReportPage.tsx, apps/web/src/reports/BoardReportsPage.tsx, apps/web/src/tracks/TrackStatisticsPage.tsx, apps/web/src/tracks/BoardInTrack.tsx, apps/server/src/routes/track-summary.ts, apps/server/src/dashboards/widgets.ts, docs/adr/0116-one-place-per-track.md, apps/web/src/reports/ScopeReports.tsx, apps/web/src/reports/client.ts, apps/web/src/reports/ReportTable.tsx, apps/web/src/reports/ColumnChart.tsx, apps/web/src/reports/LineChart.tsx, apps/web/src/styles/charts.css, apps/web/src/styles/boards.css, apps/web/src/shell/NotFoundPage.tsx, docs/plan/decisions.csv, apps/web/src/i18n/messages.en.ts, apps/server/src/reports/scope-burndown.ts, apps/server/src/reports/general.ts, apps/server/src/routes/scope-reports.ts, docs/adr/0054-sprints.md, docs/adr/0057-sprint-charts.md, docs/adr/0058-flow-reports.md, docs/adr/0059-general-and-release-reports.md, docs/adr/0060-dashboards.md, docs/specs/00-terminology.md, docs/specs/01c-core-work-tracking.md, apps/web/src/dashboards/WidgetEditor.tsx, apps/web/src/shell/pointerDrag.ts, docs/adr/0114-glass-interface-and-clear-sections.md, apps/web/src/i18n/days.ts, apps/web/src/i18n/zone.ts
+accessed: 2026-11-22
 attestation: own-words
 ---
 # Dashboards and reports
@@ -166,7 +166,10 @@ These read the whole track, with no query to write:
 - **Grouped tickets**: each value of a **Field** with its tickets, how many of them are done, and
   the most recently updated ones, each a link to the ticket. Keys, summaries and statuses sit in
   columns shared by every group. A group with more tickets than it lists says how many it shows
-  and links to the search that finds all of them (**See all 20 in Search**).
+  and links to the search that finds all of them (**See all 20 in Search**). That search lists them
+  in the report's order, most recently updated first, so it starts with the ones the group shows.
+  It names a release, an area, a team or a ticket type by its number, so two of the same name,
+  such as a track's own **Bug** type and the shared one, stay apart.
 
 Wherever a report asks for a **Field**, **Rows** or **Columns**, the list also offers the custom
 fields used in the track whose values group: select lists, people, groups, releases, areas, teams
@@ -189,8 +192,9 @@ These add up the time on the track's tickets, in hours:
 - **Workload by person**: the remaining estimate of the open tickets per assignee, with how many
   have no estimate.
 - **Release workload**: the same for the open tickets that target a chosen **Release**. It starts
-  on the first release still to ship; a release with no open tickets, such as one that shipped,
-  says **No open tickets target this release** and why.
+  on the next release to ship, the first in the track's order that has not shipped, or, when all
+  have shipped, the one that shipped last. A release with no open tickets, such as one that
+  shipped, says **No open tickets target this release** and why.
 - **Workload pie chart**: a **Measure** (remaining or original estimate, or time spent) by any
   **Field**, as a pie, for the open tickets or all of them.
 
@@ -264,7 +268,8 @@ same numbers. Tickets in statuses no column shows are counted apart and named un
 
 These follow a Scrum board's sprints, counted by the board's estimation setting:
 
-- **Release burndown**: choose a **Release** of the board's track.
+- **Release burndown**: choose a **Release** of the board's track. It starts on the next release
+  to ship, else the one that shipped last; the **Release report** starts the same way.
 - **Outcome burndown**: choose one of the track's outcomes under **Outcome**; the first is
   chosen to start with. A board outside any track asks for an outcome's key instead, with
   **Show**.

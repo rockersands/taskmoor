@@ -9,7 +9,14 @@ import { estimateText } from '../sprints/client';
 import { noEstimates } from '../sprints/SprintReportPage';
 import type { TrackClient } from '../tracks/client';
 import { ColumnChart } from './ColumnChart';
-import type { OutcomeReport, ReleaseReport, ReportClient, ScopeBurndown } from './client';
+import {
+  type OutcomeReport,
+  openingRelease,
+  type ReleaseReport,
+  type ReportClient,
+  type ReportRelease,
+  type ScopeBurndown,
+} from './client';
 import { LineChart } from './LineChart';
 import { ReportTable } from './ReportTable';
 
@@ -48,7 +55,7 @@ export function ScopeReport({ board, kind, client, outcomes }: ScopeReportProps)
   // Inside a track the outcomes are listed to pick from; elsewhere a key is typed.
   const trackKey = outcomes && board.location.type === 'track' ? board.location.track.key : null;
   const [outcomeList, setOutcomeList] = useState<{ key: string; summary: string }[] | null>(null);
-  const [releases, setReleases] = useState<{ id: number; name: string }[] | null>(null);
+  const [releases, setReleases] = useState<ReportRelease[] | null>(null);
   const [release, setRelease] = useState<number | null>(null);
   const [outcomeText, setOutcomeText] = useState('');
   const [outcome, setOutcome] = useState<string | null>(null);
@@ -69,7 +76,8 @@ export function ScopeReport({ board, kind, client, outcomes }: ScopeReportProps)
       (list) => {
         if (!live) return;
         setReleases(list);
-        setRelease((current) => current ?? list[0]?.id ?? null);
+        // The next release to ship, else the one that shipped last (T-359).
+        setRelease((current) => current ?? openingRelease(list)?.id ?? null);
       },
       () => live && setFailed(true),
     );

@@ -70,3 +70,10 @@ Scrum board's sprints. M1-064 turns several of them into dashboard widgets.
 - 2026-11-03 (T-076): the outcome report, time since, single level group by, time tracking and
   the three workload reports are built, and average age reads the history with one anti-join;
   see ADR-116, "Summary and Statistics finished".
+- 2026-11-22 (T-359): the release burndown, the release report and a track's release workload
+  open on the next release to ship, the first in the track's order that has not shipped, else on
+  the one that shipped last (`openingRelease`, `apps/web/src/reports/client.ts`); a shipped
+  release's open work is usually nothing. A grouped report lists each group most recently updated
+  first, and its link to the whole group's search orders that search the same way; the search
+  names a release, an area, a team or a ticket type by id, which a bare number now is before a
+  name (ADR-010, "A bare number is an id first").

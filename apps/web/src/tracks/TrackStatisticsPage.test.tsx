@@ -298,12 +298,17 @@ describe('a track’s statistics (ADR-116)', () => {
     );
   });
 
-  it('[RPT-002] a long group links to the search that finds all of it (S3-ST-2)', async () => {
+  it('[RPT-002] a long group links to the search that finds all of it, named after its group (S3-ST-2, T-359)', async () => {
     open('group-by');
     const groups = await screen.findByRole('list', { name: 'Grouped tickets' });
-    const all = within(groups).getByRole('link', { name: 'See all 3 in Search' });
+    // Its name starts with the words it shows, then says which group (WCAG 2.5.3).
+    const all = within(groups).getByRole('link', {
+      name: 'See all 3 in Search: Ada Lovelace',
+    });
+    expect(all).toHaveTextContent(/^See all 3 in Search$/);
+    // The server's search, which lists the group as the report does (most recently updated first).
     expect(new URLSearchParams(all.getAttribute('href')?.split('?')[1]).get('q')).toBe(
-      'track = "SHOP" AND assignee = 2',
+      'track = "SHOP" AND assignee = 2 ORDER BY updated DESC',
     );
     // The group with every ticket listed needs no way to the rest.
     expect(within(groups).getAllByRole('link', { name: /^See all/ })).toHaveLength(1);
@@ -398,7 +403,7 @@ describe('a track’s statistics (ADR-116)', () => {
     );
   });
 
-  it('[RPT-002] a release’s workload starts on a release still to ship, and says why one has no open tickets (S3-ST-9)', async () => {
+  it('[RPT-002] a release’s workload starts on a release still to ship, else the one that shipped last, and says why one has no open tickets (S3-ST-9, T-359)', async () => {
     const reports = fakeReportClient(SCRUM);
     reports.releases = async () => [
       { id: 30, name: 'Checkout 1.0', shipped: true, archived: false },
@@ -431,6 +436,26 @@ describe('a track’s statistics (ADR-116)', () => {
     await user.selectOptions(release, 'Checkout 1.0');
     expect(await screen.findByText('No open tickets target this release')).toBeVisible();
     expect(screen.queryByText('No tickets.')).toBeNull();
+    cleanup();
+    // Every release shipped: the one that shipped last, as the release reports open (T-359).
+    reports.releases = async () => [
+      { id: 30, name: 'Checkout 1.0', shipped: true, shippedAt: '2026-10-02T10:00:00Z' },
+      { id: 31, name: 'Checkout 2.0', shipped: true, shippedAt: '2026-08-18T10:00:00Z' },
+    ];
+    render(
+      <I18nProvider locale="en">
+        <TrackStatisticsPage
+          trackKey="SHOP"
+          board={SCRUM}
+          report="release-workload"
+          reports={reports}
+          sprints={fakeSprintClient()}
+          client={client}
+        />
+      </I18nProvider>,
+    );
+    const last = await screen.findByRole('combobox', { name: 'Release' });
+    await waitFor(() => expect(last).toHaveDisplayValue('Checkout 1.0'));
   });
 
   it('[RPT-002] a workload pie with no time names the measure in the sentence’s own words', async () => {

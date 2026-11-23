@@ -679,6 +679,11 @@ export function WidgetView({ dashboardId, widget, client }: WidgetViewProps) {
                         href={routeHref(
                           `#/search?${new URLSearchParams({ q: v.query }).toString()}`,
                         )}
+                        // Its visible words, then the group, so the links read apart (T-359).
+                        aria-label={t('dashboards.widget.groupAllNamed', {
+                          total: v.total,
+                          group: valueName(v),
+                        })}
                       >
                         {t('dashboards.widget.groupAll', { total: v.total })}
                       </a>

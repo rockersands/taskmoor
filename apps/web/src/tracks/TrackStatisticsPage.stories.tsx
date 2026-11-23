@@ -261,7 +261,9 @@ export const GroupedTicketsLineUp: Story = {
       ),
     );
     await expect(starts.size).toBe(1);
-    const all = within(groups).getByRole('link', { name: 'See all 3 in Search' });
+    const all = within(groups).getByRole('link', {
+      name: 'See all 3 in Search: Ada Lovelace',
+    });
     await expect(all).toBeVisible();
     const lastTicket = groups.querySelector('.widget-tickets li:last-child');
     const more = all.closest('p');

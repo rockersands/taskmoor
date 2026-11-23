@@ -5953,6 +5953,7 @@ export const messagesEs: Record<MessageId, string> = {
   'dashboards.widget.slice': '{value} · {share}',
   'dashboards.widget.shown': '{shown, plural, one {# ticket} other {# tickets}} de {total}',
   'dashboards.widget.groupAll': 'Ver los {total} en Buscar',
+  'dashboards.widget.groupAllNamed': 'Ver los {total} en Buscar: {group}',
   'dashboards.widget.noOpenInRelease.title': 'Ningún ticket abierto apunta a esta versión',
   'dashboards.widget.noOpenInRelease':
     'Este informe cuenta los tickets abiertos que apuntan a la versión, y a una versión ya publicada no suele quedarle ninguno. Elige otra versión.',
