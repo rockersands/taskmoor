@@ -66,8 +66,8 @@ with **Create accounts at a first sign-in** on, anyone with such an address coul
 
 1. At the provider, create a client (an application) using the authorization code flow.
    Register the **Redirect URI** shown at the top of the Single sign-on page. The whole address
-   shows, read-only; on a phone its lines end only after a `/`, so no part of it is cut in two.
-   Clicking it, or reaching it with Tab, selects all of it, and **Copy** copies it (when the browser
+   shows, read-only; on a phone its lines end after a `/`, so `v1` and the host stay whole, and
+   only a host name too long for a line of its own breaks inside. Clicking it, or reaching it with Tab, selects all of it, and **Copy** copies it (when the browser
    cannot copy, the address is selected for you to copy). It is the same for every OpenID Connect
    provider:
 

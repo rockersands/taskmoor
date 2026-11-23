@@ -23,9 +23,10 @@ const selectOnFocus = (block: HTMLElement) =>
  * The redirect URI administrators register at the identity provider (M1-080): read-only,
  * selected on focus, with a copy button. One address serves every provider.
  *
- * A read-only text block rather than a field (AD-9): a line may end only after a '/', where
+ * A read-only text block rather than a field (AD-9): a line ends after a '/', where
  * BreakAtSlashes offers a break, so the whole address shows on a phone without cutting 'v1' or
- * the host in two. A browser's text field breaks a long address wherever the line runs out.
+ * the host in two; only a host too long for a line of its own breaks inside (sso.css). A
+ * browser's text field breaks a long address wherever the line runs out.
  */
 export function RedirectUriField({ uri }: RedirectUriFieldProps) {
   const t = useT();

@@ -88,8 +88,10 @@ A configuration administrator sees the list of their pages instead: the setup pa
 
 The section has its own list of pages. On a wide screen it sits beside the page and stays in view
 while the page scrolls. On the overview it shows only the groups' headings, closed, so all of
-them fit beside it, and **Every page** lists the pages (with three groups or fewer, as for
-someone who only runs or sets up tracks, the groups stay open). On any other page only the group of the
+them fit beside it, and **Every page** lists the pages. Someone with three groups or fewer, who
+only runs or sets up tracks, finds the short ones open, as many as add up to six pages:
+**Your tracks** and **People and access** for a configuration administrator, whose
+**Tracks and setup** opens from its heading. On any other page only the group of the
 page you are on shows its pages; the heading of any group opens or closes it, and a group you
 opened stays open while you stay within the group. On a group's own page its heading is marked as
 the page you are on. On a narrow screen the list is a bar

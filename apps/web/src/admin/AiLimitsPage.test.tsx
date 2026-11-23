@@ -188,6 +188,9 @@ describe('AI limits and prices (UI-T19)', () => {
       name: 'Change the rate of Anthropic API, claude-example',
     });
     expect(within(form).getByLabelText('Model')).toHaveAttribute('readonly');
+    // The provider by its name, as the row's title gives it, not its id (S3-AD-3).
+    expect(within(form).getByRole('textbox', { name: 'Provider' })).toHaveValue('Anthropic API');
+    expect(within(form).getByRole('textbox', { name: 'Provider' })).toHaveAttribute('readonly');
     await user.clear(within(form).getAllByLabelText('Input')[0] as HTMLElement);
     await user.type(within(form).getAllByLabelText('Input')[0] as HTMLElement, '4');
     await user.click(within(form).getByRole('button', { name: 'Save the rate' }));
@@ -217,13 +220,33 @@ describe('AI limits and prices (UI-T19)', () => {
     const client = renderPage();
     await user.click(await screen.findByRole('button', { name: 'New rate' }));
     const form = screen.getByRole('form', { name: 'New rate' });
-    await user.type(within(form).getByLabelText('Provider'), 'bedrock');
+    // The providers are offered by the AI page's names and kept by the ids the calls carry, so a
+    // rate cannot be saved under a name that no call matches (S3-AD-3).
+    const provider = within(form).getByRole('combobox', { name: 'Provider' });
+    expect(provider).toHaveAccessibleDescription(
+      'The provider chosen on the AI page. The OpenAI and Gemini APIs count as an OpenAI-compatible server.',
+    );
+    expect(
+      within(provider)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual([
+      'Choose a provider',
+      'Anthropic API',
+      'Amazon Bedrock',
+      'Google Vertex AI',
+      'Microsoft Foundry',
+      'OpenAI-compatible server (Ollama, vLLM)',
+    ]);
     await user.type(within(form).getByLabelText('Model'), 'custom');
-    await user.click(within(form).getByRole('button', { name: 'Save the rate' }));
-    expect(await within(form).findByRole('alert')).toHaveTextContent('Fill in');
     for (const [i, label] of ['Input', 'Output', 'Cache reads', 'Cache writes'].entries()) {
       await user.type(within(form).getAllByLabelText(label)[0] as HTMLElement, String(i + 1));
     }
+    await user.click(within(form).getByRole('button', { name: 'Save the rate' }));
+    // No provider chosen yet.
+    expect(await within(form).findByRole('alert')).toHaveTextContent('Fill in');
+    expect(client.calls.some((c) => c.action === 'setPrice')).toBe(false);
+    await user.selectOptions(provider, 'Amazon Bedrock');
     await user.click(within(form).getByRole('button', { name: 'Save the rate' }));
     await screen.findByText('The rate of custom was saved.');
     expect(client.calls.at(-1)?.args[0]).toEqual({

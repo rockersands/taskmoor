@@ -7454,7 +7454,8 @@ export const messagesEn = {
   'admin.aiLimits.addPrice': 'New rate',
   'admin.aiLimits.provider': 'Provider',
   'admin.aiLimits.providerHint':
-    'As the AI page names it, for example anthropic, bedrock or vertex.',
+    'The provider chosen on the AI page. The OpenAI and Gemini APIs count as an OpenAI-compatible server.',
+  'admin.aiLimits.chooseProvider': 'Choose a provider',
   'admin.aiLimits.model': 'Model',
   'admin.aiLimits.perMillion': 'Rates, in US dollars per million tokens',
   'admin.aiLimits.input': 'Input',

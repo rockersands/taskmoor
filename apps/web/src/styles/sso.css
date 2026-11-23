@@ -416,6 +416,15 @@
   user-select: all;
 }
 
+/*
+ * The address is a flex item of the block, and a flex item is never narrower than its longest
+ * piece unless told so: without this a host name wider than a phone's line ran past the block's
+ * edge and scrolled the page sideways instead of breaking inside.
+ */
+.form-field .redirect-uri-value .slash-breaks {
+  min-width: 0;
+}
+
 .form-field .redirect-uri-value:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 1px;

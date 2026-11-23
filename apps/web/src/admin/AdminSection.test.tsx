@@ -212,7 +212,7 @@ describe('Administration (ADR-114)', () => {
     expect(screen.queryByRole('region', { name: 'System health' })).toBeNull();
   });
 
-  it('[IAM-009] shows a configuration administrator only the setup pages, and no panels', () => {
+  it('[IAM-009] shows a configuration administrator only the setup pages, and no panels', async () => {
     renderOverview(CONFIG_ADMIN);
     expect(within(pagesNav()).getByRole('button', { name: 'Tracks and setup' })).toBeVisible();
     expect(within(pagesNav()).getByRole('button', { name: 'Your tracks' })).toBeVisible();
@@ -223,11 +223,18 @@ describe('Administration (ADR-114)', () => {
       'href',
       '#/admin/visibility',
     );
-    // Their three groups fit beside the overview open (S3-AD-2).
-    expect(within(pagesNav()).getByRole('button', { name: 'Tracks and setup' })).toHaveAttribute(
-      'aria-expanded',
-      'true',
-    );
+    // Their single-page groups open beside the overview; the twelve pages of Tracks and setup
+    // would run past the card on a laptop, so that group opens from its heading (S3-AD-2).
+    for (const name of ['Your tracks', 'People and access']) {
+      expect(within(pagesNav()).getByRole('button', { name })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      );
+    }
+    const setup = within(pagesNav()).getByRole('button', { name: 'Tracks and setup' });
+    expect(setup).toHaveAttribute('aria-expanded', 'false');
+    expect(within(pagesNav()).queryByRole('link', { name: 'Workflow maps' })).toBeNull();
+    await userEvent.click(setup);
     expect(within(pagesNav()).getByRole('link', { name: 'Workflow maps' })).toBeVisible();
     expect(within(pagesNav()).queryByRole('link', { name: 'People' })).toBeNull();
     expect(within(pagesNav()).queryByRole('link', { name: 'Permission explainer' })).toBeNull();

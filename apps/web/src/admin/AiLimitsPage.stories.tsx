@@ -38,11 +38,15 @@ export const AddingALimit: Story = {
   },
 };
 
-/** The form for a rate. */
+/** The form for a rate: its provider picked from the AI page's names (S3-AD-3). */
 export const AddingARate: Story = {
   play: async ({ canvasElement }) => {
     const page = within(canvasElement);
     await userEvent.click(await page.findByRole('button', { name: 'New rate' }));
-    await expect(page.getByRole('form', { name: 'New rate' })).toBeVisible();
+    const form = page.getByRole('form', { name: 'New rate' });
+    await expect(form).toBeVisible();
+    const provider = within(form).getByRole('combobox', { name: 'Provider' });
+    await userEvent.selectOptions(provider, 'Google Vertex AI');
+    await expect(provider).toHaveValue('vertex');
   },
 };

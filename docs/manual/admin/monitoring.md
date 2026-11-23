@@ -164,8 +164,10 @@ action. The action is picked in words: **Action about** names what it concerns, 
 **Person** for every event about people, and then **What happened** narrows it to one kind, such
 as **Signed in**. Each action in the list reads as words too, such as **Ticket template created**
 for `ticket_template.created`, and what it is about by its kind and its name as it is now, such
-as **Track “Shop”**, a ticket by its key, such as **Ticket “MOB-12”**, or by its number when it
-has no name to show, such as **API token 7** (an erased person is never named). The security
+as **Track “Shop”** or **Priority “Urgent”**, a ticket by its key, such as **Ticket “MOB-12”**, a
+field option by its value and a frontend by its label (else its address). Only a subject with no
+name, such as **Bulk change 7**, or one since deleted shows by its number (an erased person is
+never named either). The security
 actions read as words as well: a refused password link is **Password link refused**, a lockout
 **Sign-in locked after failed attempts**, a change of password just **Password changed**. A track
 role given or taken says which role and to whom, such as **Track role “Developers” given to Noor

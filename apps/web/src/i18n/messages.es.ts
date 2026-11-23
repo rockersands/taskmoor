@@ -7617,7 +7617,8 @@ export const messagesEs: Record<MessageId, string> = {
   'admin.aiLimits.addPrice': 'Nueva tarifa',
   'admin.aiLimits.provider': 'Proveedor',
   'admin.aiLimits.providerHint':
-    'Como lo nombra la página de IA, por ejemplo anthropic, bedrock o vertex.',
+    'El proveedor elegido en la página de IA. Las API de OpenAI y de Gemini cuentan como servidor compatible con OpenAI.',
+  'admin.aiLimits.chooseProvider': 'Elige un proveedor',
   'admin.aiLimits.model': 'Modelo',
   'admin.aiLimits.perMillion': 'Tarifas, en dólares estadounidenses por millón de tokens',
   'admin.aiLimits.input': 'Entrada',

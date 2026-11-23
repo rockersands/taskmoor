@@ -7,7 +7,7 @@ import {
   withBom,
 } from '@taskmoor/webconfig';
 import type { FastifyInstance } from 'fastify';
-import { type Kysely, sql } from 'kysely';
+import { type Kysely, type RawBuilder, sql } from 'kysely';
 import { z } from 'zod';
 import { appendAudit, verifyChain } from '../audit/chain';
 import {
@@ -67,10 +67,11 @@ type FilterQuery = z.infer<typeof filterQuery>;
 
 /**
  * The tables that name a record's subject, by its type (AD-2): each has an id, the workspace and
- * a name. A ticket is named by its key instead (below); a subject of another type keeps its id
- * alone.
+ * a name (or the column `NAME_COLUMNS` gives). Every audited subject whose table has a name is
+ * here; `audit.test.ts` holds the list to that. A ticket is named by its key instead (below); a
+ * subject with no name, such as a bulk change, keeps its id alone.
  */
-const NAMED_SUBJECTS = {
+export const NAMED_SUBJECTS = {
   track: 'track',
   user: 'app_user',
   group: 'user_group',
@@ -91,10 +92,49 @@ const NAMED_SUBJECTS = {
   saved_search: 'saved_search',
   sprint: 'sprint',
   area: 'area',
+  api_token: 'api_token',
+  attachment: 'attachment',
+  close_reason: 'close_reason',
+  cross_track_release: 'cross_track_release',
+  directory: 'ldap_directory',
+  field_context: 'field_context',
+  field_option: 'field_option',
+  frontend_origin: 'frontend_origin',
+  hierarchy_level: 'hierarchy_level',
+  identity_provider: 'identity_provider',
+  import_run: 'import_run',
+  link_type: 'link_type',
+  notification_policy: 'notification_policy',
+  oauth_client: 'oauth_client',
+  priority: 'priority',
+  priority_set: 'priority_set',
+  ticket_type: 'ticket_type',
+  track_category: 'track_category',
+  type_set: 'type_set',
+  visibility_level: 'visibility_level',
+  visibility_policy: 'visibility_policy',
+  webhook: 'webhook',
+  workflow_map: 'workflow_map',
 } as const satisfies Record<string, keyof Database>;
 
 type NamedType = keyof typeof NAMED_SUBJECTS;
 const isNamed = (type: string): type is NamedType => Object.hasOwn(NAMED_SUBJECTS, type);
+
+/**
+ * The subjects whose name is in another column than `name`: a field option by its value, a
+ * frontend by its label, or by its address when it has none.
+ */
+const NAME_COLUMNS: Partial<Record<NamedType, RawBuilder<string>>> = {
+  field_option: sql<string>`value`,
+  frontend_origin: sql<string>`coalesce(nullif(label, ''), origin)`,
+};
+
+/** The subjects whose ids are text, not numbers: an app connection's client id (`tmc_...`). */
+const TEXT_IDS: ReadonlySet<string> = new Set<NamedType>(['oauth_client']);
+
+/** Whether a record's subject id can name a row of its type's table. */
+const nameableId = (type: string, id: string): boolean =>
+  TEXT_IDS.has(type) ? id.length <= 100 : /^[0-9]{1,9}$/.test(id);
 
 /**
  * The actions whose details point at a role and the person or group it was given to or taken
@@ -126,17 +166,18 @@ async function withSubjectNames(
   workspaceId: number,
   records: AuditView[],
 ): Promise<(AuditView & { subject: { name?: string } | null; about?: AuditAbout })[]> {
-  const wanted = new Map<NamedType | 'ticket', Set<number>>();
-  const want = (type: NamedType | 'ticket', id: number) => {
-    const ids = wanted.get(type) ?? new Set<number>();
+  const wanted = new Map<NamedType | 'ticket', Set<number | string>>();
+  const want = (type: NamedType | 'ticket', id: number | string) => {
+    const ids = wanted.get(type) ?? new Set<number | string>();
     ids.add(id);
     wanted.set(type, ids);
   };
   for (const record of records) {
     const subject = record.subject;
-    if (subject?.id && /^[0-9]{1,9}$/.test(subject.id)) {
-      if (isNamed(subject.type) || subject.type === 'ticket')
-        want(subject.type, Number(subject.id));
+    if (subject?.id && nameableId(subject.type, subject.id)) {
+      if (isNamed(subject.type) || subject.type === 'ticket') {
+        want(subject.type, TEXT_IDS.has(subject.type) ? subject.id : Number(subject.id));
+      }
     }
     if (ROLE_ACTIONS.has(record.action) && !record.masked) {
       const details = (record.details ?? {}) as Record<string, unknown>;
@@ -156,18 +197,19 @@ async function withSubjectNames(
         .innerJoin('track as t', 't.id', 'k.track_id')
         .select(['k.id', 't.key', 'k.number'])
         .where('k.workspace_id', '=', workspaceId)
-        .where('k.id', 'in', [...ids])
+        .where('k.id', 'in', [...ids].map(Number))
         .execute();
       for (const row of rows) names.set(`ticket:${row.id}`, `${row.key}-${row.number}`);
       continue;
     }
-    // Every table here has the same id, workspace and name columns as track.
+    // Every table here has an id and workspace column as track has, and its name in `name` or
+    // the column NAME_COLUMNS gives; an app connection's id is text.
     const table = NAMED_SUBJECTS[type] as 'track';
     let query = db
       .selectFrom(table)
-      .select(['id', 'name'])
+      .select(['id', (NAME_COLUMNS[type] ?? sql<string>`name`).as('name')])
       .where('workspace_id', '=', workspaceId)
-      .where('id', 'in', [...ids]);
+      .where('id', 'in', [...ids] as number[]);
     if (type === 'user') {
       query = query.where(sql<boolean>`erased_at IS NULL`);
     }

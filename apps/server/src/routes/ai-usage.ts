@@ -2,6 +2,7 @@ import {
   AI_FEATURES,
   type FeatureId,
   nanosOf,
+  type ProviderId,
   periodWindow,
   REDACTION_PATTERNS,
   SPEND_METRICS,
@@ -61,9 +62,21 @@ const limitBody = z
   .strict();
 const limitPatch = limitBody.partial().strict();
 
+/**
+ * The providers a rate may be for, by the ids AI calls carry (S3-AD-3): a rate is matched to a
+ * call by its provider's id, so one under any other name would never apply.
+ */
+const PRICE_PROVIDERS = {
+  anthropic: true,
+  bedrock: true,
+  vertex: true,
+  foundry: true,
+  'openai-compatible': true,
+} as const satisfies Record<ProviderId, true>;
+
 const priceBody = z
   .object({
-    provider: z.string().min(1).max(40),
+    provider: z.enum(Object.keys(PRICE_PROVIDERS) as [ProviderId, ...ProviderId[]]),
     model: z.string().min(1).max(200),
     input: usd,
     output: usd,

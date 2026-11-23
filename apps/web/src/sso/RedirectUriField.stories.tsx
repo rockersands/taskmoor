@@ -69,6 +69,31 @@ export const Phone: Story = {
 };
 
 /**
+ * A host name wider than a phone's line, with no '-' to break at, breaks inside instead of running
+ * past the block's edge (AD-9): the whole address shows and nothing scrolls sideways.
+ */
+export const PhoneLongHost: Story = {
+  decorators: [atPhoneWidth],
+  args: { uri: 'https://taskmoor.engineering.examplecompany.com/api/v1/auth/oidc/callback' },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const block = canvas.getByRole('textbox', { name: 'Redirect URI to register' });
+    await expect(block).toHaveTextContent(args.uri);
+    // The address ends inside the block's padding, not under it or past its border.
+    const address = block.querySelector('.slash-breaks') as HTMLElement;
+    const style = getComputedStyle(block);
+    const inside =
+      block.getBoundingClientRect().right -
+      Number.parseFloat(style.borderRightWidth) -
+      Number.parseFloat(style.paddingRight);
+    await expect(address.getBoundingClientRect().right).toBeLessThanOrEqual(inside + 0.5);
+    await expect(block.scrollWidth).toBeLessThanOrEqual(block.clientWidth);
+    const phone = canvas.getByTestId('phone-width');
+    await expect(phone.scrollWidth).toBeLessThanOrEqual(phone.clientWidth);
+  },
+};
+
+/**
  * NFR-007, ADR-033: on a phone's touch screen the address and its Copy button are each a finger's
  * 44 px, and the page does not scroll sideways.
  */
