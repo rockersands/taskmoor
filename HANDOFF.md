@@ -22,7 +22,25 @@ You are the coordinating Claude Code session for Taskmoor (GitHub: Rockersands/t
 Since then (2026-11-03, on the Mac) the ticket tools passed their gate and `main` holds them, with the
 handoff, tickets and decisions; the coordinator branch is `main` again after each fast-forward.
 
-### Latest: Taskmoor is public (2026-11-23, Windows)
+### Latest: waves 32 to 34 built, two repairs stopped (2026-11-23, Windows)
+
+The user asked to wrap up, so the build run (`wf_bb7d98e8-0d3`) was stopped. Nothing is pushed.
+
+- **Built and committed:** wave 32 (`G:/tm-w32`, `wave32/admin`: T-321, T-323, T-324, T-332; no migration was
+  needed), wave 33 (`G:/tm-w33`, `wave33/tickets`: T-326, T-337, T-338, T-339), wave 34 (`G:/tm-w34`,
+  `wave34/boards-tools`: T-334, T-288, T-335, T-336, T-341, T-357).
+- **Wave 33** is reviewed and its four confirmed findings are fixed (two commits). It is ready for its gate.
+- **Waves 32 and 34** were stopped while fixing their confirmed review findings (wave 32: the share dialog's
+  Enter and Add, two e2e locators, the site name field, the release page notice and approvals, an authorizer
+  case; wave 34: column drag's drop line and reload, the column grips on a phone, the Add a column state,
+  ADR-114 §9 and ADR-028's model list). The half-done fixes are uncommitted in each worktree and saved in
+  its `git stash list`.
+- **To resume:** rerun the workflow from its saved script with `resumeFromRunId: wf_bb7d98e8-0d3`: the build,
+  review and verify steps come from the cache and only the two repairs run again, told to build on the
+  uncommitted edits. Then gate and land one wave at a time on a quiet machine, wave 33 first; merge this
+  coordinator branch into each wave before its gate. These branches are on the new history and may be pushed.
+
+### Earlier: Taskmoor is public (2026-11-23, Windows)
 
 `https://github.com/Rockersands/taskmoor` is a new public repository with the rewritten history (T-005, T-031);
 `main` is `d1419956`. The old private repository is `Rockersands/taskmoor-archive`.
